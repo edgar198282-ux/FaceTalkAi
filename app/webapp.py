@@ -129,6 +129,7 @@ async def api_me(request):
         'video_ready': bool(await runtime_value('DID_API_KEY')),
         'voice_clone_ready': bool(await runtime_value('ELEVENLABS_API_KEY')),
         'video_quota': await video_remaining(uid),
+        'pending_photo': (await get_setting(f'pending_photo:{uid}', '0')) == '1',
     })
 
 async def api_role(request):
@@ -171,13 +172,13 @@ async def api_upload_photo(request):
     if profile_id:
         if not await set_person_profile_photo(uid,profile_id,data,mime):
             return web.json_response({'error':'Профиль не найден'},status=404)
-    else:
-        active=await get_active_person_profile(uid)
-        if active:
-            await set_person_profile_photo(uid,active['id'],data,mime)
-        else:
-            await set_photo_bytes(uid,data,mime)
-    return web.json_response({'ok':True,'private':True})
+        await set_setting(f'pending_photo:{uid}', '0')
+        return web.json_response({'ok':True,'private':True,'bound':True,'profile_id':profile_id})
+    # Main flow: first choose/upload a photo, then choose which saved voice/person it belongs to.
+    # Keep it as a pending photo until a profile is selected.
+    await set_photo_bytes(uid,data,mime)
+    await set_setting(f'pending_photo:{uid}', '1')
+    return web.json_response({'ok':True,'private':True,'pending_voice_selection':True})
 
 async def _telegram_photo_bytes(bot, file_id):
     import io
@@ -329,6 +330,11 @@ async def api_voice_clone(request):
         return web.json_response({'error':'Нет записи голоса'},status=400)
     result=await create_clone(audio,filename=filename,name=name)
     pid=await create_person_profile(uid,name,result['voice_id'],True)
+    if (await get_setting(f'pending_photo:{uid}', '0')) == '1':
+        pdata, pmime = await get_photo_bytes(uid)
+        if pdata:
+            await set_person_profile_photo(uid,pid,pdata,pmime or 'image/jpeg')
+        await set_setting(f'pending_photo:{uid}', '0')
     return web.json_response({'ok':True,'profile_id':pid,'requires_verification':bool(result.get('requires_verification'))})
 
 async def api_delete_voice_clone(request):
@@ -350,9 +356,15 @@ async def api_delete_voice_clone(request):
 async def api_profile_select(request):
     user=await _user_from_request(request)
     if not user: return web.json_response({'error':'unauthorized'},status=401)
-    body=await request.json(); pid=int(body.get('id',0) or 0)
-    if not await select_person_profile(int(user['id']),pid): return web.json_response({'error':'Профиль не найден'},status=404)
-    return web.json_response({'ok':True})
+    body=await request.json(); pid=int(body.get('id',0) or 0); uid=int(user['id'])
+    if not await select_person_profile(uid,pid): return web.json_response({'error':'Профиль не найден'},status=404)
+    photo_bound=False
+    if (await get_setting(f'pending_photo:{uid}', '0')) == '1':
+        pdata, pmime = await get_photo_bytes(uid)
+        if pdata:
+            photo_bound=bool(await set_person_profile_photo(uid,pid,pdata,pmime or 'image/jpeg'))
+        await set_setting(f'pending_photo:{uid}', '0')
+    return web.json_response({'ok':True,'photo_bound':photo_bound})
 
 async def api_profile_rename(request):
     user=await _user_from_request(request)
