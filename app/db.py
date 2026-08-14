@@ -95,3 +95,22 @@ async def admin_stats():
         row=await (await db.execute('''SELECT COALESCE(SUM(text_requests),0),COALESCE(SUM(input_tokens),0),COALESCE(SUM(output_tokens),0),COALESCE(SUM(tts_chars),0),COALESCE(SUM(video_attempts),0),COALESCE(SUM(video_success),0) FROM usage_daily WHERE day=?''',(day,))).fetchone()
         allrow=await (await db.execute('''SELECT COALESCE(SUM(text_requests),0),COALESCE(SUM(input_tokens),0),COALESCE(SUM(output_tokens),0),COALESCE(SUM(tts_chars),0),COALESCE(SUM(video_attempts),0),COALESCE(SUM(video_success),0) FROM usage_daily''')).fetchone()
     return {'day':day,'users':users,'today':row,'all':allrow,'video_limit':await get_global_video_limit()}
+
+
+async def set_provider_state(provider, state, message=''):
+    payload=json.dumps({'state':state,'message':message[:300]},ensure_ascii=False)
+    key=f'provider_state:{provider}'
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',(key,payload))
+        await db.commit()
+
+async def get_provider_state(provider):
+    key=f'provider_state:{provider}'
+    async with aiosqlite.connect(DB_PATH) as db:
+        row=await (await db.execute('SELECT value FROM settings WHERE key=?',(key,))).fetchone()
+    if not row:
+        return {'state':'unknown','message':''}
+    try:
+        return json.loads(row[0])
+    except Exception:
+        return {'state':'unknown','message':''}

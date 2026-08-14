@@ -6,12 +6,13 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery, FSInputFile
 
 from .config import BOT_TOKEN, DID_API_KEY, MINIAPP_URL, ADMIN_ID, OPENAI_INPUT_USD_PER_1M, OPENAI_OUTPUT_USD_PER_1M, OPENAI_TTS_USD_PER_1M_CHARS, DID_USD_PER_VIDEO
-from .db import init_db, get_user, set_photo, set_role, set_reply_mode, reset_history, append_history, add_usage, video_remaining, admin_stats, set_global_video_limit
+from .db import init_db, get_user, set_photo, set_role, set_reply_mode, reset_history, append_history, add_usage, video_remaining, admin_stats, set_global_video_limit, set_provider_state, get_provider_state
 from .roles import ROLES
 from .keyboards import main_menu, roles_menu, mode_menu, admin_menu
 from .ai import chat, transcribe, synthesize
 from .avatar import create_video
 from .webapp import start_webapp
+from .billing import real_openai_costs
 
 if not BOT_TOKEN:
     raise RuntimeError('Set TELEGRAM_BOT_TOKEN')
@@ -103,6 +104,7 @@ async def answer_user(m: Message, text: str):
     thinking = await m.answer('✨ Думаю…')
     try:
         reply, usage = await chat(u['role'], u['history'], text)
+        await set_provider_state('openai','ok','Последний AI-запрос успешен')
         await add_usage(m.from_user.id, text_requests=1, input_tokens=usage.get('input_tokens',0), output_tokens=usage.get('output_tokens',0))
     except Exception as e:
         try: await thinking.delete()
@@ -110,10 +112,13 @@ async def answer_user(m: Message, text: str):
         err = str(e)
         if '401' in err or 'Incorrect API key' in err:
             hint = 'OPENAI_API_KEY неверный или Railway ещё использует старое значение.'
-        elif '429' in err or 'quota' in err.lower() or 'billing' in err.lower():
-            hint = 'У OpenAI API нет доступного баланса/лимита.'
+            await set_provider_state('openai','bad_key',err)
+        elif '429' in err or 'quota' in err.lower() or 'billing' in err.lower() or 'no credits remaining' in err.lower():
+            hint = 'У OpenAI API нет доступных кредитов. Пополни API Billing.'
+            await set_provider_state('openai','no_credits',err)
         else:
             hint = 'Проверь OPENAI_API_KEY и OPENAI_TEXT_MODEL в Railway.'
+            await set_provider_state('openai','error',err)
         await m.answer('⚠️ FaceTalk не получил ответ от AI.\n' + hint + '\n\nОшибка: ' + err[:260])
         return
     try: await thinking.delete()
@@ -167,16 +172,61 @@ async def voice(m: Message):
 @dp.callback_query(F.data == 'admin_stats')
 async def admin_stats_cb(c: CallbackQuery):
     if not ADMIN_ID or c.from_user.id != ADMIN_ID:
-        await c.answer('Нет доступа', show_alert=True); return
-    st=await admin_stats(); t=st['today']; a=st['all']
-    def usd(row):
-        return (row[1]*OPENAI_INPUT_USD_PER_1M/1_000_000 + row[2]*OPENAI_OUTPUT_USD_PER_1M/1_000_000 + row[3]*OPENAI_TTS_USD_PER_1M_CHARS/1_000_000 + row[5]*DID_USD_PER_VIDEO)
-    txt=(f'⚙️ <b>FaceTalk — расходы</b>\n\n👥 Пользователей: <b>{st["users"]}</b>\n'
-         f'📅 Сегодня ({st["day"]})\n💬 AI запросов: {t[0]}\n🔤 Токены: {t[1]} вход / {t[2]} выход\n🔊 TTS символов: {t[3]}\n🎥 Видео: {t[5]} готово / {t[4]} попыток\n'
-         f'💵 Оценка сегодня: <b>${usd(t):.4f}</b>\n\n📊 За всё время: AI {a[0]}, видео {a[5]}\n💵 Оценка всего: <b>${usd(a):.4f}</b>\n\n'
-         f'🎛 Лимит видео на пользователя: <b>{st["video_limit"]}/день</b>\n'
-         f'ℹ️ Денежная оценка считается по ценам из Railway Variables. Если тарифы не заданы — $0.0000.')
-    await c.message.edit_text(txt,parse_mode='HTML',reply_markup=admin_menu(st['video_limit'])); await c.answer()
+        await c.answer('Нет доступа', show_alert=True)
+        return
+
+    st = await admin_stats()
+    t = st['today']
+    a = st['all']
+    state = await get_provider_state('openai')
+    real = await real_openai_costs()
+
+    def estimate(row):
+        return (
+            row[1] * OPENAI_INPUT_USD_PER_1M / 1_000_000
+            + row[2] * OPENAI_OUTPUT_USD_PER_1M / 1_000_000
+            + row[3] * OPENAI_TTS_USD_PER_1M_CHARS / 1_000_000
+            + row[5] * DID_USD_PER_VIDEO
+        )
+
+    labels = {
+        'ok': '✅ Работает',
+        'no_credits': '❌ Нет кредитов',
+        'bad_key': '🔑 Неверный ключ',
+        'error': '⚠️ Ошибка',
+        'unknown': '❔ Ещё не проверен',
+    }
+    state_label = labels.get(state.get('state', 'unknown'), '❔ Неизвестно')
+
+    real_today = f"${real['today']['usd']:.4f}" if real['today']['ok'] else "н/д"
+    real_month = f"${real['month']['usd']:.4f}" if real['month']['ok'] else "н/д"
+
+    cost_note = ""
+    if not real['today']['ok']:
+        cost_note = "\n⚠️ Costs API: " + str(real['today']['error'])[:160]
+
+    txt = (
+        "⚙️ <b>FaceTalk — расходы</b>\n\n"
+        "🤖 <b>OpenAI</b>\n"
+        f"Статус: <b>{state_label}</b>\n"
+        f"💵 Реально сегодня: <b>{real_today}</b>\n"
+        f"📆 Реально с начала месяца: <b>{real_month}</b>\n"
+        f"🔎 Scope: <code>{real['scope']}</code>{cost_note}\n\n"
+        f"👥 Пользователей: <b>{st['users']}</b>\n"
+        f"📅 Локальная статистика сегодня ({st['day']})\n"
+        f"💬 AI запросов: {t[0]}\n"
+        f"🔤 Токены: {t[1]} вход / {t[2]} выход\n"
+        f"🔊 TTS символов: {t[3]}\n"
+        f"🎥 D-ID видео: {t[5]} готово / {t[4]} попыток\n"
+        f"🧮 Локальная оценка сегодня: <b>${estimate(t):.4f}</b>\n\n"
+        f"📊 За всё время: AI {a[0]}, видео {a[5]}\n"
+        f"🧮 Локальная оценка всего: <b>${estimate(a):.4f}</b>\n\n"
+        f"🎛 Лимит видео: <b>{st['video_limit']}/день на пользователя</b>\n\n"
+        "ℹ️ Реальные суммы OpenAI берутся из Organization Costs API. "
+        "Точный остаток prepaid-кредитов этот API не возвращает."
+    )
+    await c.message.edit_text(txt, parse_mode='HTML', reply_markup=admin_menu(st['video_limit']))
+    await c.answer()
 
 @dp.callback_query(F.data.startswith('admin_limit:'))
 async def admin_limit_cb(c: CallbackQuery):

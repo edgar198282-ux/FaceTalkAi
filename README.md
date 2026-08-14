@@ -60,3 +60,18 @@ Generated MP4/MP3 files are temporary and cleaned after 2 hours. For production 
 - Mini App now prints the server error into the chat instead of silently showing a temporary toast.
 - Improved bot OpenAI 401/429 diagnostics.
 - Corrected Home/Chat bottom navigation state.
+
+
+## v2.4 — Real OpenAI Costs in Admin
+Add to Railway if you want real OpenAI spend:
+- OPENAI_ADMIN_KEY = organization Admin API key
+- OPENAI_PROJECT_ID = optional FaceTalk project id (proj_...). If omitted, organization costs are shown.
+
+Admin now shows:
+- OpenAI status: working / no credits / bad key / error
+- Real spend today
+- Real spend since start of month
+- Local token, TTS and D-ID usage
+- Video/day limit
+
+The official Organization Costs API reports spend, not exact remaining prepaid-credit balance.
