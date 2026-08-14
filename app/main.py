@@ -107,7 +107,14 @@ async def answer_user(m: Message, text: str):
     except Exception as e:
         try: await thinking.delete()
         except Exception: pass
-        await m.answer('⚠️ AI сейчас не смог ответить. Проверь OPENAI_API_KEY / OPENAI_TEXT_MODEL в Railway.\n\nОшибка: ' + str(e)[:250])
+        err = str(e)
+        if '401' in err or 'Incorrect API key' in err:
+            hint = 'OPENAI_API_KEY неверный или Railway ещё использует старое значение.'
+        elif '429' in err or 'quota' in err.lower() or 'billing' in err.lower():
+            hint = 'У OpenAI API нет доступного баланса/лимита.'
+        else:
+            hint = 'Проверь OPENAI_API_KEY и OPENAI_TEXT_MODEL в Railway.'
+        await m.answer('⚠️ FaceTalk не получил ответ от AI.\n' + hint + '\n\nОшибка: ' + err[:260])
         return
     try: await thinking.delete()
     except Exception: pass

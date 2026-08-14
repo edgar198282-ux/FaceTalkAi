@@ -45,6 +45,21 @@ async def _user_from_request(request):
         user = {'id': int(os.getenv('DEV_USER_ID')), 'first_name': 'Dev'}
     return user
 
+@web.middleware
+async def api_error_middleware(request, handler):
+    try:
+        return await handler(request)
+    except web.HTTPException:
+        raise
+    except Exception as e:
+        print('API exception', request.path, repr(e))
+        if request.path.startswith('/api/'):
+            return web.json_response(
+                {'error': f'Серверная ошибка: {type(e).__name__}: {str(e)[:220]}'},
+                status=500
+            )
+        raise
+
 async def index(request):
     return web.FileResponse(os.path.join(WEB_DIR, 'index.html'))
 
@@ -102,12 +117,11 @@ async def api_upload_photo(request):
     return web.json_response({'ok':True})
 
 async def _telegram_photo_bytes(bot, file_id):
+    import io
     f = await bot.get_file(file_id)
-    buf = bytearray()
-    class Sink:
-        def write(self, b): buf.extend(b)
-    await bot.download_file(f.file_path, destination=Sink())
-    return bytes(buf)
+    buf = io.BytesIO()
+    await bot.download_file(f.file_path, destination=buf)
+    return buf.getvalue()
 
 
 async def api_photo(request):
@@ -117,7 +131,7 @@ async def api_photo(request):
     if not u['photo_file_id']: return web.Response(status=404)
     try:
         data = await _telegram_photo_bytes(request.app['bot'], u['photo_file_id'])
-        return web.Response(body=data, content_type='image/jpeg', headers={'Cache-Control':'no-store'})
+        return web.Response(body=data, content_type='image/jpeg', headers={'Cache-Control':'no-store, max-age=0'})
     except Exception:
         return web.Response(status=404)
 
@@ -194,7 +208,7 @@ async def cleanup_generated(app):
             except OSError: pass
 
 async def start_webapp(bot):
-    app = web.Application(client_max_size=12*1024*1024)
+    app = web.Application(client_max_size=12*1024*1024, middlewares=[api_error_middleware])
     app['bot']=bot
     app.router.add_get('/', index)
     app.router.add_get('/api/me', api_me)

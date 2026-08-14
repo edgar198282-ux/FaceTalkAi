@@ -51,3 +51,12 @@ Generated MP4/MP3 files are temporary and cleaned after 2 hours. For production 
   - `OPENAI_TTS_USD_PER_1M_CHARS`
   - `DID_USD_PER_VIDEO`
 - `VIDEO_DAILY_LIMIT=5` is the default initial limit; the admin can then change it from the bot.
+
+
+## v2.3 Runtime Fix
+- Fixed Mini App uploaded photo: image is now fetched with Telegram init-data authorization and rendered from a Blob URL.
+- Fixed /api/photo download using BytesIO.
+- Added API middleware: every /api runtime failure returns JSON instead of Railway/plain-text HTML.
+- Mini App now prints the server error into the chat instead of silently showing a temporary toast.
+- Improved bot OpenAI 401/429 diagnostics.
+- Corrected Home/Chat bottom navigation state.
