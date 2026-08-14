@@ -16,14 +16,44 @@ def _float(name, default):
         return default
 
 # Telegram / Mini App
-# FACETALK_BOT_TOKEN has highest priority so an old BOT_TOKEN/TELEGRAM_BOT_TOKEN
-# from another Railway project cannot silently start the wrong Telegram bot.
-FACETALK_BOT_TOKEN = os.getenv("FACETALK_BOT_TOKEN", "").strip()
-TELEGRAM_BOT_TOKEN = (
-    FACETALK_BOT_TOKEN
-    or os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-    or os.getenv("BOT_TOKEN", "").strip()
-)
+# Railway values are sometimes pasted as FACETALK_BOT_TOKEN=123:ABC, with quotes,
+# or with a leading "bot". Normalize those harmless wrappers and select the first
+# syntactically valid Telegram token. An invalid FACETALK_BOT_TOKEN no longer makes
+# the whole service crash before we can print a useful diagnostic.
+def _clean_bot_token(value: str) -> str:
+    v = (value or "").strip()
+    # Remove matching surrounding quotes.
+    if len(v) >= 2 and v[0] == v[-1] and v[0] in ("\"", "'"):
+        v = v[1:-1].strip()
+    # Accept accidental KEY=value paste.
+    for key in ("FACETALK_BOT_TOKEN", "TELEGRAM_BOT_TOKEN", "BOT_TOKEN"):
+        prefix = key + "="
+        if v.upper().startswith(prefix):
+            v = v[len(prefix):].strip()
+            if len(v) >= 2 and v[0] == v[-1] and v[0] in ("\"", "'"):
+                v = v[1:-1].strip()
+            break
+    # Accept Bot API URL / botTOKEN forms without changing a normal token.
+    if "/bot" in v:
+        v = v.rsplit("/bot", 1)[-1].split("/", 1)[0].strip()
+    elif v.lower().startswith("bot") and ":" in v[3:]:
+        v = v[3:].strip()
+    return v
+
+def _looks_like_bot_token(v: str) -> bool:
+    if not v or ":" not in v:
+        return False
+    left, right = v.split(":", 1)
+    return left.isdigit() and len(left) >= 5 and len(right) >= 20
+
+_TOKEN_CANDIDATES = [
+    ("FACETALK_BOT_TOKEN", _clean_bot_token(os.getenv("FACETALK_BOT_TOKEN", ""))),
+    ("TELEGRAM_BOT_TOKEN", _clean_bot_token(os.getenv("TELEGRAM_BOT_TOKEN", ""))),
+    ("BOT_TOKEN", _clean_bot_token(os.getenv("BOT_TOKEN", ""))),
+]
+FACETALK_BOT_TOKEN = _TOKEN_CANDIDATES[0][1]
+TELEGRAM_BOT_TOKEN_SOURCE = next((name for name, value in _TOKEN_CANDIDATES if _looks_like_bot_token(value)), "")
+TELEGRAM_BOT_TOKEN = next((value for _name, value in _TOKEN_CANDIDATES if _looks_like_bot_token(value)), "")
 BOT_TOKEN = TELEGRAM_BOT_TOKEN
 EXPECTED_BOT_USERNAME = os.getenv("EXPECTED_BOT_USERNAME", "FaceTalkID_bot").strip().lstrip("@")
 MINIAPP_URL = os.getenv("MINIAPP_URL", "").rstrip("/")

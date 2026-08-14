@@ -190,3 +190,6 @@ Mini App greeting now uses Telegram user first_name (or username as fallback):
 - Admin remains in the bottom navigation for ADMIN_ID.
 - Main screen contains only one "Записать голос" card.
 - Cross-device media move fix from v3.3.4 is preserved.
+
+## v3.4.9 Railway token diagnostics
+The app now normalizes accidental quotes / `KEY=value` pastes, ignores malformed token variables, and logs which Railway variable supplied the valid token without exposing the token itself. If no valid token exists, Deploy Logs show safe diagnostics (presence/length/colon only).

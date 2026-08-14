@@ -10,14 +10,14 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
 
-from .config import TELEGRAM_BOT_TOKEN, MINIAPP_URL, DATA_DIR, DB_PATH, EXPECTED_BOT_USERNAME
+from .config import TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_TOKEN_SOURCE, MINIAPP_URL, DATA_DIR, DB_PATH, EXPECTED_BOT_USERNAME
 from .db import init_db, set_user_language, get_user_language
 from .webapp import start_webapp
 from .storage import migrate_legacy_db
 
 logging.basicConfig(level=logging.INFO)
 
-bot = Bot(TELEGRAM_BOT_TOKEN)
+bot = None
 dp = Dispatcher()
 
 def _miniapp_url_for_user(user_id: int | None):
@@ -97,8 +97,33 @@ async def other_handler(m: Message):
     await m.answer(msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
 
 async def main():
+    global bot
     logging.info('FaceTalk persistent data: %s', DATA_DIR)
     logging.info('FaceTalk SQLite DB: %s', DB_PATH)
+
+    if not TELEGRAM_BOT_TOKEN:
+        raw = {
+            'FACETALK_BOT_TOKEN': os.getenv('FACETALK_BOT_TOKEN', ''),
+            'TELEGRAM_BOT_TOKEN': os.getenv('TELEGRAM_BOT_TOKEN', ''),
+            'BOT_TOKEN': os.getenv('BOT_TOKEN', ''),
+        }
+        diag = ', '.join(
+            f"{k}:present={bool(v)},len={len(v.strip())},colon={':' in v}" for k,v in raw.items()
+        )
+        raise RuntimeError(
+            'NO VALID TELEGRAM BOT TOKEN. Railway variables were read but none has the Telegram format '
+            'digits:secret. Safe diagnostics: ' + diag + '. In Railway paste ONLY the BotFather token value, '
+            'not the variable name, @username, URL, or quotes.'
+        )
+
+    logging.info('Using Telegram token from Railway variable %s', TELEGRAM_BOT_TOKEN_SOURCE)
+    try:
+        bot = Bot(TELEGRAM_BOT_TOKEN)
+    except Exception as exc:
+        raise RuntimeError(
+            f'Telegram token from {TELEGRAM_BOT_TOKEN_SOURCE or "unknown variable"} is malformed. '
+            'Paste only the BotFather token in digits:secret format.'
+        ) from exc
 
     # Fail fast if Railway still contains a token from another project.
     # This prevents FaceTalk code from silently polling @PokerArmenia_bot or any other bot.
