@@ -6,18 +6,36 @@ import time
 import uuid
 from urllib.parse import parse_qsl
 from aiohttp import web
-from .config import BOT_TOKEN, MINIAPP_URL
+from .config import (
+    BOT_TOKEN, MINIAPP_URL, ADMIN_ID, DATA_DIR,
+    OPENAI_INPUT_USD_PER_1M, OPENAI_OUTPUT_USD_PER_1M,
+    OPENAI_TTS_USD_PER_1M_CHARS, DID_USD_PER_VIDEO,
+)
 from .db import get_user, set_photo, set_role, set_reply_mode, append_history, reset_history, add_usage, video_remaining, admin_stats, set_global_video_limit, get_provider_state, set_provider_state, set_photo_bytes, get_photo_bytes, has_private_photo, set_voice_clone, get_voice_clone, delete_voice_clone
 from .roles import ROLES
 from .ai import chat, synthesize, transcribe
 from .avatar import create_video
 from .voiceclone import create_clone, cloned_tts
+from .billing import real_openai_costs
 from .config import TMP_DIR
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 WEB_DIR = os.path.join(BASE_DIR, 'web')
-GEN_DIR = os.path.join(BASE_DIR, 'generated')
+GEN_DIR = os.path.join(DATA_DIR, 'generated')
 os.makedirs(GEN_DIR, exist_ok=True)
+
+
+def _safe_move(src, dst):
+    """Move generated media even when Railway temp/data paths are on different filesystems."""
+    import shutil
+    try:
+        os.replace(src, dst)
+    except OSError as e:
+        if getattr(e, "errno", None) == 18:  # EXDEV: Invalid cross-device link
+            shutil.copy2(src, dst)
+            os.remove(src)
+        else:
+            raise
 
 
 def validate_init_data(init_data: str, max_age=86400):
@@ -317,13 +335,13 @@ async def api_chat(request):
                     if video_path:
                         await add_usage(uid,video_success=1)
                         name = f'{uid}_{uuid.uuid4().hex}.mp4'
-                        dest = os.path.join(GEN_DIR,name); os.replace(video_path,dest)
+                        dest = os.path.join(GEN_DIR,name); _safe_move(video_path,dest)
                         out['video_url'] = f'/generated/{name}'
                     else:
                         out['fallback'] = 'voice'
             if 'video_url' not in out:
                 name = f'{uid}_{uuid.uuid4().hex}.mp3'
-                dest = os.path.join(GEN_DIR,name); os.replace(audio_path,dest); audio_path=None
+                dest = os.path.join(GEN_DIR,name); _safe_move(audio_path,dest); audio_path=None
                 out['audio_url'] = f'/generated/{name}'
         finally:
             if audio_path:
