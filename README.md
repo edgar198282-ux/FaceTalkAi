@@ -169,3 +169,17 @@ Groq, OpenAI, D-ID, ElevenLabs, and Railway Volume paths.
 ## v3.3.1 — TMP_DIR hotfix
 Fixed `NameError: TMP_DIR is not defined`.
 All modules that use Railway Volume temporary storage now explicitly import TMP_DIR from app.config.
+
+
+## v3.3.2 — Full Mini App JS fix
+- Fixed fatal JavaScript syntax error that stopped all Mini App buttons.
+- Removed broken openAdmin() reference.
+- Bottom menu: Home + Admin.
+- Admin button appears only for ADMIN_ID.
+- Restored Home buttons: Select Theme + Record Voice.
+- Preserved Railway Volume and TMP_DIR fixes.
+
+
+## v3.3.3 — Telegram Name Greeting
+Mini App greeting now uses Telegram user first_name (or username as fallback):
+"Привет, <имя>! Я твой FaceTalk AI..."

@@ -33,7 +33,6 @@
 <div class="chat" id="chat"><div class="messages" id="messages"><div class="msg ai">Привет! Я твой FaceTalk AI. О чём поговорим?</div></div><div class="composer"><button class="round" id="voiceRec">🎙️</button><input id="text" placeholder="Напиши сообщение…"><button class="send" id="send">➤</button></div></div><input id="photoInput" type="file" accept="image/jpeg,image/png" hidden></div><div class="bottom"><div>
 <div class="nav active" data-go="home"><strong>⌂</strong>Главная</div>
 <button class="nav admin-nav" data-go="admin" type="button"><strong>⚙️</strong>Админ</button>
-
 </div></div><div class="modal" id="cloneModal"><div class="sheet">
 <h3>🎙️ Записать голос</h3>
 <p style="color:#9caed1;line-height:1.45">Запиши чистый образец голоса. Лучше говорить спокойно и без музыки.</p>
@@ -101,12 +100,12 @@ async function loadAvatarPhoto(){
     return false
   }
 }
-function render(){if(!ME)return;let an=document.querySelector('[data-go="admin"]');if(an)an.classList.toggle('show',!!ME.is_admin); if(ME.has_photo){loadAvatarPhoto()} else {$('#avatar').classList.remove('has-photo');$('#avatar').style.backgroundImage='';let f=$('#avatar .face');if(f)f.style.display='grid'} $('#hello').textContent='👋 Привет, '+(ME.user.first_name||'друг')+'!';$('#photoState').textContent=ME.has_photo?'✅ Фото загружено':'Фото для видеособеседника'; if(ME.video_quota){$('#avatarStatus').textContent='AI готов • видео '+ME.video_quota.remaining+'/'+ME.video_quota.limit;}$('#modePill').textContent=ME.reply_mode==='video'?'🎥 VIDEO':'🔊 VOICE';$('#modeBtn').textContent=ME.reply_mode==='video'?'🎥':'🔊';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===ME.reply_mode));let r=$('#roles');r.innerHTML='';const icons={psychologist:'🧠',trainer:'🏋️',teacher:'🎓',business:'💼',friend:'❤️'};Object.entries(ME.roles).forEach(([k,v])=>{let b=document.createElement('button');b.className='role '+(k===ME.role?'active':'');b.innerHTML='<em>'+icons[k]+'</em>'+v.replace(/^\S+\s/,'');b.onclick=()=>setRole(k);r.appendChild(b)})}
+function render(){if(!ME)return;let an=document.querySelector('[data-go="admin"]');if(an)an.classList.toggle('show',!!ME.is_admin); if(ME.has_photo){loadAvatarPhoto()} else {$('#avatar').classList.remove('has-photo');$('#avatar').style.backgroundImage='';let f=$('#avatar .face');if(f)f.style.display='grid'} let tgName=(ME.user?.first_name||ME.user?.username||'').trim();$('#hello').textContent=tgName?('Привет, '+tgName+'! Я твой FaceTalk AI. О чём поговорим?'):'Привет! Я твой FaceTalk AI. О чём поговорим?';$('#photoState').textContent=ME.has_photo?'✅ Фото загружено':'Фото для видеособеседника'; if(ME.video_quota){$('#avatarStatus').textContent='AI готов • видео '+ME.video_quota.remaining+'/'+ME.video_quota.limit;}$('#modePill').textContent=ME.reply_mode==='video'?'🎥 VIDEO':'🔊 VOICE';$('#modeBtn').textContent=ME.reply_mode==='video'?'🎥':'🔊';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===ME.reply_mode));let r=$('#roles');r.innerHTML='';const icons={psychologist:'🧠',trainer:'🏋️',teacher:'🎓',business:'💼',friend:'❤️'};Object.entries(ME.roles).forEach(([k,v])=>{let b=document.createElement('button');b.className='role '+(k===ME.role?'active':'');b.innerHTML='<em>'+icons[k]+'</em>'+v.replace(/^\S+\s/,'');b.onclick=()=>setRole(k);r.appendChild(b)})}
 async function load(){try{ME=await api('/api/me');render()}catch(e){toast('Открой Mini App из Telegram бота')}}
 async function setRole(role){ME=await api('/api/role',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role})}).then(async()=>api('/api/me'));render();toast('Тема изменена')}
 $('#uploadCard').onclick=()=>$('#photoInput').click();$('#photoInput').onchange=async e=>{let f=e.target.files[0];if(!f)return;let fd=new FormData();fd.append('photo',f);$('#loader').classList.add('show');$('#loaderText').textContent='Загружаю фото…';try{await api('/api/upload-photo',{method:'POST',body:fd});ME=await api('/api/me');render();await loadAvatarPhoto();toast('Фото сохранено')}catch(x){toast(x.message)}finally{$('#loader').classList.remove('show')}};
 function setNav(el){document.querySelectorAll('.nav').forEach(n=>n.classList.remove('active'));if(el)el.classList.add('active')}
-function showChat(){ $('#adminPanel').classList.remove('show'); $('#chat').classList.add('show'); setNav(document.querySelector('[data-go="chat"]')); $('#chat').scrollIntoView({behavior:'smooth'}); }
+function showChat(){ $('#adminPanel').classList.remove('show'); $('#chat').classList.add('show'); $('#chat').scrollIntoView({behavior:'smooth'}); }
 $('#openChat').onclick=showChat;
 document.querySelector('[data-go="home"]').onclick=()=>{$('#adminPanel').classList.remove('show');$('#chat').classList.remove('show');setNav(document.querySelector('[data-go="home"]'));window.scrollTo({top:0,behavior:'smooth'})};
 $('#modeBtn').onclick=()=>$('#modeModal').classList.add('show');$('#modePill').onclick=()=>$('#modeModal').classList.add('show');$('#modeModal').onclick=e=>{if(e.target===$('#modeModal'))e.currentTarget.classList.remove('show')};document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=async()=>{await api('/api/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:b.dataset.mode})});ME=await api('/api/me');render();$('#modeModal').classList.remove('show')});
@@ -131,11 +130,11 @@ async function rec(btn){
     toast('Говори… нажми ещё раз чтобы отправить');
   }catch(e){toast('Разреши микрофон один раз в Telegram')}
 }
-$('#voiceRec').onclick=e=>rec(e.currentTarget);$('#mic').onclick=e=>rec(e.currentTarget);let mode=ME?.reply_mode==='video'?'🎥 Видео':'🔊 Голос';toast('👤 '+role+' • '+mode+' • '+(ME?.has_photo?'Фото загружено':'Нет фото'))};
+$('#voiceRec').onclick=e=>rec(e.currentTarget);$('#mic').onclick=e=>rec(e.currentTarget);
 
 $('#newChatCard').onclick=async()=>{
   if(!confirm('Начать новый разговор? История очистится, фото и голос останутся.'))return;
-  try{await api('/api/reset',{method:'POST'});$('#messages').innerHTML='<div class="msg ai">Новый разговор начат. О чём поговорим?</div>';showChat();toast('Новый разговор начат')}catch(e){toast(e.message)}
+  try{await api('/api/reset',{method:'POST'});$('#messages').innerHTML='<div class="msg ai">'+((ME.user?.first_name||ME.user?.username)?('Привет, '+(ME.user.first_name||ME.user.username)+'! Новый разговор начат. О чём поговорим?'):'Новый разговор начат. О чём поговорим?')+'</div>';showChat();toast('Новый разговор начат')}catch(e){toast(e.message)}
 };
 
 let cloneRecorder=null,cloneChunks=[],cloneBlob=null,cloneStarted=0,cloneTimerId=null;
@@ -218,20 +217,24 @@ if($('#limitMinus'))$('#limitMinus').addEventListener('click',()=>changeVideoLim
 if($('#limitPlus'))$('#limitPlus').addEventListener('click',()=>changeVideoLimit(1));
 
 
-$('#themeCard').onclick=()=>{
-  let roles=document.querySelector('.roles')||document.querySelector('.role-strip')||document.querySelector('[data-role]');
-  if(roles) roles.scrollIntoView({behavior:'smooth',block:'start'});
-  else toast('Выбери тему сверху');
-};
-$('#homeVoiceCard').onclick=()=>{
-  let m=$('#cloneModal');
-  if(m) m.classList.add('show');
-  else {
-    let c=$('#cloneVoiceCard');
-    if(c) c.click(); else toast('Запись голоса недоступна');
-  }
-};
-let adminBottom=document.querySelector('[data-go="admin"]');
-if(adminBottom) adminBottom.onclick=()=>openAdmin();
+
+const themeCardEl = $('#themeCard');
+if(themeCardEl){
+  themeCardEl.onclick=()=>{
+    const roles=document.querySelector('.roles')||document.querySelector('#roles');
+    if(roles) roles.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+}
+const homeVoiceCardEl = $('#homeVoiceCard');
+if(homeVoiceCardEl){
+  homeVoiceCardEl.onclick=()=>{
+    const modal=$('#cloneModal');
+    if(modal){modal.classList.add('show');return;}
+    const fallback=$('#cloneVoiceCard');
+    if(fallback) fallback.click();
+    else toast('Запись голоса недоступна');
+  };
+}
+
 load();
 </script></body></html>
