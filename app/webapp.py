@@ -12,6 +12,7 @@ from .roles import ROLES
 from .ai import chat, synthesize, transcribe
 from .avatar import create_video
 from .voiceclone import create_clone, cloned_tts
+from .config import TMP_DIR
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 WEB_DIR = os.path.join(BASE_DIR, 'web')

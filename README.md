@@ -164,3 +164,8 @@ Fixed `ImportError: cannot import name TELEGRAM_BOT_TOKEN from app.config`.
 `config.py` now exports all legacy and current names used by the project, including:
 TELEGRAM_BOT_TOKEN/BOT_TOKEN, PORT, VIDEO_TIMEOUT, DEFAULT_VIDEO_DAILY_LIMIT,
 Groq, OpenAI, D-ID, ElevenLabs, and Railway Volume paths.
+
+
+## v3.3.1 — TMP_DIR hotfix
+Fixed `NameError: TMP_DIR is not defined`.
+All modules that use Railway Volume temporary storage now explicitly import TMP_DIR from app.config.
