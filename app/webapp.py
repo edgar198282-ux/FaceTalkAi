@@ -11,13 +11,14 @@ from .config import (
     OPENAI_INPUT_USD_PER_1M, OPENAI_OUTPUT_USD_PER_1M,
     OPENAI_TTS_USD_PER_1M_CHARS, DID_USD_PER_VIDEO,
 )
-from .db import get_user, set_photo, set_role, set_reply_mode, append_history, reset_history, add_usage, video_remaining, admin_stats, set_global_video_limit, get_provider_state, set_provider_state, set_photo_bytes, get_photo_bytes, has_private_photo, set_voice_clone, get_voice_clone, delete_voice_clone, list_person_profiles, create_person_profile, rename_person_profile, select_person_profile, get_active_person_profile, set_person_profile_photo, get_person_profile_photo, delete_person_profile
+from .db import get_user, set_photo, set_role, set_reply_mode, append_history, reset_history, add_usage, video_remaining, admin_stats, set_global_video_limit, get_provider_state, set_provider_state, set_photo_bytes, get_photo_bytes, has_private_photo, set_voice_clone, get_voice_clone, delete_voice_clone, list_person_profiles, create_person_profile, rename_person_profile, select_person_profile, get_active_person_profile, set_person_profile_photo, get_person_profile_photo, delete_person_profile, get_setting, set_setting
 from .roles import ROLES
 from .ai import chat, synthesize, transcribe
 from .avatar import create_video
 from .voiceclone import create_clone, cloned_tts
 from .billing import real_openai_costs
 from .config import TMP_DIR
+from .runtime_config import runtime_value, mask_secret, RUNTIME_KEYS
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 WEB_DIR = os.path.join(BASE_DIR, 'web')
@@ -125,8 +126,8 @@ async def api_me(request):
         'voice_clone_name': (active or {}).get('name') or (clone or {}).get('voice_name'),
         'reply_mode': u['reply_mode'],
         'roles': {k:v[0] for k,v in ROLES.items()},
-        'video_ready': bool(os.getenv('DID_API_KEY') or os.getenv('AVATAR_API_KEY')),
-        'voice_clone_ready': bool(os.getenv('ELEVENLABS_API_KEY')),
+        'video_ready': bool(await runtime_value('DID_API_KEY')),
+        'voice_clone_ready': bool(await runtime_value('ELEVENLABS_API_KEY')),
         'video_quota': await video_remaining(uid),
     })
 
@@ -277,6 +278,27 @@ async def api_admin_stats(request):
             "video_ready": a[5],
         },
     })
+
+
+async def api_admin_keys(request):
+    user = await _user_from_request(request)
+    if not user: return web.json_response({'error':'Unauthorized'}, status=401)
+    if not _is_admin_user(user): return web.json_response({'error':'Нет доступа'}, status=403)
+    if request.method == 'POST':
+        body = await request.json()
+        saved = []
+        for name in RUNTIME_KEYS:
+            if name not in body: continue
+            value = str(body.get(name) or '').strip()
+            if value:
+                await set_setting('runtime:' + name, value)
+                saved.append(name)
+        return web.json_response({'ok': True, 'saved': saved})
+    result = {}
+    for name in RUNTIME_KEYS:
+        value = await runtime_value(name)
+        result[name] = {'configured': bool(value), 'masked': mask_secret(value)}
+    return web.json_response({'ok': True, 'keys': result})
 
 async def api_admin_video_limit(request):
     user = await _user_from_request(request)
@@ -446,6 +468,8 @@ async def start_webapp(bot):
     app.router.add_get('/', index)
     app.router.add_get('/api/me', api_me)
     app.router.add_get('/api/admin/stats', api_admin_stats)
+    app.router.add_get('/api/admin/keys', api_admin_keys)
+    app.router.add_post('/api/admin/keys', api_admin_keys)
     app.router.add_post('/api/admin/video-limit', api_admin_video_limit)
     app.router.add_get('/api/photo', api_photo)
     app.router.add_get('/api/profile-photo', api_profile_photo)

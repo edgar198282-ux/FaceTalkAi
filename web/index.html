@@ -20,6 +20,8 @@
 .admin-note{font-size:12px;color:#8092b5;margin-top:12px;line-height:1.45}
 
 .profile-current{margin-top:14px;border:1px solid #34456d;background:linear-gradient(135deg,#111a32,#0a1326);border-radius:18px;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer}.profile-current b{display:block;font-size:14px}.profile-current span{display:block;color:#94a5c6;font-size:12px;margin-top:3px}.profile-current .pick{font-size:12px;color:#cf82ff;font-weight:800}.profile-list{display:grid;gap:9px;max-height:260px;overflow:auto;margin:12px 0}.profile-item{border:1px solid #293b61;background:#0a1325;border-radius:16px;padding:11px;display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:center}.profile-item.active{border-color:#a642ff;box-shadow:0 0 16px #873cff38}.profile-thumb{width:44px;height:44px;border-radius:13px;background:linear-gradient(145deg,#6536e7,#157fff);display:grid;place-items:center;font-size:22px;background-size:cover;background-position:center}.profile-name{font-weight:800;font-size:14px}.profile-meta{font-size:11px;color:#93a4c7;margin-top:3px}.profile-actions{grid-column:1/-1;display:flex;gap:7px;flex-wrap:wrap}.profile-actions button{border:1px solid #34476f;background:#111c33;color:#eaf0ff;border-radius:11px;padding:7px 9px;font-size:11px}.profile-actions button.select{background:#432070;border-color:#8b42dd}.voice-name-input{width:100%;border:1px solid #34486f;background:#091224;color:#fff;border-radius:14px;padding:12px;margin:10px 0;outline:none}.chat-profile{width:100%;margin:0 0 9px;border:1px solid #30446d;background:#101a30;color:#dce8ff;border-radius:14px;padding:9px 12px;text-align:left;font-weight:700}.profile-empty{padding:16px;text-align:center;color:#8fa0c0;border:1px dashed #30405f;border-radius:14px}
+
+.admin-keys{margin-top:14px;padding:14px;border:1px solid rgba(130,155,220,.20);background:rgba(18,29,54,.86);border-radius:17px}.admin-keys h3{margin:0 0 6px;font-size:16px}.key-grid{display:grid;grid-template-columns:1fr;gap:10px}.key-field label{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#a8b6d4;margin-bottom:5px}.key-field input{width:100%;border:1px solid #2d3d61;border-radius:12px;background:#08111f;color:#fff;padding:11px 12px;outline:none}.key-field input:focus{border-color:#7f55ff}.key-state{color:#6ee7b7}.admin-save{width:100%;margin-top:12px;border:0;border-radius:14px;padding:12px;background:linear-gradient(135deg,#6d4cff,#2aa8ff);color:#fff;font-weight:800}.admin-refresh.loading,.admin-save:disabled{opacity:.65;pointer-events:none}@media(min-width:560px){.key-grid{grid-template-columns:1fr 1fr}}
 </style></head><body><div id="toast" class="toast"></div><div class="app"><div class="top"><div class="brand"><div class="logo">◉</div><div><b>FaceTalk</b><small>AI VIDEO CHAT</small></div></div><div class="pill" id="modePill">🎥 VIDEO</div></div><div class="hero"><div class="orb"></div><h2 id="hello">👋 Привет!</h2><p>Загрузи фото, выбери роль и говори с AI как по видеосвязи.</p></div><div class="avatar" id="avatar"><div class="face">🙂</div><div class="status"><i></i><span id="avatarStatus">AI собеседник готов</span></div><div class="callbar"><button class="round" id="mic">🎙️</button><button class="round main" id="openChat">💬</button><button class="round" id="modeBtn">🎥</button></div><div id="loader" class="loader"><div><div class="spinner"></div><b id="loaderText">AI думает…</b></div></div></div><div class="grid"><div class="card" id="uploadCard"><div class="ico">📸</div><b>Загрузить фото</b><span id="photoState">Фото для видеособеседника</span></div><div class="card" id="newChatCard"><div class="ico">↻</div><b>Новый разговор</b><span>Очистить диалог и начать заново</span></div></div><div class="profile-current" id="currentProfileCard"><div><b id="currentProfileName">👤 Голос не выбран</b><span id="currentProfileMeta">Запиши голос и привяжи фото человека</span></div><div class="pick">ВЫБРАТЬ</div></div><div class="section">🎭 Выбери тему</div><div class="roles" id="roles"></div>
 <div class="chat" id="chat"><button class="chat-profile" id="chatProfileBtn" type="button">👤 Выбрать человека для разговора</button><div class="messages" id="messages"><div class="msg ai">Привет! Я твой FaceTalk AI. О чём поговорим?</div></div><div class="composer"><button class="round" id="voiceRec">🎙️</button><input id="text" placeholder="Напиши сообщение…"><button class="send" id="send">➤</button></div></div><input id="photoInput" type="file" accept="image/jpeg,image/png" hidden><input id="profilePhotoInput" type="file" accept="image/jpeg,image/png" hidden></div><div class="bottom"><div>
 <button class="nav active" data-go="home" type="button"><strong>⌂</strong>Главная</button>
@@ -65,6 +67,20 @@
       </div>
     </div>
     <div class="admin-card wide"><div class="admin-label">📚 За всё время</div><div id="admAllUsage" class="admin-value">—</div><div id="admAllEstimate" class="admin-sub">—</div></div>
+  </div>
+
+  <div class="admin-keys">
+    <h3>🔑 API ключи</h3>
+    <div class="admin-sub" style="margin-bottom:10px">Вставляй новые ключи здесь. Они сохраняются в Railway Volume и начинают работать без redeploy.</div>
+    <div class="key-grid">
+      <div class="key-field"><label>OpenAI <span id="keyOpenAIState" class="key-state">—</span></label><input id="keyOpenAI" type="password" autocomplete="off" placeholder="sk-..." /></div>
+      <div class="key-field"><label>Groq <span id="keyGroqState" class="key-state">—</span></label><input id="keyGroq" type="password" autocomplete="off" placeholder="gsk_..." /></div>
+      <div class="key-field"><label>D-ID <span id="keyDidState" class="key-state">—</span></label><input id="keyDid" type="password" autocomplete="off" placeholder="API key" /></div>
+      <div class="key-field"><label>ElevenLabs <span id="keyElevenState" class="key-state">—</span></label><input id="keyEleven" type="password" autocomplete="off" placeholder="xi-api-key" /></div>
+      <div class="key-field"><label>OpenAI Admin <span id="keyAdminState" class="key-state">—</span></label><input id="keyAdmin" type="password" autocomplete="off" placeholder="admin key" /></div>
+      <div class="key-field"><label>OpenAI Project ID <span id="keyProjectState" class="key-state">—</span></label><input id="keyProject" type="text" autocomplete="off" placeholder="proj_..." /></div>
+    </div>
+    <button id="saveApiKeys" class="admin-save" type="button">Сохранить API ключи</button>
   </div>
   <div class="admin-note">Реальные суммы OpenAI появляются при OPENAI_ADMIN_KEY. D-ID сумма считается по цене, заданной в Railway.</div>
 </section>
@@ -197,8 +213,11 @@ function money(v){return (v===null||v===undefined)?'н/д':'$'+Number(v).toFixed
 function adminStatusIcon(s){return s==='ok'?'✅ ':s==='no_credits'?'❌ ':s==='bad_key'?'🔑 ':s==='error'?'⚠️ ':'❔ '}
 async function loadAdmin(){
   if(!ME?.is_admin)return;
+  const btn=$('#adminRefresh');
+  if(btn){btn.disabled=true;btn.classList.add('loading');btn.textContent='Обновляю…'}
   try{
-    ADMIN_DATA=await api('/api/admin/stats');
+    const [stats,keys]=await Promise.all([api('/api/admin/stats?t='+Date.now()),api('/api/admin/keys?t='+Date.now())]);
+    ADMIN_DATA=stats;
     $('#admUsers').textContent=ADMIN_DATA.users;
     $('#admDay').textContent='Дата: '+ADMIN_DATA.day;
     $('#admOpenAIStatus').textContent=adminStatusIcon(ADMIN_DATA.openai.state)+ADMIN_DATA.openai.state_label;
@@ -216,8 +235,23 @@ async function loadAdmin(){
     $('#admLimit').textContent=ADMIN_DATA.video_limit;
     $('#admAllUsage').textContent=ADMIN_DATA.all.requests+' AI • '+ADMIN_DATA.all.video_ready+' видео';
     $('#admAllEstimate').textContent='Общая локальная оценка: '+money(ADMIN_DATA.openai.estimate_all_usd);
+    const k=keys.keys||{};
+    const setState=(id,name)=>{const el=$(id);if(el)el.textContent=k[name]?.configured?('✅ '+k[name].masked):'❌ не добавлен'};
+    setState('#keyOpenAIState','OPENAI_API_KEY');setState('#keyGroqState','GROQ_API_KEY');setState('#keyDidState','DID_API_KEY');setState('#keyElevenState','ELEVENLABS_API_KEY');setState('#keyAdminState','OPENAI_ADMIN_KEY');setState('#keyProjectState','OPENAI_PROJECT_ID');
+    toast('✅ Админка обновлена');
   }catch(e){toast('Админ: '+e.message)}
+  finally{if(btn){btn.disabled=false;btn.classList.remove('loading');btn.textContent='Обновить'}}
 }
+
+async function saveApiKeys(){
+  const map={OPENAI_API_KEY:'#keyOpenAI',GROQ_API_KEY:'#keyGroq',DID_API_KEY:'#keyDid',ELEVENLABS_API_KEY:'#keyEleven',OPENAI_ADMIN_KEY:'#keyAdmin',OPENAI_PROJECT_ID:'#keyProject'};
+  const body={};
+  Object.entries(map).forEach(([name,sel])=>{const v=$(sel)?.value?.trim();if(v)body[name]=v});
+  if(!Object.keys(body).length){toast('Вставь хотя бы один новый ключ');return}
+  const btn=$('#saveApiKeys');if(btn){btn.disabled=true;btn.textContent='Сохраняю…'}
+  try{const r=await api('/api/admin/keys',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});Object.values(map).forEach(sel=>{if($(sel))$(sel).value=''});toast('✅ Сохранено: '+r.saved.length);await loadAdmin();ME=await api('/api/me?t='+Date.now());render()}catch(e){toast('Ключи: '+e.message)}finally{if(btn){btn.disabled=false;btn.textContent='Сохранить API ключи'}}
+}
+
 async function changeVideoLimit(delta){
   if(!ADMIN_DATA)return;
   const next=Math.max(0,Math.min(100,Number(ADMIN_DATA.video_limit)+delta));
@@ -243,6 +277,7 @@ if(adminNav)adminNav.addEventListener('click',showAdmin);
 if($('#adminRefresh'))$('#adminRefresh').addEventListener('click',loadAdmin);
 if($('#limitMinus'))$('#limitMinus').addEventListener('click',()=>changeVideoLimit(-1));
 if($('#limitPlus'))$('#limitPlus').addEventListener('click',()=>changeVideoLimit(1));
+if($('#saveApiKeys'))$('#saveApiKeys').addEventListener('click',saveApiKeys);
 
 
 

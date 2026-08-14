@@ -285,3 +285,18 @@ async def delete_person_profile(user_id, profile_id):
                 nxt=await (await db.execute('SELECT id FROM person_profiles WHERE user_id=? ORDER BY id DESC LIMIT 1',(user_id,))).fetchone()
                 await db.execute('UPDATE users SET active_profile_id=? WHERE user_id=?',((nxt[0] if nxt else None),user_id))
         await db.commit(); return cur.rowcount>0
+
+
+async def get_setting(key, default=""):
+    async with aiosqlite.connect(DB_PATH) as db:
+        row = await (await db.execute('SELECT value FROM settings WHERE key=?', (str(key),))).fetchone()
+    return row[0] if row else default
+
+async def set_setting(key, value):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            'INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+            (str(key), str(value))
+        )
+        await db.commit()
+    return value
