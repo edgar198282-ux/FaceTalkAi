@@ -16,8 +16,16 @@ def _float(name, default):
         return default
 
 # Telegram / Mini App
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+# FACETALK_BOT_TOKEN has highest priority so an old BOT_TOKEN/TELEGRAM_BOT_TOKEN
+# from another Railway project cannot silently start the wrong Telegram bot.
+FACETALK_BOT_TOKEN = os.getenv("FACETALK_BOT_TOKEN", "").strip()
+TELEGRAM_BOT_TOKEN = (
+    FACETALK_BOT_TOKEN
+    or os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    or os.getenv("BOT_TOKEN", "").strip()
+)
 BOT_TOKEN = TELEGRAM_BOT_TOKEN
+EXPECTED_BOT_USERNAME = os.getenv("EXPECTED_BOT_USERNAME", "FaceTalkID_bot").strip().lstrip("@")
 MINIAPP_URL = os.getenv("MINIAPP_URL", "").rstrip("/")
 PORT = _int("PORT", 8080)
 ADMIN_ID = _int("ADMIN_ID", 0)

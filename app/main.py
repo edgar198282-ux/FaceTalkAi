@@ -10,7 +10,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
 
-from .config import TELEGRAM_BOT_TOKEN, MINIAPP_URL, DATA_DIR, DB_PATH
+from .config import TELEGRAM_BOT_TOKEN, MINIAPP_URL, DATA_DIR, DB_PATH, EXPECTED_BOT_USERNAME
 from .db import init_db, set_user_language, get_user_language
 from .webapp import start_webapp
 from .storage import migrate_legacy_db
@@ -99,6 +99,19 @@ async def other_handler(m: Message):
 async def main():
     logging.info('FaceTalk persistent data: %s', DATA_DIR)
     logging.info('FaceTalk SQLite DB: %s', DB_PATH)
+
+    # Fail fast if Railway still contains a token from another project.
+    # This prevents FaceTalk code from silently polling @PokerArmenia_bot or any other bot.
+    me = await bot.get_me()
+    actual_username = (me.username or '').lstrip('@')
+    logging.info('FaceTalk Telegram bot authenticated as @%s (id=%s)', actual_username, me.id)
+    if EXPECTED_BOT_USERNAME and actual_username.lower() != EXPECTED_BOT_USERNAME.lower():
+        raise RuntimeError(
+            f'WRONG TELEGRAM BOT TOKEN: expected @{EXPECTED_BOT_USERNAME}, '
+            f'but Railway token belongs to @{actual_username}. '
+            'Set FACETALK_BOT_TOKEN to the BotFather token for the FaceTalk bot.'
+        )
+
     migrated = migrate_legacy_db()
     if migrated:
         logging.info('Legacy FaceTalk DB migrated into persistent Volume')
