@@ -75,3 +75,15 @@ Admin now shows:
 - Video/day limit
 
 The official Organization Costs API reports spend, not exact remaining prepaid-credit balance.
+
+
+## v2.5 Mini App Full Admin
+Visible only for Telegram ADMIN_ID:
+- users
+- OpenAI runtime status
+- real OpenAI spend today/month
+- token/request/TTS usage
+- D-ID attempts/videos and cost estimate
+- all-time usage
+- video/day limit +/- controls
+- refresh button

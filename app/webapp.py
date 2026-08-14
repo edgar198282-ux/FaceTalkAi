@@ -8,7 +8,7 @@ from urllib.parse import parse_qsl
 from aiohttp import web
 from aiogram.types import BufferedInputFile
 from .config import BOT_TOKEN, MINIAPP_URL
-from .db import get_user, set_photo, set_role, set_reply_mode, append_history, reset_history, add_usage, video_remaining
+from .db import get_user, set_photo, set_role, set_reply_mode, append_history, reset_history, add_usage, video_remaining, admin_stats, set_global_video_limit, get_provider_state
 from .roles import ROLES
 from .ai import chat, synthesize, transcribe
 from .avatar import create_video
@@ -66,7 +66,8 @@ async def index(request):
 async def api_me(request):
     user = await _user_from_request(request)
     if not user:
-        return web.json_response({'error':'unauthorized'}, status=401)
+        return web.json_response({
+        'is_admin': _is_admin_user(user),'error':'unauthorized'}, status=401)
     u = await get_user(int(user['id']))
     return web.json_response({
         'user': user,
@@ -134,6 +135,89 @@ async def api_photo(request):
         return web.Response(body=data, content_type='image/jpeg', headers={'Cache-Control':'no-store, max-age=0'})
     except Exception:
         return web.Response(status=404)
+
+
+def _is_admin_user(user):
+    try:
+        return bool(ADMIN_ID) and int(user.get("id", 0)) == int(ADMIN_ID)
+    except Exception:
+        return False
+
+def _estimate_cost(row):
+    return (
+        row[1] * OPENAI_INPUT_USD_PER_1M / 1_000_000
+        + row[2] * OPENAI_OUTPUT_USD_PER_1M / 1_000_000
+        + row[3] * OPENAI_TTS_USD_PER_1M_CHARS / 1_000_000
+        + row[5] * DID_USD_PER_VIDEO
+    )
+
+async def api_admin_stats(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    if not _is_admin_user(user):
+        return web.json_response({"error": "Нет доступа"}, status=403)
+
+    st = await admin_stats()
+    state = await get_provider_state("openai")
+    real = await real_openai_costs()
+    t = st["today"]
+    a = st["all"]
+
+    labels = {
+        "ok": "Работает",
+        "no_credits": "Нет кредитов",
+        "bad_key": "Неверный ключ",
+        "error": "Ошибка",
+        "unknown": "Ещё не проверен",
+    }
+
+    return web.json_response({
+        "users": st["users"],
+        "day": st["day"],
+        "video_limit": st["video_limit"],
+        "openai": {
+            "state": state.get("state", "unknown"),
+            "state_label": labels.get(state.get("state", "unknown"), "Неизвестно"),
+            "message": state.get("message", ""),
+            "real_today_usd": real["today"]["usd"] if real["today"]["ok"] else None,
+            "real_month_usd": real["month"]["usd"] if real["month"]["ok"] else None,
+            "costs_error": None if real["today"]["ok"] else real["today"]["error"],
+            "scope": real["scope"],
+            "today_requests": t[0],
+            "today_input_tokens": t[1],
+            "today_output_tokens": t[2],
+            "today_tts_chars": t[3],
+            "estimate_today_usd": _estimate_cost(t),
+            "estimate_all_usd": _estimate_cost(a),
+        },
+        "did": {
+            "today_attempts": t[4],
+            "today_ready": t[5],
+            "all_ready": a[5],
+            "estimated_today_usd": t[5] * DID_USD_PER_VIDEO,
+            "estimated_all_usd": a[5] * DID_USD_PER_VIDEO,
+        },
+        "all": {
+            "requests": a[0],
+            "input_tokens": a[1],
+            "output_tokens": a[2],
+            "tts_chars": a[3],
+            "video_attempts": a[4],
+            "video_ready": a[5],
+        },
+    })
+
+async def api_admin_video_limit(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    if not _is_admin_user(user):
+        return web.json_response({"error": "Нет доступа"}, status=403)
+    body = await request.json()
+    value = max(0, min(100, int(body.get("value", 0))))
+    await set_global_video_limit(value)
+    return web.json_response({"ok": True, "video_limit": value})
 
 async def api_chat(request):
     user = await _user_from_request(request)
@@ -212,6 +296,8 @@ async def start_webapp(bot):
     app['bot']=bot
     app.router.add_get('/', index)
     app.router.add_get('/api/me', api_me)
+    app.router.add_get('/api/admin/stats', api_admin_stats)
+    app.router.add_post('/api/admin/video-limit', api_admin_video_limit)
     app.router.add_get('/api/photo', api_photo)
     app.router.add_post('/api/role', api_role)
     app.router.add_post('/api/mode', api_mode)
