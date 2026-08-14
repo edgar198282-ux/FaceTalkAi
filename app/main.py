@@ -5,14 +5,16 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery, FSInputFile
 
-from .config import BOT_TOKEN
-from .db import init_db, get_user, set_photo, set_role, append_history
+from .config import BOT_TOKEN, DID_API_KEY, MINIAPP_URL
+from .db import init_db, get_user, set_photo, set_role, set_reply_mode, reset_history, append_history
 from .roles import ROLES
-from .keyboards import main_menu, roles_menu
+from .keyboards import main_menu, roles_menu, mode_menu
 from .ai import chat, transcribe, synthesize
+from .avatar import create_video
+from .webapp import start_webapp
 
 if not BOT_TOKEN:
-    raise RuntimeError('Set TELEGRAM_BOT_TOKEN in .env')
+    raise RuntimeError('Set TELEGRAM_BOT_TOKEN')
 
 bot = Bot(BOT_TOKEN)
 dp = Dispatcher()
@@ -20,9 +22,9 @@ waiting_photo = set()
 
 WELCOME = (
     '✨ <b>FaceTalk AI</b>\n\n'
-    'Загрузи фото, выбери тему и общайся с AI-собеседником текстом или голосом. '
-    'Бот помнит текущий разговор и отвечает голосом.\n\n'
-    '🎥 Модуль реалистичного talking-avatar видео подготовлен для подключения отдельного видео API.'
+    'Загрузи фото, выбери тему и общайся с AI-собеседником текстом или голосом.\n\n'
+    '🎥 В режиме Видео лицо на фото оживает и говорит ответ.\n'
+    '🔊 Если видео-сервис недоступен, бот автоматически пришлёт голос — разговор не прервётся.'
 )
 
 @dp.message(CommandStart())
@@ -49,28 +51,52 @@ async def choose_role(c: CallbackQuery):
 @dp.callback_query(F.data.startswith('role:'))
 async def role_selected(c: CallbackQuery):
     key = c.data.split(':', 1)[1]
-    await set_role(c.from_user.id, key)
-    await c.message.edit_text(f'✅ Выбрано: {ROLES[key][0]}\n\nТеперь можешь писать или отправить голосовое.', reply_markup=main_menu())
+    if key in ROLES:
+        await set_role(c.from_user.id, key)
+        await c.message.edit_text(f'✅ Выбрано: {ROLES[key][0]}\n\nТеперь можешь писать или отправить голосовое.', reply_markup=main_menu())
+    await c.answer()
+
+@dp.callback_query(F.data == 'reply_mode')
+async def reply_mode(c: CallbackQuery):
+    u=await get_user(c.from_user.id)
+    await c.message.edit_text('Выбери формат ответа:', reply_markup=mode_menu(u['reply_mode']))
+    await c.answer()
+
+@dp.callback_query(F.data.startswith('mode:'))
+async def mode_selected(c: CallbackQuery):
+    mode=c.data.split(':',1)[1]
+    await set_reply_mode(c.from_user.id,mode)
+    await c.message.edit_text(('🎥 Видеоответ включён.' if mode=='video' else '🔊 Голосовой ответ включён.'), reply_markup=main_menu())
     await c.answer()
 
 @dp.callback_query(F.data == 'start_chat')
 async def start_chat(c: CallbackQuery):
     u = await get_user(c.from_user.id)
-    photo = '✅ фото загружено' if u['photo_file_id'] else '⚠️ фото ещё не загружено'
-    await c.message.answer(f'🎥 Режим общения запущен. {photo}.\nРоль: {ROLES[u["role"]][0]}\n\nНапиши сообщение или отправь голосовое.')
+    photo = '✅ фото загружено' if u['photo_file_id'] else '⚠️ сначала загрузи фото для видео'
+    mode='🎥 Видео' if u['reply_mode']=='video' else '🔊 Голос'
+    await c.message.answer(f'🎬 Общение запущено. {photo}.\nРоль: {ROLES[u["role"]][0]}\nРежим: {mode}\n\nНапиши сообщение или отправь голосовое.')
     await c.answer()
 
 @dp.callback_query(F.data == 'reset_chat')
 async def reset(c: CallbackQuery):
-    u = await get_user(c.from_user.id)
-    await set_role(c.from_user.id, u['role'])
-    await c.message.answer('🧹 История разговора очищена. Фото и выбранная роль сохранены.', reply_markup=main_menu())
+    await reset_history(c.from_user.id)
+    await c.message.answer('🧹 История разговора очищена. Фото и роль сохранены.', reply_markup=main_menu())
     await c.answer()
 
 @dp.callback_query(F.data == 'back')
 async def back(c: CallbackQuery):
     await c.message.edit_text('FaceTalk AI', reply_markup=main_menu())
     await c.answer()
+
+async def _photo_bytes(file_id: str):
+    f=await bot.get_file(file_id)
+    fd,p=tempfile.mkstemp(suffix='.jpg'); os.close(fd)
+    try:
+        await bot.download_file(f.file_path,destination=p)
+        with open(p,'rb') as x: return x.read()
+    finally:
+        try: os.remove(p)
+        except OSError: pass
 
 async def answer_user(m: Message, text: str):
     u = await get_user(m.from_user.id)
@@ -79,18 +105,29 @@ async def answer_user(m: Message, text: str):
     await append_history(m.from_user.id, 'assistant', reply)
     await m.answer(reply)
     audio_path = await synthesize(reply)
-    if audio_path:
-        try:
-            await m.answer_voice(FSInputFile(audio_path))
-        finally:
-            try: os.remove(audio_path)
-            except OSError: pass
+    if not audio_path: return
+    try:
+        if u['reply_mode']=='video' and u['photo_file_id']:
+            wait=await m.answer('🎥 Создаю видеоответ…')
+            video_path=await create_video(await _photo_bytes(u['photo_file_id']), audio_path)
+            try: await wait.delete()
+            except Exception: pass
+            if video_path:
+                try: await m.answer_video(FSInputFile(video_path), caption='✨ FaceTalk AI')
+                finally:
+                    try: os.remove(video_path)
+                    except OSError: pass
+                return
+            await m.answer('⚡ Видео сейчас недоступно — отправляю голосовой ответ.')
+        await m.answer_voice(FSInputFile(audio_path))
+    finally:
+        try: os.remove(audio_path)
+        except OSError: pass
 
 @dp.message(F.voice)
 async def voice(m: Message):
     file = await bot.get_file(m.voice.file_id)
-    fd, path = tempfile.mkstemp(suffix='.ogg')
-    os.close(fd)
+    fd, path = tempfile.mkstemp(suffix='.ogg'); os.close(fd)
     try:
         await bot.download_file(file.file_path, destination=path)
         text = await transcribe(path)
@@ -105,14 +142,18 @@ async def voice(m: Message):
 
 @dp.message(F.text)
 async def text(m: Message):
-    if m.text.startswith('/'):
-        return
+    if m.text.startswith('/'): return
     await answer_user(m, m.text)
 
 async def main():
     os.makedirs('data', exist_ok=True)
     await init_db()
-    await dp.start_polling(bot)
+    runner = await start_webapp(bot)
+    print('FaceTalk web server started. MiniApp URL:', MINIAPP_URL or '(set MINIAPP_URL after Railway domain is created)')
+    print('D-ID video:', 'configured' if DID_API_KEY else 'not configured, voice fallback active')
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await runner.cleanup()
 
-if __name__ == '__main__':
-    asyncio.run(main())
+if __name__ == '__main__': asyncio.run(main())

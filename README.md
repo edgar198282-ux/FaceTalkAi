@@ -1,32 +1,32 @@
-# FaceTalk AI Bot v1
+# FaceTalk AI v2 — Video + Mini App
 
-Отдельный Telegram-бот: пользователь загружает фото, выбирает роль и общается с AI текстом или голосом.
+Telegram AI video companion. User uploads a face photo, chooses a role and talks by text or microphone. FaceTalk replies with OpenAI and, when D-ID is configured, animates the uploaded photo into a talking-head MP4.
 
-## Уже работает
-- /start и красивое меню
-- загрузка/сохранение фотографии Telegram
-- роли: Психолог, Тренер, Учитель, Бизнес-консультант, Друг
-- память текущего диалога в SQLite
-- текстовые ответы OpenAI
-- распознавание голосовых
-- голосовой ответ TTS
-- кнопка «Новый разговор»
-- provider-neutral модуль `app/avatar.py` для talking-avatar видео
+## New in v2
+- VIRALAI-inspired dark neon Telegram Mini App
+- Mini App: photo upload, roles, text chat, microphone recording, video/voice mode
+- Telegram bot: Video / Voice selector
+- D-ID talking-head integration: image upload + audio upload + Talks render + polling + MP4
+- automatic voice fallback if D-ID is missing, out of credits or temporarily errors
+- Telegram Mini App initData signature validation
+- integrated aiohttp web server on Railway PORT
+- old SQLite database upgrades automatically (`reply_mode` migration)
 
-## Запуск
-1. Создайте нового бота в @BotFather и получите token.
-2. `cp .env.example .env`
-3. Вставьте `TELEGRAM_BOT_TOKEN` и `OPENAI_API_KEY`.
-4. `pip install -r requirements.txt`
-5. `python run.py`
+## Railway Variables
+Required:
+- `TELEGRAM_BOT_TOKEN`
+- `OPENAI_API_KEY`
 
-## Что нужно для настоящего видео-лица
-Для реалистичного движения губ нужен внешний talking-avatar API. Он подключается только в `app/avatar.py`; остальной бот менять не нужно.
+For real video:
+- `DID_API_KEY` — D-ID Studio API key
 
-## Railway
-Start command: `python run.py`
-Переменные окружения: `TELEGRAM_BOT_TOKEN`, `OPENAI_API_KEY` и при необходимости настройки avatar provider.
+For Mini App button:
+- `MINIAPP_URL=https://YOUR-RAILWAY-DOMAIN`
 
-## Railway FIX v1.1
-В эту сборку добавлены `main.py`, `railway.toml`, `Procfile` и `.python-version`.
-Railway теперь получает явную команду запуска `python main.py`, поэтому ошибка `No start command detected` устранена на уровне проекта.
+Railway needs a public domain: Service → Settings → Networking → Generate Domain. Put that exact HTTPS address into `MINIAPP_URL`, then redeploy.
+
+## Start
+`python main.py`
+
+## Notes
+Generated MP4/MP3 files are temporary and cleaned after 2 hours. For production history/storage add Railway Volume or object storage later.
