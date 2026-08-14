@@ -56,9 +56,31 @@ def validate_init_data(init_data: str, max_age=86400):
     except Exception:
         return None
 
+def _validate_launch_fallback(uid_raw: str, ts_raw: str, sig: str, max_age=7*86400):
+    try:
+        uid = int(uid_raw)
+        ts = int(ts_raw)
+        if not BOT_TOKEN or not sig or abs(time.time() - ts) > max_age:
+            return None
+        payload = f"{uid}:{ts}"
+        expected = hmac.new(BOT_TOKEN.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, sig):
+            return None
+        return {'id': uid}
+    except Exception:
+        return None
+
 async def _user_from_request(request):
     init_data = request.headers.get('X-Telegram-Init-Data', '')
     user = validate_init_data(init_data)
+    # Some Telegram Desktop/WebApp launches can occasionally expose empty initData.
+    # The bot therefore adds a signed uid+timestamp to its WebApp button as a safe fallback.
+    if not user:
+        user = _validate_launch_fallback(
+            request.headers.get('X-FaceTalk-Uid', ''),
+            request.headers.get('X-FaceTalk-Ts', ''),
+            request.headers.get('X-FaceTalk-Sig', ''),
+        )
     # DEV_USER_ID is useful for browser testing outside Telegram; leave unset in production.
     if not user and os.getenv('DEV_USER_ID'):
         user = {'id': int(os.getenv('DEV_USER_ID')), 'first_name': 'Dev'}

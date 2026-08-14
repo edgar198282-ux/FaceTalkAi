@@ -183,3 +183,10 @@ All modules that use Railway Volume temporary storage now explicitly import TMP_
 ## v3.3.3 — Telegram Name Greeting
 Mini App greeting now uses Telegram user first_name (or username as fallback):
 "Привет, <имя>! Я твой FaceTalk AI..."
+
+## v3.3.5 — Telegram Mini App launch/auth fix
+- Fixed Mini App getting stuck on "Открой Mini App из Telegram бота" when Telegram Desktop/WebApp returns empty initData.
+- Bot WebApp button now adds a signed, time-limited fallback launch token; backend validates it with TELEGRAM_BOT_TOKEN.
+- Admin remains in the bottom navigation for ADMIN_ID.
+- Main screen contains only one "Записать голос" card.
+- Cross-device media move fix from v3.3.4 is preserved.
