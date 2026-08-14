@@ -134,3 +134,33 @@ All chat, photo upload, voice, video, roles, profile and admin functions remain 
 - Cloned voice is used for AI speech before fallback TTS.
 - Microphone getUserMedia is called only once per open Mini App session and then the same stream is reused.
 - Bottom menu: Home / Profile / Admin only.
+
+
+## v3.2 — Railway Volume persistence
+
+Attach a Railway Volume to the FaceTalk service.
+
+Recommended Mount Path:
+`/app/data`
+
+The app automatically reads Railway's:
+`RAILWAY_VOLUME_MOUNT_PATH`
+
+Persistent files:
+- SQLite database: `<volume>/facetalk.db`
+- private Mini App photos in SQLite
+- voice-clone metadata in SQLite
+- users, roles, chat state/history, limits and usage statistics in SQLite
+- temporary generated media is written under `<volume>/tmp`
+
+Fallback outside Railway:
+`./data`
+
+You do NOT need to add RAILWAY_VOLUME_MOUNT_PATH manually when a Railway Volume is attached; Railway supplies it automatically.
+
+
+## v3.2.1 — Railway crash fix
+Fixed `ImportError: cannot import name TELEGRAM_BOT_TOKEN from app.config`.
+`config.py` now exports all legacy and current names used by the project, including:
+TELEGRAM_BOT_TOKEN/BOT_TOKEN, PORT, VIDEO_TIMEOUT, DEFAULT_VIDEO_DAILY_LIMIT,
+Groq, OpenAI, D-ID, ElevenLabs, and Railway Volume paths.

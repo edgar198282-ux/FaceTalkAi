@@ -1,3 +1,4 @@
+from .config import TMP_DIR
 import asyncio
 import base64
 import os
@@ -94,7 +95,7 @@ async def create_video(photo_bytes: bytes, audio_path: str) -> str | None:
                 if r.status != 200:
                     return None
                 data = await r.read()
-            fd, path = tempfile.mkstemp(suffix='.mp4')
+            fd, path = tempfile.mkstemp(dir=TMP_DIR, suffix='.mp4')
             os.close(fd)
             with open(path, 'wb') as f:
                 f.write(data)

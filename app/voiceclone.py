@@ -1,3 +1,4 @@
+from .config import TMP_DIR
 import os, tempfile, aiohttp
 from .config import ELEVENLABS_API_KEY, ELEVENLABS_MODEL
 
@@ -32,6 +33,6 @@ async def cloned_tts(text, voice_id):
             data=await r.read()
             if r.status != 200:
                 return None
-    fd,path=tempfile.mkstemp(suffix=".mp3"); os.close(fd)
+    fd,path=tempfile.mkstemp(dir=TMP_DIR, suffix=".mp3"); os.close(fd)
     with open(path,"wb") as f: f.write(data)
     return path

@@ -267,7 +267,7 @@ async def api_chat(request):
         if audio_bytes:
             import tempfile
             suffix = os.path.splitext(audio_name)[1] or '.webm'
-            fd, p = tempfile.mkstemp(suffix=suffix); os.close(fd)
+            fd, p = tempfile.mkstemp(dir=TMP_DIR, suffix=suffix); os.close(fd)
             with open(p,'wb') as f: f.write(audio_bytes)
             try:
                 text, stt_provider = await transcribe(p)

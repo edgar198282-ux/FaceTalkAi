@@ -5,9 +5,10 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo
 
-from .config import TELEGRAM_BOT_TOKEN, MINIAPP_URL
+from .config import TELEGRAM_BOT_TOKEN, MINIAPP_URL, DATA_DIR, DB_PATH
 from .db import init_db
 from .webapp import start_webapp
+from .storage import migrate_legacy_db
 
 logging.basicConfig(level=logging.INFO)
 
@@ -56,6 +57,11 @@ async def other_handler(m: Message):
     )
 
 async def main():
+    logging.info('FaceTalk persistent data: %s', DATA_DIR)
+    logging.info('FaceTalk SQLite DB: %s', DB_PATH)
+    migrated = migrate_legacy_db()
+    if migrated:
+        logging.info('Legacy FaceTalk DB migrated into persistent Volume')
     await init_db()
     await start_webapp(bot)
     await dp.start_polling(bot)

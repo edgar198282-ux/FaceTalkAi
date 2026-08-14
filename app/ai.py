@@ -7,6 +7,7 @@ from .config import (
     GROQ_API_KEY, GROQ_TEXT_MODEL, GROQ_TRANSCRIBE_MODEL,
     FREE_TTS_ENABLED, FREE_TTS_VOICE_RU, FREE_TTS_VOICE_HY, FREE_TTS_VOICE_EN,
 )
+from .config import TMP_DIR
 from .roles import ROLES
 
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY, timeout=35.0) if OPENAI_API_KEY else None
@@ -135,7 +136,7 @@ async def _edge_speech(text):
         return None
     try:
         import edge_tts
-        fd, path = tempfile.mkstemp(suffix=".mp3")
+        fd, path = tempfile.mkstemp(dir=TMP_DIR, suffix=".mp3")
         os.close(fd)
         voice = _detect_voice(text)
         communicate = edge_tts.Communicate(text[:3500], voice=voice)
@@ -163,7 +164,7 @@ async def synthesize(text):
     # 2) OpenAI TTS fallback
     if not openai_client:
         return None, None
-    fd, path = tempfile.mkstemp(suffix=".mp3")
+    fd, path = tempfile.mkstemp(dir=TMP_DIR, suffix=".mp3")
     os.close(fd)
     try:
         r = await asyncio.wait_for(
