@@ -26,3 +26,7 @@
 ## Railway
 Start command: `python run.py`
 Переменные окружения: `TELEGRAM_BOT_TOKEN`, `OPENAI_API_KEY` и при необходимости настройки avatar provider.
+
+## Railway FIX v1.1
+В эту сборку добавлены `main.py`, `railway.toml`, `Procfile` и `.python-version`.
+Railway теперь получает явную команду запуска `python main.py`, поэтому ошибка `No start command detected` устранена на уровне проекта.
