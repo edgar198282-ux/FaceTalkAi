@@ -1,4 +1,4 @@
-# FaceTalk AI v2 — Video + Mini App
+# FaceTalk AI v2 — Video + Mini App 
 
 Telegram AI video companion. User uploads a face photo, chooses a role and talks by text or microphone. FaceTalk replies with OpenAI and, when D-ID is configured, animates the uploaded photo into a talking-head MP4.
 
