@@ -190,3 +190,10 @@ Mini App greeting now uses Telegram user first_name (or username as fallback):
 - Admin remains in the bottom navigation for ADMIN_ID.
 - Main screen contains only one "Записать голос" card.
 - Cross-device media move fix from v3.3.4 is preserved.
+
+## v3.4.6 fixes
+- /start sends FaceTalk logo and 3 language buttons (HY/RU/EN).
+- Selected bot language is saved and passed into Mini App URL.
+- Mini App always shows the FaceTalk logo splash for 3 seconds.
+- Same logo is embedded in the top-left header (no static-cache dependency).
+- Mini App HTML is served with no-cache headers and launch URL has cache-buster ft_v=346.
