@@ -126,7 +126,8 @@ async def api_me(request):
         'voice_clone_name': (active or {}).get('name') or (clone or {}).get('voice_name'),
         'reply_mode': u['reply_mode'],
         'roles': {k:v[0] for k,v in ROLES.items()},
-        'video_ready': bool(await runtime_value('DID_API_KEY')),
+        'video_ready': bool((await runtime_value('MUSETALK_URL')) or (await runtime_value('DID_API_KEY'))),
+        'avatar_engine': (await runtime_value('AVATAR_ENGINE', 'auto') or 'auto'),
         'voice_clone_ready': bool(await runtime_value('ELEVENLABS_API_KEY')),
         'video_quota': await video_remaining(uid),
         'pending_photo': (await get_setting(f'pending_photo:{uid}', '0')) == '1',
@@ -299,6 +300,7 @@ async def api_admin_keys(request):
     for name in RUNTIME_KEYS:
         value = await runtime_value(name)
         result[name] = {'configured': bool(value), 'masked': mask_secret(value)}
+        if name == 'AVATAR_ENGINE': result[name]['value'] = value or 'auto'
     return web.json_response({'ok': True, 'keys': result})
 
 async def api_admin_video_limit(request):

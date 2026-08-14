@@ -76,14 +76,18 @@
     <div class="key-grid">
       <div class="key-field"><label>OpenAI <span id="keyOpenAIState" class="key-state">—</span></label><input id="keyOpenAI" type="password" autocomplete="off" placeholder="sk-..." /></div>
       <div class="key-field"><label>Groq <span id="keyGroqState" class="key-state">—</span></label><input id="keyGroq" type="password" autocomplete="off" placeholder="gsk_..." /></div>
-      <div class="key-field"><label>D-ID <span id="keyDidState" class="key-state">—</span></label><input id="keyDid" type="password" autocomplete="off" placeholder="API key" /></div>
+      <div class="key-field"><label>D-ID (запасной) <span id="keyDidState" class="key-state">—</span></label><input id="keyDid" type="password" autocomplete="off" placeholder="API key" /></div>
+      <div class="key-field"><label>LivePortrait URL <span id="keyLiveState" class="key-state">—</span></label><input id="keyLive" type="text" autocomplete="off" placeholder="https://gpu..." /></div>
+      <div class="key-field"><label>MuseTalk URL <span id="keyMuseState" class="key-state">—</span></label><input id="keyMuse" type="text" autocomplete="off" placeholder="https://gpu..." /></div>
+      <div class="key-field"><label>GPU Worker Token <span id="keyGpuState" class="key-state">—</span></label><input id="keyGpu" type="password" autocomplete="off" placeholder="Bearer token" /></div>
+      <div class="key-field"><label>Видео движок <span id="keyEngineState" class="key-state">—</span></label><select id="keyEngine" style="width:100%;background:#0b1020;color:#fff;border:1px solid #28324c;border-radius:10px;padding:11px"><option value="auto">Auto: бесплатно → D-ID</option><option value="free_gpu">Только LivePortrait + MuseTalk</option><option value="did">Только D-ID</option></select></div>
       <div class="key-field"><label>ElevenLabs <span id="keyElevenState" class="key-state">—</span></label><input id="keyEleven" type="password" autocomplete="off" placeholder="xi-api-key" /></div>
       <div class="key-field"><label>OpenAI Admin <span id="keyAdminState" class="key-state">—</span></label><input id="keyAdmin" type="password" autocomplete="off" placeholder="admin key" /></div>
       <div class="key-field"><label>OpenAI Project ID <span id="keyProjectState" class="key-state">—</span></label><input id="keyProject" type="text" autocomplete="off" placeholder="proj_..." /></div>
     </div>
     <button id="saveApiKeys" class="admin-save" type="button">Сохранить API ключи</button>
   </div>
-  <div class="admin-note">Реальные суммы OpenAI появляются при OPENAI_ADMIN_KEY. D-ID сумма считается по цене, заданной в Railway.</div>
+  <div class="admin-note">Реальные суммы OpenAI появляются при OPENAI_ADMIN_KEY. LivePortrait + MuseTalk используются первыми и не требуют оплаты за API, но нужен отдельный GPU worker. D-ID остаётся запасным.</div>
 </section>
 
 <script>
@@ -241,15 +245,16 @@ async function loadAdmin(){
     $('#admAllEstimate').textContent='Общая локальная оценка: '+money(ADMIN_DATA.openai.estimate_all_usd);
     const k=keys.keys||{};
     const setState=(id,name)=>{const el=$(id);if(el)el.textContent=k[name]?.configured?('✅ '+k[name].masked):'❌ не добавлен'};
-    setState('#keyOpenAIState','OPENAI_API_KEY');setState('#keyGroqState','GROQ_API_KEY');setState('#keyDidState','DID_API_KEY');setState('#keyElevenState','ELEVENLABS_API_KEY');setState('#keyAdminState','OPENAI_ADMIN_KEY');setState('#keyProjectState','OPENAI_PROJECT_ID');
+    setState('#keyOpenAIState','OPENAI_API_KEY');setState('#keyGroqState','GROQ_API_KEY');setState('#keyDidState','DID_API_KEY');setState('#keyLiveState','LIVEPORTRAIT_URL');setState('#keyMuseState','MUSETALK_URL');setState('#keyGpuState','GPU_WORKER_TOKEN');setState('#keyElevenState','ELEVENLABS_API_KEY');setState('#keyAdminState','OPENAI_ADMIN_KEY');setState('#keyProjectState','OPENAI_PROJECT_ID');
+    const eng=k.AVATAR_ENGINE?.value||'auto';if($('#keyEngine'))$('#keyEngine').value=eng;if($('#keyEngineState'))$('#keyEngineState').textContent='✅ '+eng;
     toast('✅ Админка обновлена');
   }catch(e){toast('Админ: '+e.message)}
   finally{if(btn){btn.disabled=false;btn.classList.remove('loading');btn.textContent='Обновить'}}
 }
 
 async function saveApiKeys(){
-  const map={OPENAI_API_KEY:'#keyOpenAI',GROQ_API_KEY:'#keyGroq',DID_API_KEY:'#keyDid',ELEVENLABS_API_KEY:'#keyEleven',OPENAI_ADMIN_KEY:'#keyAdmin',OPENAI_PROJECT_ID:'#keyProject'};
-  const body={};
+  const map={OPENAI_API_KEY:'#keyOpenAI',GROQ_API_KEY:'#keyGroq',DID_API_KEY:'#keyDid',LIVEPORTRAIT_URL:'#keyLive',MUSETALK_URL:'#keyMuse',GPU_WORKER_TOKEN:'#keyGpu',ELEVENLABS_API_KEY:'#keyEleven',OPENAI_ADMIN_KEY:'#keyAdmin',OPENAI_PROJECT_ID:'#keyProject'};
+  const body={AVATAR_ENGINE:($('#keyEngine')?.value||'auto')};
   Object.entries(map).forEach(([name,sel])=>{const v=$(sel)?.value?.trim();if(v)body[name]=v});
   if(!Object.keys(body).length){toast('Вставь хотя бы один новый ключ');return}
   const btn=$('#saveApiKeys');if(btn){btn.disabled=true;btn.textContent='Сохраняю…'}

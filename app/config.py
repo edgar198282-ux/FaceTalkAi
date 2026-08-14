@@ -54,6 +54,12 @@ FREE_TTS_VOICE_EN = os.getenv("FREE_TTS_VOICE_EN", "en-US-AvaNeural")
 # Video
 DID_API_KEY = os.getenv("DID_API_KEY", os.getenv("AVATAR_API_KEY", ""))
 AVATAR_API_KEY = os.getenv("AVATAR_API_KEY", "")
+# Free/self-hosted GPU pipeline. The main Railway app stays light; the heavy
+# LivePortrait + MuseTalk worker can run on a GPU host and expose HTTP endpoints.
+LIVEPORTRAIT_URL = os.getenv("LIVEPORTRAIT_URL", "").rstrip("/")
+MUSETALK_URL = os.getenv("MUSETALK_URL", "").rstrip("/")
+GPU_WORKER_TOKEN = os.getenv("GPU_WORKER_TOKEN", "")
+AVATAR_ENGINE = os.getenv("AVATAR_ENGINE", "auto").strip().lower()  # auto | free_gpu | did
 VIDEO_TIMEOUT = _int("VIDEO_TIMEOUT", 120)
 
 # Voice cloning
