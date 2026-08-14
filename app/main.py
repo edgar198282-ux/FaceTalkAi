@@ -100,7 +100,16 @@ async def _photo_bytes(file_id: str):
 
 async def answer_user(m: Message, text: str):
     u = await get_user(m.from_user.id)
-    reply = await chat(u['role'], u['history'], text)
+    thinking = await m.answer('✨ Думаю…')
+    try:
+        reply = await chat(u['role'], u['history'], text)
+    except Exception as e:
+        try: await thinking.delete()
+        except Exception: pass
+        await m.answer('⚠️ AI сейчас не смог ответить. Проверь OPENAI_API_KEY / OPENAI_TEXT_MODEL в Railway.\n\nОшибка: ' + str(e)[:250])
+        return
+    try: await thinking.delete()
+    except Exception: pass
     await append_history(m.from_user.id, 'user', text)
     await append_history(m.from_user.id, 'assistant', reply)
     await m.answer(reply)

@@ -108,6 +108,18 @@ async def _telegram_photo_bytes(bot, file_id):
     await bot.download_file(f.file_path, destination=Sink())
     return bytes(buf)
 
+
+async def api_photo(request):
+    user = await _user_from_request(request)
+    if not user: return web.Response(status=401)
+    u = await get_user(int(user['id']))
+    if not u['photo_file_id']: return web.Response(status=404)
+    try:
+        data = await _telegram_photo_bytes(request.app['bot'], u['photo_file_id'])
+        return web.Response(body=data, content_type='image/jpeg', headers={'Cache-Control':'no-store'})
+    except Exception:
+        return web.Response(status=404)
+
 async def api_chat(request):
     user = await _user_from_request(request)
     if not user: return web.json_response({'error':'unauthorized'}, status=401)
@@ -133,7 +145,10 @@ async def api_chat(request):
     if not text: return web.json_response({'error':'empty'}, status=400)
 
     u = await get_user(uid)
-    reply = await chat(u['role'], u['history'], text)
+    try:
+        reply = await chat(u['role'], u['history'], text)
+    except Exception as e:
+        return web.json_response({'error':'AI: '+str(e)[:220]}, status=502)
     await append_history(uid,'user',text); await append_history(uid,'assistant',reply)
     audio_path = await synthesize(reply)
     out = {'ok':True,'heard':text,'reply':reply,'mode':u['reply_mode']}
@@ -173,6 +188,7 @@ async def start_webapp(bot):
     app['bot']=bot
     app.router.add_get('/', index)
     app.router.add_get('/api/me', api_me)
+    app.router.add_get('/api/photo', api_photo)
     app.router.add_post('/api/role', api_role)
     app.router.add_post('/api/mode', api_mode)
     app.router.add_post('/api/reset', api_reset)

@@ -30,3 +30,11 @@ Railway needs a public domain: Service → Settings → Networking → Generate 
 
 ## Notes
 Generated MP4/MP3 files are temporary and cleaned after 2 hours. For production history/storage add Railway Volume or object storage later.
+
+
+## v2.1 FIX
+- Bot no longer stays silent on OpenAI errors; shows exact short error.
+- OpenAI model fallback added.
+- Mini App shows the uploaded photo on the call screen.
+- Bottom Home/Chat/Voice/Profile buttons are wired.
+- Mini App API returns readable AI errors.
