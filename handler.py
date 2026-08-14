@@ -35,4 +35,4 @@ def handler(job):
     finally:
         shutil.rmtree(jobdir,ignore_errors=True)
 
-runpod.serverless.start({'handler':handler})
+runpod.serverless.start({"handler": handler})
