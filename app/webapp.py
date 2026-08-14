@@ -8,7 +8,7 @@ from urllib.parse import parse_qsl
 from aiohttp import web
 from aiogram.types import BufferedInputFile
 from .config import BOT_TOKEN, MINIAPP_URL
-from .db import get_user, set_photo, set_role, set_reply_mode, append_history, reset_history
+from .db import get_user, set_photo, set_role, set_reply_mode, append_history, reset_history, add_usage, video_remaining
 from .roles import ROLES
 from .ai import chat, synthesize, transcribe
 from .avatar import create_video
@@ -61,6 +61,7 @@ async def api_me(request):
         'reply_mode': u['reply_mode'],
         'roles': {k:v[0] for k,v in ROLES.items()},
         'video_ready': bool(os.getenv('DID_API_KEY') or os.getenv('AVATAR_API_KEY')),
+        'video_quota': await video_remaining(int(user['id'])),
     })
 
 async def api_role(request):
@@ -146,23 +147,32 @@ async def api_chat(request):
 
     u = await get_user(uid)
     try:
-        reply = await chat(u['role'], u['history'], text)
+        reply, usage = await chat(u['role'], u['history'], text)
+        await add_usage(uid,text_requests=1,input_tokens=usage.get('input_tokens',0),output_tokens=usage.get('output_tokens',0))
     except Exception as e:
         return web.json_response({'error':'AI: '+str(e)[:220]}, status=502)
     await append_history(uid,'user',text); await append_history(uid,'assistant',reply)
     audio_path = await synthesize(reply)
+    if audio_path: await add_usage(uid,tts_chars=len(reply))
     out = {'ok':True,'heard':text,'reply':reply,'mode':u['reply_mode']}
     if audio_path:
         try:
             if u['reply_mode']=='video' and u['photo_file_id']:
-                photo_bytes = await _telegram_photo_bytes(request.app['bot'], u['photo_file_id'])
-                video_path = await create_video(photo_bytes, audio_path)
-                if video_path:
-                    name = f'{uid}_{uuid.uuid4().hex}.mp4'
-                    dest = os.path.join(GEN_DIR,name); os.replace(video_path,dest)
-                    out['video_url'] = f'/generated/{name}'
+                quota=await video_remaining(uid)
+                out['video_quota']=quota
+                if quota['remaining'] <= 0:
+                    out['fallback']='limit'
                 else:
-                    out['fallback'] = 'voice'
+                    await add_usage(uid,video_attempts=1)
+                    photo_bytes = await _telegram_photo_bytes(request.app['bot'], u['photo_file_id'])
+                    video_path = await create_video(photo_bytes, audio_path)
+                    if video_path:
+                        await add_usage(uid,video_success=1)
+                        name = f'{uid}_{uuid.uuid4().hex}.mp4'
+                        dest = os.path.join(GEN_DIR,name); os.replace(video_path,dest)
+                        out['video_url'] = f'/generated/{name}'
+                    else:
+                        out['fallback'] = 'voice'
             if 'video_url' not in out:
                 name = f'{uid}_{uuid.uuid4().hex}.mp3'
                 dest = os.path.join(GEN_DIR,name); os.replace(audio_path,dest); audio_path=None

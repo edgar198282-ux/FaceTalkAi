@@ -38,3 +38,16 @@ Generated MP4/MP3 files are temporary and cleaned after 2 hours. For production 
 - Mini App shows the uploaded photo on the call screen.
 - Bottom Home/Chat/Voice/Profile buttons are wired.
 - Mini App API returns readable AI errors.
+
+## v2.2 — Admin costs & limits
+- Admin button appears only for `ADMIN_ID`.
+- Tracks daily/all-time AI requests, text token usage, TTS characters, D-ID video attempts/successes.
+- Admin can change the daily video limit per user with +/- buttons without redeploy.
+- Mini App shows today's remaining video quota and falls back to voice when the quota is exhausted.
+- Fixed Mini App JSON parsing error: non-JSON server errors now display a readable message instead of `Unexpected non-whitespace character...`.
+- Money figures are estimates. Set the optional Railway variables below to match your current provider tariff:
+  - `OPENAI_INPUT_USD_PER_1M`
+  - `OPENAI_OUTPUT_USD_PER_1M`
+  - `OPENAI_TTS_USD_PER_1M_CHARS`
+  - `DID_USD_PER_VIDEO`
+- `VIDEO_DAILY_LIMIT=5` is the default initial limit; the admin can then change it from the bot.

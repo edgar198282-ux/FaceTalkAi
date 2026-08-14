@@ -5,10 +5,10 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery, FSInputFile
 
-from .config import BOT_TOKEN, DID_API_KEY, MINIAPP_URL
-from .db import init_db, get_user, set_photo, set_role, set_reply_mode, reset_history, append_history
+from .config import BOT_TOKEN, DID_API_KEY, MINIAPP_URL, ADMIN_ID, OPENAI_INPUT_USD_PER_1M, OPENAI_OUTPUT_USD_PER_1M, OPENAI_TTS_USD_PER_1M_CHARS, DID_USD_PER_VIDEO
+from .db import init_db, get_user, set_photo, set_role, set_reply_mode, reset_history, append_history, add_usage, video_remaining, admin_stats, set_global_video_limit
 from .roles import ROLES
-from .keyboards import main_menu, roles_menu, mode_menu
+from .keyboards import main_menu, roles_menu, mode_menu, admin_menu
 from .ai import chat, transcribe, synthesize
 from .avatar import create_video
 from .webapp import start_webapp
@@ -29,7 +29,7 @@ WELCOME = (
 
 @dp.message(CommandStart())
 async def start(m: Message):
-    await m.answer(WELCOME, reply_markup=main_menu(), parse_mode='HTML')
+    await m.answer(WELCOME, reply_markup=main_menu(m.from_user.id), parse_mode='HTML')
 
 @dp.callback_query(F.data == 'upload_photo')
 async def ask_photo(c: CallbackQuery):
@@ -53,7 +53,7 @@ async def role_selected(c: CallbackQuery):
     key = c.data.split(':', 1)[1]
     if key in ROLES:
         await set_role(c.from_user.id, key)
-        await c.message.edit_text(f'✅ Выбрано: {ROLES[key][0]}\n\nТеперь можешь писать или отправить голосовое.', reply_markup=main_menu())
+        await c.message.edit_text(f'✅ Выбрано: {ROLES[key][0]}\n\nТеперь можешь писать или отправить голосовое.', reply_markup=main_menu(c.from_user.id))
     await c.answer()
 
 @dp.callback_query(F.data == 'reply_mode')
@@ -66,7 +66,7 @@ async def reply_mode(c: CallbackQuery):
 async def mode_selected(c: CallbackQuery):
     mode=c.data.split(':',1)[1]
     await set_reply_mode(c.from_user.id,mode)
-    await c.message.edit_text(('🎥 Видеоответ включён.' if mode=='video' else '🔊 Голосовой ответ включён.'), reply_markup=main_menu())
+    await c.message.edit_text(('🎥 Видеоответ включён.' if mode=='video' else '🔊 Голосовой ответ включён.'), reply_markup=main_menu(c.from_user.id))
     await c.answer()
 
 @dp.callback_query(F.data == 'start_chat')
@@ -80,12 +80,12 @@ async def start_chat(c: CallbackQuery):
 @dp.callback_query(F.data == 'reset_chat')
 async def reset(c: CallbackQuery):
     await reset_history(c.from_user.id)
-    await c.message.answer('🧹 История разговора очищена. Фото и роль сохранены.', reply_markup=main_menu())
+    await c.message.answer('🧹 История разговора очищена. Фото и роль сохранены.', reply_markup=main_menu(c.from_user.id))
     await c.answer()
 
 @dp.callback_query(F.data == 'back')
 async def back(c: CallbackQuery):
-    await c.message.edit_text('FaceTalk AI', reply_markup=main_menu())
+    await c.message.edit_text('FaceTalk AI', reply_markup=main_menu(c.from_user.id))
     await c.answer()
 
 async def _photo_bytes(file_id: str):
@@ -102,7 +102,8 @@ async def answer_user(m: Message, text: str):
     u = await get_user(m.from_user.id)
     thinking = await m.answer('✨ Думаю…')
     try:
-        reply = await chat(u['role'], u['history'], text)
+        reply, usage = await chat(u['role'], u['history'], text)
+        await add_usage(m.from_user.id, text_requests=1, input_tokens=usage.get('input_tokens',0), output_tokens=usage.get('output_tokens',0))
     except Exception as e:
         try: await thinking.delete()
         except Exception: pass
@@ -115,13 +116,20 @@ async def answer_user(m: Message, text: str):
     await m.answer(reply)
     audio_path = await synthesize(reply)
     if not audio_path: return
+    await add_usage(m.from_user.id, tts_chars=len(reply))
     try:
         if u['reply_mode']=='video' and u['photo_file_id']:
-            wait=await m.answer('🎥 Создаю видеоответ…')
+            quota=await video_remaining(m.from_user.id)
+            if quota['remaining'] <= 0:
+                await m.answer(f'⚠️ Дневной лимит видео исчерпан: {quota["used"]}/{quota["limit"]}. Отправляю голос.')
+                await m.answer_voice(FSInputFile(audio_path)); return
+            await add_usage(m.from_user.id, video_attempts=1)
+            wait=await m.answer(f'🎥 Создаю видеоответ… Осталось сегодня: {quota["remaining"]}')
             video_path=await create_video(await _photo_bytes(u['photo_file_id']), audio_path)
             try: await wait.delete()
             except Exception: pass
             if video_path:
+                await add_usage(m.from_user.id, video_success=1)
                 try: await m.answer_video(FSInputFile(video_path), caption='✨ FaceTalk AI')
                 finally:
                     try: os.remove(video_path)
@@ -148,6 +156,30 @@ async def voice(m: Message):
     finally:
         try: os.remove(path)
         except OSError: pass
+
+@dp.callback_query(F.data == 'admin_stats')
+async def admin_stats_cb(c: CallbackQuery):
+    if not ADMIN_ID or c.from_user.id != ADMIN_ID:
+        await c.answer('Нет доступа', show_alert=True); return
+    st=await admin_stats(); t=st['today']; a=st['all']
+    def usd(row):
+        return (row[1]*OPENAI_INPUT_USD_PER_1M/1_000_000 + row[2]*OPENAI_OUTPUT_USD_PER_1M/1_000_000 + row[3]*OPENAI_TTS_USD_PER_1M_CHARS/1_000_000 + row[5]*DID_USD_PER_VIDEO)
+    txt=(f'⚙️ <b>FaceTalk — расходы</b>\n\n👥 Пользователей: <b>{st["users"]}</b>\n'
+         f'📅 Сегодня ({st["day"]})\n💬 AI запросов: {t[0]}\n🔤 Токены: {t[1]} вход / {t[2]} выход\n🔊 TTS символов: {t[3]}\n🎥 Видео: {t[5]} готово / {t[4]} попыток\n'
+         f'💵 Оценка сегодня: <b>${usd(t):.4f}</b>\n\n📊 За всё время: AI {a[0]}, видео {a[5]}\n💵 Оценка всего: <b>${usd(a):.4f}</b>\n\n'
+         f'🎛 Лимит видео на пользователя: <b>{st["video_limit"]}/день</b>\n'
+         f'ℹ️ Денежная оценка считается по ценам из Railway Variables. Если тарифы не заданы — $0.0000.')
+    await c.message.edit_text(txt,parse_mode='HTML',reply_markup=admin_menu(st['video_limit'])); await c.answer()
+
+@dp.callback_query(F.data.startswith('admin_limit:'))
+async def admin_limit_cb(c: CallbackQuery):
+    if not ADMIN_ID or c.from_user.id != ADMIN_ID:
+        await c.answer('Нет доступа',show_alert=True); return
+    st=await admin_stats(); delta=int(c.data.split(':',1)[1]); await set_global_video_limit(st['video_limit']+delta)
+    await admin_stats_cb(c)
+
+@dp.callback_query(F.data == 'admin_noop')
+async def admin_noop(c: CallbackQuery): await c.answer()
 
 @dp.message(F.text)
 async def text(m: Message):
