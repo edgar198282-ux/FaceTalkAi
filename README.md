@@ -107,3 +107,30 @@ Provider order:
 4. Video: D-ID remains unchanged
 
 This allows text, speech recognition and normally voice synthesis to keep working without OpenAI API credits.
+
+
+## v2.7 Mini App navigation fix
+- Removed bottom Chat button.
+- Removed bottom Microphone/Voice button.
+- Kept chat input and microphone functionality inside the conversation screen.
+- Admin button is shown in bottom navigation only when Telegram user id equals ADMIN_ID.
+- Bottom navigation normalized for Home / Profile / Admin.
+
+
+## v2.8 Mini App Only
+Telegram bot is now only a launcher:
+- /start
+- one persistent "Open FaceTalk" Mini App button
+- any text/photo/voice in normal Telegram chat redirects user to Mini App
+All chat, photo upload, voice, video, roles, profile and admin functions remain inside Mini App.
+
+
+## v3.1
+- Private Mini App photo storage: no photo is sent to Telegram chat.
+- Mini App text/voice/AI outputs stay inside Mini App.
+- New conversation card added next to photo.
+- Voice clone card added with explicit consent checkbox.
+- ElevenLabs Instant Voice Clone via ELEVENLABS_API_KEY.
+- Cloned voice is used for AI speech before fallback TTS.
+- Microphone getUserMedia is called only once per open Mini App session and then the same stream is reused.
+- Bottom menu: Home / Profile / Admin only.

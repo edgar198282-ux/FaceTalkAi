@@ -17,6 +17,20 @@ async def init_db():
         cols = {r[1] for r in await (await db.execute('PRAGMA table_info(users)')).fetchall()}
         if 'reply_mode' not in cols: await db.execute("ALTER TABLE users ADD COLUMN reply_mode TEXT DEFAULT 'video'")
         if 'video_daily_limit' not in cols: await db.execute("ALTER TABLE users ADD COLUMN video_daily_limit INTEGER")
+        await db.execute('''CREATE TABLE IF NOT EXISTS user_photos(
+            user_id INTEGER PRIMARY KEY,
+            photo BLOB NOT NULL,
+            mime TEXT DEFAULT 'image/jpeg',
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )''')
+        await db.execute('''CREATE TABLE IF NOT EXISTS user_voice_clones(
+            user_id INTEGER PRIMARY KEY,
+            voice_id TEXT,
+            voice_name TEXT,
+            consent INTEGER DEFAULT 0,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )''')
+
         await db.execute('''CREATE TABLE IF NOT EXISTS usage_daily(
             day TEXT NOT NULL, user_id INTEGER NOT NULL,
             text_requests INTEGER DEFAULT 0, input_tokens INTEGER DEFAULT 0, output_tokens INTEGER DEFAULT 0,
@@ -114,3 +128,61 @@ async def get_provider_state(provider):
         return json.loads(row[0])
     except Exception:
         return {'state':'unknown','message':''}
+
+
+async def set_photo_bytes(user_id, data: bytes, mime='image/jpeg'):
+    await ensure_user(user_id)
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO user_photos(user_id,photo,mime,updated_at)
+               VALUES(?,?,?,CURRENT_TIMESTAMP)
+               ON CONFLICT(user_id) DO UPDATE SET
+               photo=excluded.photo,mime=excluded.mime,updated_at=CURRENT_TIMESTAMP""",
+            (user_id, data, mime or 'image/jpeg')
+        )
+        await db.execute('UPDATE users SET photo_file_id=NULL WHERE user_id=?', (user_id,))
+        await db.commit()
+
+async def get_photo_bytes(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        row = await (await db.execute(
+            'SELECT photo,mime FROM user_photos WHERE user_id=?', (user_id,)
+        )).fetchone()
+    if not row:
+        return None, None
+    return bytes(row[0]), (row[1] or 'image/jpeg')
+
+async def has_private_photo(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        row = await (await db.execute(
+            'SELECT 1 FROM user_photos WHERE user_id=?', (user_id,)
+        )).fetchone()
+    return bool(row)
+
+async def set_voice_clone(user_id, voice_id, voice_name='FaceTalk Voice', consent=True):
+    await ensure_user(user_id)
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO user_voice_clones(user_id,voice_id,voice_name,consent,updated_at)
+               VALUES(?,?,?,?,CURRENT_TIMESTAMP)
+               ON CONFLICT(user_id) DO UPDATE SET
+               voice_id=excluded.voice_id,voice_name=excluded.voice_name,
+               consent=excluded.consent,updated_at=CURRENT_TIMESTAMP""",
+            (user_id, voice_id, voice_name, 1 if consent else 0)
+        )
+        await db.commit()
+
+async def get_voice_clone(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        row = await (await db.execute(
+            'SELECT voice_id,voice_name,consent FROM user_voice_clones WHERE user_id=?',
+            (user_id,)
+        )).fetchone()
+    if not row:
+        return None
+    return {'voice_id': row[0], 'voice_name': row[1], 'consent': bool(row[2])}
+
+async def delete_voice_clone(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute('DELETE FROM user_voice_clones WHERE user_id=?', (user_id,))
+        await db.commit()

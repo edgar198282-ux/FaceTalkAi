@@ -43,3 +43,6 @@ FREE_TTS_ENABLED = os.getenv('FREE_TTS_ENABLED', '1').strip().lower() not in ('0
 FREE_TTS_VOICE_RU = os.getenv('FREE_TTS_VOICE_RU', 'ru-RU-SvetlanaNeural')
 FREE_TTS_VOICE_HY = os.getenv('FREE_TTS_VOICE_HY', 'hy-AM-AnahitNeural')
 FREE_TTS_VOICE_EN = os.getenv('FREE_TTS_VOICE_EN', 'en-US-AvaNeural')
+
+ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY', '')
+ELEVENLABS_MODEL = os.getenv('ELEVENLABS_MODEL', 'eleven_multilingual_v2')
