@@ -126,6 +126,31 @@ async def _free_gpu_video(photo_bytes: bytes, audio_path: str):
         'audio': ('speech.mp3', audio_path, 'audio/mpeg'),
     }, token)
 
+
+async def _runpod_video(photo_bytes: bytes, audio_path: str):
+    endpoint_id = await runtime_value('RUNPOD_ENDPOINT_ID')
+    api_key = await runtime_value('RUNPOD_API_KEY')
+    if not endpoint_id or not api_key:
+        return None
+    with open(audio_path, 'rb') as f:
+        audio_bytes = f.read()
+    payload = {'input': {'image_b64': base64.b64encode(photo_bytes).decode('ascii'), 'audio_b64': base64.b64encode(audio_bytes).decode('ascii')}}
+    url = f'https://api.runpod.ai/v2/{endpoint_id}/runsync'
+    headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
+    timeout = aiohttp.ClientTimeout(total=VIDEO_TIMEOUT + 120)
+    try:
+        async with aiohttp.ClientSession(headers=headers, timeout=timeout) as sess:
+            async with sess.post(url, json=payload) as r:
+                body = await _json_or_text(r)
+                if r.status not in (200, 201):
+                    print('RunPod failed:', r.status, body); return None
+                output = body.get('output') or {}
+                if isinstance(output, dict) and output.get('video_b64'):
+                    return _save_mp4(base64.b64decode(output['video_b64']))
+                return None
+    except Exception as e:
+        print('RunPod exception:', repr(e)); return None
+
 async def _did_video(photo_bytes: bytes, audio_path: str):
     key = await runtime_value('DID_API_KEY')
     if not key:
@@ -170,12 +195,19 @@ async def create_video(photo_bytes: bytes, audio_path: str) -> str | None:
     if not photo_bytes or not audio_path:
         return None
     engine = (await runtime_value('AVATAR_ENGINE', 'auto') or 'auto').strip().lower()
-    # auto/free_gpu: free self-hosted path first. D-ID is only a fallback in auto.
+    # RunPod Serverless is preferred when configured: GPU scales to zero between jobs.
+    if engine in ('auto', 'runpod'):
+        out = await _runpod_video(photo_bytes, audio_path)
+        if out:
+            return out
+        if engine == 'runpod':
+            return None
+    # Compatibility with a direct HTTP GPU worker.
     if engine in ('auto', 'free_gpu', 'liveportrait', 'musetalk'):
         out = await _free_gpu_video(photo_bytes, audio_path)
         if out:
             return out
-        if engine != 'auto':
+        if engine not in ('auto',):
             return None
     if engine in ('auto', 'did'):
         return await _did_video(photo_bytes, audio_path)
