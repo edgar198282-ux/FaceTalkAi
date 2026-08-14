@@ -37,3 +37,7 @@ If `GPU_WORKER_TOKEN` is set, FaceTalk sends `Authorization: Bearer <token>`.
 Use the official LivePortrait and MuseTalk repositories on a CUDA GPU machine/container. Wrap their inference commands with a small FastAPI service implementing the contract above. Keep model weights on the GPU host volume so they are downloaded once.
 
 The main FaceTalk bot remains on Railway and only uploads the selected person's photo and generated audio to that worker.
+
+## v3.4.1 ready-to-run worker
+
+The ZIP now includes `gpu_worker/` with FastAPI endpoints `/health`, `/facetalk`, `/lipsync`, `/animate`, setup scripts, token protection, single-job GPU locking and Russian setup instructions. Admin also has `Проверить GPU worker`.

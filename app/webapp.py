@@ -303,6 +303,30 @@ async def api_admin_keys(request):
         if name == 'AVATAR_ENGINE': result[name]['value'] = value or 'auto'
     return web.json_response({'ok': True, 'keys': result})
 
+
+async def api_admin_gpu_health(request):
+    user = await _user_from_request(request)
+    if not user: return web.json_response({'error':'Unauthorized'}, status=401)
+    if not _is_admin_user(user): return web.json_response({'error':'Нет доступа'}, status=403)
+    import aiohttp
+    base = (await runtime_value('MUSETALK_URL')).rstrip('/')
+    token = await runtime_value('GPU_WORKER_TOKEN')
+    if not base:
+        return web.json_response({'ok':False,'error':'MuseTalk URL не добавлен'}, status=400)
+    headers = {'Authorization': f'Bearer {token}'} if token else {}
+    try:
+        timeout=aiohttp.ClientTimeout(total=15)
+        async with aiohttp.ClientSession(headers=headers, timeout=timeout) as sess:
+            async with sess.get(base + '/health') as r:
+                raw=await r.text()
+                try: data=json.loads(raw)
+                except Exception: data={'raw': raw[:500]}
+                if r.status != 200:
+                    return web.json_response({'ok':False,'status':r.status,'error':data}, status=502)
+                return web.json_response({'ok':True,'worker':data})
+    except Exception as e:
+        return web.json_response({'ok':False,'error':str(e)[:300]}, status=502)
+
 async def api_admin_video_limit(request):
     user = await _user_from_request(request)
     if not user:
@@ -484,6 +508,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/admin/stats', api_admin_stats)
     app.router.add_get('/api/admin/keys', api_admin_keys)
     app.router.add_post('/api/admin/keys', api_admin_keys)
+    app.router.add_get('/api/admin/gpu-health', api_admin_gpu_health)
     app.router.add_post('/api/admin/video-limit', api_admin_video_limit)
     app.router.add_get('/api/photo', api_photo)
     app.router.add_get('/api/profile-photo', api_profile_photo)
