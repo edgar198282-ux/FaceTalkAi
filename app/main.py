@@ -16,7 +16,7 @@ from .webapp import start_webapp
 from .storage import migrate_legacy_db
 
 logging.basicConfig(level=logging.INFO)
-BUILD_VERSION = 'v3.5.0-logo-lang-splash'
+BUILD_VERSION = 'v3.5.1-force-rebuild-logo-3lang-splash'
 
 bot = None
 dp = Dispatcher()

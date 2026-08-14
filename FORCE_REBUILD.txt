@@ -1,0 +1,5 @@
+FaceTalk v3.5.1 FORCE REBUILD
+Expected Railway launcher log: FaceTalk launcher: v3.5.1-force-rebuild-logo-3lang-splash
+Expected app log: FaceTalk build: v3.5.1-force-rebuild-logo-3lang-splash
+/start must show the FaceTalk logo and Armenian / Russian / English language picker.
+Mini App contains the same FaceTalk logo splash for 3 seconds and the same logo in the top-left brand area.
