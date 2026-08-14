@@ -104,9 +104,8 @@ async def api_error_middleware(request, handler):
 
 async def index(request):
     resp = web.FileResponse(os.path.join(WEB_DIR, 'index.html'))
-    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    resp.headers['Pragma'] = 'no-cache'
-    resp.headers['Expires'] = '0'
+    resp.headers['Cache-Control']='no-store, no-cache, must-revalidate, max-age=0'
+    resp.headers['Pragma']='no-cache'
     return resp
 
 async def api_me(request):

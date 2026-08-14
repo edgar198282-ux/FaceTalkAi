@@ -300,3 +300,16 @@ async def set_setting(key, value):
         )
         await db.commit()
     return value
+
+async def set_user_language(user_id:int, lang:str):
+    lang = lang if lang in {"hy","ru","en"} else "ru"
+    key=f"user_lang:{int(user_id)}"
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',(key,lang))
+        await db.commit()
+
+async def get_user_language(user_id:int):
+    key=f"user_lang:{int(user_id)}"
+    async with aiosqlite.connect(DB_PATH) as db:
+        row=await (await db.execute('SELECT value FROM settings WHERE key=?',(key,))).fetchone()
+    return row[0] if row and row[0] in {"hy","ru","en"} else None

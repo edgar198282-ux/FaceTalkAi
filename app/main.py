@@ -1,4 +1,5 @@
 import asyncio
+import os
 import logging
 import hashlib
 import hmac
@@ -7,81 +8,20 @@ from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
-from aiogram.types import (
-    Message,
-    KeyboardButton,
-    ReplyKeyboardMarkup,
-    WebAppInfo,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
-    CallbackQuery,
-    FSInputFile,
-)
+from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
 
 from .config import TELEGRAM_BOT_TOKEN, MINIAPP_URL, DATA_DIR, DB_PATH
-from .db import init_db, get_setting, set_setting
+from .db import init_db, set_user_language, get_user_language
 from .webapp import start_webapp
 from .storage import migrate_legacy_db
-
-BASE_DIR = __import__("os").path.dirname(__import__("os").path.dirname(__file__))
-START_LOGO = __import__("os").path.join(BASE_DIR, "media", "facetalk_logo.png")
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(TELEGRAM_BOT_TOKEN)
 dp = Dispatcher()
 
-LANGS = {
-    "hy": {
-        "button": "🇦🇲 Հայերեն",
-        "open": "✨ Բացել FaceTalk",
-        "welcome": "✨ FaceTalk AI\n\nԲացիր Mini App-ը․ լուսանկարը, ձայնը, տեսազանգը և բոլոր կարգավորումները ներսում են։",
-        "hint": "Ընտրիր լեզուն 👇",
-        "text_fallback": "Բացիր FaceTalk Mini App-ը 👇",
-        "media_fallback": "Լուսանկարը, ձայնը և տեսանյութը աշխատում են Mini App-ի ներսում 👇",
-    },
-    "ru": {
-        "button": "🇷🇺 Русский",
-        "open": "✨ Открыть FaceTalk",
-        "welcome": "✨ FaceTalk AI\n\nОткрой Mini App — фото, голос, видео и все настройки находятся внутри.",
-        "hint": "Выбери язык 👇",
-        "text_fallback": "Открой FaceTalk Mini App 👇",
-        "media_fallback": "Фото, голос и видео работают только внутри Mini App 👇",
-    },
-    "en": {
-        "button": "🇬🇧 English",
-        "open": "✨ Open FaceTalk",
-        "welcome": "✨ FaceTalk AI\n\nOpen the Mini App — photo, voice, video and all settings are inside.",
-        "hint": "Choose a language 👇",
-        "text_fallback": "Open the FaceTalk Mini App 👇",
-        "media_fallback": "Photo, voice and video work inside the Mini App 👇",
-    },
-}
-
-
-def _lang_key(user_id: int) -> str:
-    return f"bot_lang:{int(user_id)}"
-
-
-async def _get_lang(user_id: int | None) -> str:
-    if not user_id:
-        return "ru"
-    value = (await get_setting(_lang_key(user_id), "")).strip().lower()
-    return value if value in LANGS else "ru"
-
-
-def _language_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text=LANGS["hy"]["button"], callback_data="lang:hy")],
-            [InlineKeyboardButton(text=LANGS["ru"]["button"], callback_data="lang:ru")],
-            [InlineKeyboardButton(text=LANGS["en"]["button"], callback_data="lang:en")],
-        ]
-    )
-
-
-def _miniapp_url_for_user(user_id: int | None, lang: str = "ru"):
-    """Add signed fallback login + selected language for Telegram clients."""
+def _miniapp_url_for_user(user_id: int | None):
+    """Add a short-lived signed fallback login for Telegram clients that sometimes omit initData."""
     if not MINIAPP_URL or not user_id:
         return MINIAPP_URL
     ts = int(time.time())
@@ -89,84 +29,72 @@ def _miniapp_url_for_user(user_id: int | None, lang: str = "ru"):
     sig = hmac.new(TELEGRAM_BOT_TOKEN.encode(), payload.encode(), hashlib.sha256).hexdigest()
     parts = urlsplit(MINIAPP_URL)
     q = dict(parse_qsl(parts.query, keep_blank_values=True))
-    q.update({
-        "ft_uid": str(int(user_id)),
-        "ft_ts": str(ts),
-        "ft_sig": sig,
-        "ft_lang": lang if lang in LANGS else "ru",
-        # cache buster so Telegram does not keep an old Mini App shell
-        "ft_v": "346",
-    })
+    q.update({'ft_uid': str(int(user_id)), 'ft_ts': str(ts), 'ft_sig': sig})
     return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(q), parts.fragment))
 
-
-def miniapp_keyboard(user_id: int | None = None, lang: str = "ru"):
+def miniapp_keyboard(user_id: int | None = None, lang: str = 'ru'):
     if not MINIAPP_URL:
         return None
-    strings = LANGS.get(lang, LANGS["ru"])
+    labels={'hy':'✨ Բացել FaceTalk','ru':'✨ Открыть FaceTalk','en':'✨ Open FaceTalk'}
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(
-            text=strings["open"],
-            web_app=WebAppInfo(url=_miniapp_url_for_user(user_id, lang))
-        )]],
+        keyboard=[[KeyboardButton(text=labels.get(lang, labels['ru']), web_app=WebAppInfo(url=_miniapp_url_for_user(user_id)))],
+                  [KeyboardButton(text='🌐 Հայերեն / Русский / English')]],
         resize_keyboard=True,
         is_persistent=True,
     )
 
+def language_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='🇦🇲 Հայերեն', callback_data='lang:hy')],
+        [InlineKeyboardButton(text='🇷🇺 Русский', callback_data='lang:ru')],
+        [InlineKeyboardButton(text='🇬🇧 English', callback_data='lang:en')],
+    ])
+
+TEXTS={
+ 'hy':('✨ FaceTalk AI','Բացեք Mini App-ը և սկսեք զրույցը լուսանկարով, ձայնով և տեսապատասխաններով։'),
+ 'ru':('✨ FaceTalk AI','Откройте Mini App и начните общение с фото, голосом и видеоответами.'),
+ 'en':('✨ FaceTalk AI','Open the Mini App and start chatting with photo, voice and video replies.'),
+}
+
+async def send_language_picker(m: Message):
+    logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'media', 'facetalk_logo.png')
+    caption='🌐 Ընտրեք լեզուն\nВыберите язык\nChoose language'
+    if os.path.exists(logo_path):
+        await m.answer_photo(FSInputFile(logo_path), caption=caption, reply_markup=language_keyboard())
+    else:
+        await m.answer(caption, reply_markup=language_keyboard())
 
 @dp.message(CommandStart())
 async def start_handler(m: Message):
     if not MINIAPP_URL:
-        await m.answer("FaceTalk Mini App ещё не настроен. Добавь MINIAPP_URL в Railway.")
+        await m.answer('FaceTalk Mini App ещё не настроен. Добавь MINIAPP_URL в Railway.')
         return
-    # Always show the FaceTalk logo + all three languages at /start.
-    caption = "FaceTalk AI\n\n🌐 Ընտրեք լեզուն / Выберите язык / Choose language"
-    try:
-        await m.answer_photo(
-            FSInputFile(START_LOGO),
-            caption=caption,
-            reply_markup=_language_keyboard(),
-        )
-    except Exception:
-        logging.exception("Could not send FaceTalk start logo")
-        await m.answer(caption, reply_markup=_language_keyboard())
+    await send_language_picker(m)
 
-
-@dp.callback_query(F.data.startswith("lang:"))
+@dp.callback_query(F.data.startswith('lang:'))
 async def language_handler(q: CallbackQuery):
-    code = (q.data or "").split(":", 1)[-1].lower()
-    if code not in LANGS:
-        await q.answer("Language error", show_alert=True)
-        return
-    uid = q.from_user.id
-    await set_setting(_lang_key(uid), code)
-    strings = LANGS[code]
-    try:
-        await q.message.edit_text(f"✅ {strings['button']}\n\n{strings['hint']}")
-    except Exception:
-        pass
-    await q.message.answer(
-        strings["welcome"],
-        reply_markup=miniapp_keyboard(uid, code),
-    )
+    lang=q.data.split(':',1)[1]
+    if lang not in {'hy','ru','en'}: lang='ru'
+    await set_user_language(q.from_user.id, lang)
     await q.answer()
+    title,body=TEXTS[lang]
+    await q.message.answer(f'{title}\n\n{body}', reply_markup=miniapp_keyboard(q.from_user.id, lang))
 
+@dp.message(F.text == '🌐 Հայերեն / Русский / English')
+async def change_language(m: Message):
+    await send_language_picker(m)
 
 @dp.message(F.text)
 async def text_handler(m: Message):
-    uid = m.from_user.id if m.from_user else None
-    lang = await _get_lang(uid)
-    strings = LANGS[lang]
-    await m.answer(strings["text_fallback"], reply_markup=miniapp_keyboard(uid, lang))
-
+    lang=await get_user_language(m.from_user.id if m.from_user else 0) or 'ru'
+    msg={'hy':'Բացեք FaceTalk Mini App-ը 👇','ru':'Откройте FaceTalk Mini App 👇','en':'Open FaceTalk Mini App 👇'}[lang]
+    await m.answer(msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
 
 @dp.message()
 async def other_handler(m: Message):
-    uid = m.from_user.id if m.from_user else None
-    lang = await _get_lang(uid)
-    strings = LANGS[lang]
-    await m.answer(strings["media_fallback"], reply_markup=miniapp_keyboard(uid, lang))
-
+    lang=await get_user_language(m.from_user.id if m.from_user else 0) or 'ru'
+    msg={'hy':'Լուսանկարը, ձայնը և տեսանյութը աշխատում են Mini App-ի ներսում 👇','ru':'Фото, голос и видео работают внутри Mini App 👇','en':'Photo, voice and video work inside the Mini App 👇'}[lang]
+    await m.answer(msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
 
 async def main():
     logging.info('FaceTalk persistent data: %s', DATA_DIR)
@@ -177,7 +105,6 @@ async def main():
     await init_db()
     await start_webapp(bot)
     await dp.start_polling(bot)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
