@@ -8,7 +8,7 @@ from urllib.parse import parse_qsl
 from aiohttp import web
 from aiogram.types import BufferedInputFile
 from .config import BOT_TOKEN, MINIAPP_URL
-from .db import get_user, set_photo, set_role, set_reply_mode, append_history, reset_history, add_usage, video_remaining, admin_stats, set_global_video_limit, get_provider_state
+from .db import get_user, set_photo, set_role, set_reply_mode, append_history, reset_history, add_usage, video_remaining, admin_stats, set_global_video_limit, get_provider_state, set_provider_state
 from .roles import ROLES
 from .ai import chat, synthesize, transcribe
 from .avatar import create_video
@@ -235,7 +235,9 @@ async def api_chat(request):
             suffix = os.path.splitext(audio_name)[1] or '.webm'
             fd, p = tempfile.mkstemp(suffix=suffix); os.close(fd)
             with open(p,'wb') as f: f.write(audio_bytes)
-            try: text = await transcribe(p)
+            try:
+                text, stt_provider = await transcribe(p)
+                await set_provider_state(stt_provider,'ok',f'Mini App STT через {stt_provider}')
             finally:
                 try: os.remove(p)
                 except OSError: pass
@@ -246,11 +248,13 @@ async def api_chat(request):
     u = await get_user(uid)
     try:
         reply, usage = await chat(u['role'], u['history'], text)
+        provider = usage.get('provider','unknown')
+        await set_provider_state(provider,'ok',f'Mini App AI через {provider}')
         await add_usage(uid,text_requests=1,input_tokens=usage.get('input_tokens',0),output_tokens=usage.get('output_tokens',0))
     except Exception as e:
         return web.json_response({'error':'AI: '+str(e)[:220]}, status=502)
     await append_history(uid,'user',text); await append_history(uid,'assistant',reply)
-    audio_path = await synthesize(reply)
+    audio_path, tts_provider = await synthesize(reply)
     if audio_path: await add_usage(uid,tts_chars=len(reply))
     out = {'ok':True,'heard':text,'reply':reply,'mode':u['reply_mode']}
     if audio_path:

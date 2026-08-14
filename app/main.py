@@ -104,31 +104,40 @@ async def answer_user(m: Message, text: str):
     thinking = await m.answer('✨ Думаю…')
     try:
         reply, usage = await chat(u['role'], u['history'], text)
-        await set_provider_state('openai','ok','Последний AI-запрос успешен')
+        provider = usage.get('provider','unknown')
+        await set_provider_state(provider,'ok',f'Последний AI-запрос успешен через {provider}')
         await add_usage(m.from_user.id, text_requests=1, input_tokens=usage.get('input_tokens',0), output_tokens=usage.get('output_tokens',0))
     except Exception as e:
         try: await thinking.delete()
         except Exception: pass
         err = str(e)
-        if '401' in err or 'Incorrect API key' in err:
-            hint = 'OPENAI_API_KEY неверный или Railway ещё использует старое значение.'
-            await set_provider_state('openai','bad_key',err)
-        elif '429' in err or 'quota' in err.lower() or 'billing' in err.lower() or 'no credits remaining' in err.lower():
-            hint = 'У OpenAI API нет доступных кредитов. Пополни API Billing.'
-            await set_provider_state('openai','no_credits',err)
+        low = err.lower()
+        if 'groq' in low:
+            provider_name = 'groq'
+            key_name = 'GROQ_API_KEY'
         else:
-            hint = 'Проверь OPENAI_API_KEY и OPENAI_TEXT_MODEL в Railway.'
-            await set_provider_state('openai','error',err)
-        await m.answer('⚠️ FaceTalk не получил ответ от AI.\n' + hint + '\n\nОшибка: ' + err[:260])
+            provider_name = 'openai'
+            key_name = 'OPENAI_API_KEY'
+        if '401' in err or 'incorrect api key' in low or 'invalid_api_key' in low:
+            hint = f'{key_name} неверный.'
+            await set_provider_state(provider_name,'bad_key',err)
+        elif '429' in err or 'quota' in low or 'billing' in low or 'no credits remaining' in low or 'rate limit' in low:
+            hint = 'Основной AI временно упёрся в лимит. Если настроен второй провайдер, он используется автоматически.'
+            await set_provider_state(provider_name,'limit',err)
+        else:
+            hint = 'Проверь GROQ_API_KEY. OpenAI теперь только резерв.'
+            await set_provider_state(provider_name,'error',err)
+        await m.answer('⚠️ FaceTalk не получил ответ от AI.\n' + hint + '\n\nОшибка: ' + err[:300])
         return
     try: await thinking.delete()
     except Exception: pass
     await append_history(m.from_user.id, 'user', text)
     await append_history(m.from_user.id, 'assistant', reply)
     await m.answer(reply)
-    audio_path = await synthesize(reply)
+    audio_path, tts_provider = await synthesize(reply)
     if not audio_path: return
-    await add_usage(m.from_user.id, tts_chars=len(reply))
+    if tts_provider == 'openai':
+        await add_usage(m.from_user.id, tts_chars=len(reply))
     try:
         if u['reply_mode']=='video' and u['photo_file_id']:
             quota=await video_remaining(m.from_user.id)
@@ -159,9 +168,10 @@ async def voice(m: Message):
     fd, path = tempfile.mkstemp(suffix='.ogg'); os.close(fd)
     try:
         await bot.download_file(file.file_path, destination=path)
-        text = await transcribe(path)
+        text, stt_provider = await transcribe(path)
+        await set_provider_state(stt_provider,'ok',f'Распознавание голоса работает через {stt_provider}')
         if not text:
-            await m.answer('Не удалось распознать голос. Проверь OPENAI_API_KEY.')
+            await m.answer('Не удалось распознать голос. Проверь GROQ_API_KEY.')
             return
         await m.answer(f'🎙️ <i>{text}</i>', parse_mode='HTML')
         await answer_user(m, text)

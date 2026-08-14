@@ -32,3 +32,14 @@ DID_USD_PER_VIDEO = max(0.0, _float('DID_USD_PER_VIDEO', 0.0))
 
 OPENAI_ADMIN_KEY = os.getenv('OPENAI_ADMIN_KEY', '')
 OPENAI_PROJECT_ID = os.getenv('OPENAI_PROJECT_ID', '')
+
+# Groq Free-first AI
+GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
+GROQ_TEXT_MODEL = os.getenv('GROQ_TEXT_MODEL', 'openai/gpt-oss-20b')
+GROQ_TRANSCRIBE_MODEL = os.getenv('GROQ_TRANSCRIBE_MODEL', 'whisper-large-v3-turbo')
+
+# Free TTS (no API key) via edge-tts. Override voices in Railway if desired.
+FREE_TTS_ENABLED = os.getenv('FREE_TTS_ENABLED', '1').strip().lower() not in ('0','false','off','no')
+FREE_TTS_VOICE_RU = os.getenv('FREE_TTS_VOICE_RU', 'ru-RU-SvetlanaNeural')
+FREE_TTS_VOICE_HY = os.getenv('FREE_TTS_VOICE_HY', 'hy-AM-AnahitNeural')
+FREE_TTS_VOICE_EN = os.getenv('FREE_TTS_VOICE_EN', 'en-US-AvaNeural')

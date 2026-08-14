@@ -87,3 +87,23 @@ Visible only for Telegram ADMIN_ID:
 - all-time usage
 - video/day limit +/- controls
 - refresh button
+
+
+## v2.6 — Groq Free First
+New Railway variable:
+- `GROQ_API_KEY` — primary AI key.
+Optional:
+- `GROQ_TEXT_MODEL=openai/gpt-oss-20b`
+- `GROQ_TRANSCRIBE_MODEL=whisper-large-v3-turbo`
+- `FREE_TTS_ENABLED=1`
+- `FREE_TTS_VOICE_RU=ru-RU-SvetlanaNeural`
+- `FREE_TTS_VOICE_HY=hy-AM-AnahitNeural`
+- `FREE_TTS_VOICE_EN=en-US-AvaNeural`
+
+Provider order:
+1. Chat: Groq -> OpenAI fallback
+2. Speech recognition: Groq Whisper -> OpenAI fallback
+3. TTS: edge-tts free -> OpenAI fallback
+4. Video: D-ID remains unchanged
+
+This allows text, speech recognition and normally voice synthesis to keep working without OpenAI API credits.
