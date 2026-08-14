@@ -16,6 +16,7 @@ from .webapp import start_webapp
 from .storage import migrate_legacy_db
 
 logging.basicConfig(level=logging.INFO)
+BUILD_VERSION = 'v3.5.0-logo-lang-splash'
 
 bot = None
 dp = Dispatcher()
@@ -58,7 +59,7 @@ TEXTS={
 
 async def send_language_picker(m: Message):
     logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'media', 'facetalk_logo.png')
-    caption='🌐 Ընտրեք լեզուն\nВыберите язык\nChoose language'
+    caption='✨ FaceTalk AI\n\n🇦🇲 Ընտրեք լեզուն\n🇷🇺 Выберите язык\n🇬🇧 Choose language'
     if os.path.exists(logo_path):
         await m.answer_photo(FSInputFile(logo_path), caption=caption, reply_markup=language_keyboard())
     else:
@@ -98,6 +99,7 @@ async def other_handler(m: Message):
 
 async def main():
     global bot
+    logging.info('FaceTalk build: %s', BUILD_VERSION)
     logging.info('FaceTalk persistent data: %s', DATA_DIR)
     logging.info('FaceTalk SQLite DB: %s', DB_PATH)
 
