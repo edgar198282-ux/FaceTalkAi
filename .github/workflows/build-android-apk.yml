@@ -22,10 +22,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-java@v5
         with:
@@ -59,7 +59,6 @@ jobs:
             -storepass FaceTalk2026 \
             -alias facetalk >/tmp/facetalk-key.txt
           grep -qi "PrivateKeyEntry" /tmp/facetalk-key.txt
-          echo "FaceTalk signing key is valid and alias facetalk is readable"
 
       - name: Build signed release APK
         working-directory: android
@@ -77,16 +76,62 @@ jobs:
             -PWEB_APP_URL="$WEB_APP_URL" \
             -PAPP_VERSION_NAME="${{ steps.version.outputs.name }}" \
             -PAPP_VERSION_CODE="${{ steps.version.outputs.code }}"
-          test -s app/build/outputs/apk/release/app-release.apk
 
-      - name: Verify APK signature
+      - name: Verify FaceTalk APK contents and signature
         shell: bash
         run: |
           set -euo pipefail
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          SIZE=$(stat -c%s "$APK")
+          echo "Actual APK size: $SIZE bytes"
+          unzip -t "$APK" >/dev/null
+          unzip -l "$APK" | tee /tmp/facetalk-apk-list.txt
+          grep -q "AndroidManifest.xml" /tmp/facetalk-apk-list.txt
+          grep -q "classes.dex" /tmp/facetalk-apk-list.txt
           SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$AAPT"
           test -n "$APKSIGNER"
-          "$APKSIGNER" verify --verbose --print-certs android/app/build/outputs/apk/release/app-release.apk
+          "$AAPT" dump badging "$APK" | tee /tmp/facetalk-badging.txt
+          grep -q "package: name='ai.facetalk.app'\|package: name='com.facetalk.ai'\|package: name='ai.facetalk'" /tmp/facetalk-badging.txt || {
+            echo "FaceTalk package info:"; cat /tmp/facetalk-badging.txt; exit 1;
+          }
+          grep -q "launchable-activity:" /tmp/facetalk-badging.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+
+      - name: Package direct APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk"
+          sha256sum dist/*.apk | tee dist/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: facetalk-android-${{ steps.version.outputs.name }}
+          path: |
+            dist/*.apk
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish direct FaceTalk APK in GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="facetalk-android-${{ steps.version.outputs.code }}"
+          TITLE="FaceTalk AI Android ${{ steps.version.outputs.name }}"
+          gh release delete "$TAG" --cleanup-tag -y >/dev/null 2>&1 || true
+          gh release create "$TAG" \
+            "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk#FaceTalkAI-${{ steps.version.outputs.name }}.apk" \
+            "dist/SHA256SUMS.txt#SHA256SUMS.txt" \
+            --title "$TITLE" \
+            --notes "Signed FaceTalk AI Android APK. Download the .apk file directly on Android; do not install the Actions artifact ZIP."
 
       - name: Wait for FaceTalk OTA endpoint
         shell: bash
@@ -99,9 +144,6 @@ jobs:
           for attempt in $(seq 1 36); do
             HTTP_CODE=$(curl -sS -o /tmp/facetalk-release.json -w "%{http_code}" --connect-timeout 10 --max-time 30 "$RELEASE_URL" || true)
             if [ "$HTTP_CODE" = "200" ] && grep -q 'facetalk-ota' /tmp/facetalk-release.json; then
-              cat /tmp/facetalk-release.json
-              echo
-              echo "FaceTalk OTA endpoint is ready"
               exit 0
             fi
             echo "OTA preflight $attempt/36 returned HTTP $HTTP_CODE"
@@ -119,8 +161,8 @@ jobs:
           set -euo pipefail
           WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
           if [ -z "$FACETALK_APK_DEPLOY_TOKEN" ]; then
-            echo "::error::FACETALK_APK_DEPLOY_TOKEN secret is missing in GitHub Actions"
-            exit 1
+            echo "::warning::Direct FaceTalk APK Release is ready, but FACETALK_APK_DEPLOY_TOKEN is missing; skipping Railway OTA publish."
+            exit 0
           fi
           APK="android/app/build/outputs/apk/release/app-release.apk"
           ENDPOINT="${WEB_APP_URL%/}/api/app-upload"
@@ -132,27 +174,8 @@ jobs:
             -H "X-FaceTalk-App-Version: ${{ steps.version.outputs.name }}" \
             -H "X-FaceTalk-App-Version-Code: ${{ steps.version.outputs.code }}" \
             --data-binary "@$APK" || true)
-          cat /tmp/facetalk-apk.json 2>/dev/null || true
-          echo
           if [ "$HTTP_CODE" != "200" ]; then
+            cat /tmp/facetalk-apk.json 2>/dev/null || true
             echo "::error::FaceTalk APK publish returned HTTP $HTTP_CODE"
             exit 1
           fi
-          echo "FaceTalk APK published"
-
-      - name: Package APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          cp android/app/build/outputs/apk/release/app-release.apk "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk"
-          sha256sum dist/*.apk | tee dist/SHA256SUMS.txt
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: facetalk-android-${{ steps.version.outputs.name }}
-          path: |
-            dist/*.apk
-            dist/SHA256SUMS.txt
-          if-no-files-found: error
-          retention-days: 30
