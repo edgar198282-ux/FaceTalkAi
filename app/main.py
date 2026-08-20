@@ -12,11 +12,11 @@ from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, WebAppIn
 
 from .config import TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_TOKEN_SOURCE, MINIAPP_URL, DATA_DIR, DB_PATH, EXPECTED_BOT_USERNAME
 from .db import init_db, set_user_language, get_user_language
-from .webapp import start_webapp
+from .webapp_plus import start_webapp
 from .storage import migrate_legacy_db
 
 logging.basicConfig(level=logging.INFO)
-BUILD_VERSION = 'v3.5.1-force-rebuild-logo-3lang-splash'
+BUILD_VERSION = 'v3.5.2-apk-auto-update'
 
 bot = None
 dp = Dispatcher()
@@ -127,8 +127,6 @@ async def main():
             'Paste only the BotFather token in digits:secret format.'
         ) from exc
 
-    # Fail fast if Railway still contains a token from another project.
-    # This prevents FaceTalk code from silently polling @PokerArmenia_bot or any other bot.
     me = await bot.get_me()
     actual_username = (me.username or '').lstrip('@')
     logging.info('FaceTalk Telegram bot authenticated as @%s (id=%s)', actual_username, me.id)
