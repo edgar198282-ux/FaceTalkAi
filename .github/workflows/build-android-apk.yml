@@ -74,7 +74,7 @@ jobs:
             -PAPP_VERSION_NAME="${{ steps.version.outputs.name }}" \
             -PAPP_VERSION_CODE="${{ steps.version.outputs.code }}"
 
-      - name: Verify installable FaceTalk APK and signature
+      - name: Verify production FaceTalk APK, runtime and signature
         shell: bash
         run: |
           set -euo pipefail
@@ -82,11 +82,15 @@ jobs:
           test -s "$APK"
           SIZE=$(stat -c%s "$APK")
           echo "REAL APK SIZE: $SIZE bytes"
-          test "$SIZE" -ge 15000
+          if [ "$SIZE" -lt 300000 ]; then
+            echo "::error::APK is too small for the production Android shell: $SIZE bytes"
+            exit 1
+          fi
           unzip -t "$APK" >/dev/null
           unzip -l "$APK" | tee /tmp/facetalk-apk-list.txt
           grep -q "AndroidManifest.xml" /tmp/facetalk-apk-list.txt
           grep -q "classes.dex" /tmp/facetalk-apk-list.txt
+          unzip -p "$APK" classes.dex | strings | grep -q "androidx/webkit"
           SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
@@ -128,7 +132,7 @@ jobs:
             "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk#FaceTalkAI-${{ steps.version.outputs.name }}.apk" \
             "dist/SHA256SUMS.txt#SHA256SUMS.txt" \
             --title "FaceTalk AI Android ${{ steps.version.outputs.name }}" \
-            --notes "Verified signed FaceTalk AI Android APK. Download the .apk file directly from Releases."
+            --notes "Verified signed production FaceTalk AI Android APK. Direct .apk is attached to this Release."
           gh release view "$TAG" --json url,tagName,name
 
       - name: Publish OTA to Railway when configured
