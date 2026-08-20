@@ -13,10 +13,6 @@ on:
         default: "1"
   push:
     branches: [ "main" ]
-    paths:
-      - "android/**"
-      - "app/webapp_plus.py"
-      - ".github/workflows/build-android-apk.yml"
 
 jobs:
   build:
@@ -94,6 +90,8 @@ jobs:
           SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          test -n "$APKSIGNER"
           "$AAPT" dump badging "$APK" | tee /tmp/facetalk-badging.txt
           grep -q "package: name='ai.facetalk.app'" /tmp/facetalk-badging.txt
           grep -q "launchable-activity: name='ai.facetalk.app.MainActivity'" /tmp/facetalk-badging.txt
@@ -120,7 +118,8 @@ jobs:
             "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk#FaceTalkAI-${{ steps.version.outputs.name }}.apk" \
             "dist/SHA256SUMS.txt#SHA256SUMS.txt" \
             --title "FaceTalk AI Android ${{ steps.version.outputs.name }}" \
-            --notes "Verified signed FaceTalk AI Android APK with FaceTalk launcher icon. Download the .apk file directly."
+            --notes "Verified signed FaceTalk AI Android APK. Download the .apk file directly from Releases."
+          gh release view "$TAG" --json url,tagName,name
 
       - name: Publish OTA to Railway when configured
         shell: bash
