@@ -7,7 +7,6 @@ from aiohttp import web
 from .config import DATA_DIR, PORT
 from .webapp import (
     api_error_middleware,
-    index,
     api_me,
     api_admin_stats,
     api_admin_keys,
@@ -45,6 +44,24 @@ def _read_apk_meta():
             return data
     except Exception:
         return {}
+
+
+async def index(request):
+    path = os.path.join(WEB_DIR, 'index.html')
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            html = f.read()
+        patch = '<script src="/static/ui-patch.js?v=1"></script>'
+        if patch not in html:
+            html = html.replace('</body>', patch + '</body>')
+        return web.Response(
+            text=html,
+            content_type='text/html',
+            charset='utf-8',
+            headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0','Pragma':'no-cache'},
+        )
+    except Exception:
+        return web.FileResponse(path, headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0'})
 
 
 async def api_app_release(request):
