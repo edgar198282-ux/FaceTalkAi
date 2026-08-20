@@ -49,7 +49,7 @@ async def index(request):
     path = os.path.join(WEB_DIR, 'index.html')
     try:
         with open(path, 'r', encoding='utf-8') as f: html = f.read()
-        patch = '<script src="/static/ui-patch.js?v=2"></script>'
+        patch = '<script src="/static/ui-patch.js?v=3"></script>'
         if patch not in html: html = html.replace('</body>', patch + '</body>')
         return web.Response(text=html, content_type='text/html', charset='utf-8', headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0','Pragma':'no-cache'})
     except Exception:
@@ -64,10 +64,17 @@ async def api_app_download(request):
     if not os.path.isfile(APK_PATH) or os.path.getsize(APK_PATH) < MIN_APK_SIZE: raise web.HTTPNotFound(text='APK not published yet')
     return web.FileResponse(APK_PATH, headers={'Content-Type':'application/vnd.android.package-archive','Content-Disposition':'attachment; filename="FaceTalkAI-latest.apk"','Cache-Control':'no-store, max-age=0'})
 
+def _valid_deploy_token(supplied):
+    import hmac
+    supplied=(supplied or '').strip()
+    if not supplied: return False
+    candidates=[(os.getenv('FACETALK_APK_DEPLOY_TOKEN') or '').strip(), (os.getenv('INTERNAL_API_SECRET') or '').strip()]
+    return any(v and hmac.compare_digest(supplied, v) for v in candidates)
+
 async def api_app_upload(request):
-    expected = (os.getenv('FACETALK_APK_DEPLOY_TOKEN') or os.getenv('INTERNAL_API_SECRET') or '').strip()
     supplied = (request.headers.get('X-FaceTalk-Deploy-Token') or '').strip()
-    if not expected or not supplied or supplied != expected: return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    configured = bool((os.getenv('FACETALK_APK_DEPLOY_TOKEN') or '').strip() or (os.getenv('INTERNAL_API_SECRET') or '').strip())
+    if not configured or not _valid_deploy_token(supplied): return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     raw = await request.read()
     if len(raw) < MIN_APK_SIZE or not raw.startswith(b'PK'): return web.json_response({'ok':False,'error':'invalid apk'}, status=400)
     version_name = (request.headers.get('X-FaceTalk-App-Version') or '').strip() or '1.0.0'
