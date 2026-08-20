@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.application'
+}
+
+def webUrl = providers.gradleProperty('WEB_APP_URL').orElse('https://facetalkai-production.up.railway.app').get()
+def vCode = providers.gradleProperty('APP_VERSION_CODE').orElse('1').get().toInteger()
+def vName = providers.gradleProperty('APP_VERSION_NAME').orElse('1.0.0').get()
+
+android {
+    namespace 'ai.facetalk.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'ai.facetalk.app'
+        minSdk 24
+        targetSdk 35
+        versionCode vCode
+        versionName vName
+        buildConfigField 'String', 'WEB_APP_URL', '"' + webUrl + '"'
+    }
+
+    signingConfigs {
+        release {
+            storeFile rootProject.file('facetalk-upload-key.jks')
+            storePassword 'FaceTalk2026'
+            keyAlias 'facetalk'
+            keyPassword 'FaceTalk2026'
+            enableV1Signing true
+            enableV2Signing true
+            enableV3Signing true
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+}
