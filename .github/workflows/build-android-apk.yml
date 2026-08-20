@@ -38,6 +38,14 @@ jobs:
           echo "name=1.1.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
           echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
+      - name: Restore real FaceTalk logo
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp web/facetalk_logo.png android/app/src/main/res/drawable/facetalk_logo.png
+          test -s android/app/src/main/res/drawable/facetalk_logo.png
+          file android/app/src/main/res/drawable/facetalk_logo.png
+
       - name: Restore and validate signing key
         shell: bash
         run: |
@@ -55,14 +63,8 @@ jobs:
         run: |
           set -euo pipefail
           WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
-          case "$WEB_APP_URL" in
-            https://*) ;;
-            *) echo "::error::FACETALK_WEB_APP_URL must start with https://"; exit 1 ;;
-          esac
-          gradle :app:assembleRelease \
-            -PWEB_APP_URL="$WEB_APP_URL" \
-            -PAPP_VERSION_NAME="${{ steps.version.outputs.name }}" \
-            -PAPP_VERSION_CODE="${{ steps.version.outputs.code }}"
+          case "$WEB_APP_URL" in https://*) ;; *) echo "::error::FACETALK_WEB_APP_URL must start with https://"; exit 1 ;; esac
+          gradle :app:assembleRelease -PWEB_APP_URL="$WEB_APP_URL" -PAPP_VERSION_NAME="${{ steps.version.outputs.name }}" -PAPP_VERSION_CODE="${{ steps.version.outputs.code }}"
 
       - name: Verify signed installable APK
         shell: bash
@@ -113,31 +115,29 @@ jobs:
           TAG="facetalk-latest"
           gh release delete "$TAG" --cleanup-tag -y >/dev/null 2>&1 || true
           git push origin ":refs/tags/$TAG" >/dev/null 2>&1 || true
-          gh release create "$TAG" \
-            "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk#FaceTalkAI-${{ steps.version.outputs.name }}.apk" \
-            "dist/SHA256SUMS.txt#SHA256SUMS.txt" \
-            --target "${{ github.sha }}" \
-            --title "FaceTalk AI Android ${{ steps.version.outputs.name }}" \
-            --notes "Fresh verified signed APK. Download the .apk asset directly from this Release."
-          gh release view "$TAG" --json url,tagName,name
+          gh release create "$TAG" "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk#FaceTalkAI-${{ steps.version.outputs.name }}.apk" "dist/SHA256SUMS.txt#SHA256SUMS.txt" --target "${{ github.sha }}" --title "FaceTalk AI Android ${{ steps.version.outputs.name }}" --notes "Fresh verified signed APK. Download the .apk asset directly from this Release."
 
-      - name: Publish OTA to Railway when configured
+      - name: Publish OTA to Railway
         shell: bash
         env:
           SECRET_TOKEN: ${{ secrets.FACETALK_APK_DEPLOY_TOKEN }}
+          INTERNAL_TOKEN: ${{ secrets.INTERNAL_API_SECRET }}
           VARIABLE_TOKEN: ${{ vars.FACETALK_APK_DEPLOY_TOKEN }}
           FACETALK_WEB_APP_URL: ${{ vars.FACETALK_WEB_APP_URL }}
         run: |
-          set +e
-          APK_DEPLOY_TOKEN="${SECRET_TOKEN:-$VARIABLE_TOKEN}"
-          [ -n "$APK_DEPLOY_TOKEN" ] || exit 0
+          set -euo pipefail
+          APK_DEPLOY_TOKEN="${SECRET_TOKEN:-${VARIABLE_TOKEN:-$INTERNAL_TOKEN}}"
+          if [ -z "$APK_DEPLOY_TOKEN" ]; then
+            echo "::error::Set FACETALK_APK_DEPLOY_TOKEN or INTERNAL_API_SECRET in GitHub Actions secrets"
+            exit 1
+          fi
           WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
           APK="android/app/build/outputs/apk/release/app-release.apk"
-          curl -sS --connect-timeout 10 --max-time 180 \
-            -X POST "${WEB_APP_URL%/}/api/app-upload" \
-            -H "Content-Type: application/vnd.android.package-archive" \
-            -H "X-FaceTalk-Deploy-Token: $APK_DEPLOY_TOKEN" \
-            -H "X-FaceTalk-App-Version: ${{ steps.version.outputs.name }}" \
-            -H "X-FaceTalk-App-Version-Code: ${{ steps.version.outputs.code }}" \
-            --data-binary "@$APK" >/tmp/facetalk-ota.json || true
-          exit 0
+          for attempt in $(seq 1 36); do
+            HTTP_CODE=$(curl -sS -o /tmp/facetalk-ota.json -w "%{http_code}" --connect-timeout 10 --max-time 180 -X POST "${WEB_APP_URL%/}/api/app-upload" -H "Content-Type: application/vnd.android.package-archive" -H "X-FaceTalk-Deploy-Token: $APK_DEPLOY_TOKEN" -H "X-FaceTalk-App-Version: ${{ steps.version.outputs.name }}" -H "X-FaceTalk-App-Version-Code: ${{ steps.version.outputs.code }}" --data-binary "@$APK" || true)
+            cat /tmp/facetalk-ota.json 2>/dev/null || true
+            if [ "$HTTP_CODE" = "200" ]; then echo "FaceTalk OTA published successfully"; exit 0; fi
+            echo "OTA attempt $attempt/36 returned HTTP $HTTP_CODE"; sleep 10
+          done
+          echo "::error::FaceTalk APK was built but OTA publication failed"
+          exit 1
