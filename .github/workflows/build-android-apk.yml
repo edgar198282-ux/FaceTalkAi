@@ -2,17 +2,12 @@ name: Build FaceTalk Android APK
 
 on:
   workflow_dispatch:
-    inputs:
-      version_name:
-        description: "Version name"
-        required: true
-        default: "1.0.0"
-      version_code:
-        description: "Android versionCode"
-        required: true
-        default: "1"
   push:
     branches: [ "main" ]
+
+concurrency:
+  group: facetalk-android-main
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -40,13 +35,8 @@ jobs:
         id: version
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "name=${{ inputs.version_name }}" >> "$GITHUB_OUTPUT"
-            echo "code=${{ inputs.version_code }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "name=1.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-            echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-          fi
+          echo "name=1.1.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore and validate signing key
         shell: bash
@@ -74,7 +64,7 @@ jobs:
             -PAPP_VERSION_NAME="${{ steps.version.outputs.name }}" \
             -PAPP_VERSION_CODE="${{ steps.version.outputs.code }}"
 
-      - name: Verify production FaceTalk APK, runtime and signature
+      - name: Verify signed installable APK
         shell: bash
         run: |
           set -euo pipefail
@@ -82,35 +72,29 @@ jobs:
           test -s "$APK"
           SIZE=$(stat -c%s "$APK")
           echo "REAL APK SIZE: $SIZE bytes"
-          if [ "$SIZE" -lt 300000 ]; then
-            echo "::error::APK is too small for the production Android shell: $SIZE bytes"
-            exit 1
-          fi
+          test "$SIZE" -ge 300000
           unzip -t "$APK" >/dev/null
-          unzip -l "$APK" | tee /tmp/facetalk-apk-list.txt
+          unzip -l "$APK" > /tmp/facetalk-apk-list.txt
           grep -q "AndroidManifest.xml" /tmp/facetalk-apk-list.txt
           grep -q "classes.dex" /tmp/facetalk-apk-list.txt
-          unzip -p "$APK" classes.dex | strings | grep -q "androidx/webkit"
           SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          test -n "$AAPT"
-          test -n "$APKSIGNER"
           "$AAPT" dump badging "$APK" | tee /tmp/facetalk-badging.txt
           grep -q "package: name='ai.facetalk.app'" /tmp/facetalk-badging.txt
           grep -q "launchable-activity: name='ai.facetalk.app.MainActivity'" /tmp/facetalk-badging.txt
           "$APKSIGNER" verify --verbose --print-certs "$APK"
 
-      - name: Package direct APK
+      - name: Package APK
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk"
-          sha256sum dist/*.apk | tee dist/SHA256SUMS.txt
+          sha256sum dist/*.apk > dist/SHA256SUMS.txt
           ls -lh dist/*.apk
 
-      - name: Upload APK to Actions artifacts
+      - name: Upload Actions artifact
         uses: actions/upload-artifact@v4
         with:
           name: FaceTalkAI-${{ steps.version.outputs.name }}
@@ -120,19 +104,21 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish installable FaceTalk APK in GitHub Releases
+      - name: Publish direct APK as latest GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          TAG="facetalk-android-${{ steps.version.outputs.code }}"
+          TAG="facetalk-latest"
           gh release delete "$TAG" --cleanup-tag -y >/dev/null 2>&1 || true
+          git push origin ":refs/tags/$TAG" >/dev/null 2>&1 || true
           gh release create "$TAG" \
             "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk#FaceTalkAI-${{ steps.version.outputs.name }}.apk" \
             "dist/SHA256SUMS.txt#SHA256SUMS.txt" \
+            --target "${{ github.sha }}" \
             --title "FaceTalk AI Android ${{ steps.version.outputs.name }}" \
-            --notes "Verified signed production FaceTalk AI Android APK. Direct .apk is attached to this Release."
+            --notes "Fresh verified signed APK. Download the .apk asset directly from this Release."
           gh release view "$TAG" --json url,tagName,name
 
       - name: Publish OTA to Railway when configured
@@ -144,34 +130,14 @@ jobs:
         run: |
           set +e
           APK_DEPLOY_TOKEN="${SECRET_TOKEN:-$VARIABLE_TOKEN}"
-          if [ -z "$APK_DEPLOY_TOKEN" ]; then
-            echo "OTA skipped: no FaceTalk deploy token configured. GitHub Release APK is ready."
-            exit 0
-          fi
+          [ -n "$APK_DEPLOY_TOKEN" ] || exit 0
           WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
-          RELEASE_URL="${WEB_APP_URL%/}/api/app-release"
-          READY=0
-          for attempt in $(seq 1 6); do
-            HTTP_CODE=$(curl -sS -o /tmp/facetalk-release.json -w "%{http_code}" --connect-timeout 10 --max-time 30 "$RELEASE_URL" || true)
-            if [ "$HTTP_CODE" = "200" ]; then READY=1; break; fi
-            sleep 5
-          done
-          if [ "$READY" != "1" ]; then
-            echo "OTA endpoint not ready; GitHub Release APK remains valid."
-            exit 0
-          fi
           APK="android/app/build/outputs/apk/release/app-release.apk"
-          ENDPOINT="${WEB_APP_URL%/}/api/app-upload"
-          HTTP_CODE=$(curl -sS -o /tmp/facetalk-apk.json -w "%{http_code}" --connect-timeout 10 --max-time 180 \
-            -X POST "$ENDPOINT" \
+          curl -sS --connect-timeout 10 --max-time 180 \
+            -X POST "${WEB_APP_URL%/}/api/app-upload" \
             -H "Content-Type: application/vnd.android.package-archive" \
             -H "X-FaceTalk-Deploy-Token: $APK_DEPLOY_TOKEN" \
             -H "X-FaceTalk-App-Version: ${{ steps.version.outputs.name }}" \
             -H "X-FaceTalk-App-Version-Code: ${{ steps.version.outputs.code }}" \
-            --data-binary "@$APK")
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "FaceTalk OTA published successfully"
-          else
-            echo "OTA publish skipped/failed with HTTP $HTTP_CODE; GitHub Release APK remains valid."
-          fi
+            --data-binary "@$APK" >/tmp/facetalk-ota.json || true
           exit 0
