@@ -51,6 +51,7 @@ async def api_app_release(request):
     available = os.path.isfile(APK_PATH) and os.path.getsize(APK_PATH) > 0
     payload = {
         'ok': True,
+        'service': 'facetalk-ota',
         'available': available,
         'version_name': str(meta.get('version_name') or ''),
         'version_code': int(meta.get('version_code') or 0),
@@ -118,6 +119,10 @@ async def start_webapp(bot):
     app.router.add_get('/api/app-release', api_app_release)
     app.router.add_get('/api/app-download', api_app_download)
     app.router.add_post('/api/app-upload', api_app_upload)
+    # Stable aliases for CI/older Android shells.
+    app.router.add_get('/api/admin/app-release', api_app_release)
+    app.router.add_get('/api/admin/app-download', api_app_download)
+    app.router.add_post('/api/admin/app-upload', api_app_upload)
 
     app.router.add_get('/api/me', api_me)
     app.router.add_get('/api/admin/stats', api_admin_stats)
@@ -143,5 +148,6 @@ async def start_webapp(bot):
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
+    print('FaceTalk OTA endpoints active: /api/app-release /api/app-upload /api/app-download')
     app['cleanup_task'] = __import__('asyncio').create_task(cleanup_generated(app))
     return runner
