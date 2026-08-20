@@ -77,6 +77,42 @@ jobs:
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose --print-certs android/app/build/outputs/apk/release/app-release.apk
 
+      - name: Publish APK to FaceTalk Railway
+        shell: bash
+        env:
+          FACETALK_WEB_APP_URL: ${{ vars.FACETALK_WEB_APP_URL }}
+          FACETALK_APK_DEPLOY_TOKEN: ${{ secrets.FACETALK_APK_DEPLOY_TOKEN }}
+        run: |
+          WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
+          if [ -z "$FACETALK_APK_DEPLOY_TOKEN" ]; then
+            echo "::error::FACETALK_APK_DEPLOY_TOKEN secret is missing in GitHub Actions"
+            exit 1
+          fi
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          ENDPOINT="${WEB_APP_URL%/}/api/app-upload"
+          for attempt in $(seq 1 36); do
+            HTTP_CODE=$(curl -sS -o /tmp/facetalk-apk.json -w "%{http_code}" \
+              --connect-timeout 10 --max-time 120 \
+              -X POST "$ENDPOINT" \
+              -H "Content-Type: application/vnd.android.package-archive" \
+              -H "X-FaceTalk-Deploy-Token: $FACETALK_APK_DEPLOY_TOKEN" \
+              -H "X-FaceTalk-App-Version: ${{ steps.version.outputs.name }}" \
+              -H "X-FaceTalk-App-Version-Code: ${{ steps.version.outputs.code }}" \
+              --data-binary "@$APK" || true)
+            if [ "$HTTP_CODE" = "200" ]; then
+              cat /tmp/facetalk-apk.json
+              echo
+              echo "FaceTalk APK published"
+              exit 0
+            fi
+            echo "Publish attempt $attempt/36 returned HTTP $HTTP_CODE"
+            cat /tmp/facetalk-apk.json 2>/dev/null || true
+            echo
+            sleep 10
+          done
+          echo "::error::Could not publish FaceTalk APK to Railway"
+          exit 1
+
       - name: Package APK
         shell: bash
         run: |
