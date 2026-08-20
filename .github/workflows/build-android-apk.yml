@@ -106,6 +106,16 @@ jobs:
           sha256sum dist/*.apk | tee dist/SHA256SUMS.txt
           ls -lh dist/*.apk
 
+      - name: Upload APK to Actions artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: FaceTalkAI-${{ steps.version.outputs.name }}
+          path: |
+            dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Publish installable FaceTalk APK in GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
