@@ -34,6 +34,7 @@ APK_DIR = os.path.join(DATA_DIR, 'apk')
 APK_PATH = os.path.join(APK_DIR, 'FaceTalkAI-latest.apk')
 APK_META_PATH = os.path.join(APK_DIR, 'release.json')
 MIN_APK_SIZE = 300_000
+PUBLIC_APK_PATH = '/downloads/FaceTalkAI-latest.apk'
 os.makedirs(APK_DIR, exist_ok=True)
 
 
@@ -49,7 +50,7 @@ async def index(request):
     path = os.path.join(WEB_DIR, 'index.html')
     try:
         with open(path, 'r', encoding='utf-8') as f: html = f.read()
-        patch = '<script src="/static/ui-patch.js?v=3"></script>'
+        patch = '<script src="/static/ui-patch.js?v=4"></script>'
         if patch not in html: html = html.replace('</body>', patch + '</body>')
         return web.Response(text=html, content_type='text/html', charset='utf-8', headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0','Pragma':'no-cache'})
     except Exception:
@@ -58,11 +59,20 @@ async def index(request):
 async def api_app_release(request):
     meta = _read_apk_meta()
     available = os.path.isfile(APK_PATH) and os.path.getsize(APK_PATH) >= MIN_APK_SIZE
-    return web.json_response({'ok':True,'service':'facetalk-ota','available':available,'version_name':str(meta.get('version_name') or ''),'version_code':int(meta.get('version_code') or 0),'size_bytes':os.path.getsize(APK_PATH) if available else 0,'download_url':'/api/app-download' if available else '','published_at':meta.get('published_at')}, headers={'Cache-Control':'no-store, max-age=0'})
+    return web.json_response({'ok':True,'service':'facetalk-ota','available':available,'version_name':str(meta.get('version_name') or ''),'version_code':int(meta.get('version_code') or 0),'size_bytes':os.path.getsize(APK_PATH) if available else 0,'download_url':PUBLIC_APK_PATH if available else '','published_at':meta.get('published_at')}, headers={'Cache-Control':'no-store, max-age=0'})
 
 async def api_app_download(request):
-    if not os.path.isfile(APK_PATH) or os.path.getsize(APK_PATH) < MIN_APK_SIZE: raise web.HTTPNotFound(text='APK not published yet')
-    return web.FileResponse(APK_PATH, headers={'Content-Type':'application/vnd.android.package-archive','Content-Disposition':'attachment; filename="FaceTalkAI-latest.apk"','Cache-Control':'no-store, max-age=0'})
+    if not os.path.isfile(APK_PATH) or os.path.getsize(APK_PATH) < MIN_APK_SIZE:
+        raise web.HTTPNotFound(text='APK not published yet')
+    return web.FileResponse(
+        APK_PATH,
+        headers={
+            'Content-Type':'application/vnd.android.package-archive',
+            'Content-Disposition':'attachment; filename="FaceTalkAI-latest.apk"',
+            'Cache-Control':'no-store, max-age=0',
+            'X-Content-Type-Options':'nosniff',
+        },
+    )
 
 def _valid_deploy_token(supplied):
     import hmac
@@ -104,7 +114,7 @@ async def api_app_auth_complete(request):
 async def start_webapp(bot):
     app = web.Application(client_max_size=100*1024*1024, middlewares=[api_error_middleware]); app['bot']=bot
     app.router.add_get('/', index)
-    app.router.add_get('/api/app-release', api_app_release); app.router.add_get('/api/app-download', api_app_download); app.router.add_post('/api/app-upload', api_app_upload)
+    app.router.add_get('/api/app-release', api_app_release); app.router.add_get('/api/app-download', api_app_download); app.router.add_get(PUBLIC_APK_PATH, api_app_download); app.router.add_post('/api/app-upload', api_app_upload)
     app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload)
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
     app.router.add_get('/api/me', api_me); app.router.add_get('/api/admin/stats', api_admin_stats); app.router.add_get('/api/admin/keys', api_admin_keys); app.router.add_post('/api/admin/keys', api_admin_keys)
