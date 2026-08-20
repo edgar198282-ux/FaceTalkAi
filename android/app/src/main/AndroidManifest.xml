@@ -11,8 +11,8 @@
         android:usesCleartextTraffic="false"
         android:theme="@style/AppTheme"
         android:label="FaceTalk AI"
-        android:icon="@drawable/ic_launcher"
-        android:roundIcon="@drawable/ic_launcher">
+        android:icon="@drawable/facetalk_logo"
+        android:roundIcon="@drawable/facetalk_logo">
         <activity
             android:name=".MainActivity"
             android:exported="true"
