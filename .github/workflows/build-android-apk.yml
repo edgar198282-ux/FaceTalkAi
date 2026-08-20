@@ -15,6 +15,7 @@ on:
     branches: [ "main" ]
     paths:
       - "android/**"
+      - "app/webapp_plus.py"
       - ".github/workflows/build-android-apk.yml"
 
 jobs:
@@ -87,6 +88,28 @@ jobs:
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose --print-certs android/app/build/outputs/apk/release/app-release.apk
 
+      - name: Wait for FaceTalk OTA endpoint
+        shell: bash
+        env:
+          FACETALK_WEB_APP_URL: ${{ vars.FACETALK_WEB_APP_URL }}
+        run: |
+          set -euo pipefail
+          WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
+          RELEASE_URL="${WEB_APP_URL%/}/api/app-release"
+          for attempt in $(seq 1 36); do
+            HTTP_CODE=$(curl -sS -o /tmp/facetalk-release.json -w "%{http_code}" --connect-timeout 10 --max-time 30 "$RELEASE_URL" || true)
+            if [ "$HTTP_CODE" = "200" ] && grep -q 'facetalk-ota' /tmp/facetalk-release.json; then
+              cat /tmp/facetalk-release.json
+              echo
+              echo "FaceTalk OTA endpoint is ready"
+              exit 0
+            fi
+            echo "OTA preflight $attempt/36 returned HTTP $HTTP_CODE"
+            sleep 10
+          done
+          echo "::error::FaceTalk OTA endpoint is not ready at $RELEASE_URL"
+          exit 1
+
       - name: Publish APK to FaceTalk Railway
         shell: bash
         env:
@@ -101,28 +124,21 @@ jobs:
           fi
           APK="android/app/build/outputs/apk/release/app-release.apk"
           ENDPOINT="${WEB_APP_URL%/}/api/app-upload"
-          for attempt in $(seq 1 36); do
-            HTTP_CODE=$(curl -sS -o /tmp/facetalk-apk.json -w "%{http_code}" \
-              --connect-timeout 10 --max-time 120 \
-              -X POST "$ENDPOINT" \
-              -H "Content-Type: application/vnd.android.package-archive" \
-              -H "X-FaceTalk-Deploy-Token: $FACETALK_APK_DEPLOY_TOKEN" \
-              -H "X-FaceTalk-App-Version: ${{ steps.version.outputs.name }}" \
-              -H "X-FaceTalk-App-Version-Code: ${{ steps.version.outputs.code }}" \
-              --data-binary "@$APK" || true)
-            if [ "$HTTP_CODE" = "200" ]; then
-              cat /tmp/facetalk-apk.json
-              echo
-              echo "FaceTalk APK published"
-              exit 0
-            fi
-            echo "Publish attempt $attempt/36 returned HTTP $HTTP_CODE"
-            cat /tmp/facetalk-apk.json 2>/dev/null || true
-            echo
-            sleep 10
-          done
-          echo "::error::Could not publish FaceTalk APK to Railway"
-          exit 1
+          HTTP_CODE=$(curl -sS -o /tmp/facetalk-apk.json -w "%{http_code}" \
+            --connect-timeout 10 --max-time 180 \
+            -X POST "$ENDPOINT" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            -H "X-FaceTalk-Deploy-Token: $FACETALK_APK_DEPLOY_TOKEN" \
+            -H "X-FaceTalk-App-Version: ${{ steps.version.outputs.name }}" \
+            -H "X-FaceTalk-App-Version-Code: ${{ steps.version.outputs.code }}" \
+            --data-binary "@$APK" || true)
+          cat /tmp/facetalk-apk.json 2>/dev/null || true
+          echo
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::FaceTalk APK publish returned HTTP $HTTP_CODE"
+            exit 1
+          fi
+          echo "FaceTalk APK published"
 
       - name: Package APK
         shell: bash
