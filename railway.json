@@ -2,15 +2,17 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
+    "buildCommand": "python3 -m pip install --no-cache-dir -r requirements.txt",
     "watchPatterns": [
       "app/**",
       "main.py",
       "requirements.txt",
+      ".python-version",
       "railway.json"
     ]
   },
   "deploy": {
-    "startCommand": "python -B main.py",
+    "startCommand": "python3 -B main.py",
     "restartPolicyType": "ALWAYS"
   }
 }
