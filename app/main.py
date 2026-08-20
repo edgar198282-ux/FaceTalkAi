@@ -3,6 +3,7 @@ import os
 import logging
 import hashlib
 import hmac
+import json
 import time
 from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
 
@@ -16,13 +17,12 @@ from .webapp_plus import start_webapp
 from .storage import migrate_legacy_db
 
 logging.basicConfig(level=logging.INFO)
-BUILD_VERSION = 'v3.5.2-apk-auto-update'
+BUILD_VERSION = 'v3.5.3-telegram-apk-link'
 
 bot = None
 dp = Dispatcher()
 
 def _miniapp_url_for_user(user_id: int | None):
-    """Add a short-lived signed fallback login for Telegram clients that sometimes omit initData."""
     if not MINIAPP_URL or not user_id:
         return MINIAPP_URL
     ts = int(time.time())
@@ -32,6 +32,26 @@ def _miniapp_url_for_user(user_id: int | None):
     q = dict(parse_qsl(parts.query, keep_blank_values=True))
     q.update({'ft_uid': str(int(user_id)), 'ft_ts': str(ts), 'ft_sig': sig})
     return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(q), parts.fragment))
+
+def _telegram_init_data_for_user(user) -> str:
+    now = int(time.time())
+    user_payload = {
+        'id': int(user.id),
+        'first_name': user.first_name or 'FaceTalk User',
+        'last_name': user.last_name or '',
+        'username': user.username or '',
+        'language_code': user.language_code or '',
+        'allows_write_to_pm': True,
+    }
+    payload = {
+        'auth_date': str(now),
+        'query_id': f'apk-{user.id}-{now}',
+        'user': json.dumps(user_payload, ensure_ascii=False, separators=(',', ':')),
+    }
+    check = '\n'.join(f'{k}={payload[k]}' for k in sorted(payload))
+    secret = hmac.new(b'WebAppData', TELEGRAM_BOT_TOKEN.encode(), hashlib.sha256).digest()
+    payload['hash'] = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+    return urlencode(payload)
 
 def miniapp_keyboard(user_id: int | None = None, lang: str = 'ru'):
     if not MINIAPP_URL:
@@ -69,6 +89,20 @@ async def send_language_picker(m: Message):
 async def start_handler(m: Message):
     if not MINIAPP_URL:
         await m.answer('FaceTalk Mini App ещё не настроен. Добавь MINIAPP_URL в Railway.')
+        return
+    payload = ''
+    if m.text:
+        parts = m.text.split(maxsplit=1)
+        payload = parts[1].strip() if len(parts) > 1 else ''
+    if payload == 'app_login':
+        init_data = _telegram_init_data_for_user(m.from_user)
+        complete = MINIAPP_URL.rstrip('/') + '/api/app-auth/complete?' + urlencode({'init_data': init_data})
+        await m.answer(
+            'Подтвердите вход. После нажатия FaceTalk AI откроется под вашим Telegram-аккаунтом.',
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text='✅ Привязать FaceTalk к Telegram', url=complete)
+            ]]),
+        )
         return
     await send_language_picker(m)
 
