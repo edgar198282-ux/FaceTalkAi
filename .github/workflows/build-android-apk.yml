@@ -47,11 +47,18 @@ jobs:
             echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Restore signing key
+      - name: Restore and validate signing key
         shell: bash
         run: |
+          set -euo pipefail
           base64 -d android/facetalk-upload-key.jks.b64 > android/facetalk-upload-key.jks
           test -s android/facetalk-upload-key.jks
+          keytool -list \
+            -keystore android/facetalk-upload-key.jks \
+            -storepass FaceTalk2026 \
+            -alias facetalk >/tmp/facetalk-key.txt
+          grep -qi "PrivateKeyEntry" /tmp/facetalk-key.txt
+          echo "FaceTalk signing key is valid and alias facetalk is readable"
 
       - name: Build signed release APK
         working-directory: android
@@ -59,6 +66,7 @@ jobs:
           FACETALK_WEB_APP_URL: ${{ vars.FACETALK_WEB_APP_URL }}
         shell: bash
         run: |
+          set -euo pipefail
           WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
           case "$WEB_APP_URL" in
             https://*) ;;
@@ -68,10 +76,12 @@ jobs:
             -PWEB_APP_URL="$WEB_APP_URL" \
             -PAPP_VERSION_NAME="${{ steps.version.outputs.name }}" \
             -PAPP_VERSION_CODE="${{ steps.version.outputs.code }}"
+          test -s app/build/outputs/apk/release/app-release.apk
 
       - name: Verify APK signature
         shell: bash
         run: |
+          set -euo pipefail
           SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
@@ -83,6 +93,7 @@ jobs:
           FACETALK_WEB_APP_URL: ${{ vars.FACETALK_WEB_APP_URL }}
           FACETALK_APK_DEPLOY_TOKEN: ${{ secrets.FACETALK_APK_DEPLOY_TOKEN }}
         run: |
+          set -euo pipefail
           WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
           if [ -z "$FACETALK_APK_DEPLOY_TOKEN" ]; then
             echo "::error::FACETALK_APK_DEPLOY_TOKEN secret is missing in GitHub Actions"
@@ -116,6 +127,7 @@ jobs:
       - name: Package APK
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk"
           sha256sum dist/*.apk | tee dist/SHA256SUMS.txt
