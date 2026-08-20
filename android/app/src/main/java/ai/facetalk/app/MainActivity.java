@@ -2,7 +2,6 @@ package ai.facetalk.app;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -42,6 +41,9 @@ public class MainActivity extends Activity {
     private long pendingApkDownloadId = -1L;
     private Uri pendingApkUri;
     private BroadcastReceiver downloadReceiver;
+    private volatile boolean updateCheckRunning = false;
+    private volatile boolean updateDownloadRunning = false;
+    private long lastUpdateCheckAt = 0L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,8 +85,10 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
+                String url = uri.toString();
                 String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase();
                 String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase();
+                if (url.endsWith(".apk") || url.contains("/api/app-download")) { downloadAndInstallApk(url); return true; }
                 if ("tg".equals(scheme) || "t.me".equals(host) || "telegram.me".equals(host)) { openExternal(uri); return true; }
                 if (!"http".equals(scheme) && !"https".equals(scheme)) { openExternal(uri); return true; }
                 return false;
@@ -93,7 +97,7 @@ public class MainActivity extends Activity {
 
         registerApkDownloadReceiver();
         loadFaceTalk();
-        checkForAppUpdate();
+        checkForAppUpdate(true);
     }
 
     private String baseUrl() {
@@ -114,39 +118,50 @@ public class MainActivity extends Activity {
                 + "&app_version_code=" + BuildConfig.VERSION_CODE + "&ota=" + System.currentTimeMillis());
     }
 
-    private void checkForAppUpdate() {
+    private void checkForAppUpdate(boolean force) {
         String base = baseUrl();
-        if (base.isEmpty()) return;
+        if (base.isEmpty() || updateCheckRunning || updateDownloadRunning) return;
+        long now = System.currentTimeMillis();
+        if (!force && now - lastUpdateCheckAt < 60_000L) return;
+        lastUpdateCheckAt = now;
+        updateCheckRunning = true;
         new Thread(() -> {
             HttpURLConnection c = null;
             try {
                 URL u = new URL(base + "/api/app-release?ts=" + System.currentTimeMillis());
                 c = (HttpURLConnection) u.openConnection();
-                c.setConnectTimeout(10000); c.setReadTimeout(10000); c.setUseCaches(false);
+                c.setConnectTimeout(10000);
+                c.setReadTimeout(10000);
+                c.setUseCaches(false);
+                c.setRequestProperty("Cache-Control", "no-cache");
                 if (c.getResponseCode() != 200) return;
                 BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream()));
                 StringBuilder sb = new StringBuilder(); String line;
                 while ((line = br.readLine()) != null) sb.append(line);
+                br.close();
                 JSONObject j = new JSONObject(sb.toString());
                 int latestCode = j.optInt("version_code", 0);
-                String latestName = j.optString("version_name", "");
                 String download = j.optString("download_url", "");
                 boolean available = j.optBoolean("available", false);
                 if (available && latestCode > BuildConfig.VERSION_CODE && !download.isEmpty()) {
                     final String url = download.startsWith("http") ? download : base + download;
-                    runOnUiThread(() -> new AlertDialog.Builder(this)
-                            .setTitle("Доступно обновление FaceTalk AI")
-                            .setMessage("Новая версия " + latestName + " готова к установке.")
-                            .setNegativeButton("Позже", null)
-                            .setPositiveButton("Обновить", (d, w) -> downloadAndInstallApk(url))
-                            .show());
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !updateDownloadRunning) {
+                            Toast.makeText(this, "Найдено обновление FaceTalk AI. Загружаю…", Toast.LENGTH_LONG).show();
+                            downloadAndInstallApk(url);
+                        }
+                    });
                 }
             } catch (Exception ignored) {
-            } finally { if (c != null) c.disconnect(); }
-        }).start();
+            } finally {
+                updateCheckRunning = false;
+                if (c != null) c.disconnect();
+            }
+        }, "facetalk-update-check").start();
     }
 
     private void registerApkDownloadReceiver() {
+        if (downloadReceiver != null) return;
         downloadReceiver = new BroadcastReceiver() {
             @Override public void onReceive(Context context, Intent intent) {
                 if (!DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction())) return;
@@ -157,8 +172,13 @@ public class MainActivity extends Activity {
                 try (Cursor cur = dm.query(q)) {
                     if (cur == null || !cur.moveToFirst()) return;
                     int status = cur.getInt(cur.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
-                    if (status != DownloadManager.STATUS_SUCCESSFUL) { Toast.makeText(MainActivity.this, "Ошибка загрузки обновления", Toast.LENGTH_LONG).show(); return; }
-                }
+                    if (status != DownloadManager.STATUS_SUCCESSFUL) {
+                        updateDownloadRunning = false;
+                        Toast.makeText(MainActivity.this, "Ошибка загрузки обновления", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                } catch (Exception e) { updateDownloadRunning = false; return; }
+                updateDownloadRunning = false;
                 pendingApkUri = dm.getUriForDownloadedFile(id);
                 requestInstallOrOpen();
             }
@@ -168,16 +188,23 @@ public class MainActivity extends Activity {
     }
 
     private void downloadAndInstallApk(String rawUrl) {
+        if (rawUrl == null || rawUrl.trim().isEmpty() || updateDownloadRunning) return;
         try {
             DownloadManager.Request req = new DownloadManager.Request(Uri.parse(rawUrl));
             req.setTitle("FaceTalk AI"); req.setDescription("Загрузка обновления…");
             req.setMimeType("application/vnd.android.package-archive");
             req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            req.setAllowedOverMetered(true);
+            req.setAllowedOverRoaming(true);
             req.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "FaceTalkAI-update.apk");
             DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            pendingApkUri = null;
+            updateDownloadRunning = true;
             pendingApkDownloadId = dm.enqueue(req);
-            Toast.makeText(this, "Загружаю обновление FaceTalk AI…", Toast.LENGTH_LONG).show();
-        } catch (Exception e) { Toast.makeText(this, "Не удалось загрузить обновление", Toast.LENGTH_LONG).show(); }
+        } catch (Exception e) {
+            updateDownloadRunning = false;
+            Toast.makeText(this, "Не удалось загрузить обновление", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void requestInstallOrOpen() {
@@ -189,10 +216,13 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) {}
             return;
         }
-        openPackageInstaller(pendingApkUri);
+        Uri uri = pendingApkUri;
+        pendingApkUri = null;
+        openPackageInstaller(uri);
     }
 
     private void openPackageInstaller(Uri apkUri) {
+        if (apkUri == null) return;
         try {
             Intent install = new Intent(Intent.ACTION_VIEW);
             install.setDataAndType(apkUri, "application/vnd.android.package-archive");
@@ -234,6 +264,8 @@ public class MainActivity extends Activity {
         super.onResume();
         if (pendingApkUri != null && (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls())) {
             Uri u = pendingApkUri; pendingApkUri = null; openPackageInstaller(u);
+        } else {
+            checkForAppUpdate(false);
         }
     }
 
@@ -244,6 +276,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onDestroy() {
         if (downloadReceiver != null) { try { unregisterReceiver(downloadReceiver); } catch (Exception ignored) {} }
+        if (webView != null) webView.destroy();
         super.onDestroy();
     }
 
