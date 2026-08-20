@@ -2,7 +2,7 @@
   const tg = window.Telegram?.WebApp;
   const qs = new URLSearchParams(location.search);
   const nativeAndroid = qs.get('source') === 'android' || /FaceTalkAI-Android\//i.test(navigator.userAgent);
-  const APK_URL = new URL('/downloads/FaceTalkAI-latest.apk', location.origin).toString();
+  const APK_URL = 'https://github.com/edgar198282-ux/FaceTalkAi/releases/download/facetalk-latest/FaceTalkAI-latest.apk';
 
   const style = document.createElement('style');
   style.textContent = `
