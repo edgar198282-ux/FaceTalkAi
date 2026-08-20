@@ -93,7 +93,8 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk"
-          sha256sum dist/*.apk > dist/SHA256SUMS.txt
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/FaceTalkAI-latest.apk"
+          sha256sum dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk dist/FaceTalkAI-latest.apk > dist/SHA256SUMS.txt
           ls -lh dist/*.apk
 
       - name: Upload Actions artifact
@@ -102,6 +103,7 @@ jobs:
           name: FaceTalkAI-${{ steps.version.outputs.name }}
           path: |
             dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk
+            dist/FaceTalkAI-latest.apk
             dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
@@ -115,7 +117,13 @@ jobs:
           TAG="facetalk-latest"
           gh release delete "$TAG" --cleanup-tag -y >/dev/null 2>&1 || true
           git push origin ":refs/tags/$TAG" >/dev/null 2>&1 || true
-          gh release create "$TAG" "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk#FaceTalkAI-${{ steps.version.outputs.name }}.apk" "dist/SHA256SUMS.txt#SHA256SUMS.txt" --target "${{ github.sha }}" --title "FaceTalk AI Android ${{ steps.version.outputs.name }}" --notes "Fresh verified signed APK. Download the .apk asset directly from this Release."
+          gh release create "$TAG" \
+            "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk#FaceTalkAI-${{ steps.version.outputs.name }}.apk" \
+            "dist/FaceTalkAI-latest.apk#FaceTalkAI-latest.apk" \
+            "dist/SHA256SUMS.txt#SHA256SUMS.txt" \
+            --target "${{ github.sha }}" \
+            --title "FaceTalk AI Android ${{ steps.version.outputs.name }}" \
+            --notes "Verified signed APK with stable FaceTalkAI-latest.apk asset for Mini App installation."
 
       - name: Publish OTA to Railway
         shell: bash
