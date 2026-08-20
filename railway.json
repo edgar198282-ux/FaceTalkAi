@@ -13,7 +13,6 @@
     ]
   },
   "deploy": {
-    "startCommand": "python -B main.py",
     "restartPolicyType": "ALWAYS"
   }
 }
