@@ -32,6 +32,7 @@ from .webapp import (
 APK_DIR = os.path.join(DATA_DIR, 'apk')
 APK_PATH = os.path.join(APK_DIR, 'FaceTalkAI-latest.apk')
 APK_META_PATH = os.path.join(APK_DIR, 'release.json')
+MIN_APK_SIZE = 300_000
 os.makedirs(APK_DIR, exist_ok=True)
 
 
@@ -48,7 +49,7 @@ def _read_apk_meta():
 
 async def api_app_release(request):
     meta = _read_apk_meta()
-    available = os.path.isfile(APK_PATH) and os.path.getsize(APK_PATH) > 0
+    available = os.path.isfile(APK_PATH) and os.path.getsize(APK_PATH) >= MIN_APK_SIZE
     payload = {
         'ok': True,
         'service': 'facetalk-ota',
@@ -63,7 +64,7 @@ async def api_app_release(request):
 
 
 async def api_app_download(request):
-    if not os.path.isfile(APK_PATH):
+    if not os.path.isfile(APK_PATH) or os.path.getsize(APK_PATH) < MIN_APK_SIZE:
         raise web.HTTPNotFound(text='APK not published yet')
     return web.FileResponse(
         APK_PATH,
@@ -82,7 +83,7 @@ async def api_app_upload(request):
         return web.json_response({'ok': False, 'error': 'unauthorized'}, status=401)
 
     raw = await request.read()
-    if len(raw) < 1024:
+    if len(raw) < MIN_APK_SIZE or not raw.startswith(b'PK'):
         return web.json_response({'ok': False, 'error': 'invalid apk'}, status=400)
 
     version_name = (request.headers.get('X-FaceTalk-App-Version') or '').strip() or '1.0.0'
@@ -90,6 +91,8 @@ async def api_app_upload(request):
         version_code = int(request.headers.get('X-FaceTalk-App-Version-Code') or '0')
     except Exception:
         version_code = 0
+    if version_code <= 0:
+        return web.json_response({'ok': False, 'error': 'invalid version code'}, status=400)
 
     tmp = APK_PATH + '.tmp'
     with open(tmp, 'wb') as f:
@@ -119,7 +122,6 @@ async def start_webapp(bot):
     app.router.add_get('/api/app-release', api_app_release)
     app.router.add_get('/api/app-download', api_app_download)
     app.router.add_post('/api/app-upload', api_app_upload)
-    # Stable aliases for CI/older Android shells.
     app.router.add_get('/api/admin/app-release', api_app_release)
     app.router.add_get('/api/admin/app-download', api_app_download)
     app.router.add_post('/api/admin/app-upload', api_app_upload)
