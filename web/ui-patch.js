@@ -10,14 +10,14 @@
     #ftSettingsModal{position:fixed;inset:0;z-index:2000;background:#030611e8;display:none;align-items:flex-end;justify-content:center}
     #ftSettingsModal.show{display:flex}
     #ftSettingsSheet{width:100%;max-width:700px;background:#0d1528;border:1px solid #263457;border-radius:25px 25px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom));color:#fff}
-    #ftSettingsSheet h2{margin:0 0 18px}.ftSettingLabel{font-size:12px;color:#93a4c7;margin:13px 0 8px}.ftLangGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.ftLang{border:1px solid #34476f;background:#101a30;color:#fff;border-radius:14px;padding:13px 8px;font-weight:800}.ftLang.active{border-color:#a642ff;background:#25113f}.ftInstall{width:100%;margin-top:16px;border:0;border-radius:15px;padding:14px;background:linear-gradient(135deg,#7d3eff,#169eff);color:white;font-weight:900;font-size:15px}.ftInstall:disabled{opacity:.65}.ftClose{width:100%;margin-top:10px;border:1px solid #34476f;border-radius:15px;padding:13px;background:#10192c;color:#dbe6ff;font-weight:800}
+    #ftSettingsSheet h2{margin:0 0 18px}.ftSettingLabel{font-size:12px;color:#93a4c7;margin:13px 0 8px}.ftLangGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.ftLang{border:1px solid #34476f;background:#101a30;color:#fff;border-radius:14px;padding:13px 8px;font-weight:800}.ftLang.active{border-color:#a642ff;background:#25113f}.ftInstall{width:100%;margin-top:16px;border:0;border-radius:15px;padding:14px;background:linear-gradient(135deg,#7d3eff,#169eff);color:white;font-weight:900;font-size:15px}.ftClose{width:100%;margin-top:10px;border:1px solid #34476f;border-radius:15px;padding:13px;background:#10192c;color:#dbe6ff;font-weight:800}
     #ftAdminSettings{width:100%;margin:10px 0 14px;border:1px solid #6840a5;border-radius:14px;padding:11px;background:#20143a;color:#fff;font-weight:800}
   `;
   document.head.appendChild(style);
 
   const modal = document.createElement('div');
   modal.id = 'ftSettingsModal';
-  modal.innerHTML = `<div id="ftSettingsSheet"><h2>⚙️ Настройки</h2><div class="ftSettingLabel">Язык приложения</div><div class="ftLangGrid"><button class="ftLang" data-ft-lang="ru">Русский</button><button class="ftLang" data-ft-lang="hy">Հայերեն</button><button class="ftLang" data-ft-lang="en">English</button></div>${nativeAndroid?'':'<button id="ftInstallApp" class="ftInstall">📲 Скачать приложение APK</button>'}<button id="ftSettingsClose" class="ftClose">Закрыть</button></div>`;
+  modal.innerHTML = `<div id="ftSettingsSheet"><h2>⚙️ Настройки</h2><div class="ftSettingLabel">Язык приложения</div><div class="ftLangGrid"><button class="ftLang" data-ft-lang="ru">Русский</button><button class="ftLang" data-ft-lang="hy">Հայերեն</button><button class="ftLang" data-ft-lang="en">English</button></div>${nativeAndroid?'':'<a id="ftInstallApp" class="ftInstall" href="/api/app-download" target="_blank" rel="external" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box">📲 Скачать приложение APK</a>'}<button id="ftSettingsClose" class="ftClose">Закрыть</button></div>`;
   document.body.appendChild(modal);
 
   function currentLang(){ return localStorage.getItem('facetalk_lang') || 'ru'; }
@@ -44,26 +44,20 @@
     return headers;
   }
 
-  document.getElementById('ftInstallApp')?.addEventListener('click', async () => {
-    const btn = document.getElementById('ftInstallApp');
-    if(!btn || btn.disabled) return;
-    btn.disabled = true; btn.textContent = 'Проверяю APK…';
-    const controller = new AbortController();
-    const timer = setTimeout(()=>controller.abort(), 7000);
-    try {
-      const r = await fetch('/api/app-release?ts='+Date.now(), {cache:'no-store', signal:controller.signal});
-      const data = await r.json();
-      if(!r.ok || !data?.available || !data?.download_url) throw new Error('apk not published');
-      btn.textContent = 'Скачивание APK…';
-      const url = new URL(data.download_url, location.origin).toString();
-      if(tg?.openLink) tg.openLink(url, {try_instant_view:false});
-      else window.location.assign(url);
-      setTimeout(()=>{btn.disabled=false;btn.textContent='📲 Скачать приложение APK';},1500);
-    } catch(_) {
-      btn.disabled = false; btn.textContent = 'APK ещё не опубликован';
-      setTimeout(()=>btn.textContent='📲 Скачать приложение APK',2500);
-    } finally { clearTimeout(timer); }
-  });
+  const install = document.getElementById('ftInstallApp');
+  if(install){
+    install.href = new URL('/api/app-download?ts='+Date.now(), location.origin).toString();
+    install.addEventListener('click', e => {
+      const url = install.href;
+      // Telegram WebView sometimes stalls on a normal navigation to an APK.
+      // Hand the HTTPS download URL to Telegram's external browser instead.
+      if(tg?.openLink){
+        e.preventDefault();
+        try { tg.openLink(url, {try_instant_view:false}); }
+        catch(_) { window.open(url, '_blank', 'noopener'); }
+      }
+    });
+  }
 
   async function getMe(){
     try { const r=await fetch('/api/me',{headers:authHeaders(),cache:'no-store'}); return r.ok ? await r.json() : null; } catch(_){ return null; }
