@@ -2,6 +2,7 @@
   const tg = window.Telegram?.WebApp;
   const qs = new URLSearchParams(location.search);
   const nativeAndroid = qs.get('source') === 'android' || /FaceTalkAI-Android\//i.test(navigator.userAgent);
+  const APK_URL = new URL('/downloads/FaceTalkAI-latest.apk', location.origin).toString();
 
   const style = document.createElement('style');
   style.textContent = `
@@ -17,7 +18,7 @@
 
   const appAction = nativeAndroid
     ? '<button id="ftCheckUpdate" class="ftInstall">🔄 Проверить обновление</button>'
-    : '<a id="ftInstallApp" class="ftInstall" href="/api/app-download" target="_blank" rel="external">📲 Скачать приложение APK</a>';
+    : '<a id="ftInstallApp" class="ftInstall" href="'+APK_URL+'" target="_blank" rel="external noopener">📲 Скачать приложение APK</a>';
 
   const modal = document.createElement('div');
   modal.id = 'ftSettingsModal';
@@ -50,13 +51,11 @@
 
   const install = document.getElementById('ftInstallApp');
   if(install){
-    install.href = new URL('/api/app-download?ts='+Date.now(), location.origin).toString();
     install.addEventListener('click', e => {
-      const url = install.href;
       if(tg?.openLink){
         e.preventDefault();
-        try { tg.openLink(url, {try_instant_view:false}); }
-        catch(_) { window.open(url, '_blank', 'noopener'); }
+        try { tg.openLink(APK_URL, {try_instant_view:false}); }
+        catch(_) { window.open(APK_URL, '_blank', 'noopener'); }
       }
     });
   }
@@ -70,9 +69,7 @@
   }
 
   function makeSettingsNav(nav){
-    nav.classList.add('show');
-    nav.style.display='block';
-    nav.dataset.go='settings';
+    nav.classList.add('show'); nav.style.display='block'; nav.dataset.go='settings';
     nav.innerHTML='<strong>⚙️</strong><span>Настройки</span>';
     nav.onclick = e => { e.preventDefault(); e.stopPropagation(); openSettings(); };
   }
@@ -82,8 +79,7 @@
     if(!nav) return false;
     const me = await getMe();
     if(me?.is_admin){
-      nav.classList.add('show'); nav.style.display='block';
-      nav.dataset.go='admin';
+      nav.classList.add('show'); nav.style.display='block'; nav.dataset.go='admin';
       nav.innerHTML='<strong>🛡️</strong><span>Админ</span>';
       setTimeout(() => {
         const panel=document.getElementById('adminPanel');
@@ -92,9 +88,7 @@
           panel.insertBefore(b,panel.firstChild);
         }
       },500);
-    } else {
-      makeSettingsNav(nav);
-    }
+    } else makeSettingsNav(nav);
     return true;
   }
 
