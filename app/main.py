@@ -17,7 +17,7 @@ from .webapp_plus import start_webapp
 from .storage import migrate_legacy_db
 
 logging.basicConfig(level=logging.INFO)
-BUILD_VERSION = 'v3.5.3-telegram-apk-link'
+BUILD_VERSION = 'v3.5.4-language-completeness'
 
 bot = None
 dp = Dispatcher()
@@ -77,6 +77,33 @@ TEXTS={
  'en':('✨ FaceTalk AI','Open the Mini App and start chatting with photo, voice and video replies.'),
 }
 
+NO_MINIAPP_TEXT = {
+    'hy': 'FaceTalk Mini App-ը դեռ կարգավորված չէ։ Railway-ում ավելացրեք MINIAPP_URL-ը։',
+    'ru': 'FaceTalk Mini App ещё не настроен. Добавьте MINIAPP_URL в Railway.',
+    'en': 'FaceTalk Mini App is not configured yet. Add MINIAPP_URL in Railway.',
+}
+
+APP_LOGIN_TEXT = {
+    'hy': 'Հաստատեք մուտքը։ Կոճակը սեղմելուց հետո FaceTalk AI-ը կբացվի ձեր Telegram հաշվի ներքո։',
+    'ru': 'Подтвердите вход. После нажатия FaceTalk AI откроется под вашим Telegram-аккаунтом.',
+    'en': 'Confirm sign-in. After you tap the button, FaceTalk AI will open with your Telegram account.',
+}
+
+APP_LOGIN_BUTTON = {
+    'hy': '✅ Կապել FaceTalk-ը Telegram-ին',
+    'ru': '✅ Привязать FaceTalk к Telegram',
+    'en': '✅ Link FaceTalk to Telegram',
+}
+
+
+def _telegram_lang(user) -> str:
+    code = str(getattr(user, 'language_code', '') or '').lower()
+    if code.startswith('hy'):
+        return 'hy'
+    if code.startswith('en'):
+        return 'en'
+    return 'ru'
+
 async def send_language_picker(m: Message):
     logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'media', 'facetalk_logo.png')
     caption='✨ FaceTalk AI\n\n🇦🇲 Ընտրեք լեզուն\n🇷🇺 Выберите язык\n🇬🇧 Choose language'
@@ -87,8 +114,9 @@ async def send_language_picker(m: Message):
 
 @dp.message(CommandStart())
 async def start_handler(m: Message):
+    lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
     if not MINIAPP_URL:
-        await m.answer('FaceTalk Mini App ещё не настроен. Добавь MINIAPP_URL в Railway.')
+        await m.answer(NO_MINIAPP_TEXT.get(lang, NO_MINIAPP_TEXT['ru']))
         return
     payload = ''
     if m.text:
@@ -98,9 +126,9 @@ async def start_handler(m: Message):
         init_data = _telegram_init_data_for_user(m.from_user)
         complete = MINIAPP_URL.rstrip('/') + '/api/app-auth/complete?' + urlencode({'init_data': init_data})
         await m.answer(
-            'Подтвердите вход. После нажатия FaceTalk AI откроется под вашим Telegram-аккаунтом.',
+            APP_LOGIN_TEXT.get(lang, APP_LOGIN_TEXT['ru']),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(text='✅ Привязать FaceTalk к Telegram', url=complete)
+                InlineKeyboardButton(text=APP_LOGIN_BUTTON.get(lang, APP_LOGIN_BUTTON['ru']), url=complete)
             ]]),
         )
         return
