@@ -16,25 +16,44 @@
   `;
   document.head.appendChild(style);
 
+  const I18N={
+    ru:{settings:'Настройки',language:'Язык приложения',check:'🔄 Проверить обновление',download:'📲 Скачать приложение APK',close:'Закрыть',admin:'Админ'},
+    hy:{settings:'Կարգավորումներ',language:'Հավելվածի լեզու',check:'🔄 Ստուգել թարմացումը',download:'📲 Ներբեռնել APK հավելվածը',close:'Փակել',admin:'Ադմին'},
+    en:{settings:'Settings',language:'App language',check:'🔄 Check for update',download:'📲 Download APK app',close:'Close',admin:'Admin'}
+  };
+  function currentLang(){ const v=(localStorage.getItem('facetalk_lang')||'ru').toLowerCase(); return v.startsWith('hy')?'hy':v.startsWith('en')?'en':'ru'; }
+  function copy(){return I18N[currentLang()]||I18N.ru}
+
   const appAction = nativeAndroid
-    ? '<button id="ftCheckUpdate" class="ftInstall">🔄 Проверить обновление</button>'
-    : '<a id="ftInstallApp" class="ftInstall" href="'+APK_URL+'" target="_blank" rel="external noopener">📲 Скачать приложение APK</a>';
+    ? '<button id="ftCheckUpdate" class="ftInstall"></button>'
+    : '<a id="ftInstallApp" class="ftInstall" href="'+APK_URL+'" target="_blank" rel="external noopener"></a>';
 
   const modal = document.createElement('div');
   modal.id = 'ftSettingsModal';
-  modal.innerHTML = `<div id="ftSettingsSheet"><h2>⚙️ Настройки</h2><div class="ftSettingLabel">Язык приложения</div><div class="ftLangGrid"><button class="ftLang" data-ft-lang="ru">Русский</button><button class="ftLang" data-ft-lang="hy">Հայերեն</button><button class="ftLang" data-ft-lang="en">English</button></div>${appAction}<button id="ftSettingsClose" class="ftClose">Закрыть</button></div>`;
+  modal.innerHTML = `<div id="ftSettingsSheet"><h2 id="ftSettingsTitle"></h2><div id="ftSettingsLangLabel" class="ftSettingLabel"></div><div class="ftLangGrid"><button class="ftLang" data-ft-lang="ru">Русский</button><button class="ftLang" data-ft-lang="hy">Հայերեն</button><button class="ftLang" data-ft-lang="en">English</button></div>${appAction}<button id="ftSettingsClose" class="ftClose"></button></div>`;
   document.body.appendChild(modal);
 
-  function currentLang(){ return localStorage.getItem('facetalk_lang') || 'ru'; }
-  function paintLang(){ modal.querySelectorAll('[data-ft-lang]').forEach(b=>b.classList.toggle('active', b.dataset.ftLang===currentLang())); }
+  function localize(){
+    const L=copy();
+    const title=document.getElementById('ftSettingsTitle'); if(title) title.textContent='⚙️ '+L.settings;
+    const label=document.getElementById('ftSettingsLangLabel'); if(label) label.textContent=L.language;
+    const close=document.getElementById('ftSettingsClose'); if(close) close.textContent=L.close;
+    const update=document.getElementById('ftCheckUpdate'); if(update) update.textContent=L.check;
+    const install=document.getElementById('ftInstallApp'); if(install) install.textContent=L.download;
+    document.querySelectorAll('[data-go="settings"] span').forEach(x=>x.textContent=L.settings);
+    document.querySelectorAll('[data-go="admin"] span').forEach(x=>x.textContent=L.admin);
+    const adminSettings=document.getElementById('ftAdminSettings'); if(adminSettings) adminSettings.textContent='⚙️ '+L.settings;
+  }
+  function paintLang(){ modal.querySelectorAll('[data-ft-lang]').forEach(b=>b.classList.toggle('active', b.dataset.ftLang===currentLang())); localize(); }
   function openSettings(){ paintLang(); modal.classList.add('show'); }
   function closeSettings(){ modal.classList.remove('show'); }
 
   modal.querySelectorAll('[data-ft-lang]').forEach(btn => btn.addEventListener('click', () => {
     const lang = btn.dataset.ftLang;
     const original = document.querySelector(`[data-lang="${lang}"]`);
+    localStorage.setItem('facetalk_lang',lang);
     if (original) original.click();
-    else { localStorage.setItem('facetalk_lang', lang); location.reload(); }
+    else location.reload();
     paintLang();
   }));
   document.getElementById('ftSettingsClose').addEventListener('click', closeSettings);
@@ -60,9 +79,7 @@
     });
   }
 
-  document.getElementById('ftCheckUpdate')?.addEventListener('click', () => {
-    location.href = 'facetalk://check-update';
-  });
+  document.getElementById('ftCheckUpdate')?.addEventListener('click', () => { location.href = 'facetalk://check-update'; });
 
   async function getMe(){
     try { const r=await fetch('/api/me',{headers:authHeaders(),cache:'no-store'}); return r.ok ? await r.json() : null; } catch(_){ return null; }
@@ -70,7 +87,7 @@
 
   function makeSettingsNav(nav){
     nav.classList.add('show'); nav.style.display='block'; nav.dataset.go='settings';
-    nav.innerHTML='<strong>⚙️</strong><span>Настройки</span>';
+    nav.innerHTML='<strong>⚙️</strong><span></span>'; localize();
     nav.onclick = e => { e.preventDefault(); e.stopPropagation(); openSettings(); };
   }
 
@@ -80,12 +97,12 @@
     const me = await getMe();
     if(me?.is_admin){
       nav.classList.add('show'); nav.style.display='block'; nav.dataset.go='admin';
-      nav.innerHTML='<strong>🛡️</strong><span>Админ</span>';
+      nav.innerHTML='<strong>🛡️</strong><span></span>'; localize();
       setTimeout(() => {
         const panel=document.getElementById('adminPanel');
         if(panel && !document.getElementById('ftAdminSettings')){
-          const b=document.createElement('button'); b.id='ftAdminSettings'; b.textContent='⚙️ Настройки'; b.onclick=openSettings;
-          panel.insertBefore(b,panel.firstChild);
+          const b=document.createElement('button'); b.id='ftAdminSettings'; b.onclick=openSettings;
+          panel.insertBefore(b,panel.firstChild); localize();
         }
       },500);
     } else makeSettingsNav(nav);
@@ -97,7 +114,7 @@
     const switcher=document.getElementById('langSwitch'); if(switcher) switcher.style.display='none';
   }
 
-  removeLanguageFromMain();
+  removeLanguageFromMain(); localize();
   let tries=0;
-  const timer=setInterval(async()=>{ removeLanguageFromMain(); if(await configureRoleNav() || ++tries>30) clearInterval(timer); },300);
+  const timer=setInterval(async()=>{ removeLanguageFromMain(); localize(); if(await configureRoleNav() || ++tries>30) clearInterval(timer); },300);
 })();
