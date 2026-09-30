@@ -222,8 +222,20 @@ public class MainActivity extends Activity {
                 webView.evaluateJavascript("if(typeof toggleTvRail==='function')toggleTvRail()",null);
                 return true;
             }
+            if(code==KeyEvent.KEYCODE_PROG_RED){
+                webView.evaluateJavascript("if(typeof tvSetModeFilter==='function')tvSetModeFilter('all')",null);
+                return true;
+            }
+            if(code==KeyEvent.KEYCODE_PROG_GREEN){
+                webView.evaluateJavascript("if(typeof tvSetModeFilter==='function')tvSetModeFilter('fav')",null);
+                return true;
+            }
+            if(code==KeyEvent.KEYCODE_PROG_YELLOW){
+                webView.evaluateJavascript("if(typeof tvSetModeFilter==='function')tvSetModeFilter('recent')",null);
+                return true;
+            }
             if(code==KeyEvent.KEYCODE_PROG_BLUE||code==KeyEvent.KEYCODE_STAR){
-                webView.evaluateJavascript("if(typeof tvToggleFavoriteCurrent==='function')tvToggleFavoriteCurrent()",null);
+                webView.evaluateJavascript("(function(){var p=document.getElementById('playerView');if(p&&p.classList.contains('open')){if(typeof tvToggleFavoriteCurrent==='function')tvToggleFavoriteCurrent()}else if(typeof tvSetModeFilter==='function'){tvSetModeFilter('fav')}})()",null);
                 return true;
             }
             if(code==KeyEvent.KEYCODE_INFO){
