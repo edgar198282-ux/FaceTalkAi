@@ -3,12 +3,15 @@ package ai.facetalk.app;
 import android.Manifest;
 import android.app.Activity;
 import android.app.DownloadManager;
+import android.app.UiModeManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
@@ -28,6 +31,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 import android.view.View;
+import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
@@ -43,7 +47,7 @@ public class MainActivity extends Activity {
     private WebView webView; private ValueCallback<Uri[]> fileCallback; private PermissionRequest pendingWebPermission;
     private View customView; private WebChromeClient.CustomViewCallback customViewCallback;
     private FrameLayout fullscreenContainer;
-    private SharedPreferences prefs; private boolean telegramLaunchAttempted=false;
+    private SharedPreferences prefs; private boolean telegramLaunchAttempted=false; private boolean isTv=false;
     private long pendingApkDownloadId=-1L; private Uri pendingApkUri; private BroadcastReceiver downloadReceiver;
     private volatile boolean updateCheckRunning=false, updateDownloadRunning=false; private long lastUpdateCheckAt=0L;
     private final Handler updateHandler=new Handler(Looper.getMainLooper());
@@ -56,14 +60,34 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState); setTheme(R.style.AppTheme);
+        UiModeManager uiModeManager=(UiModeManager)getSystemService(Context.UI_MODE_SERVICE);
+        isTv=uiModeManager!=null&&uiModeManager.getCurrentModeType()==Configuration.UI_MODE_TYPE_TELEVISION;
+        if(isTv){
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_FULLSCREEN|
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            );
+        }
         prefs=getSharedPreferences("facetalk_auth",MODE_PRIVATE); consumeAuthIntent(getIntent());
         fullscreenContainer=new FrameLayout(this);
         fullscreenContainer.setBackgroundColor(Color.BLACK);
         webView=new WebView(this);
         webView.setBackgroundColor(Color.rgb(0,32,96));
+        webView.setFocusable(true);
+        webView.setFocusableInTouchMode(true);
         fullscreenContainer.addView(webView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(fullscreenContainer);
         WebSettings s=webView.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setMediaPlaybackRequiresUserGesture(false); s.setCacheMode(WebSettings.LOAD_NO_CACHE); s.setAllowFileAccess(true); s.setAllowContentAccess(true); s.setUserAgentString(s.getUserAgentString()+" AbajTV-Android/"+BuildConfig.VERSION_NAME); webView.clearCache(true);
+        if(isTv){
+            s.setTextZoom(115);
+            s.setBuiltInZoomControls(false);
+            s.setDisplayZoomControls(false);
+        }
         CookieManager.getInstance().setAcceptCookie(true); CookieManager.getInstance().setAcceptThirdPartyCookies(webView,true);
         webView.setWebChromeClient(new WebChromeClient(){
             @Override public void onPermissionRequest(PermissionRequest request){runOnUiThread(()->handleWebPermission(request));}
@@ -97,9 +121,36 @@ public class MainActivity extends Activity {
     }
 
     private String baseUrl(){String b=BuildConfig.WEB_APP_URL==null?"":BuildConfig.WEB_APP_URL.trim(); if(!b.startsWith("http://")&&!b.startsWith("https://")&&!b.isEmpty())b="https://"+b; while(b.endsWith("/"))b=b.substring(0,b.length()-1); return b;}
-    private void loadOrAuthorize(){String init=prefs.getString("telegram_init_data",""); if(init==null||init.trim().isEmpty()){showTelegramLinkScreen(); if(!telegramLaunchAttempted){telegramLaunchAttempted=true;openExternal(Uri.parse(baseUrl()+"/api/app-auth/telegram-start"));} return;} loadAbajTv(init);}
+    private void loadOrAuthorize(){
+        String init=prefs.getString("telegram_init_data","");
+        if(init==null||init.trim().isEmpty()){
+            if(isTv){
+                loadAbajTv("");
+                return;
+            }
+            showTelegramLinkScreen();
+            if(!telegramLaunchAttempted){
+                telegramLaunchAttempted=true;
+                openExternal(Uri.parse(baseUrl()+"/api/app-auth/telegram-start"));
+            }
+            return;
+        }
+        loadAbajTv(init);
+    }
     private void showTelegramLinkScreen(){String h="<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><style>body{margin:0;background:linear-gradient(180deg,#061f59,#009cff);color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:24px;box-sizing:border-box}.b{max-width:380px;background:rgba(3,20,64,.78);border:1px solid rgba(255,255,255,.18);border-radius:24px;padding:28px;box-shadow:0 15px 45px rgba(0,0,0,.35)}p{color:#d6edff;line-height:1.5}button{width:100%;margin-top:14px;border:0;border-radius:15px;padding:15px;background:#00a6ff;color:white;font-weight:800;font-size:16px}.s{background:#123b78}</style></head><body><div class='b'><h2>Abaj TV</h2><p>Привяжите приложение к Telegram. После этого откроется ваш профиль Abaj TV.</p><button onclick=\"location.href='"+baseUrl()+"/api/app-auth/telegram-start'\">Привязать через Telegram</button><button class='s' onclick=\"location.href='facetalk://check-update'\">Проверить обновление</button></div></body></html>"; webView.loadDataWithBaseURL("https://abajtv.local/",h,"text/html","UTF-8",null);}
-    private void loadAbajTv(String init){String b=baseUrl(); if(b.isEmpty()){showTelegramLinkScreen();return;} int p=b.indexOf('#'); if(p>=0)b=b.substring(0,p); String sep=b.contains("?")?"&":"?"; webView.loadUrl(b+sep+"app=1&source=android&app_version="+Uri.encode(BuildConfig.VERSION_NAME)+"&app_version_code="+BuildConfig.VERSION_CODE+"&ota="+System.currentTimeMillis()+"#tgWebAppData="+Uri.encode(init)+"&tgWebAppVersion=8.0&tgWebAppPlatform=android");}
+    private void loadAbajTv(String init){
+        String b=baseUrl();
+        if(b.isEmpty()){showTelegramLinkScreen();return;}
+        int p=b.indexOf('#'); if(p>=0)b=b.substring(0,p);
+        String sep=b.contains("?")?"&":"?";
+        String source=isTv?"android_tv":"android";
+        String tv=isTv?"&tv=1":"";
+        String fragment=(init!=null&&!init.trim().isEmpty())
+            ?"#tgWebAppData="+Uri.encode(init)+"&tgWebAppVersion=8.0&tgWebAppPlatform="+(isTv?"android_tv":"android")
+            :"";
+        webView.loadUrl(b+sep+"app=1&source="+source+tv+"&app_version="+Uri.encode(BuildConfig.VERSION_NAME)+"&app_version_code="+BuildConfig.VERSION_CODE+"&ota="+System.currentTimeMillis()+fragment);
+        webView.requestFocus();
+    }
     private void consumeAuthIntent(Intent i){if(i!=null)consumeAuthUri(i.getData());}
     private void consumeAuthUri(Uri u){if(u==null||!"facetalk".equalsIgnoreCase(u.getScheme())||!"auth".equalsIgnoreCase(u.getHost()))return; String init=u.getQueryParameter("init_data"); if(init==null||init.trim().isEmpty())return; prefs.edit().putString("telegram_init_data",init).apply();telegramLaunchAttempted=true;Toast.makeText(this,"Telegram подключён",Toast.LENGTH_SHORT).show();}
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);consumeAuthIntent(intent);loadOrAuthorize();}
@@ -122,6 +173,25 @@ public class MainActivity extends Activity {
         customViewCallback=null;
         webView.setVisibility(View.VISIBLE);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+    }
+
+    @Override public boolean dispatchKeyEvent(KeyEvent event){
+        if(isTv&&event.getAction()==KeyEvent.ACTION_DOWN&&webView!=null){
+            int code=event.getKeyCode();
+            if(code==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||code==KeyEvent.KEYCODE_SPACE){
+                webView.evaluateJavascript("(function(){var v=document.getElementById('video');if(v){if(v.paused){v.play()}else{v.pause()}}})()",null);
+                return true;
+            }
+            if(code==KeyEvent.KEYCODE_MEDIA_NEXT){
+                webView.evaluateJavascript("if(typeof playNext==='function')playNext()",null);
+                return true;
+            }
+            if(code==KeyEvent.KEYCODE_MEDIA_PREVIOUS){
+                webView.evaluateJavascript("if(typeof playPrev==='function')playPrev()",null);
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     private void openExternal(Uri uri){if(uri==null)return;try{String s=uri.getScheme()==null?"":uri.getScheme().toLowerCase(),h=uri.getHost()==null?"":uri.getHost().toLowerCase();if("tg".equals(s)||"t.me".equals(h)||"telegram.me".equals(h)){Intent t=new Intent(Intent.ACTION_VIEW,uri);t.setPackage("org.telegram.messenger");try{startActivity(t);return;}catch(Exception ignored){}}startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}}
