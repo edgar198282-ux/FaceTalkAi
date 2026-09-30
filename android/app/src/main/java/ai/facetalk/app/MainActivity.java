@@ -62,7 +62,11 @@ public class MainActivity extends Activity {
     @Override protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState); setTheme(R.style.AppTheme);
         UiModeManager uiModeManager=(UiModeManager)getSystemService(Context.UI_MODE_SERVICE);
-        isTv=uiModeManager!=null&&uiModeManager.getCurrentModeType()==Configuration.UI_MODE_TYPE_TELEVISION;
+        PackageManager pm=getPackageManager();
+        boolean tvUi=uiModeManager!=null&&uiModeManager.getCurrentModeType()==Configuration.UI_MODE_TYPE_TELEVISION;
+        boolean leanback=pm.hasSystemFeature("android.software.leanback");
+        boolean television=pm.hasSystemFeature("android.hardware.type.television");
+        isTv=tvUi||leanback||television;
         if(isTv){
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -241,6 +245,10 @@ public class MainActivity extends Activity {
             }
             if(code==KeyEvent.KEYCODE_GUIDE){
                 webView.evaluateJavascript("if(typeof toggleTvGuide==='function')toggleTvGuide()",null);
+                return true;
+            }
+            if(code==KeyEvent.KEYCODE_SEARCH){
+                webView.evaluateJavascript("if(typeof openTvSearch==='function')openTvSearch()",null);
                 return true;
             }
             if(code==KeyEvent.KEYCODE_INFO){
