@@ -37,6 +37,39 @@ def _attrs(line: str) -> dict[str, str]:
     return {k.lower(): v for k, v in re.findall(r'([\w-]+)="([^"]*)"', line)}
 
 
+def _normalize_name(name: str) -> str:
+    s = re.sub(r"\s+", " ", str(name or "").strip().lower())
+    s = re.sub(r"\b(hd|full hd|fhd|uhd|4k|1080p|720p|480p|live|tv)\b", " ", s)
+    s = re.sub(r"[^\w\u0400-\u04FF\u0530-\u058F]+", " ", s, flags=re.UNICODE)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _channel_key(item: dict) -> str:
+    tvg_id = str(item.get("tvg_id") or "").strip().lower()
+    if tvg_id:
+        return "id:" + tvg_id
+    return (str(item.get("country") or "") + ":" + _normalize_name(item.get("name") or "")).strip(":")
+
+
+def _looks_junk(item: dict) -> bool:
+    name = str(item.get("name") or "").strip().lower()
+    url = str(item.get("url") or "").strip().lower()
+    group = str(item.get("group") or "").strip().lower()
+    if not name or len(name) < 2:
+        return True
+    bad_name = (
+        "test", "demo", "sample", "backup", "reserve", "technical",
+        "служеб", "тест", "резерв", "radio", "радио"
+    )
+    if any(x in name for x in bad_name):
+        return True
+    if group in {"radio", "radios", "радио"}:
+        return True
+    if not url.startswith(("http://", "https://")):
+        return True
+    return False
+
+
 def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
     out = []
     pending = None
@@ -58,9 +91,13 @@ def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
         elif not line.startswith("#") and pending and line.startswith(("http://", "https://")):
             row = dict(pending)
             row["url"] = line
-            key_src = (row.get("tvg_id") or (country + ":" + row["name"])).lower()
+            key_src = _channel_key(row)
+            if not key_src:
+                pending = None
+                continue
             row["id"] = hashlib.sha1(key_src.encode("utf-8")).hexdigest()[:16]
-            out.append(row)
+            if not _looks_junk(row):
+                out.append(row)
             pending = None
     return out
 
@@ -120,12 +157,13 @@ async def refresh_channels(force: bool = False):
                 for (country, url), text in zip(SOURCE_URLS, fetched):
                     if "#EXTM3U" in text[:4096]:
                         candidates.extend(_parse_m3u(text, country, url))
-                seen = set()
+                seen_urls = set()
                 unique = []
                 for item in candidates:
-                    if item["url"] in seen:
+                    url = item.get("url")
+                    if not url or url in seen_urls:
                         continue
-                    seen.add(item["url"])
+                    seen_urls.add(url)
                     unique.append(item)
                     if len(unique) >= MAX_STREAMS:
                         break
@@ -137,12 +175,31 @@ async def refresh_channels(force: bool = False):
 
             channels = {}
             for cid, rows in grouped.items():
-                rows.sort(key=lambda x: (x.get("status") != "ONLINE", int(x.get("latency_ms") or 999999)))
+                rows.sort(key=lambda x: (
+                    x.get("status") != "ONLINE",
+                    0 if str(x.get("logo") or "").startswith("http") else 1,
+                    int(x.get("latency_ms") or 999999),
+                ))
                 primary = dict(rows[0])
-                online_rows = [x for x in rows if x.get("status") == "ONLINE"]
-                primary["backups"] = [x["url"] for x in online_rows[1:] if x.get("url") and x.get("url") != primary.get("url")]
+
+                online_rows = []
+                seen_streams = set()
+                for x in rows:
+                    if x.get("status") != "ONLINE":
+                        continue
+                    url = x.get("url")
+                    if not url or url in seen_streams:
+                        continue
+                    seen_streams.add(url)
+                    online_rows.append(x)
+
+                primary["backups"] = [x["url"] for x in online_rows[1:] if x.get("url") != primary.get("url")]
                 primary["backup_count"] = len(primary["backups"])
                 primary["candidate_count"] = len(rows)
+                primary["duplicate_count"] = max(0, len(rows) - 1)
+                primary["sources"] = sorted({str(x.get("source") or "") for x in rows if x.get("source")})
+                primary["normalized_name"] = _normalize_name(primary.get("name") or "")
+                primary["last_checked"] = int(time.time())
                 channels[cid] = primary
 
             online = sum(1 for x in channels.values() if x.get("status") == "ONLINE")
@@ -152,6 +209,10 @@ async def refresh_channels(force: bool = False):
                 "total": len(channels),
                 "online": online,
                 "offline": len(channels) - online,
+                "source_count": len(SOURCE_URLS),
+                "candidate_streams": len(checked),
+                "duplicates_removed": max(0, len(checked) - len(channels)),
+                "with_backups": sum(1 for x in channels.values() if int(x.get("backup_count") or 0) > 0),
             }
         except Exception as exc:
             _state["error"] = repr(exc)[:300]
@@ -195,6 +256,34 @@ def _rewrite_hls(text: str, base: str) -> str:
         else:
             out.append(_proxy_url(urljoin(base, line)))
     return "\n".join(out) + "\n"
+
+
+async def api_diagnostics(request):
+    state = public_state()
+    rows = state.get("channels") or []
+    problem = [
+        {
+            "id": x.get("id"),
+            "name": x.get("name"),
+            "country": x.get("country"),
+            "status": x.get("status"),
+            "latency_ms": x.get("latency_ms"),
+            "backup_count": x.get("backup_count", 0),
+            "candidate_count": x.get("candidate_count", 1),
+            "duplicate_count": x.get("duplicate_count", 0),
+            "source_count": len(x.get("sources") or []),
+            "error": x.get("error", ""),
+        }
+        for x in rows
+        if x.get("status") != "ONLINE" or int(x.get("backup_count") or 0) == 0
+    ][:300]
+    return web.json_response({
+        "ok": True,
+        "stats": state.get("stats") or {},
+        "last_refresh": state.get("last_refresh"),
+        "running": state.get("running"),
+        "problem_channels": problem,
+    }, headers={"Cache-Control": "no-store"})
 
 
 async def api_channels(request):
@@ -313,6 +402,7 @@ async def stop_background(app):
 
 def install(app: web.Application):
     app.router.add_get("/api/iptv/channels", api_channels)
+    app.router.add_get("/api/iptv/diagnostics", api_diagnostics)
     app.router.add_post("/api/iptv/refresh", api_refresh)
     app.router.add_get("/api/iptv/play", api_play)
     app.router.add_get("/api/iptv/proxy", api_proxy)
