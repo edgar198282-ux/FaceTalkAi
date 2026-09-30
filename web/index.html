@@ -161,9 +161,11 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 .payBar{display:none;margin:10px 0 0;background:rgba(255,255,255,.94);border:1px solid #cbe7f8;border-radius:14px;padding:10px 12px;color:#174b6d;font-size:13px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.payBar.show{display:flex}.payBar b{font-size:14px}.payBar button{border:0;border-radius:10px;background:#1489e7;color:white;padding:9px 13px;font-weight:800}.payBar.pending{border-color:#f1d995;background:#fffaf0}.payBar.pending button{background:#c28a13}
 .nativeTv{overflow:hidden}.nativeTv .top{padding-top:22px}.nativeTv .title{font-size:34px}.nativeTv .sub{font-size:16px}.nativeTv .iconBtn{min-width:48px;min-height:48px}.nativeTv .toolbar{gap:14px}.nativeTv .search,.nativeTv .select{height:56px;font-size:20px}.nativeTv .chip,.nativeTv .cat{font-size:18px;padding:11px 18px}.nativeTv .status{font-size:15px}.nativeTv .channel{cursor:pointer}.nativeTv .playerTop{height:66px}.nativeTv .playerTitle{font-size:22px}.nativeTv .ctrl{font-size:17px;padding:13px 18px}.nativeTv .playerBottom{padding:14px 20px 20px}
 .tvPair{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:linear-gradient(180deg,#0b2b7a,#168de8);padding:28px}.tvPair.open{display:flex}.tvPairCard{width:min(900px,92vw);background:white;border-radius:28px;padding:30px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.35)}.tvPairTitle{font-size:34px;font-weight:900;color:#0d4d86}.tvPairText{font-size:20px;color:#517087;margin-top:10px}.tvPairCode{font-size:64px;font-weight:900;letter-spacing:10px;color:#0b2b7a;margin:20px 0}.tvPairQr{width:220px;height:220px;border-radius:16px;background:#fff}.tvPairHint{font-size:18px;color:#4f6e82;margin-top:14px}.tvPairOk{font-size:22px;color:#16865b;font-weight:800}.tvPairRetry{border:0;border-radius:14px;background:#168de8;color:white;padding:13px 20px;font-size:18px;font-weight:800;margin-top:16px}
+.channelNumber{position:absolute;left:7px;top:7px;z-index:3;min-width:28px;height:24px;padding:0 6px;border-radius:7px;background:rgba(4,42,83,.82);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}.tvMode .channelNumber{font-size:14px;height:28px;min-width:32px}.nativeTv .channel.focused{box-shadow:0 0 0 6px #ffd400,0 12px 28px rgba(0,0,0,.28);transform:scale(1.045)}.nativeTv .channel:focus{outline:none}.tvNumberOverlay{position:fixed;right:44px;top:34px;z-index:450;display:none;background:rgba(0,0,0,.78);color:#fff;border-radius:14px;padding:10px 18px;font-size:34px;font-weight:900;letter-spacing:4px}.tvNumberOverlay.show{display:block}
 </style>
 </head>
 <body>
+<div class="tvNumberOverlay" id="tvNumberOverlay"></div>
 <div class="tvPair" id="tvPair">
   <div class="tvPairCard">
     <div class="tvPairTitle">Подключить Abaj TV к Telegram</div>
@@ -301,6 +303,8 @@ const tvDeviceSecret=localStorage.getItem('abaj_tv_device_secret')||(
 );
 localStorage.setItem('abaj_tv_device_secret',tvDeviceSecret);
 let tvPairPoll=null;
+let tvNumberBuffer='';
+let tvNumberTimer=null;
 
 function authHeaders(){
   const h={'X-Abaj-Device-Id':deviceId};
@@ -776,7 +780,9 @@ function render(){
       const logo=ch.logo
         ?'<img class="logo" src="'+esc(ch.logo)+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"><div class="logoFallback" style="display:none">TV</div>'
         :'<div class="logoFallback">TV</div>';
-      out+='<div class="channel" tabindex="'+(tvMode?'0':'-1')+'" data-id="'+esc(ch.id)+'" onclick="openPlayer(\''+ch.id+'\')">'+
+      const channelNo=Math.max(1,filteredNow.findIndex(x=>x.id===ch.id)+1);
+      out+='<div class="channel" tabindex="'+(tvMode?'0':'-1')+'" data-id="'+esc(ch.id)+'" data-channel-no="'+channelNo+'" onclick="openPlayer(\''+ch.id+'\')">'+
+        '<div class="channelNumber">'+channelNo+'</div>'+
         '<div class="logoWrap">'+logo+'</div>'+
         '<div class="info">'+
           '<div class="name">'+esc(ch.name)+'</div>'+
@@ -805,6 +811,14 @@ function bindTvFocus(){
   cards.forEach((x,i)=>x.classList.toggle('focused',i===focusIndex));
   cards[focusIndex].focus({preventScroll:true});
 }
+function tvGridColumns(){
+  const list=document.getElementById('list');
+  if(!list)return 4;
+  try{
+    const cols=getComputedStyle(list).gridTemplateColumns.split(' ').filter(Boolean).length;
+    return Math.max(1,cols||4);
+  }catch(e){return 4}
+}
 function moveFocus(delta){
   const cards=[...document.querySelectorAll('.channel')];
   if(!cards.length)return;
@@ -812,6 +826,13 @@ function moveFocus(delta){
   cards.forEach((x,i)=>x.classList.toggle('focused',i===focusIndex));
   cards[focusIndex].focus({preventScroll:true});
   cards[focusIndex].scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function moveFocusDirection(direction){
+  const cols=tvGridColumns();
+  if(direction==='left')moveFocus(-1);
+  else if(direction==='right')moveFocus(1);
+  else if(direction==='up')moveFocus(-cols);
+  else if(direction==='down')moveFocus(cols);
 }
 function openFocused(){
   const cards=[...document.querySelectorAll('.channel')];
@@ -1007,6 +1028,25 @@ async function toggleFullscreen(){
   }catch(e){}
 }
 
+function tvNumberInput(digit){
+  if(!nativeTv)return;
+  tvNumberBuffer=(tvNumberBuffer+digit).slice(-4);
+  const overlay=document.getElementById('tvNumberOverlay');
+  overlay.textContent=tvNumberBuffer;
+  overlay.classList.add('show');
+  if(tvNumberTimer)clearTimeout(tvNumberTimer);
+  tvNumberTimer=setTimeout(()=>{
+    const n=parseInt(tvNumberBuffer,10);
+    tvNumberBuffer='';
+    overlay.classList.remove('show');
+    const rows=filteredNow.length?filteredNow:channels;
+    if(Number.isFinite(n)&&n>=1&&n<=rows.length){
+      const ch=rows[n-1];
+      if(ch)openPlayer(ch.id);
+    }
+  },1300);
+}
+
 document.addEventListener('keydown',e=>{
   const playerOpen=document.getElementById('playerView').classList.contains('open');
   if(playerOpen){
@@ -1021,10 +1061,11 @@ document.addEventListener('keydown',e=>{
     }
   }
   if(!tvMode)return;
-  if(e.key==='ArrowRight'){e.preventDefault();moveFocus(1)}
-  else if(e.key==='ArrowLeft'){e.preventDefault();moveFocus(-1)}
-  else if(e.key==='ArrowDown'){e.preventDefault();moveFocus(4)}
-  else if(e.key==='ArrowUp'){e.preventDefault();moveFocus(-4)}
+  if(nativeTv&&/^[0-9]$/.test(e.key)){e.preventDefault();tvNumberInput(e.key);return}
+  if(e.key==='ArrowRight'){e.preventDefault();moveFocusDirection('right')}
+  else if(e.key==='ArrowLeft'){e.preventDefault();moveFocusDirection('left')}
+  else if(e.key==='ArrowDown'){e.preventDefault();moveFocusDirection('down')}
+  else if(e.key==='ArrowUp'){e.preventDefault();moveFocusDirection('up')}
   else if(e.key==='Enter'){e.preventDefault();openFocused()}
 });
 
