@@ -163,10 +163,16 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 .tvPair{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:linear-gradient(180deg,#0b2b7a,#168de8);padding:28px}.tvPair.open{display:flex}.tvPairCard{width:min(900px,92vw);background:white;border-radius:28px;padding:30px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.35)}.tvPairTitle{font-size:34px;font-weight:900;color:#0d4d86}.tvPairText{font-size:20px;color:#517087;margin-top:10px}.tvPairCode{font-size:64px;font-weight:900;letter-spacing:10px;color:#0b2b7a;margin:20px 0}.tvPairQr{width:220px;height:220px;border-radius:16px;background:#fff}.tvPairHint{font-size:18px;color:#4f6e82;margin-top:14px}.tvPairOk{font-size:22px;color:#16865b;font-weight:800}.tvPairRetry{border:0;border-radius:14px;background:#168de8;color:white;padding:13px 20px;font-size:18px;font-weight:800;margin-top:16px}
 .channelNumber{position:absolute;left:7px;top:7px;z-index:3;min-width:28px;height:24px;padding:0 6px;border-radius:7px;background:rgba(4,42,83,.82);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}.tvMode .channelNumber{font-size:14px;height:28px;min-width:32px}.nativeTv .channel.focused{box-shadow:0 0 0 6px #ffd400,0 12px 28px rgba(0,0,0,.28);transform:scale(1.045)}.nativeTv .channel:focus{outline:none}.tvNumberOverlay{position:fixed;right:44px;top:34px;z-index:450;display:none;background:rgba(0,0,0,.78);color:#fff;border-radius:14px;padding:10px 18px;font-size:34px;font-weight:900;letter-spacing:4px}.tvNumberOverlay.show{display:block}
 .nativeTv .videoWrap{padding-right:0!important}.nativeTv .channelRail{display:none!important;right:18px;top:76px;bottom:96px;width:320px;background:rgba(4,14,24,.94);box-shadow:0 10px 34px rgba(0,0,0,.4)}.nativeTv .channelRail.openRail{display:block!important}.nativeTv .railItem{font-size:18px;padding:13px 14px;margin:3px 0}.nativeTv .railItem.focused{background:#168de8;color:#fff;box-shadow:0 0 0 3px #ffd400 inset}.nativeTv .playerBottom{transition:opacity .2s}.nativeTv.playerClean .playerBottom{opacity:0;pointer-events:none}
+.tvZap{position:fixed;left:34px;bottom:34px;z-index:430;display:none;min-width:420px;max-width:68vw;background:rgba(3,14,28,.9);color:white;border-radius:18px;padding:16px 20px;box-shadow:0 12px 38px rgba(0,0,0,.4)}.tvZap.show{display:block}.tvZapTop{display:flex;align-items:center;gap:14px}.tvZapNo{font-size:34px;font-weight:900;color:#ffd400}.tvZapName{font-size:25px;font-weight:900}.tvZapNow{font-size:17px;margin-top:8px;color:#fff}.tvZapNext{font-size:14px;margin-top:5px;color:#a9c8da}.tvZapFav{font-size:24px;margin-left:auto}.playerClean .tvZap{display:none!important}
 </style>
 </head>
 <body>
 <div class="tvNumberOverlay" id="tvNumberOverlay"></div>
+<div class="tvZap" id="tvZap">
+  <div class="tvZapTop"><div class="tvZapNo" id="tvZapNo"></div><div class="tvZapName" id="tvZapName"></div><div class="tvZapFav" id="tvZapFav"></div></div>
+  <div class="tvZapNow" id="tvZapNow"></div>
+  <div class="tvZapNext" id="tvZapNext"></div>
+</div>
 <div class="tvPair" id="tvPair">
   <div class="tvPairCard">
     <div class="tvPairTitle">Подключить Abaj TV к Telegram</div>
@@ -308,6 +314,7 @@ let tvNumberBuffer='';
 let tvNumberTimer=null;
 let tvRailIndex=0;
 let tvAutoResumeDone=false;
+let tvZapTimer=null;
 
 function authHeaders(){
   const h={'X-Abaj-Device-Id':deviceId};
@@ -675,6 +682,7 @@ function togglePlayerFavorite(){
   if(favs.has(current.id))favs.delete(current.id);else favs.add(current.id);
   saveFavs();
   renderRail();
+  if(current)showTvZap(current);
 }
 function addRecent(id){
   recent=[id,...recent.filter(x=>x!==id)].slice(0,30);
@@ -848,6 +856,34 @@ function openFocused(){
   if(cards[focusIndex])openPlayer(cards[focusIndex].dataset.id);
 }
 
+function showTvZap(ch){
+  if(!nativeTv||!ch)return;
+  const rows=filteredNow.length?filteredNow:channels;
+  const no=Math.max(1,rows.findIndex(x=>x.id===ch.id)+1);
+  document.getElementById('tvZapNo').textContent=String(no);
+  document.getElementById('tvZapName').textContent=ch.name||'Канал';
+  document.getElementById('tvZapNow').textContent=(ch.epg_now&&ch.epg_now.title)||ch.group||'LIVE';
+  document.getElementById('tvZapNext').textContent=ch.epg_next?('Далее: '+ch.epg_next.title):'';
+  document.getElementById('tvZapFav').textContent=favs.has(ch.id)?'★':'☆';
+  const z=document.getElementById('tvZap');
+  z.classList.add('show');
+  if(tvZapTimer)clearTimeout(tvZapTimer);
+  tvZapTimer=setTimeout(()=>z.classList.remove('show'),4200);
+}
+function handleTvBack(){
+  if(!nativeTv)return false;
+  const pair=document.getElementById('tvPair');
+  if(pair&&pair.classList.contains('open')){
+    pair.classList.remove('open');
+    if(tvPairPoll){clearInterval(tvPairPoll);tvPairPoll=null}
+    return true;
+  }
+  if(tvRailOpen()){toggleTvRail(false);return true}
+  const player=document.getElementById('playerView');
+  if(player&&player.classList.contains('open')){closePlayer();return true}
+  return false;
+}
+
 function openPlayer(id){
   const ch=channels.find(x=>x.id===id);
   if(!ch)return;
@@ -866,6 +902,7 @@ function openPlayer(id){
     (ch.country==='AM'?'Армения':'Россия')+' · '+((ch.epg_now&&ch.epg_now.title)||ch.group||'Live');
   document.getElementById('playerError').textContent='';
   document.getElementById('playerView').classList.add('open');
+  showTvZap(ch);
   startStream(ch);
   renderRail();
 }
