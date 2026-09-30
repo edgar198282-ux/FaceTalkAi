@@ -155,7 +155,8 @@ public class MainActivity extends Activity {
         String fragment=(init!=null&&!init.trim().isEmpty())
             ?"#tgWebAppData="+Uri.encode(init)+"&tgWebAppVersion=8.0&tgWebAppPlatform="+(isTv?"android_tv":"android")
             :"";
-        webView.loadUrl(b+sep+"app=1&source="+source+tv+"&app_version="+Uri.encode(BuildConfig.VERSION_NAME)+"&app_version_code="+BuildConfig.VERSION_CODE+"&ota="+System.currentTimeMillis()+fragment);
+        String deviceName=isTv?(android.os.Build.MANUFACTURER+" "+android.os.Build.MODEL).trim():"Android";
+        webView.loadUrl(b+sep+"app=1&source="+source+tv+"&device_name="+Uri.encode(deviceName)+"&app_version="+Uri.encode(BuildConfig.VERSION_NAME)+"&app_version_code="+BuildConfig.VERSION_CODE+"&ota="+System.currentTimeMillis()+fragment);
         webView.requestFocus();
     }
     private void consumeAuthIntent(Intent i){if(i!=null)consumeAuthUri(i.getData());}
