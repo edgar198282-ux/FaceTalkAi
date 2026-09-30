@@ -4,6 +4,8 @@ import hmac
 import os
 import re
 import time
+import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from urllib.parse import quote, urljoin, urlparse
 
 import aiohttp
@@ -22,12 +24,22 @@ MAX_STREAMS = 800
 REFRESH_SECONDS = 900
 PROBE_CONCURRENCY = 40
 
+EPG_URLS = [
+    ("AM", "https://iptv-org.github.io/epg/guides/am/tv.mail.ru.epg.xml"),
+    ("RU", "https://iptv-org.github.io/epg/guides/ru/tv.yandex.ru.epg.xml"),
+]
+EPG_REFRESH_SECONDS = 3 * 60 * 60
+
 _state = {
     "channels": {},
     "last_refresh": 0,
     "running": False,
     "stats": {"total": 0, "online": 0, "offline": 0},
     "error": "",
+    "epg": {},
+    "epg_names": {},
+    "epg_last_refresh": 0,
+    "epg_error": "",
 }
 _lock = asyncio.Lock()
 _proxy_secret = (os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("FACETALK_BOT_TOKEN") or "iptv-player").encode()
@@ -100,6 +112,114 @@ def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
                 out.append(row)
             pending = None
     return out
+
+
+def _parse_xmltv_time(value: str) -> int:
+    raw = str(value or "").strip()
+    if not raw:
+        return 0
+    m = re.match(r"^(\d{14})(?:\s+([+-]\d{4}))?", raw)
+    if not m:
+        return 0
+    base = m.group(1)
+    offset = m.group(2) or "+0000"
+    try:
+        dt = datetime.strptime(base + " " + offset, "%Y%m%d%H%M%S %z")
+        return int(dt.timestamp())
+    except Exception:
+        return 0
+
+
+def _parse_epg_xml(text: str) -> tuple[dict, dict]:
+    programmes = {}
+    names = {}
+    if not text or "<tv" not in text[:5000]:
+        return programmes, names
+    try:
+        root = ET.fromstring(text)
+    except Exception:
+        return programmes, names
+
+    for ch in root.findall("channel"):
+        cid = str(ch.attrib.get("id") or "").strip()
+        if not cid:
+            continue
+        display = ""
+        node = ch.find("display-name")
+        if node is not None and node.text:
+            display = node.text.strip()
+        if display:
+            names[_normalize_name(display)] = cid
+
+    now = int(time.time())
+    min_ts = now - 4 * 60 * 60
+    max_ts = now + 36 * 60 * 60
+    for p in root.findall("programme"):
+        cid = str(p.attrib.get("channel") or "").strip()
+        start = _parse_xmltv_time(p.attrib.get("start") or "")
+        stop = _parse_xmltv_time(p.attrib.get("stop") or "")
+        if not cid or not start or not stop or stop < min_ts or start > max_ts:
+            continue
+        title_node = p.find("title")
+        desc_node = p.find("desc")
+        title = (title_node.text or "").strip() if title_node is not None and title_node.text else ""
+        desc = (desc_node.text or "").strip() if desc_node is not None and desc_node.text else ""
+        programmes.setdefault(cid, []).append({
+            "title": title or "Программа",
+            "desc": desc[:300],
+            "start": start,
+            "stop": stop,
+        })
+
+    for rows in programmes.values():
+        rows.sort(key=lambda x: x["start"])
+    return programmes, names
+
+
+async def refresh_epg(force: bool = False):
+    now = int(time.time())
+    if not force and _state["epg"] and now - int(_state["epg_last_refresh"] or 0) < EPG_REFRESH_SECONDS:
+        return
+    try:
+        connector = aiohttp.TCPConnector(limit=8, ssl=False)
+        async with aiohttp.ClientSession(connector=connector, headers={"User-Agent": "AbajTV/1.0"}) as session:
+            texts = await asyncio.gather(*[_fetch_text(session, url) for _, url in EPG_URLS])
+        all_programmes = {}
+        all_names = {}
+        for (_country, _url), text in zip(EPG_URLS, texts):
+            programmes, names = _parse_epg_xml(text)
+            for cid, rows in programmes.items():
+                all_programmes.setdefault(cid, []).extend(rows)
+            all_names.update(names)
+        for rows in all_programmes.values():
+            rows.sort(key=lambda x: x["start"])
+        _state["epg"] = all_programmes
+        _state["epg_names"] = all_names
+        _state["epg_last_refresh"] = int(time.time())
+        _state["epg_error"] = ""
+    except Exception as exc:
+        _state["epg_error"] = repr(exc)[:300]
+
+
+def _epg_for_channel(item: dict) -> tuple[dict | None, dict | None]:
+    cid = str(item.get("tvg_id") or "").strip()
+    rows = _state["epg"].get(cid) if cid else None
+    if not rows:
+        mapped = _state["epg_names"].get(_normalize_name(item.get("name") or ""))
+        rows = _state["epg"].get(mapped) if mapped else None
+    if not rows:
+        return None, None
+    now = int(time.time())
+    current = None
+    nxt = None
+    for p in rows:
+        if p["start"] <= now < p["stop"]:
+            current = p
+            continue
+        if p["start"] > now:
+            nxt = p
+            break
+    return current, nxt
 
 
 async def _fetch_text(session: aiohttp.ClientSession, url: str) -> str:
@@ -221,14 +341,24 @@ async def refresh_channels(force: bool = False):
 
 
 def public_state():
-    rows = list(_state["channels"].values())
+    rows = []
+    for source in _state["channels"].values():
+        row = dict(source)
+        current, nxt = _epg_for_channel(row)
+        row["epg_now"] = current
+        row["epg_next"] = nxt
+        rows.append(row)
     rows.sort(key=lambda x: (x["status"] != "ONLINE", x.get("country", ""), x.get("group", ""), x.get("name", "")))
+    stats = dict(_state["stats"])
+    stats["epg_channels"] = len(_state["epg"])
     return {
         "ok": not bool(_state["error"]),
         "running": _state["running"],
         "last_refresh": _state["last_refresh"],
-        "stats": _state["stats"],
+        "epg_last_refresh": _state["epg_last_refresh"],
+        "stats": stats,
         "error": _state["error"],
+        "epg_error": _state["epg_error"],
         "channels": rows,
     }
 
@@ -296,6 +426,7 @@ async def api_refresh(request):
     if _state["running"]:
         return web.json_response({"ok": True, "running": True})
     asyncio.create_task(refresh_channels(force=True))
+    asyncio.create_task(refresh_epg(force=True))
     return web.json_response({"ok": True, "running": True})
 
 
@@ -389,7 +520,10 @@ async def start_background(app):
     async def loop():
         await asyncio.sleep(2)
         while True:
-            await refresh_channels(force=True)
+            await asyncio.gather(
+                refresh_channels(force=True),
+                refresh_epg(force=False),
+            )
             await asyncio.sleep(REFRESH_SECONDS)
     app["iptv_task"] = asyncio.create_task(loop())
 
