@@ -12,7 +12,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
 
 from .config import TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_TOKEN_SOURCE, MINIAPP_URL, DATA_DIR, DB_PATH, EXPECTED_BOT_USERNAME
-from .db import init_db, set_user_language, get_user_language
+from .db import init_db, set_user_language, get_user_language, get_setting, set_setting
 from .webapp_plus import start_webapp
 from .storage import migrate_legacy_db
 
@@ -165,6 +165,31 @@ async def start_handler(m: Message):
             ]]),
         )
         return
+
+    if payload.startswith('tv_'):
+        code = payload[3:].strip()
+        if len(code) == 6 and code.isdigit():
+            raw = await get_setting(f'tv_pair:{code}', '')
+            try:
+                data = json.loads(raw or '{}')
+            except Exception:
+                data = {}
+            if raw and int(data.get('expires_at') or 0) >= int(time.time()) and not int(data.get('user_id') or 0):
+                data['user_id'] = int(m.from_user.id)
+                data['paired_at'] = int(time.time())
+                await set_setting(f'tv_pair:{code}', json.dumps(data, separators=(',',':')))
+                await m.answer(
+                    {'hy':'✅ Հեռուստացույցը միացված է Abaj TV-ին։',
+                     'ru':'✅ Телевизор подключён к вашему Abaj TV.',
+                     'en':'✅ TV connected to your Abaj TV account.'}.get(lang,'✅ Телевизор подключён к вашему Abaj TV.')
+                )
+                return
+            await m.answer(
+                {'hy':'Կոդը ժամկետանց է կամ անվավեր։ Ստացեք նոր կոդ հեռուստացույցում։',
+                 'ru':'Код истёк или недействителен. Получите новый код на телевизоре.',
+                 'en':'The code expired or is invalid. Get a new code on the TV.'}.get(lang,'Код истёк или недействителен.')
+            )
+            return
 
     try:
         await send_language_picker(m)
