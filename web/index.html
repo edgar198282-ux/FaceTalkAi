@@ -160,9 +160,21 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 .adminPanel{position:fixed;inset:0;background:rgba(3,27,62,.72);z-index:220;display:none;align-items:flex-end;justify-content:center;padding:12px}.adminPanel.open{display:flex}.adminCard{width:min(760px,100%);max-height:88vh;overflow:auto;background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}.adminHead{display:flex;align-items:center;justify-content:space-between;gap:10px}.adminTitle{font-size:22px;font-weight:800;color:#0d4d86}.adminClose{border:0;background:#d9efff;color:#0b5f9e;border-radius:12px;padding:10px 13px;font-weight:800}.adminForm{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin:14px 0}.adminForm input{height:44px;border:1px solid #aad7f2;border-radius:11px;padding:0 11px;background:white}.adminForm button{border:0;border-radius:11px;background:#087fe1;color:white;padding:0 14px;font-weight:800}.adminRows{display:grid;gap:8px}.adminRow{background:white;border:1px solid #cde7f7;border-radius:14px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.adminMeta{font-size:12px;color:#55758c;margin-top:4px}.limitBox{display:flex;gap:6px;align-items:center}.limitBox input{width:58px;height:36px;border:1px solid #b9dff5;border-radius:9px;padding:0 8px}.limitBox button{height:36px;border:0;border-radius:9px;background:#168de8;color:white;padding:0 10px}.adminEmpty{padding:18px;text-align:center;color:#66869a}@media(max-width:650px){.adminForm{grid-template-columns:1fr}.adminRow{grid-template-columns:1fr}.limitBox{justify-content:flex-start}}
 .payBar{display:none;margin:10px 0 0;background:rgba(255,255,255,.94);border:1px solid #cbe7f8;border-radius:14px;padding:10px 12px;color:#174b6d;font-size:13px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.payBar.show{display:flex}.payBar b{font-size:14px}.payBar button{border:0;border-radius:10px;background:#1489e7;color:white;padding:9px 13px;font-weight:800}.payBar.pending{border-color:#f1d995;background:#fffaf0}.payBar.pending button{background:#c28a13}
 .nativeTv{overflow:hidden}.nativeTv .top{padding-top:22px}.nativeTv .title{font-size:34px}.nativeTv .sub{font-size:16px}.nativeTv .iconBtn{min-width:48px;min-height:48px}.nativeTv .toolbar{gap:14px}.nativeTv .search,.nativeTv .select{height:56px;font-size:20px}.nativeTv .chip,.nativeTv .cat{font-size:18px;padding:11px 18px}.nativeTv .status{font-size:15px}.nativeTv .channel{cursor:pointer}.nativeTv .playerTop{height:66px}.nativeTv .playerTitle{font-size:22px}.nativeTv .ctrl{font-size:17px;padding:13px 18px}.nativeTv .playerBottom{padding:14px 20px 20px}
+.tvPair{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:linear-gradient(180deg,#0b2b7a,#168de8);padding:28px}.tvPair.open{display:flex}.tvPairCard{width:min(900px,92vw);background:white;border-radius:28px;padding:30px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.35)}.tvPairTitle{font-size:34px;font-weight:900;color:#0d4d86}.tvPairText{font-size:20px;color:#517087;margin-top:10px}.tvPairCode{font-size:64px;font-weight:900;letter-spacing:10px;color:#0b2b7a;margin:20px 0}.tvPairQr{width:220px;height:220px;border-radius:16px;background:#fff}.tvPairHint{font-size:18px;color:#4f6e82;margin-top:14px}.tvPairOk{font-size:22px;color:#16865b;font-weight:800}.tvPairRetry{border:0;border-radius:14px;background:#168de8;color:white;padding:13px 20px;font-size:18px;font-weight:800;margin-top:16px}
 </style>
 </head>
 <body>
+<div class="tvPair" id="tvPair">
+  <div class="tvPairCard">
+    <div class="tvPairTitle">Подключить Abaj TV к Telegram</div>
+    <div class="tvPairText">Отсканируйте QR телефоном или откройте бота и подтвердите код.</div>
+    <div class="tvPairCode" id="tvPairCode">------</div>
+    <img class="tvPairQr" id="tvPairQr" alt="QR">
+    <div class="tvPairHint" id="tvPairHint">Код действует 10 минут</div>
+    <button class="tvPairRetry" onclick="startTvPairing()">Новый код</button>
+  </div>
+</div>
+
 <div class="app" id="app">
   <header class="top">
     <div class="titleRow">
@@ -284,9 +296,22 @@ const deviceId=localStorage.getItem('abaj_device_id')||(
   (crypto&&crypto.randomUUID)?crypto.randomUUID():('abaj-'+Date.now()+'-'+Math.random().toString(36).slice(2))
 );
 localStorage.setItem('abaj_device_id',deviceId);
+const tvDeviceSecret=localStorage.getItem('abaj_tv_device_secret')||(
+  (crypto&&crypto.randomUUID)?crypto.randomUUID():('sec-'+Date.now()+'-'+Math.random().toString(36).slice(2))
+);
+localStorage.setItem('abaj_tv_device_secret',tvDeviceSecret);
+let tvPairPoll=null;
 
 function authHeaders(){
   const h={'X-Abaj-Device-Id':deviceId};
+  try{
+    const tvAuth=JSON.parse(localStorage.getItem('abaj_tv_auth')||'{}');
+    if(tvAuth.ft_uid&&tvAuth.ft_ts&&tvAuth.ft_sig){
+      h['X-FaceTalk-Uid']=tvAuth.ft_uid;
+      h['X-FaceTalk-Ts']=tvAuth.ft_ts;
+      h['X-FaceTalk-Sig']=tvAuth.ft_sig;
+    }
+  }catch(e){}
   const qs=new URLSearchParams(location.search);
   const uid=qs.get('ft_uid')||'';
   const ts=qs.get('ft_ts')||'';
@@ -301,6 +326,81 @@ function authHeaders(){
   const init=hp.get('tgWebAppData')||'';
   if(init)h['X-Telegram-Init-Data']=decodeURIComponent(init);
   return h;
+}
+
+async function saveTvAuth(d){
+  if(!d||!d.ft_uid||!d.ft_ts||!d.ft_sig)return false;
+  localStorage.setItem('abaj_tv_auth',JSON.stringify({
+    ft_uid:String(d.ft_uid),ft_ts:String(d.ft_ts),ft_sig:String(d.ft_sig)
+  }));
+  document.getElementById('tvPair').classList.remove('open');
+  await loadSyncedState();
+  await loadEdemStatus();
+  await load();
+  return true;
+}
+async function tryTvDeviceAuth(){
+  if(!nativeTv)return false;
+  try{
+    const r=await fetch('/api/tv/device-auth',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Abaj-Device-Id':deviceId},
+      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret})
+    });
+    if(!r.ok)return false;
+    const d=await r.json();
+    if(d.paired)return await saveTvAuth(d);
+  }catch(e){}
+  return false;
+}
+async function startTvPairing(){
+  if(!nativeTv)return;
+  if(tvPairPoll){clearInterval(tvPairPoll);tvPairPoll=null}
+  document.getElementById('tvPair').classList.add('open');
+  document.getElementById('tvPairCode').textContent='------';
+  document.getElementById('tvPairHint').textContent='Получаю код…';
+  try{
+    const r=await fetch('/api/tv/pair/start',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Abaj-Device-Id':deviceId},
+      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret})
+    });
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    if(d.paired){await saveTvAuth(d);return}
+    const code=String(d.code||'');
+    document.getElementById('tvPairCode').textContent=code||'------';
+    document.getElementById('tvPairHint').textContent='Код действует 10 минут';
+    const qr=document.getElementById('tvPairQr');
+    qr.src=d.deeplink?'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data='+encodeURIComponent(d.deeplink):'';
+    tvPairPoll=setInterval(async()=>{
+      try{
+        const q='/api/tv/pair/status?code='+encodeURIComponent(code)+'&device_id='+encodeURIComponent(deviceId)+'&device_secret='+encodeURIComponent(tvDeviceSecret);
+        const sr=await fetch(q,{headers:{'X-Abaj-Device-Id':deviceId},cache:'no-store'});
+        if(sr.status===410){clearInterval(tvPairPoll);tvPairPoll=null;document.getElementById('tvPairHint').textContent='Код истёк. Нажмите «Новый код».';return}
+        if(!sr.ok)return;
+        const sd=await sr.json();
+        if(sd.paired){
+          clearInterval(tvPairPoll);tvPairPoll=null;
+          document.getElementById('tvPairHint').innerHTML='<span class="tvPairOk">Телевизор подключён ✓</span>';
+          setTimeout(()=>saveTvAuth(sd),500);
+        }
+      }catch(e){}
+    },2500);
+  }catch(e){
+    document.getElementById('tvPairHint').textContent='Не удалось получить код. Повторите.';
+  }
+}
+async function ensureTvPairing(){
+  if(!nativeTv)return;
+  const ok=await tryTvDeviceAuth();
+  if(!ok){
+    try{
+      const me=await fetch('/api/me',{headers:authHeaders(),cache:'no-store'});
+      if(me.ok)return;
+    }catch(e){}
+    startTvPairing();
+  }
 }
 
 async function loadSyncedState(){
@@ -935,6 +1035,7 @@ checkAdmin();
 loadEdemStatus();
 load();
 loadSyncedState();
+ensureTvPairing();
 setInterval(()=>{load();loadEdemStatus()},60000);
 </script>
 </body>
