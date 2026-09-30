@@ -162,6 +162,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 .nativeTv{overflow:hidden}.nativeTv .top{padding-top:22px}.nativeTv .title{font-size:34px}.nativeTv .sub{font-size:16px}.nativeTv .iconBtn{min-width:48px;min-height:48px}.nativeTv .toolbar{gap:14px}.nativeTv .search,.nativeTv .select{height:56px;font-size:20px}.nativeTv .chip,.nativeTv .cat{font-size:18px;padding:11px 18px}.nativeTv .status{font-size:15px}.nativeTv .channel{cursor:pointer}.nativeTv .playerTop{height:66px}.nativeTv .playerTitle{font-size:22px}.nativeTv .ctrl{font-size:17px;padding:13px 18px}.nativeTv .playerBottom{padding:14px 20px 20px}
 .tvPair{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:linear-gradient(180deg,#0b2b7a,#168de8);padding:28px}.tvPair.open{display:flex}.tvPairCard{width:min(900px,92vw);background:white;border-radius:28px;padding:30px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.35)}.tvPairTitle{font-size:34px;font-weight:900;color:#0d4d86}.tvPairText{font-size:20px;color:#517087;margin-top:10px}.tvPairCode{font-size:64px;font-weight:900;letter-spacing:10px;color:#0b2b7a;margin:20px 0}.tvPairQr{width:220px;height:220px;border-radius:16px;background:#fff}.tvPairHint{font-size:18px;color:#4f6e82;margin-top:14px}.tvPairOk{font-size:22px;color:#16865b;font-weight:800}.tvPairRetry{border:0;border-radius:14px;background:#168de8;color:white;padding:13px 20px;font-size:18px;font-weight:800;margin-top:16px}
 .channelNumber{position:absolute;left:7px;top:7px;z-index:3;min-width:28px;height:24px;padding:0 6px;border-radius:7px;background:rgba(4,42,83,.82);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}.tvMode .channelNumber{font-size:14px;height:28px;min-width:32px}.nativeTv .channel.focused{box-shadow:0 0 0 6px #ffd400,0 12px 28px rgba(0,0,0,.28);transform:scale(1.045)}.nativeTv .channel:focus{outline:none}.tvNumberOverlay{position:fixed;right:44px;top:34px;z-index:450;display:none;background:rgba(0,0,0,.78);color:#fff;border-radius:14px;padding:10px 18px;font-size:34px;font-weight:900;letter-spacing:4px}.tvNumberOverlay.show{display:block}
+.nativeTv .videoWrap{padding-right:0!important}.nativeTv .channelRail{display:none!important;right:18px;top:76px;bottom:96px;width:320px;background:rgba(4,14,24,.94);box-shadow:0 10px 34px rgba(0,0,0,.4)}.nativeTv .channelRail.openRail{display:block!important}.nativeTv .railItem{font-size:18px;padding:13px 14px;margin:3px 0}.nativeTv .railItem.focused{background:#168de8;color:#fff;box-shadow:0 0 0 3px #ffd400 inset}.nativeTv .playerBottom{transition:opacity .2s}.nativeTv.playerClean .playerBottom{opacity:0;pointer-events:none}
 </style>
 </head>
 <body>
@@ -305,6 +306,8 @@ localStorage.setItem('abaj_tv_device_secret',tvDeviceSecret);
 let tvPairPoll=null;
 let tvNumberBuffer='';
 let tvNumberTimer=null;
+let tvRailIndex=0;
+let tvAutoResumeDone=false;
 
 function authHeaders(){
   const h={'X-Abaj-Device-Id':deviceId};
@@ -721,7 +724,13 @@ async function load(){
     render();
     if(lastChannelId&&!current&&document.visibilityState==='visible'){
       const last=channels.find(x=>x.id===lastChannelId);
-      if(last)document.getElementById('status').textContent+=' · Последний: '+last.name;
+      if(last){
+        document.getElementById('status').textContent+=' · Последний: '+last.name;
+        if(nativeTv&&!tvAutoResumeDone&&!document.getElementById('tvPair').classList.contains('open')){
+          tvAutoResumeDone=true;
+          setTimeout(()=>{if(!current)openPlayer(last.id)},500);
+        }
+      }
     }
   }catch(e){
     document.getElementById('status').textContent='Ошибка загрузки каналов';
@@ -994,10 +1003,45 @@ async function togglePiP(){
 }
 function renderRail(){
   const rows=filteredNow.length?filteredNow:channels;
-  document.getElementById('channelRail').innerHTML=rows.slice(0,80).map(ch=>
-    '<div class="railItem '+(current&&current.id===ch.id?'active':'')+'" onclick="openPlayer(\''+ch.id+'\')">'+
-    esc(ch.name)+'</div>'
+  const rail=document.getElementById('channelRail');
+  if(!rail)return;
+  rail.innerHTML=rows.slice(0,120).map((ch,i)=>
+    '<div class="railItem '+(current&&current.id===ch.id?'active ':'')+(i===tvRailIndex?'focused':'')+'" data-id="'+esc(ch.id)+'" data-rail-index="'+i+'" onclick="openPlayer(\''+ch.id+'\')">'+
+    (i+1)+'. '+esc(ch.name)+'</div>'
   ).join('');
+  if(nativeTv&&rail.classList.contains('openRail')){
+    const el=rail.querySelector('.railItem.focused');
+    if(el)el.scrollIntoView({block:'nearest'});
+  }
+}
+function tvRailOpen(){
+  if(!nativeTv)return false;
+  return document.getElementById('channelRail').classList.contains('openRail');
+}
+function toggleTvRail(force){
+  if(!nativeTv)return;
+  const rail=document.getElementById('channelRail');
+  const open=typeof force==='boolean'?force:!rail.classList.contains('openRail');
+  if(open){
+    const rows=filteredNow.length?filteredNow:channels;
+    const idx=Math.max(0,rows.findIndex(x=>current&&x.id===current.id));
+    tvRailIndex=idx;
+    rail.classList.add('openRail');
+    renderRail();
+  }else{
+    rail.classList.remove('openRail');
+  }
+}
+function moveTvRail(delta){
+  const rows=(filteredNow.length?filteredNow:channels).slice(0,120);
+  if(!rows.length)return;
+  tvRailIndex=Math.max(0,Math.min(rows.length-1,tvRailIndex+delta));
+  renderRail();
+}
+function openTvRailFocused(){
+  const rows=(filteredNow.length?filteredNow:channels).slice(0,120);
+  const ch=rows[tvRailIndex];
+  if(ch){toggleTvRail(false);openPlayer(ch.id)}
 }
 function closePlayer(){
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
@@ -1005,7 +1049,18 @@ function closePlayer(){
   const v=document.getElementById('video');
   v.pause();v.removeAttribute('src');v.load();
   document.getElementById('playerView').classList.remove('open');
+  toggleTvRail(false);
   current=null;currentIndex=-1;
+}
+function tvToggleFavoriteCurrent(){
+  if(!current)return;
+  if(favs.has(current.id))favs.delete(current.id);else favs.add(current.id);
+  saveFavs();
+  renderRail();
+}
+function tvTogglePlayerUi(){
+  if(!nativeTv)return;
+  document.body.classList.toggle('playerClean');
 }
 function playNext(){
   const rows=filteredNow.length?filteredNow:channels;
@@ -1050,12 +1105,27 @@ function tvNumberInput(digit){
 document.addEventListener('keydown',e=>{
   const playerOpen=document.getElementById('playerView').classList.contains('open');
   if(playerOpen){
-    if(e.key==='Escape'||e.key==='Backspace'){e.preventDefault();closePlayer();return}
-    if(e.key==='ArrowDown'){e.preventDefault();playNext();return}
-    if(e.key==='ArrowUp'){e.preventDefault();playPrev();return}
-    if(e.key==='Enter'){
-      const v=document.getElementById('video');
+    if(e.key==='Escape'||e.key==='Backspace'){
       e.preventDefault();
+      if(tvRailOpen()){toggleTvRail(false);return}
+      closePlayer();return
+    }
+    if(nativeTv&&e.key==='ArrowRight'){e.preventDefault();toggleTvRail(true);return}
+    if(nativeTv&&e.key==='ArrowLeft'&&tvRailOpen()){e.preventDefault();toggleTvRail(false);return}
+    if(e.key==='ArrowDown'){
+      e.preventDefault();
+      if(nativeTv&&tvRailOpen())moveTvRail(1);else playNext();
+      return
+    }
+    if(e.key==='ArrowUp'){
+      e.preventDefault();
+      if(nativeTv&&tvRailOpen())moveTvRail(-1);else playPrev();
+      return
+    }
+    if(e.key==='Enter'){
+      e.preventDefault();
+      if(nativeTv&&tvRailOpen()){openTvRailFocused();return}
+      const v=document.getElementById('video');
       if(v.paused)v.play().catch(()=>{});else v.pause();
       return;
     }
