@@ -182,7 +182,10 @@ async def language_handler(q: CallbackQuery):
     await set_user_language(q.from_user.id, lang)
     await q.answer()
     title,body=TEXTS[lang]
-    await q.message.answer(f'{title}\n\n{body}', reply_markup=miniapp_keyboard(q.from_user.id, lang))
+    await q.message.answer(
+        f'{title}\n\n{body}',
+        reply_markup=start_keyboard(q.from_user.id, lang)
+    )
 
 @dp.message(F.text == '🌐 Հայերեն / Русский / English')
 async def change_language(m: Message):
