@@ -11,8 +11,8 @@
         android:usesCleartextTraffic="false"
         android:theme="@style/AppTheme"
         android:label="Abaj TV"
-        android:icon="@drawable/abaj_tv_logo"
-        android:roundIcon="@drawable/abaj_tv_logo">
+        android:icon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"
