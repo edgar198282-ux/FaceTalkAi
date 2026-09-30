@@ -6,6 +6,7 @@ from urllib.parse import quote, urlencode
 from aiohttp import web
 
 from .config import DATA_DIR, PORT
+from . import iptv
 from .webapp import (
     api_error_middleware,
     api_me,
@@ -48,13 +49,7 @@ def _read_apk_meta():
 
 async def index(request):
     path = os.path.join(WEB_DIR, 'index.html')
-    try:
-        with open(path, 'r', encoding='utf-8') as f: html = f.read()
-        patch = '<script src="/static/ui-patch.js?v=4"></script>'
-        if patch not in html: html = html.replace('</body>', patch + '</body>')
-        return web.Response(text=html, content_type='text/html', charset='utf-8', headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0','Pragma':'no-cache'})
-    except Exception:
-        return web.FileResponse(path, headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0'})
+    return web.FileResponse(path, headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0','Pragma':'no-cache'})
 
 async def api_app_release(request):
     meta = _read_apk_meta()
@@ -114,6 +109,7 @@ async def api_app_auth_complete(request):
 async def start_webapp(bot):
     app = web.Application(client_max_size=100*1024*1024, middlewares=[api_error_middleware]); app['bot']=bot
     app.router.add_get('/', index)
+    iptv.install(app)
     app.router.add_get('/api/app-release', api_app_release); app.router.add_get('/api/app-download', api_app_download); app.router.add_get(PUBLIC_APK_PATH, api_app_download); app.router.add_post('/api/app-upload', api_app_upload)
     app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload)
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
@@ -123,5 +119,5 @@ async def start_webapp(bot):
     app.router.add_post('/api/upload-photo', api_upload_photo); app.router.add_post('/api/voice-clone', api_voice_clone); app.router.add_post('/api/voice-clone/delete', api_delete_voice_clone); app.router.add_post('/api/profile/select', api_profile_select); app.router.add_post('/api/profile/rename', api_profile_rename); app.router.add_post('/api/chat', api_chat)
     app.router.add_static('/generated/', GEN_DIR, show_index=False); app.router.add_static('/static/', WEB_DIR, show_index=False)
     runner=web.AppRunner(app); await runner.setup(); site=web.TCPSite(runner,'0.0.0.0',PORT); await site.start()
-    print('FaceTalk OTA/auth endpoints active')
+    print('IPTV Player web endpoints active')
     app['cleanup_task']=__import__('asyncio').create_task(cleanup_generated(app)); return runner
