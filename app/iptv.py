@@ -126,11 +126,28 @@ async def refresh_channels(force: bool = False):
                         break
                 sem = asyncio.Semaphore(PROBE_CONCURRENCY)
                 checked = await asyncio.gather(*[_probe(session, item, sem) for item in unique])
-            channels = {item["id"]: item for item in checked}
-            online = sum(1 for x in checked if x["status"] == "ONLINE")
+            grouped = {}
+            for item in checked:
+                grouped.setdefault(item["id"], []).append(item)
+
+            channels = {}
+            for cid, rows in grouped.items():
+                rows.sort(key=lambda x: (x.get("status") != "ONLINE", int(x.get("latency_ms") or 999999)))
+                primary = dict(rows[0])
+                online_rows = [x for x in rows if x.get("status") == "ONLINE"]
+                primary["backups"] = [x["url"] for x in online_rows[1:] if x.get("url") and x.get("url") != primary.get("url")]
+                primary["backup_count"] = len(primary["backups"])
+                primary["candidate_count"] = len(rows)
+                channels[cid] = primary
+
+            online = sum(1 for x in channels.values() if x.get("status") == "ONLINE")
             _state["channels"] = channels
             _state["last_refresh"] = int(time.time())
-            _state["stats"] = {"total": len(checked), "online": online, "offline": len(checked) - online}
+            _state["stats"] = {
+                "total": len(channels),
+                "online": online,
+                "offline": len(channels) - online,
+            }
         except Exception as exc:
             _state["error"] = repr(exc)[:300]
         finally:
@@ -193,17 +210,68 @@ async def api_play(request):
     item = _state["channels"].get(cid)
     if not item or item.get("status") != "ONLINE":
         raise web.HTTPNotFound(text="Channel unavailable")
-    url = item["url"]
+
+    urls = []
+    for url in [item.get("url"), *(item.get("backups") or [])]:
+        if url and url not in urls:
+            urls.append(url)
+
     timeout = aiohttp.ClientTimeout(total=15, connect=6, sock_read=8)
+    last_error = ""
     async with aiohttp.ClientSession(headers={"User-Agent": "IPTV-Player/1.0"}) as session:
-        async with session.get(url, timeout=timeout, allow_redirects=True) as r:
-            body = await r.read()
-            ctype = (r.headers.get("content-type") or "").lower()
-            final_url = str(r.url)
-    if b"#EXTM3U" in body[:4096] or "mpegurl" in ctype or urlparse(final_url).path.lower().endswith(".m3u8"):
-        text = body.decode("utf-8", "ignore")
-        return web.Response(text=_rewrite_hls(text, final_url), content_type="application/vnd.apple.mpegurl", headers={"Cache-Control": "no-store"})
-    return web.Response(body=body, content_type=ctype.split(";")[0] if ctype else "application/octet-stream")
+        for idx, url in enumerate(urls):
+            try:
+                async with session.get(url, timeout=timeout, allow_redirects=True) as r:
+                    ctype = (r.headers.get("content-type") or "").lower()
+                    final_url = str(r.url)
+                    if r.status >= 400:
+                        last_error = f"HTTP {r.status}"
+                        continue
+
+                    is_hls = "mpegurl" in ctype or urlparse(final_url).path.lower().endswith(".m3u8")
+                    if is_hls:
+                        body = await r.read()
+                        if b"#EXTM3U" not in body[:4096] and "mpegurl" not in ctype:
+                            last_error = "invalid HLS manifest"
+                            continue
+
+                        if idx > 0:
+                            old_primary = item.get("url")
+                            item["url"] = url
+                            item["backups"] = [x for x in urls if x != url]
+                            item["backup_count"] = len(item["backups"])
+                            item["last_failover"] = int(time.time())
+                            item["failed_url"] = old_primary or ""
+
+                        text = body.decode("utf-8", "ignore")
+                        return web.Response(
+                            text=_rewrite_hls(text, final_url),
+                            content_type="application/vnd.apple.mpegurl",
+                            headers={
+                                "Cache-Control": "no-store",
+                                "X-IPTV-Source": "backup" if idx > 0 else "primary",
+                                "X-IPTV-Backups": str(len(item.get("backups") or [])),
+                            },
+                        )
+
+                    if ctype.startswith(("video/", "audio/")) or "octet-stream" in ctype:
+                        if idx > 0:
+                            old_primary = item.get("url")
+                            item["url"] = url
+                            item["backups"] = [x for x in urls if x != url]
+                            item["backup_count"] = len(item["backups"])
+                            item["last_failover"] = int(time.time())
+                            item["failed_url"] = old_primary or ""
+                        raise web.HTTPTemporaryRedirect(url)
+
+                    last_error = f"unsupported content-type {ctype}"
+            except web.HTTPException:
+                raise
+            except Exception as exc:
+                last_error = str(exc)[:160]
+                continue
+
+    raise web.HTTPBadGateway(text="All channel streams failed: " + last_error)
 
 
 async def api_proxy(request):
