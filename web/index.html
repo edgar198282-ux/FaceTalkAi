@@ -377,9 +377,12 @@ async function loadAdminEdem(){
       const status=x.active?'Активен':'Отключён';
       const days=x.days_left==null?'без срока':(x.days_left+' дн.');
       return '<div class="adminRow"><div><b>ID '+esc(x.user_id)+'</b>'+
-      '<div class="adminMeta">'+status+' · Срок: '+days+' · Каналов: '+esc(x.channel_count)+' · Подключения: '+esc(x.active_connections)+'/'+esc(x.max_connections)+
+      '<div class="adminMeta">'+status+' · Срок: '+days+' · Оплата: '+esc(x.payment_status||'none')+' · Каналов: '+esc(x.channel_count)+' · Подключения: '+esc(x.active_connections)+'/'+esc(x.max_connections)+
       (x.last_playlist_refresh?' · Обновлено '+new Date(x.last_playlist_refresh*1000).toLocaleTimeString():'')+
-      '</div></div><div class="limitBox"><input id="exp-'+x.user_id+'" type="date" value="'+ymd+'">'+
+      '</div></div><div class="limitBox"><input id="days-'+x.user_id+'" type="number" min="1" max="3650" value="'+esc(x.plan_days||30)+'" title="Дней продления">'+
+      '<button onclick="markEdemPending('+x.user_id+')">Ожидает</button>'+
+      '<button onclick="markEdemPaid('+x.user_id+')" style="background:#16a05d">Оплачено</button>'+
+      '<input id="exp-'+x.user_id+'" type="date" value="'+ymd+'">'+
       '<button onclick="setEdemExpiry('+x.user_id+')">Срок</button>'+
       '<input id="lim-'+x.user_id+'" type="number" min="1" max="10" value="'+esc(x.max_connections)+'">'+
       '<button onclick="setEdemLimit('+x.user_id+')">Лимит</button>'+
@@ -416,6 +419,19 @@ async function removeEdem(uid){
   });
   if(r.ok)loadAdminEdem();
 }
+async function markEdemPayment(uid,action){
+  const el=document.getElementById('days-'+uid);
+  const planDays=Math.max(1,Math.min(3650,Number(el&&el.value||30)));
+  const r=await fetch('/api/admin/iptv/edem/payment',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',...authHeaders()},
+    body:JSON.stringify({user_id:Number(uid),plan_days:planDays,action})
+  });
+  if(r.ok)loadAdminEdem();
+}
+async function markEdemPaid(uid){return markEdemPayment(uid,'paid')}
+async function markEdemPending(uid){return markEdemPayment(uid,'pending')}
+
 async function setEdemExpiry(uid){
   const el=document.getElementById('exp-'+uid);
   let expiresAt=0;
