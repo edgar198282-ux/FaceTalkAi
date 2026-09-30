@@ -215,6 +215,10 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
     <div class="controls">
       <button class="ctrl" onclick="playPrev()">◀ Канал</button>
       <button class="ctrl" onclick="toggleFullscreen()">⛶ Полный экран</button>
+      <button class="ctrl" onclick="togglePiP()">▣ PiP</button>
+      <select id="qualitySelect" class="ctrl" onchange="setQuality(this.value)" style="appearance:auto">
+        <option value="-1">Auto</option>
+      </select>
       <button class="ctrl" onclick="playNext()">Канал ▶</button>
       <button class="ctrl" onclick="closePlayer()">Закрыть</button>
     </div>
@@ -234,6 +238,9 @@ let current=null;
 let currentIndex=-1;
 let filteredNow=[];
 let focusIndex=0;
+let streamRetries=0;
+let reconnectTimer=null;
+let lastChannelId=localStorage.getItem('iptv_last_channel')||'';
 
 const favs=new Set(JSON.parse(localStorage.getItem('iptv_favorites')||'[]'));
 let recent=JSON.parse(localStorage.getItem('iptv_recent')||'[]');
@@ -318,6 +325,10 @@ async function load(){
       ' · Offline в проверке: '+((d.stats||{}).offline||0)+
       (d.running?' · обновляется…':'');
     render();
+    if(lastChannelId&&!current&&document.visibilityState==='visible'){
+      const last=channels.find(x=>x.id===lastChannelId);
+      if(last)document.getElementById('status').textContent+=' · Последний: '+last.name;
+    }
   }catch(e){
     document.getElementById('status').textContent='Ошибка загрузки каналов';
   }
@@ -410,6 +421,10 @@ function openPlayer(id){
   const ch=channels.find(x=>x.id===id);
   if(!ch)return;
   current=ch;
+  lastChannelId=ch.id;
+  localStorage.setItem('iptv_last_channel',ch.id);
+  streamRetries=0;
+  if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   addRecent(ch.id);
   filteredNow=getFiltered();
   currentIndex=Math.max(0,filteredNow.findIndex(x=>x.id===id));
@@ -424,21 +439,113 @@ function openPlayer(id){
 }
 function startStream(ch){
   const v=document.getElementById('video');
+  const err=document.getElementById('playerError');
+  err.textContent='';
   if(hls){hls.destroy();hls=null}
   v.pause();v.removeAttribute('src');v.load();
-  const src='/api/iptv/play?id='+encodeURIComponent(ch.id);
+  const src='/api/iptv/play?id='+encodeURIComponent(ch.id)+'&t='+Date.now();
+  resetQualityMenu();
+
   if(window.Hls&&Hls.isSupported()){
-    hls=new Hls({enableWorker:true,lowLatencyMode:false});
+    hls=new Hls({
+      enableWorker:true,
+      lowLatencyMode:false,
+      maxBufferLength:30,
+      manifestLoadingTimeOut:12000,
+      levelLoadingTimeOut:12000,
+      fragLoadingTimeOut:15000
+    });
     hls.loadSource(src);
     hls.attachMedia(v);
-    hls.on(Hls.Events.MANIFEST_PARSED,()=>v.play().catch(()=>{}));
-    hls.on(Hls.Events.ERROR,(e,d)=>{
-      if(d&&d.fatal)document.getElementById('playerError').textContent='Поток сейчас недоступен';
+
+    hls.on(Hls.Events.MANIFEST_PARSED,()=>{
+      streamRetries=0;
+      updateQualityMenu();
+      v.play().catch(()=>{});
+    });
+
+    hls.on(Hls.Events.LEVEL_SWITCHED,()=>updateQualityMenu());
+
+    hls.on(Hls.Events.ERROR,(event,data)=>{
+      if(!data||!data.fatal)return;
+
+      if(data.type===Hls.ErrorTypes.NETWORK_ERROR && streamRetries<3){
+        streamRetries++;
+        err.textContent='Переподключение… '+streamRetries+'/3';
+        try{hls.startLoad()}catch(e){scheduleReconnect(ch)}
+        return;
+      }
+
+      if(data.type===Hls.ErrorTypes.MEDIA_ERROR && streamRetries<3){
+        streamRetries++;
+        err.textContent='Восстановление потока… '+streamRetries+'/3';
+        try{hls.recoverMediaError()}catch(e){scheduleReconnect(ch)}
+        return;
+      }
+
+      scheduleReconnect(ch);
     });
   }else{
     v.src=src;v.load();
-    v.play().catch(()=>document.getElementById('playerError').textContent='Поток сейчас недоступен');
+    v.play().then(()=>{streamRetries=0}).catch(()=>scheduleReconnect(ch));
   }
+}
+
+function scheduleReconnect(ch){
+  const err=document.getElementById('playerError');
+  if(reconnectTimer)return;
+  if(streamRetries>=5){
+    err.textContent='Поток временно недоступен. Попробуйте следующий канал.';
+    return;
+  }
+  streamRetries++;
+  err.textContent='Автопереподключение через 2 сек…';
+  reconnectTimer=setTimeout(()=>{
+    reconnectTimer=null;
+    if(current&&current.id===ch.id)startStream(ch);
+  },2000);
+}
+
+function resetQualityMenu(){
+  const s=document.getElementById('qualitySelect');
+  if(!s)return;
+  s.innerHTML='<option value="-1">Auto</option>';
+  s.value='-1';
+}
+
+function updateQualityMenu(){
+  const s=document.getElementById('qualitySelect');
+  if(!s||!hls)return;
+  const previous=s.value;
+  const opts=['<option value="-1">Auto</option>'];
+  const seen=new Set();
+  (hls.levels||[]).forEach((lvl,i)=>{
+    const label=(lvl.height?lvl.height+'p':((Math.round((lvl.bitrate||0)/1000))+' kbps'));
+    if(seen.has(label))return;
+    seen.add(label);
+    opts.push('<option value="'+i+'">'+label+'</option>');
+  });
+  s.innerHTML=opts.join('');
+  if([...s.options].some(o=>o.value===previous))s.value=previous;
+}
+
+function setQuality(value){
+  if(!hls)return;
+  const level=parseInt(value,10);
+  hls.currentLevel=Number.isFinite(level)?level:-1;
+}
+
+async function togglePiP(){
+  const v=document.getElementById('video');
+  try{
+    if(document.pictureInPictureElement){
+      await document.exitPictureInPicture();
+      return;
+    }
+    if(document.pictureInPictureEnabled&&v.requestPictureInPicture){
+      await v.requestPictureInPicture();
+    }
+  }catch(e){}
 }
 function renderRail(){
   const rows=filteredNow.length?filteredNow:channels;
@@ -448,6 +555,7 @@ function renderRail(){
   ).join('');
 }
 function closePlayer(){
+  if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   if(hls){hls.destroy();hls=null}
   const v=document.getElementById('video');
   v.pause();v.removeAttribute('src');v.load();
