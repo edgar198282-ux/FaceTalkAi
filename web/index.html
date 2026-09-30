@@ -424,7 +424,7 @@ async function startTvPairing(){
     document.getElementById('tvPairCode').textContent=code||'------';
     document.getElementById('tvPairHint').textContent='Код действует 10 минут';
     const qr=document.getElementById('tvPairQr');
-    qr.src=d.deeplink?'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data='+encodeURIComponent(d.deeplink):'';
+    qr.src=code?('/api/tv/pair/qr?code='+encodeURIComponent(code)+'&ts='+Date.now()):'';
     tvPairPoll=setInterval(async()=>{
       try{
         const q='/api/tv/pair/status?code='+encodeURIComponent(code)+'&device_id='+encodeURIComponent(deviceId)+'&device_secret='+encodeURIComponent(tvDeviceSecret);
