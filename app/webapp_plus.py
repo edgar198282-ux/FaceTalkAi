@@ -324,11 +324,29 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
     return {'configured': True, 'channels': out, 'playlist_url': playlist_url, **sub}
 
 
+async def _tv_binding_allowed(request, uid: int) -> bool:
+    if str(request.headers.get('X-Abaj-TV') or '') != '1':
+        return True
+    device_id = (request.headers.get('X-Abaj-Device-Id') or '').strip()[:120]
+    if not device_id:
+        return False
+    raw = await get_setting(f'tv_device:{device_id}', '')
+    if not raw:
+        return False
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return False
+    return int(data.get('user_id') or 0) == int(uid)
+
+
 async def api_iptv_edem_status(request):
     user = await _user_from_request(request)
     if not user:
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     uid = int(user['id'])
+    if not await _tv_binding_allowed(request, uid):
+        return web.json_response({'ok':False,'error':'tv_disconnected'}, status=403)
     raw = await get_setting(f'edem_playlist:{uid}', '')
     sub = await _edem_subscription_state(uid)
     pay = await _edem_payment_state(uid)
@@ -345,6 +363,8 @@ async def api_iptv_edem_channels(request):
     if not user:
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     uid = int(user['id'])
+    if not await _tv_binding_allowed(request, uid):
+        return web.json_response({'ok':False,'error':'tv_disconnected'}, status=403)
     data = await _load_edem_playlist_for_uid(uid, force=request.query.get('refresh') == '1')
     safe = []
     for item in data.get('channels') or []:
@@ -368,6 +388,8 @@ async def api_iptv_edem_play(request):
     if not user:
         raise web.HTTPUnauthorized(text='Unauthorized')
     uid = int(user['id'])
+    if not await _tv_binding_allowed(request, uid):
+        return web.json_response({'ok':False,'error':'tv_disconnected'}, status=403)
     sub = await _edem_subscription_state(uid)
     if not sub['active']:
         return web.json_response({'ok':False,'error':'subscription_expired','expires_at':sub['expires_at']}, status=403)
