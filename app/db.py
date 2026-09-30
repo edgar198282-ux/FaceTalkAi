@@ -313,3 +313,13 @@ async def get_user_language(user_id:int):
     async with aiosqlite.connect(DB_PATH) as db:
         row=await (await db.execute('SELECT value FROM settings WHERE key=?',(key,))).fetchone()
     return row[0] if row and row[0] in {"hy","ru","en"} else None
+
+
+async def list_settings_prefix(prefix: str):
+    prefix = str(prefix or "")
+    async with aiosqlite.connect(DB_PATH) as db:
+        rows = await (await db.execute(
+            'SELECT key,value FROM settings WHERE key LIKE ? ORDER BY key',
+            (prefix + '%',)
+        )).fetchall()
+    return [{'key': row[0], 'value': row[1]} for row in rows]
