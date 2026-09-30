@@ -394,7 +394,22 @@ async function load(){
   try{
     const r=await fetch('/api/iptv/channels',{cache:'no-store'});
     const d=await r.json();
-    channels=(d.channels||[]).filter(x=>x.status==='ONLINE');
+    let base=(d.channels||[]).filter(x=>x.status==='ONLINE');
+    try{
+      const er=await fetch('/api/iptv/edem/channels',{headers:authHeaders(),cache:'no-store'});
+      if(er.ok){
+        const ed=await er.json();
+        if(Array.isArray(ed.channels)&&ed.channels.length){
+          base=base.concat(ed.channels.map(x=>({...x,personal:true,provider:'Edem'})));
+        }
+      }
+    }catch(e){}
+    const dedup=new Map();
+    for(const ch of base){
+      const key=((ch.tvg_id||'')+'|'+(ch.country||'')+'|'+(ch.name||'')).toLowerCase();
+      if(!dedup.has(key)||(!dedup.get(key).personal&&ch.personal))dedup.set(key,ch);
+    }
+    channels=[...dedup.values()];
     const groups=[...new Set(channels.map(x=>x.group||'Other'))].sort((a,b)=>a.localeCompare(b,'ru'));
     const sel=document.getElementById('group');
     const old=sel.value;
@@ -475,7 +490,7 @@ function render(){
           '<div class="progress"><span style="width:'+epgProgress(ch.epg_now)+'%"></span></div>'+
           '<div class="times"><span>'+(ch.epg_now?fmtClock(ch.epg_now.start):'LIVE')+'</span><span>'+(ch.epg_now?fmtClock(ch.epg_now.stop):Math.max(1,Math.round((ch.latency_ms||0)/1000))+'s')+'</span></div>'+
           (ch.epg_next?'<div class="next">Далее: '+esc(ch.epg_next.title)+'</div>':'')+
-          '<div class="badge">'+(ch.country==='AM'?'🇦🇲 Armenia':'🇷🇺 Russia')+'</div>'+
+          '<div class="badge">'+(ch.personal?'🔐 Edem':(ch.country==='AM'?'🇦🇲 Armenia':'🇷🇺 Russia'))+'</div>'+
         '</div>'+
         '<div class="side">'+
           '<button class="more" onclick="event.stopPropagation()">⋮</button>'+
@@ -536,7 +551,9 @@ function startStream(ch){
   err.textContent='';
   if(hls){hls.destroy();hls=null}
   v.pause();v.removeAttribute('src');v.load();
-  const src='/api/iptv/play?id='+encodeURIComponent(ch.id)+'&t='+Date.now();
+  const basePath=ch.personal?'/api/iptv/edem/play':'/api/iptv/play';
+  const auth=ch.personal?authHeaders():{};
+  const src=basePath+'?id='+encodeURIComponent(ch.id)+'&t='+Date.now();
   resetQualityMenu();
 
   if(window.Hls&&Hls.isSupported()){
@@ -548,8 +565,20 @@ function startStream(ch){
       levelLoadingTimeOut:12000,
       fragLoadingTimeOut:15000
     });
-    hls.loadSource(src);
-    hls.attachMedia(v);
+    if(ch.personal){
+      fetch(src,{headers:auth,cache:'no-store'})
+        .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.text()})
+        .then(text=>{
+          const blobUrl=URL.createObjectURL(new Blob([text],{type:'application/vnd.apple.mpegurl'}));
+          hls.loadSource(blobUrl);
+          hls.attachMedia(v);
+          setTimeout(()=>URL.revokeObjectURL(blobUrl),60000);
+        })
+        .catch(()=>scheduleReconnect(ch));
+    }else{
+      hls.loadSource(src);
+      hls.attachMedia(v);
+    }
 
     hls.on(Hls.Events.MANIFEST_PARSED,()=>{
       streamRetries=0;
@@ -579,8 +608,16 @@ function startStream(ch){
       scheduleReconnect(ch);
     });
   }else{
-    v.src=src;v.load();
-    v.play().then(()=>{streamRetries=0}).catch(()=>scheduleReconnect(ch));
+    if(ch.personal){
+      fetch(src,{headers:auth,cache:'no-store'})
+        .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob()})
+        .then(blob=>{v.src=URL.createObjectURL(blob);v.load();return v.play()})
+        .then(()=>{streamRetries=0})
+        .catch(()=>scheduleReconnect(ch));
+    }else{
+      v.src=src;v.load();
+      v.play().then(()=>{streamRetries=0}).catch(()=>scheduleReconnect(ch));
+    }
   }
 }
 
