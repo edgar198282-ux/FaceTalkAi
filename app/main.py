@@ -185,6 +185,13 @@ async def main():
             'Paste only the BotFather token in digits:secret format.'
         ) from exc
 
+    try:
+        await bot.set_my_name(name="IPTV Player")
+        await bot.set_my_short_description(short_description="Армянские и российские IPTV каналы")
+        await bot.set_my_description(description="IPTV Player — армянские и российские телеканалы, поиск, избранное и TV режим.")
+    except Exception as exc:
+        logging.warning("Telegram bot profile rename skipped: %r", exc)
+
     me = await bot.get_me()
     actual_username = (me.username or '').lstrip('@')
     logging.info('FaceTalk Telegram bot authenticated as @%s (id=%s)', actual_username, me.id)
