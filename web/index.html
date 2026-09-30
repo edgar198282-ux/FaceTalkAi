@@ -247,29 +247,107 @@ let lastChannelId=localStorage.getItem('iptv_last_channel')||'';
 
 const favs=new Set(JSON.parse(localStorage.getItem('iptv_favorites')||'[]'));
 let recent=JSON.parse(localStorage.getItem('iptv_recent')||'[]');
+let syncTimer=null;
+let syncReady=false;
+
+function authHeaders(){
+  const h={};
+  const qs=new URLSearchParams(location.search);
+  const uid=qs.get('ft_uid')||'';
+  const ts=qs.get('ft_ts')||'';
+  const sig=qs.get('ft_sig')||'';
+  if(uid&&ts&&sig){
+    h['X-FaceTalk-Uid']=uid;
+    h['X-FaceTalk-Ts']=ts;
+    h['X-FaceTalk-Sig']=sig;
+  }
+  const hash=location.hash.startsWith('#')?location.hash.slice(1):location.hash;
+  const hp=new URLSearchParams(hash);
+  const init=hp.get('tgWebAppData')||'';
+  if(init)h['X-Telegram-Init-Data']=decodeURIComponent(init);
+  return h;
+}
+
+async function loadSyncedState(){
+  try{
+    const r=await fetch('/api/iptv/state',{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(Array.isArray(d.favorites)){
+      favs.clear();
+      d.favorites.forEach(x=>favs.add(x));
+      localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));
+    }
+    if(Array.isArray(d.recent)){
+      recent=d.recent.slice(0,30);
+      localStorage.setItem('iptv_recent',JSON.stringify(recent));
+    }
+    if(d.last_channel){
+      lastChannelId=d.last_channel;
+      localStorage.setItem('iptv_last_channel',lastChannelId);
+    }
+    if(d.layout==='list'||d.layout==='grid'){
+      layout=d.layout;
+      localStorage.setItem('iptv_layout',layout);
+    }
+    if(typeof d.tv_mode==='boolean'){
+      tvMode=d.tv_mode;
+      localStorage.setItem('iptv_tv_mode',tvMode?'1':'0');
+    }
+    syncReady=true;
+    applyUiMode();
+    render();
+  }catch(e){}
+}
+
+function scheduleStateSync(){
+  if(!syncReady)return;
+  if(syncTimer)clearTimeout(syncTimer);
+  syncTimer=setTimeout(async()=>{
+    try{
+      await fetch('/api/iptv/state',{
+        method:'POST',
+        headers:{'Content-Type':'application/json',...authHeaders()},
+        body:JSON.stringify({
+          favorites:[...favs],
+          recent:recent.slice(0,30),
+          last_channel:lastChannelId||'',
+          layout,
+          tv_mode:tvMode
+        })
+      });
+    }catch(e){}
+  },350);
+}
+
+function applyUiMode(){
+  document.getElementById('app').classList.toggle('gridMode',layout==='grid'&&!tvMode);
+  document.getElementById('app').classList.toggle('tvMode',tvMode);
+  document.getElementById('listBtn').classList.toggle('active',layout==='list');
+  document.getElementById('gridBtn').classList.toggle('active',layout==='grid');
+  document.getElementById('tvBtn').classList.toggle('active',tvMode);
+}
 
 function esc(s){
   return String(s||'').replace(/[&<>"']/g,m=>({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[m]));
 }
-function saveFavs(){localStorage.setItem('iptv_favorites',JSON.stringify([...favs]))}
-function saveRecent(){localStorage.setItem('iptv_recent',JSON.stringify(recent.slice(0,30)))}
+function saveFavs(){localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));scheduleStateSync()}
+function saveRecent(){localStorage.setItem('iptv_recent',JSON.stringify(recent.slice(0,30)));scheduleStateSync()}
 
 function setLayout(v){
   layout=v;
   localStorage.setItem('iptv_layout',v);
-  document.getElementById('app').classList.toggle('gridMode',v==='grid'&&!tvMode);
-  document.getElementById('listBtn').classList.toggle('active',v==='list');
-  document.getElementById('gridBtn').classList.toggle('active',v==='grid');
+  applyUiMode();
+  scheduleStateSync();
   render();
 }
 function toggleTvMode(){
   tvMode=!tvMode;
   localStorage.setItem('iptv_tv_mode',tvMode?'1':'0');
-  document.getElementById('app').classList.toggle('tvMode',tvMode);
-  document.getElementById('tvBtn').classList.toggle('active',tvMode);
-  document.getElementById('app').classList.toggle('gridMode',layout==='grid'&&!tvMode);
+  applyUiMode();
+  scheduleStateSync();
   focusIndex=0;
   render();
 }
@@ -437,6 +515,7 @@ function openPlayer(id){
   current=ch;
   lastChannelId=ch.id;
   localStorage.setItem('iptv_last_channel',ch.id);
+  scheduleStateSync();
   streamRetries=0;
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   addRecent(ch.id);
@@ -620,8 +699,9 @@ document.addEventListener('keydown',e=>{
 
 document.getElementById('app').classList.toggle('tvMode',tvMode);
 document.getElementById('tvBtn').classList.toggle('active',tvMode);
-setLayout(layout);
+applyUiMode();
 load();
+loadSyncedState();
 setInterval(load,60000);
 </script>
 </body>
