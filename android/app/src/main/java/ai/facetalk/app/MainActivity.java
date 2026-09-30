@@ -192,6 +192,18 @@ public class MainActivity extends Activity {
                 webView.evaluateJavascript("if(typeof playPrev==='function')playPrev()",null);
                 return true;
             }
+            if(code==KeyEvent.KEYCODE_MENU){
+                webView.evaluateJavascript("if(typeof toggleTvRail==='function')toggleTvRail()",null);
+                return true;
+            }
+            if(code==KeyEvent.KEYCODE_PROG_BLUE||code==KeyEvent.KEYCODE_STAR){
+                webView.evaluateJavascript("if(typeof tvToggleFavoriteCurrent==='function')tvToggleFavoriteCurrent()",null);
+                return true;
+            }
+            if(code==KeyEvent.KEYCODE_INFO){
+                webView.evaluateJavascript("if(typeof tvTogglePlayerUi==='function')tvTogglePlayerUi()",null);
+                return true;
+            }
         }
         return super.dispatchKeyEvent(event);
     }
