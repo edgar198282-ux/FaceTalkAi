@@ -159,6 +159,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 }
 .adminPanel{position:fixed;inset:0;background:rgba(3,27,62,.72);z-index:220;display:none;align-items:flex-end;justify-content:center;padding:12px}.adminPanel.open{display:flex}.adminCard{width:min(760px,100%);max-height:88vh;overflow:auto;background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}.adminHead{display:flex;align-items:center;justify-content:space-between;gap:10px}.adminTitle{font-size:22px;font-weight:800;color:#0d4d86}.adminClose{border:0;background:#d9efff;color:#0b5f9e;border-radius:12px;padding:10px 13px;font-weight:800}.adminForm{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin:14px 0}.adminForm input{height:44px;border:1px solid #aad7f2;border-radius:11px;padding:0 11px;background:white}.adminForm button{border:0;border-radius:11px;background:#087fe1;color:white;padding:0 14px;font-weight:800}.adminRows{display:grid;gap:8px}.adminRow{background:white;border:1px solid #cde7f7;border-radius:14px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.adminMeta{font-size:12px;color:#55758c;margin-top:4px}.limitBox{display:flex;gap:6px;align-items:center}.limitBox input{width:58px;height:36px;border:1px solid #b9dff5;border-radius:9px;padding:0 8px}.limitBox button{height:36px;border:0;border-radius:9px;background:#168de8;color:white;padding:0 10px}.adminEmpty{padding:18px;text-align:center;color:#66869a}@media(max-width:650px){.adminForm{grid-template-columns:1fr}.adminRow{grid-template-columns:1fr}.limitBox{justify-content:flex-start}}
 .payBar{display:none;margin:10px 0 0;background:rgba(255,255,255,.94);border:1px solid #cbe7f8;border-radius:14px;padding:10px 12px;color:#174b6d;font-size:13px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.payBar.show{display:flex}.payBar b{font-size:14px}.payBar button{border:0;border-radius:10px;background:#1489e7;color:white;padding:9px 13px;font-weight:800}.payBar.pending{border-color:#f1d995;background:#fffaf0}.payBar.pending button{background:#c28a13}
+.nativeTv{overflow:hidden}.nativeTv .top{padding-top:22px}.nativeTv .title{font-size:34px}.nativeTv .sub{font-size:16px}.nativeTv .iconBtn{min-width:48px;min-height:48px}.nativeTv .toolbar{gap:14px}.nativeTv .search,.nativeTv .select{height:56px;font-size:20px}.nativeTv .chip,.nativeTv .cat{font-size:18px;padding:11px 18px}.nativeTv .status{font-size:15px}.nativeTv .channel{cursor:pointer}.nativeTv .playerTop{height:66px}.nativeTv .playerTitle{font-size:22px}.nativeTv .ctrl{font-size:17px;padding:13px 18px}.nativeTv .playerBottom{padding:14px 20px 20px}
 </style>
 </head>
 <body>
@@ -257,8 +258,10 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 let channels=[];
 let modeFilter='all';
 let activeCategory='';
-let layout=localStorage.getItem('iptv_layout')||'list';
-let tvMode=localStorage.getItem('iptv_tv_mode')==='1';
+const launchParams=new URLSearchParams(location.search);
+const nativeTv=launchParams.get('tv')==='1'||launchParams.get('source')==='android_tv';
+let layout=nativeTv?'grid':(localStorage.getItem('iptv_layout')||'list');
+let tvMode=nativeTv||localStorage.getItem('iptv_tv_mode')==='1';
 let hls=null;
 let current=null;
 let currentIndex=-1;
@@ -267,6 +270,10 @@ let focusIndex=0;
 let streamRetries=0;
 let reconnectTimer=null;
 let lastChannelId=localStorage.getItem('iptv_last_channel')||'';
+if(nativeTv){
+  localStorage.setItem('iptv_tv_mode','1');
+  localStorage.setItem('iptv_layout','grid');
+}
 
 const favs=new Set(JSON.parse(localStorage.getItem('iptv_favorites')||'[]'));
 let recent=JSON.parse(localStorage.getItem('iptv_recent')||'[]');
@@ -349,6 +356,7 @@ function scheduleStateSync(){
 }
 
 function applyUiMode(){
+  document.body.classList.toggle('nativeTv',nativeTv);
   document.getElementById('app').classList.toggle('gridMode',layout==='grid'&&!tvMode);
   document.getElementById('app').classList.toggle('tvMode',tvMode);
   document.getElementById('listBtn').classList.toggle('active',layout==='list');
@@ -529,6 +537,7 @@ function setLayout(v){
   render();
 }
 function toggleTvMode(){
+  if(nativeTv){tvMode=true;applyUiMode();return}
   tvMode=!tvMode;
   localStorage.setItem('iptv_tv_mode',tvMode?'1':'0');
   applyUiMode();
