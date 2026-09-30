@@ -66,14 +66,7 @@ public class MainActivity extends Activity {
         if(isTv){
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_FULLSCREEN|
-                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|
-                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|
-                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            );
+            enterTvImmersive();
         }
         prefs=getSharedPreferences("facetalk_auth",MODE_PRIVATE); consumeAuthIntent(getIntent());
         fullscreenContainer=new FrameLayout(this);
@@ -122,6 +115,18 @@ public class MainActivity extends Activity {
         updateHandler.postDelayed(periodicUpdateCheck,30L*60L*1000L);
     }
 
+    private void enterTvImmersive(){
+        if(!isTv)return;
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_FULLSCREEN|
+            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|
+            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|
+            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        );
+    }
+
     private String baseUrl(){String b=BuildConfig.WEB_APP_URL==null?"":BuildConfig.WEB_APP_URL.trim(); if(!b.startsWith("http://")&&!b.startsWith("https://")&&!b.isEmpty())b="https://"+b; while(b.endsWith("/"))b=b.substring(0,b.length()-1); return b;}
     private void loadOrAuthorize(){
         String init=prefs.getString("telegram_init_data","");
@@ -166,7 +171,18 @@ public class MainActivity extends Activity {
     private void handleWebPermission(PermissionRequest r){if(r==null)return;boolean mic=false,cam=false;for(String x:r.getResources()){if(PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(x))mic=true;if(PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(x))cam=true;}boolean mg=!mic||Build.VERSION.SDK_INT<23||checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED;boolean cg=!cam||Build.VERSION.SDK_INT<23||checkSelfPermission(Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED;if(mg&&cg){r.grant(r.getResources());return;}pendingWebPermission=r;if(Build.VERSION.SDK_INT>=23)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO,Manifest.permission.CAMERA},MEDIA_PERMISSION_REQUEST);else r.grant(r.getResources());}
     @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode!=MEDIA_PERMISSION_REQUEST||pendingWebPermission==null)return;PermissionRequest r=pendingWebPermission;pendingWebPermission=null;boolean ok=true;for(int x:grantResults)if(x!=PackageManager.PERMISSION_GRANTED)ok=false;if(ok)r.grant(r.getResources());else r.deny();}
     @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){super.onActivityResult(requestCode,resultCode,data);if(requestCode!=FILE_CHOOSER_REQUEST||fileCallback==null)return;fileCallback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode,data));fileCallback=null;}
-    @Override protected void onResume(){super.onResume();if(pendingApkUri!=null&&(Build.VERSION.SDK_INT<Build.VERSION_CODES.O||getPackageManager().canRequestPackageInstalls())){Uri u=pendingApkUri;pendingApkUri=null;openPackageInstaller(u);}else checkForAppUpdate(true,false);}
+    @Override protected void onResume(){
+        super.onResume();
+        enterTvImmersive();
+        if(pendingApkUri!=null&&(Build.VERSION.SDK_INT<Build.VERSION_CODES.O||getPackageManager().canRequestPackageInstalls())){
+            Uri u=pendingApkUri;pendingApkUri=null;openPackageInstaller(u);
+        }else checkForAppUpdate(true,false);
+    }
+
+    @Override public void onWindowFocusChanged(boolean hasFocus){
+        super.onWindowFocusChanged(hasFocus);
+        if(hasFocus)enterTvImmersive();
+    }
     private void hideCustomView(){
         if(customView==null)return;
         try{fullscreenContainer.removeView(customView);}catch(Exception ignored){}
