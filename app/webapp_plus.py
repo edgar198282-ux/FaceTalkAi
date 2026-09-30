@@ -7,6 +7,7 @@ from aiohttp import web
 
 from .config import DATA_DIR, PORT
 from . import iptv
+from .db import get_setting, set_setting
 from .webapp import (
     api_error_middleware,
     api_me,
@@ -26,6 +27,7 @@ from .webapp import (
     api_profile_rename,
     api_chat,
     validate_init_data,
+    _user_from_request,
     GEN_DIR,
     WEB_DIR,
     cleanup_generated,
@@ -95,6 +97,49 @@ async def api_app_upload(request):
     os.replace(APK_META_PATH+'.tmp', APK_META_PATH)
     return web.json_response({'ok':True,**meta})
 
+async def api_iptv_state(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    raw = await get_setting(f'iptv_state:{uid}', '{}')
+    try:
+        data = json.loads(raw or '{}')
+        if not isinstance(data, dict):
+            data = {}
+    except Exception:
+        data = {}
+    return web.json_response({
+        'ok': True,
+        'favorites': list(dict.fromkeys(data.get('favorites') or []))[:500],
+        'recent': list(dict.fromkeys(data.get('recent') or []))[:30],
+        'last_channel': str(data.get('last_channel') or ''),
+        'layout': str(data.get('layout') or ''),
+        'tv_mode': bool(data.get('tv_mode')),
+        'updated_at': int(data.get('updated_at') or 0),
+    }, headers={'Cache-Control':'no-store'})
+
+
+async def api_iptv_state_save(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    body = await request.json()
+    favorites = [str(x) for x in (body.get('favorites') or []) if str(x).strip()][:500]
+    recent = [str(x) for x in (body.get('recent') or []) if str(x).strip()][:30]
+    state = {
+        'favorites': list(dict.fromkeys(favorites)),
+        'recent': list(dict.fromkeys(recent)),
+        'last_channel': str(body.get('last_channel') or '')[:80],
+        'layout': 'grid' if body.get('layout') == 'grid' else 'list',
+        'tv_mode': bool(body.get('tv_mode')),
+        'updated_at': int(time.time()),
+    }
+    await set_setting(f'iptv_state:{uid}', json.dumps(state, ensure_ascii=False, separators=(',', ':')))
+    return web.json_response({'ok':True, **state}, headers={'Cache-Control':'no-store'})
+
+
 async def api_app_auth_start(request):
     me = await request.app['bot'].get_me()
     username = (me.username or '').lstrip('@')
@@ -113,6 +158,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/app-release', api_app_release); app.router.add_get('/api/app-download', api_app_download); app.router.add_get(PUBLIC_APK_PATH, api_app_download); app.router.add_get('/downloads/FaceTalkAI-latest.apk', api_app_download); app.router.add_post('/api/app-upload', api_app_upload)
     app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload)
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
+    app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/me', api_me); app.router.add_get('/api/admin/stats', api_admin_stats); app.router.add_get('/api/admin/keys', api_admin_keys); app.router.add_post('/api/admin/keys', api_admin_keys)
     app.router.add_get('/api/admin/gpu-health', api_admin_gpu_health); app.router.add_post('/api/admin/video-limit', api_admin_video_limit)
     app.router.add_get('/api/photo', api_photo); app.router.add_get('/api/profile-photo', api_profile_photo); app.router.add_post('/api/role', api_role); app.router.add_post('/api/mode', api_mode); app.router.add_post('/api/reset', api_reset)
