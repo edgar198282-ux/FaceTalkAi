@@ -896,9 +896,12 @@ function suspendTvPlayback(){
   }
 }
 function resumeTvPlayback(){
-  if(!nativeTv||!current||!tvWasPlayingBeforePause)return;
+  if(!nativeTv)return;
+  const shouldResume=!!(current&&tvWasPlayingBeforePause);
   tvWasPlayingBeforePause=false;
-  if(navigator.onLine!==false)startStream(current);
+  refreshTvAuth(true).finally(()=>{
+    if(shouldResume&&current&&navigator.onLine!==false)startStream(current);
+  });
 }
 function handleVisibilityChange(){
   if(!nativeTv)return;
@@ -922,11 +925,12 @@ function handleOffline(){
 function handleOnline(){
   showNetworkBanner('Интернет восстановлен',true,2500);
   if(networkRetryTimer){clearTimeout(networkRetryTimer);networkRetryTimer=null}
-  networkRetryTimer=setTimeout(()=>{
+  const afterAuth=()=>{networkRetryTimer=setTimeout(()=>{
     networkRetryTimer=null;
     if(current)startStream(current);
     else load();
-  },700);
+  },700)};
+  if(nativeTv)refreshTvAuth(true).finally(afterAuth);else afterAuth();
 }
 
 function showTvZap(ch){
