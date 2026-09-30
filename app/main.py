@@ -22,6 +22,32 @@ BUILD_VERSION = 'abaj-tv-v1'
 bot = None
 dp = Dispatcher()
 
+def _apk_download_url():
+    if not MINIAPP_URL:
+        return ""
+    parts = urlsplit(MINIAPP_URL)
+    return urlunsplit((parts.scheme, parts.netloc, "/downloads/AbajTV-latest.apk", "", ""))
+
+def start_keyboard(user_id: int | None = None, lang: str = "ru"):
+    rows = []
+    if MINIAPP_URL:
+        rows.append([InlineKeyboardButton(
+            text={"hy":"📺 Բացել Abaj TV","ru":"📺 Открыть Abaj TV","en":"📺 Open Abaj TV"}.get(lang, "📺 Открыть Abaj TV"),
+            web_app=WebAppInfo(url=_miniapp_url_for_user(user_id))
+        )])
+    apk_url = _apk_download_url()
+    if apk_url:
+        rows.append([InlineKeyboardButton(
+            text={"hy":"⬇️ Ներբեռնել APK","ru":"⬇️ Скачать APK","en":"⬇️ Download APK"}.get(lang, "⬇️ Скачать APK"),
+            url=apk_url
+        )])
+    rows.append([
+        InlineKeyboardButton(text="🇦🇲 Հայերեն", callback_data="lang:hy"),
+        InlineKeyboardButton(text="🇷🇺 Русский", callback_data="lang:ru"),
+        InlineKeyboardButton(text="🇬🇧 English", callback_data="lang:en")
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
 def _miniapp_url_for_user(user_id: int | None):
     if not MINIAPP_URL or not user_id:
         return MINIAPP_URL
@@ -105,24 +131,31 @@ def _telegram_lang(user) -> str:
     return 'ru'
 
 async def send_language_picker(m: Message):
-    caption='📺 Abaj TV\n\n🇦🇲 Ընտրեք լեզուն\n🇷🇺 Выберите язык\n🇬🇧 Choose language'
+    lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
+    caption = {
+        'hy':'📺 Abaj TV\n\nՀայկական և ռուսական հեռուստաալիքներ',
+        'ru':'📺 Abaj TV\n\nАрмянские и российские телеканалы',
+        'en':'📺 Abaj TV\n\nArmenian and Russian TV channels'
+    }.get(lang, '📺 Abaj TV')
     logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'media', 'abaj_tv_logo.jpg')
-    if os.path.exists(logo_path):
-        await m.answer_photo(FSInputFile(logo_path), caption=caption, reply_markup=language_keyboard())
-    else:
-        await m.answer(caption, reply_markup=language_keyboard())
+    keyboard = start_keyboard(m.from_user.id if m.from_user else None, lang)
+    try:
+        if os.path.exists(logo_path):
+            await m.answer_photo(FSInputFile(logo_path), caption=caption, reply_markup=keyboard)
+            return
+    except Exception as exc:
+        logging.warning("Abaj TV start photo failed, fallback to text: %r", exc)
+    await m.answer(caption, reply_markup=keyboard)
 
 @dp.message(CommandStart())
 async def start_handler(m: Message):
     lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
-    if not MINIAPP_URL:
-        await m.answer(NO_MINIAPP_TEXT.get(lang, NO_MINIAPP_TEXT['ru']))
-        return
     payload = ''
     if m.text:
         parts = m.text.split(maxsplit=1)
         payload = parts[1].strip() if len(parts) > 1 else ''
-    if payload == 'app_login':
+
+    if payload == 'app_login' and MINIAPP_URL:
         init_data = _telegram_init_data_for_user(m.from_user)
         complete = MINIAPP_URL.rstrip('/') + '/api/app-auth/complete?' + urlencode({'init_data': init_data})
         await m.answer(
@@ -132,7 +165,15 @@ async def start_handler(m: Message):
             ]]),
         )
         return
-    await send_language_picker(m)
+
+    try:
+        await send_language_picker(m)
+    except Exception as exc:
+        logging.exception("Abaj TV /start failed: %r", exc)
+        await m.answer(
+            '📺 Abaj TV',
+            reply_markup=start_keyboard(m.from_user.id if m.from_user else None, lang)
+        )
 
 @dp.callback_query(F.data.startswith('lang:'))
 async def language_handler(q: CallbackQuery):
