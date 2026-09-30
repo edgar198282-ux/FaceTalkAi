@@ -248,6 +248,8 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
       <button onclick="assignEdem()">Назначить</button>
     </div>
     <div class="adminRows" id="adminRows"><div class="adminEmpty">Загрузка…</div></div>
+    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Привязанные телевизоры</div>
+    <div class="adminRows" id="adminTvRows"><div class="adminEmpty">Загрузка…</div></div>
   </div>
 </div>
 
@@ -290,6 +292,7 @@ let modeFilter='all';
 let activeCategory='';
 const launchParams=new URLSearchParams(location.search);
 const nativeTv=launchParams.get('tv')==='1'||launchParams.get('source')==='android_tv';
+const tvDeviceName=(launchParams.get('device_name')||'Android TV').slice(0,120);
 let layout=nativeTv?'grid':(localStorage.getItem('iptv_layout')||'list');
 let tvMode=nativeTv||localStorage.getItem('iptv_tv_mode')==='1';
 let hls=null;
@@ -365,7 +368,7 @@ async function refreshTvAuth(force=false){
     const r=await fetch('/api/tv/device-auth',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Abaj-Device-Id':deviceId},
-      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,force:!!force})
+      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,device_name:tvDeviceName,force:!!force})
     });
     if(!r.ok)return false;
     const d=await r.json();
@@ -394,7 +397,7 @@ async function tryTvDeviceAuth(){
     const r=await fetch('/api/tv/device-auth',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Abaj-Device-Id':deviceId},
-      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret})
+      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,device_name:tvDeviceName})
     });
     if(!r.ok)return false;
     const d=await r.json();
@@ -573,6 +576,7 @@ async function checkAdmin(){
 function openAdmin(){
   document.getElementById('adminPanel').classList.add('open');
   loadAdminEdem();
+  loadAdminTvs();
 }
 function closeAdmin(){document.getElementById('adminPanel').classList.remove('open')}
 async function loadAdminEdem(){
@@ -602,6 +606,35 @@ async function loadAdminEdem(){
     }).join(''):'<div class="adminEmpty">Пока нет назначенных Edem плейлистов</div>';
   }catch(e){box.innerHTML='<div class="adminEmpty">Не удалось загрузить Edem пользователей</div>'}
 }
+async function loadAdminTvs(){
+  const box=document.getElementById('adminTvRows');
+  if(!box)return;
+  box.innerHTML='<div class="adminEmpty">Загрузка…</div>';
+  try{
+    const r=await fetch('/api/admin/tv/devices',{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const rows=d.devices||[];
+    box.innerHTML=rows.length?rows.map(x=>{
+      const last=x.last_seen?new Date(x.last_seen*1000).toLocaleString():'—';
+      const paired=x.paired_at?new Date(x.paired_at*1000).toLocaleString():'—';
+      return '<div class="adminRow"><div><b>'+esc(x.device_name||'Android TV')+'</b>'+
+        '<div class="adminMeta">Telegram ID '+esc(x.user_id)+' · '+(x.stream_active?'Сейчас смотрит':'Не активен')+
+        ' · Последняя связь: '+esc(last)+' · Привязан: '+esc(paired)+'</div>'+
+        '<div class="adminMeta">TV ID: '+esc(x.device_id)+'</div></div>'+
+        '<div class="limitBox"><button onclick="disconnectTv(\''+esc(x.device_id)+'\')" style="background:#d84b5b">Отключить ТВ</button></div></div>';
+    }).join(''):'<div class="adminEmpty">Привязанных телевизоров пока нет</div>';
+  }catch(e){box.innerHTML='<div class="adminEmpty">Не удалось загрузить телевизоры</div>'}
+}
+async function disconnectTv(deviceId){
+  const r=await fetch('/api/admin/tv/disconnect',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',...authHeaders()},
+    body:JSON.stringify({device_id:deviceId})
+  });
+  if(r.ok)loadAdminTvs();
+}
+
 async function assignEdem(){
   const uid=document.getElementById('edemUid').value.trim();
   const url=document.getElementById('edemUrl').value.trim();
