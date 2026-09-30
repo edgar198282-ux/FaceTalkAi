@@ -238,6 +238,10 @@ public class MainActivity extends Activity {
                 webView.evaluateJavascript("(function(){var p=document.getElementById('playerView');if(p&&p.classList.contains('open')){if(typeof tvToggleFavoriteCurrent==='function')tvToggleFavoriteCurrent()}else if(typeof tvSetModeFilter==='function'){tvSetModeFilter('fav')}})()",null);
                 return true;
             }
+            if(code==KeyEvent.KEYCODE_GUIDE){
+                webView.evaluateJavascript("if(typeof toggleTvGuide==='function')toggleTvGuide()",null);
+                return true;
+            }
             if(code==KeyEvent.KEYCODE_INFO){
                 webView.evaluateJavascript("if(typeof tvTogglePlayerUi==='function')tvTogglePlayerUi()",null);
                 return true;
