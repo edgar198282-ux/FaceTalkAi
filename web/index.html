@@ -1394,6 +1394,11 @@ function tvNumberInput(digit){
 }
 
 document.addEventListener('keydown',e=>{
+  if(tvSearchOpen()){
+    if(e.key==='Escape'){e.preventDefault();closeTvSearch(false);return}
+    if(e.key==='Enter'){e.preventDefault();closeTvSearch(true);return}
+    return;
+  }
   const playerOpen=document.getElementById('playerView').classList.contains('open');
   if(playerOpen){
     if(e.key==='Escape'||e.key==='Backspace'){
