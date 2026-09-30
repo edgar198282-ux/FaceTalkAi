@@ -15,6 +15,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.webkit.CookieManager;
 import android.webkit.PermissionRequest;
@@ -44,6 +46,13 @@ public class MainActivity extends Activity {
     private SharedPreferences prefs; private boolean telegramLaunchAttempted=false;
     private long pendingApkDownloadId=-1L; private Uri pendingApkUri; private BroadcastReceiver downloadReceiver;
     private volatile boolean updateCheckRunning=false, updateDownloadRunning=false; private long lastUpdateCheckAt=0L;
+    private final Handler updateHandler=new Handler(Looper.getMainLooper());
+    private final Runnable periodicUpdateCheck=new Runnable(){
+        @Override public void run(){
+            checkForAppUpdate(true,false);
+            updateHandler.postDelayed(this,30L*60L*1000L);
+        }
+    };
 
     @Override protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState); setTheme(R.style.AppTheme);
@@ -81,7 +90,10 @@ public class MainActivity extends Activity {
                 if("tg".equals(scheme)||"t.me".equals(host)||"telegram.me".equals(host)){openExternal(uri);return true;}
                 if(!"http".equals(scheme)&&!"https".equals(scheme)){openExternal(uri);return true;} return false; }
         });
-        registerApkDownloadReceiver(); loadOrAuthorize(); checkForAppUpdate(true,false);
+        registerApkDownloadReceiver();
+        loadOrAuthorize();
+        updateHandler.postDelayed(()->checkForAppUpdate(true,false),2500L);
+        updateHandler.postDelayed(periodicUpdateCheck,30L*60L*1000L);
     }
 
     private String baseUrl(){String b=BuildConfig.WEB_APP_URL==null?"":BuildConfig.WEB_APP_URL.trim(); if(!b.startsWith("http://")&&!b.startsWith("https://")&&!b.isEmpty())b="https://"+b; while(b.endsWith("/"))b=b.substring(0,b.length()-1); return b;}
@@ -101,7 +113,7 @@ public class MainActivity extends Activity {
     private void handleWebPermission(PermissionRequest r){if(r==null)return;boolean mic=false,cam=false;for(String x:r.getResources()){if(PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(x))mic=true;if(PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(x))cam=true;}boolean mg=!mic||Build.VERSION.SDK_INT<23||checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED;boolean cg=!cam||Build.VERSION.SDK_INT<23||checkSelfPermission(Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED;if(mg&&cg){r.grant(r.getResources());return;}pendingWebPermission=r;if(Build.VERSION.SDK_INT>=23)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO,Manifest.permission.CAMERA},MEDIA_PERMISSION_REQUEST);else r.grant(r.getResources());}
     @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode!=MEDIA_PERMISSION_REQUEST||pendingWebPermission==null)return;PermissionRequest r=pendingWebPermission;pendingWebPermission=null;boolean ok=true;for(int x:grantResults)if(x!=PackageManager.PERMISSION_GRANTED)ok=false;if(ok)r.grant(r.getResources());else r.deny();}
     @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){super.onActivityResult(requestCode,resultCode,data);if(requestCode!=FILE_CHOOSER_REQUEST||fileCallback==null)return;fileCallback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode,data));fileCallback=null;}
-    @Override protected void onResume(){super.onResume();if(pendingApkUri!=null&&(Build.VERSION.SDK_INT<Build.VERSION_CODES.O||getPackageManager().canRequestPackageInstalls())){Uri u=pendingApkUri;pendingApkUri=null;openPackageInstaller(u);}else checkForAppUpdate(false,false);}
+    @Override protected void onResume(){super.onResume();if(pendingApkUri!=null&&(Build.VERSION.SDK_INT<Build.VERSION_CODES.O||getPackageManager().canRequestPackageInstalls())){Uri u=pendingApkUri;pendingApkUri=null;openPackageInstaller(u);}else checkForAppUpdate(true,false);}
     private void hideCustomView(){
         if(customView==null)return;
         try{fullscreenContainer.removeView(customView);}catch(Exception ignored){}
@@ -113,6 +125,6 @@ public class MainActivity extends Activity {
     }
 
     private void openExternal(Uri uri){if(uri==null)return;try{String s=uri.getScheme()==null?"":uri.getScheme().toLowerCase(),h=uri.getHost()==null?"":uri.getHost().toLowerCase();if("tg".equals(s)||"t.me".equals(h)||"telegram.me".equals(h)){Intent t=new Intent(Intent.ACTION_VIEW,uri);t.setPackage("org.telegram.messenger");try{startActivity(t);return;}catch(Exception ignored){}}startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}}
-    @Override protected void onDestroy(){if(downloadReceiver!=null){try{unregisterReceiver(downloadReceiver);}catch(Exception ignored){}}if(webView!=null)webView.destroy();super.onDestroy();}
+    @Override protected void onDestroy(){updateHandler.removeCallbacksAndMessages(null);if(downloadReceiver!=null){try{unregisterReceiver(downloadReceiver);}catch(Exception ignored){}}if(webView!=null)webView.destroy();super.onDestroy();}
     @Override public void onBackPressed(){if(customView!=null){hideCustomView();return;}if(webView!=null&&webView.canGoBack())webView.goBack();else super.onBackPressed();}
 }
