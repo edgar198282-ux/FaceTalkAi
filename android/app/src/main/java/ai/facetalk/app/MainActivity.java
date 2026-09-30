@@ -210,5 +210,19 @@ public class MainActivity extends Activity {
 
     private void openExternal(Uri uri){if(uri==null)return;try{String s=uri.getScheme()==null?"":uri.getScheme().toLowerCase(),h=uri.getHost()==null?"":uri.getHost().toLowerCase();if("tg".equals(s)||"t.me".equals(h)||"telegram.me".equals(h)){Intent t=new Intent(Intent.ACTION_VIEW,uri);t.setPackage("org.telegram.messenger");try{startActivity(t);return;}catch(Exception ignored){}}startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}}
     @Override protected void onDestroy(){updateHandler.removeCallbacksAndMessages(null);if(downloadReceiver!=null){try{unregisterReceiver(downloadReceiver);}catch(Exception ignored){}}if(webView!=null)webView.destroy();super.onDestroy();}
-    @Override public void onBackPressed(){if(customView!=null){hideCustomView();return;}if(webView!=null&&webView.canGoBack())webView.goBack();else super.onBackPressed();}
+    @Override public void onBackPressed(){
+        if(customView!=null){hideCustomView();return;}
+        if(isTv&&webView!=null){
+            webView.evaluateJavascript(
+                "(function(){try{return (typeof handleTvBack==='function')?handleTvBack():false}catch(e){return false}})()",
+                value->{
+                    if(!"true".equals(value)){
+                        if(webView.canGoBack())webView.goBack();else finish();
+                    }
+                }
+            );
+            return;
+        }
+        if(webView!=null&&webView.canGoBack())webView.goBack();else super.onBackPressed();
+    }
 }
