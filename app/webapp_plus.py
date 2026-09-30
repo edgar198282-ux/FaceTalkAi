@@ -221,6 +221,9 @@ async def api_iptv_edem_proxy(request):
     if not entry:
         raise web.HTTPForbidden(text='Invalid stream token')
     uid = int(entry['uid'])
+    sub = await _edem_subscription_state(uid)
+    if not sub['active']:
+        raise web.HTTPForbidden(text='Subscription expired')
     device_id = str(entry['device_id'])
     ok, limit, active = await _edem_touch_session(uid, device_id)
     if not ok:
@@ -250,11 +253,30 @@ async def api_iptv_edem_proxy(request):
     )
 
 
+async def _edem_subscription_state(uid: int):
+    raw = await get_setting(f'edem_expires_at:{uid}', '0')
+    try:
+        expires_at = max(0, int(raw or 0))
+    except Exception:
+        expires_at = 0
+    now = int(time.time())
+    active = expires_at == 0 or expires_at > now
+    days_left = None if expires_at == 0 else max(0, (expires_at - now + 86399) // 86400)
+    return {
+        'active': active,
+        'expires_at': expires_at,
+        'days_left': days_left,
+    }
+
+
 async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
+    sub = await _edem_subscription_state(uid)
     raw = await get_setting(f'edem_playlist:{uid}', '')
     playlist_url = (raw or '').strip()
     if not playlist_url:
-        return {'configured': False, 'channels': [], 'playlist_url': ''}
+        return {'configured': False, 'channels': [], 'playlist_url': '', **sub}
+    if not sub['active']:
+        return {'configured': True, 'channels': [], 'playlist_url': playlist_url, **sub}
     parsed = urlparse(playlist_url)
     if parsed.scheme not in ('http', 'https') or not parsed.netloc:
         return {'configured': True, 'channels': [], 'playlist_url': '', 'error': 'invalid playlist url'}
@@ -262,7 +284,7 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
     cached = _edem_cache.get(uid) or {}
     now = int(time.time())
     if not force and cached.get('url') == playlist_url and now - int(cached.get('ts') or 0) < 600:
-        return {'configured': True, 'channels': cached.get('channels') or [], 'playlist_url': playlist_url}
+        return {'configured': True, 'channels': cached.get('channels') or [], 'playlist_url': playlist_url, **sub}
 
     timeout = aiohttp.ClientTimeout(total=25, connect=8, sock_read=15)
     async with aiohttp.ClientSession(headers={'User-Agent':'AbajTV/1.0'}) as session:
@@ -283,7 +305,7 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
         item['provider'] = 'Edem'
         out.append(item)
     _edem_cache[uid] = {'url': playlist_url, 'ts': now, 'channels': out}
-    return {'configured': True, 'channels': out, 'playlist_url': playlist_url}
+    return {'configured': True, 'channels': out, 'playlist_url': playlist_url, **sub}
 
 
 async def api_iptv_edem_status(request):
@@ -292,9 +314,11 @@ async def api_iptv_edem_status(request):
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     uid = int(user['id'])
     raw = await get_setting(f'edem_playlist:{uid}', '')
+    sub = await _edem_subscription_state(uid)
     return web.json_response({
         'ok': True,
         'configured': bool((raw or '').strip()),
+        **sub,
     }, headers={'Cache-Control':'no-store'})
 
 
@@ -313,6 +337,9 @@ async def api_iptv_edem_channels(request):
     return web.json_response({
         'ok': True,
         'configured': data.get('configured', False),
+        'active': data.get('active', True),
+        'expires_at': int(data.get('expires_at') or 0),
+        'days_left': data.get('days_left'),
         'channels': safe,
         'count': len(safe),
     }, headers={'Cache-Control':'no-store'})
@@ -323,6 +350,9 @@ async def api_iptv_edem_play(request):
     if not user:
         raise web.HTTPUnauthorized(text='Unauthorized')
     uid = int(user['id'])
+    sub = await _edem_subscription_state(uid)
+    if not sub['active']:
+        return web.json_response({'ok':False,'error':'subscription_expired','expires_at':sub['expires_at']}, status=403)
     device_id = (request.headers.get('X-Abaj-Device-Id') or '').strip()[:120] or 'unknown'
     ok, limit, active = await _edem_touch_session(uid, device_id)
     if not ok:
@@ -373,6 +403,7 @@ async def api_admin_iptv_edem_list(request):
         sessions = _edem_prune_sessions(uid)
         limit = await _edem_max_connections(uid)
         cache = _edem_cache.get(uid) or {}
+        sub = await _edem_subscription_state(uid)
         users.append({
             'user_id': uid,
             'configured': True,
@@ -380,6 +411,9 @@ async def api_admin_iptv_edem_list(request):
             'active_connections': len(sessions),
             'max_connections': limit,
             'last_playlist_refresh': int(cache.get('ts') or 0),
+            'active': sub['active'],
+            'expires_at': sub['expires_at'],
+            'days_left': sub['days_left'],
         })
     users.sort(key=lambda x: x['user_id'])
     return web.json_response({'ok':True,'users':users}, headers={'Cache-Control':'no-store'})
@@ -399,6 +433,27 @@ async def api_admin_iptv_edem_limit(request):
     return web.json_response({'ok':True,'user_id':uid,'max_connections':limit})
 
 
+async def api_admin_iptv_edem_subscription(request):
+    user = await _user_from_request(request)
+    if not user or not _is_admin_user(user):
+        return web.json_response({'ok':False,'error':'forbidden'}, status=403)
+    body = await request.json()
+    try:
+        uid = int(body.get('user_id'))
+    except Exception:
+        return web.json_response({'ok':False,'error':'bad user_id'}, status=400)
+    expires_at = body.get('expires_at', 0)
+    try:
+        expires_at = max(0, int(expires_at or 0))
+    except Exception:
+        return web.json_response({'ok':False,'error':'bad expires_at'}, status=400)
+    await set_setting(f'edem_expires_at:{uid}', str(expires_at))
+    if expires_at and expires_at <= int(time.time()):
+        _edem_sessions.pop(uid, None)
+    sub = await _edem_subscription_state(uid)
+    return web.json_response({'ok':True,'user_id':uid,**sub})
+
+
 async def api_admin_iptv_edem_assign(request):
     user = await _user_from_request(request)
     if not user or not _is_admin_user(user):
@@ -414,8 +469,19 @@ async def api_admin_iptv_edem_assign(request):
         if parsed.scheme not in ('http','https') or not parsed.netloc:
             return web.json_response({'ok':False,'error':'invalid playlist_url'}, status=400)
     await set_setting(f'edem_playlist:{uid}', playlist_url)
+    if 'expires_at' in body:
+        try:
+            expires_at = max(0, int(body.get('expires_at') or 0))
+        except Exception:
+            return web.json_response({'ok':False,'error':'bad expires_at'}, status=400)
+        await set_setting(f'edem_expires_at:{uid}', str(expires_at))
+    elif not playlist_url:
+        await set_setting(f'edem_expires_at:{uid}', '0')
     _edem_cache.pop(uid, None)
-    return web.json_response({'ok':True,'user_id':uid,'configured':bool(playlist_url)})
+    if not playlist_url:
+        _edem_sessions.pop(uid, None)
+    sub = await _edem_subscription_state(uid)
+    return web.json_response({'ok':True,'user_id':uid,'configured':bool(playlist_url),**sub})
 
 
 async def api_app_auth_start(request):
@@ -438,7 +504,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy)
-    app.router.add_get('/api/admin/iptv/edem', api_admin_iptv_edem_list); app.router.add_post('/api/admin/iptv/edem/assign', api_admin_iptv_edem_assign); app.router.add_post('/api/admin/iptv/edem/limit', api_admin_iptv_edem_limit)
+    app.router.add_get('/api/admin/iptv/edem', api_admin_iptv_edem_list); app.router.add_post('/api/admin/iptv/edem/assign', api_admin_iptv_edem_assign); app.router.add_post('/api/admin/iptv/edem/limit', api_admin_iptv_edem_limit); app.router.add_post('/api/admin/iptv/edem/subscription', api_admin_iptv_edem_subscription)
     app.router.add_get('/api/me', api_me); app.router.add_get('/api/admin/stats', api_admin_stats); app.router.add_get('/api/admin/keys', api_admin_keys); app.router.add_post('/api/admin/keys', api_admin_keys)
     app.router.add_get('/api/admin/gpu-health', api_admin_gpu_health); app.router.add_post('/api/admin/video-limit', api_admin_video_limit)
     app.router.add_get('/api/photo', api_photo); app.router.add_get('/api/profile-photo', api_profile_photo); app.router.add_post('/api/role', api_role); app.router.add_post('/api/mode', api_mode); app.router.add_post('/api/reset', api_reset)
