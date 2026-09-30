@@ -421,7 +421,7 @@ async function startTvPairing(){
     const r=await fetch('/api/tv/pair/start',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Abaj-Device-Id':deviceId},
-      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret})
+      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,device_name:tvDeviceName})
     });
     if(!r.ok)throw new Error('HTTP '+r.status);
     const d=await r.json();
