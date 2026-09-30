@@ -17,7 +17,7 @@ from .webapp_plus import start_webapp
 from .storage import migrate_legacy_db
 
 logging.basicConfig(level=logging.INFO)
-BUILD_VERSION = 'v3.5.4-language-completeness'
+BUILD_VERSION = 'iptv-v1-ottplayer-ui'
 
 bot = None
 dp = Dispatcher()
@@ -37,7 +37,7 @@ def _telegram_init_data_for_user(user) -> str:
     now = int(time.time())
     user_payload = {
         'id': int(user.id),
-        'first_name': user.first_name or 'FaceTalk User',
+        'first_name': user.first_name or 'IPTV User',
         'last_name': user.last_name or '',
         'username': user.username or '',
         'language_code': user.language_code or '',
@@ -56,7 +56,7 @@ def _telegram_init_data_for_user(user) -> str:
 def miniapp_keyboard(user_id: int | None = None, lang: str = 'ru'):
     if not MINIAPP_URL:
         return None
-    labels={'hy':'✨ Բացել FaceTalk','ru':'✨ Открыть FaceTalk','en':'✨ Open FaceTalk'}
+    labels={'hy':'📺 Բացել IPTV','ru':'📺 Открыть IPTV','en':'📺 Open IPTV'}
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=labels.get(lang, labels['ru']), web_app=WebAppInfo(url=_miniapp_url_for_user(user_id)))],
                   [KeyboardButton(text='🌐 Հայերեն / Русский / English')]],
@@ -72,27 +72,27 @@ def language_keyboard():
     ])
 
 TEXTS={
- 'hy':('✨ FaceTalk AI','Բացեք Mini App-ը և սկսեք զրույցը լուսանկարով, ձայնով և տեսապատասխաններով։'),
- 'ru':('✨ FaceTalk AI','Откройте Mini App и начните общение с фото, голосом и видеоответами.'),
- 'en':('✨ FaceTalk AI','Open the Mini App and start chatting with photo, voice and video replies.'),
+ 'hy':('📺 IPTV Player','Բացեք Mini App-ը՝ հայկական և ռուսական ալիքներ դիտելու համար։'),
+ 'ru':('📺 IPTV Player','Откройте Mini App для просмотра армянских и российских каналов.'),
+ 'en':('📺 IPTV Player','Open the Mini App to watch Armenian and Russian channels.'),
 }
 
 NO_MINIAPP_TEXT = {
-    'hy': 'FaceTalk Mini App-ը դեռ կարգավորված չէ։ Railway-ում ավելացրեք MINIAPP_URL-ը։',
-    'ru': 'FaceTalk Mini App ещё не настроен. Добавьте MINIAPP_URL в Railway.',
-    'en': 'FaceTalk Mini App is not configured yet. Add MINIAPP_URL in Railway.',
+    'hy': 'IPTV Mini App-ը դեռ կարգավորված չէ։',
+    'ru': 'IPTV Mini App ещё не настроен.',
+    'en': 'IPTV Mini App is not configured yet.',
 }
 
 APP_LOGIN_TEXT = {
-    'hy': 'Հաստատեք մուտքը։ Կոճակը սեղմելուց հետո FaceTalk AI-ը կբացվի ձեր Telegram հաշվի ներքո։',
-    'ru': 'Подтвердите вход. После нажатия FaceTalk AI откроется под вашим Telegram-аккаунтом.',
-    'en': 'Confirm sign-in. After you tap the button, FaceTalk AI will open with your Telegram account.',
+    'hy': 'Հաստատեք մուտքը IPTV Player։',
+    'ru': 'Подтвердите вход в IPTV Player.',
+    'en': 'Confirm sign-in to IPTV Player.',
 }
 
 APP_LOGIN_BUTTON = {
-    'hy': '✅ Կապել FaceTalk-ը Telegram-ին',
-    'ru': '✅ Привязать FaceTalk к Telegram',
-    'en': '✅ Link FaceTalk to Telegram',
+    'hy': '✅ Բացել IPTV Player',
+    'ru': '✅ Открыть IPTV Player',
+    'en': '✅ Open IPTV Player',
 }
 
 
@@ -105,12 +105,8 @@ def _telegram_lang(user) -> str:
     return 'ru'
 
 async def send_language_picker(m: Message):
-    logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'media', 'facetalk_logo.png')
-    caption='✨ FaceTalk AI\n\n🇦🇲 Ընտրեք լեզուն\n🇷🇺 Выберите язык\n🇬🇧 Choose language'
-    if os.path.exists(logo_path):
-        await m.answer_photo(FSInputFile(logo_path), caption=caption, reply_markup=language_keyboard())
-    else:
-        await m.answer(caption, reply_markup=language_keyboard())
+    caption='📺 IPTV Player\n\n🇦🇲 Ընտրեք լեզուն\n🇷🇺 Выберите язык\n🇬🇧 Choose language'
+    await m.answer(caption, reply_markup=language_keyboard())
 
 @dp.message(CommandStart())
 async def start_handler(m: Message):
@@ -150,13 +146,13 @@ async def change_language(m: Message):
 @dp.message(F.text)
 async def text_handler(m: Message):
     lang=await get_user_language(m.from_user.id if m.from_user else 0) or 'ru'
-    msg={'hy':'Բացեք FaceTalk Mini App-ը 👇','ru':'Откройте FaceTalk Mini App 👇','en':'Open FaceTalk Mini App 👇'}[lang]
+    msg={'hy':'Բացեք IPTV Mini App-ը 👇','ru':'Откройте IPTV Mini App 👇','en':'Open IPTV Mini App 👇'}[lang]
     await m.answer(msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
 
 @dp.message()
 async def other_handler(m: Message):
     lang=await get_user_language(m.from_user.id if m.from_user else 0) or 'ru'
-    msg={'hy':'Լուսանկարը, ձայնը և տեսանյութը աշխատում են Mini App-ի ներսում 👇','ru':'Фото, голос и видео работают внутри Mini App 👇','en':'Photo, voice and video work inside the Mini App 👇'}[lang]
+    msg={'hy':'IPTV ալիքները բացվում են Mini App-ում 👇','ru':'IPTV-каналы открываются внутри Mini App 👇','en':'IPTV channels open inside the Mini App 👇'}[lang]
     await m.answer(msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
 
 async def main():
