@@ -587,6 +587,7 @@ async def api_tv_pair_start(request):
     body = await request.json()
     device_id = str(body.get('device_id') or request.headers.get('X-Abaj-Device-Id') or '').strip()[:120]
     device_secret = str(body.get('device_secret') or '').strip()[:180]
+    device_name = str(body.get('device_name') or '').strip()[:120]
     if not device_id or not device_secret:
         return web.json_response({'ok':False,'error':'device_required'}, status=400)
 
@@ -599,7 +600,11 @@ async def api_tv_pair_start(request):
             data = {}
         if data.get('secret') == device_secret and int(data.get('user_id') or 0) > 0:
             uid = int(data['user_id'])
-            ts = int(time.time())
+            now = int(time.time())
+            data['last_seen'] = now
+            if device_name: data['device_name'] = device_name
+            await set_setting(f'tv_device:{device_id}', json.dumps(data, separators=(',',':')))
+            ts = now
             return web.json_response({
                 'ok':True,'paired':True,'user_id':uid,
                 'ft_uid':str(uid),'ft_ts':str(ts),'ft_sig':_tv_pair_sign(uid, ts),
@@ -618,6 +623,7 @@ async def api_tv_pair_start(request):
     payload = {
         'device_id':device_id,
         'device_secret':device_secret,
+        'device_name':device_name,
         'created_at':int(time.time()),
         'expires_at':expires_at,
         'user_id':0,
@@ -653,7 +659,8 @@ async def api_tv_pair_status(request):
         return web.json_response({'ok':True,'paired':False,'expires_at':int(data.get('expires_at') or 0)}, headers={'Cache-Control':'no-store'})
 
     await set_setting(f'tv_device:{device_id}', json.dumps({
-        'secret':device_secret,'user_id':uid,'paired_at':int(time.time())
+        'secret':device_secret,'user_id':uid,'device_name':str(data.get('device_name') or '')[:120],
+        'paired_at':int(time.time()),'last_seen':int(time.time())
     }, separators=(',',':')))
     ts = int(time.time())
     return web.json_response({
@@ -666,6 +673,7 @@ async def api_tv_device_auth(request):
     body = await request.json()
     device_id = str(body.get('device_id') or request.headers.get('X-Abaj-Device-Id') or '').strip()[:120]
     device_secret = str(body.get('device_secret') or '').strip()[:180]
+    device_name = str(body.get('device_name') or '').strip()[:120]
     if not device_id or not device_secret:
         return web.json_response({'ok':False,'error':'device_required'}, status=400)
     raw = await get_setting(f'tv_device:{device_id}', '')
@@ -680,11 +688,67 @@ async def api_tv_device_auth(request):
     uid = int(data.get('user_id') or 0)
     if uid <= 0:
         return web.json_response({'ok':True,'paired':False}, headers={'Cache-Control':'no-store'})
-    ts = int(time.time())
+    now = int(time.time())
+    data['last_seen'] = now
+    if device_name: data['device_name'] = device_name
+    await set_setting(f'tv_device:{device_id}', json.dumps(data, separators=(',',':')))
+    ts = now
     return web.json_response({
         'ok':True,'paired':True,'user_id':uid,
         'ft_uid':str(uid),'ft_ts':str(ts),'ft_sig':_tv_pair_sign(uid, ts),
     }, headers={'Cache-Control':'no-store'})
+
+
+async def api_admin_tv_devices(request):
+    user = await _user_from_request(request)
+    if not user or not _is_admin_user(user):
+        return web.json_response({'ok':False,'error':'forbidden'}, status=403)
+    rows = await list_settings_prefix('tv_device:')
+    devices = []
+    for row in rows:
+        raw = str(row.get('value') or '').strip()
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except Exception:
+            continue
+        uid = int(data.get('user_id') or 0)
+        if uid <= 0:
+            continue
+        device_id = str(row.get('key') or '')[len('tv_device:'):]
+        active = device_id in _edem_prune_sessions(uid)
+        devices.append({
+            'device_id': device_id,
+            'device_name': str(data.get('device_name') or 'Android TV')[:120],
+            'user_id': uid,
+            'paired_at': int(data.get('paired_at') or 0),
+            'last_seen': int(data.get('last_seen') or 0),
+            'stream_active': bool(active),
+        })
+    devices.sort(key=lambda x: x.get('last_seen') or x.get('paired_at') or 0, reverse=True)
+    return web.json_response({'ok':True,'devices':devices}, headers={'Cache-Control':'no-store'})
+
+
+async def api_admin_tv_disconnect(request):
+    user = await _user_from_request(request)
+    if not user or not _is_admin_user(user):
+        return web.json_response({'ok':False,'error':'forbidden'}, status=403)
+    body = await request.json()
+    device_id = str(body.get('device_id') or '').strip()[:120]
+    if not device_id:
+        return web.json_response({'ok':False,'error':'bad device_id'}, status=400)
+    raw = await get_setting(f'tv_device:{device_id}', '')
+    uid = 0
+    if raw:
+        try:
+            uid = int(json.loads(raw).get('user_id') or 0)
+        except Exception:
+            uid = 0
+    await set_setting(f'tv_device:{device_id}', '')
+    if uid > 0:
+        _edem_sessions.setdefault(uid, {}).pop(device_id, None)
+    return web.json_response({'ok':True,'device_id':device_id,'user_id':uid})
 
 
 async def api_app_auth_start(request):
@@ -706,6 +770,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload)
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
+    app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
     app.router.add_get('/api/admin/iptv/edem', api_admin_iptv_edem_list); app.router.add_post('/api/admin/iptv/edem/assign', api_admin_iptv_edem_assign); app.router.add_post('/api/admin/iptv/edem/limit', api_admin_iptv_edem_limit); app.router.add_post('/api/admin/iptv/edem/subscription', api_admin_iptv_edem_subscription); app.router.add_post('/api/admin/iptv/edem/payment', api_admin_iptv_edem_payment)
