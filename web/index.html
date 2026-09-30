@@ -157,6 +157,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
   .tvMode .videoWrap{padding-right:0}
   .tvMode .channelRail{display:none}
 }
+.adminPanel{position:fixed;inset:0;background:rgba(3,27,62,.72);z-index:220;display:none;align-items:flex-end;justify-content:center;padding:12px}.adminPanel.open{display:flex}.adminCard{width:min(760px,100%);max-height:88vh;overflow:auto;background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}.adminHead{display:flex;align-items:center;justify-content:space-between;gap:10px}.adminTitle{font-size:22px;font-weight:800;color:#0d4d86}.adminClose{border:0;background:#d9efff;color:#0b5f9e;border-radius:12px;padding:10px 13px;font-weight:800}.adminForm{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin:14px 0}.adminForm input{height:44px;border:1px solid #aad7f2;border-radius:11px;padding:0 11px;background:white}.adminForm button{border:0;border-radius:11px;background:#087fe1;color:white;padding:0 14px;font-weight:800}.adminRows{display:grid;gap:8px}.adminRow{background:white;border:1px solid #cde7f7;border-radius:14px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.adminMeta{font-size:12px;color:#55758c;margin-top:4px}.limitBox{display:flex;gap:6px;align-items:center}.limitBox input{width:58px;height:36px;border:1px solid #b9dff5;border-radius:9px;padding:0 8px}.limitBox button{height:36px;border:0;border-radius:9px;background:#168de8;color:white;padding:0 10px}.adminEmpty{padding:18px;text-align:center;color:#66869a}@media(max-width:650px){.adminForm{grid-template-columns:1fr}.adminRow{grid-template-columns:1fr}.limitBox{justify-content:flex-start}}
 </style>
 </head>
 <body>
@@ -175,6 +176,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
         <button id="gridBtn" class="iconBtn" onclick="setLayout('grid')" title="Плитка">▦</button>
         <button id="tvBtn" class="iconBtn" onclick="toggleTvMode()" title="TV режим">📺</button>
         <button class="iconBtn" onclick="refreshChannels()" title="Обновить">↻</button>
+        <button id="adminBtn" class="iconBtn" onclick="openAdmin()" title="Edem Admin" style="display:none">⚙</button>
       </div>
     </div>
     <div class="toolbar">
@@ -195,6 +197,21 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
   <main class="content" id="content">
     <div class="list" id="list"></div>
   </main>
+</div>
+
+<div class="adminPanel" id="adminPanel" onclick="if(event.target===this)closeAdmin()">
+  <div class="adminCard">
+    <div class="adminHead">
+      <div class="adminTitle">Edem · Управление</div>
+      <button class="adminClose" onclick="closeAdmin()">Закрыть</button>
+    </div>
+    <div class="adminForm">
+      <input id="edemUid" inputmode="numeric" placeholder="Telegram ID пользователя">
+      <input id="edemUrl" placeholder="M3U ссылка Edem">
+      <button onclick="assignEdem()">Назначить</button>
+    </div>
+    <div class="adminRows" id="adminRows"><div class="adminEmpty">Загрузка…</div></div>
+  </div>
 </div>
 
 <div class="playerView" id="playerView">
@@ -330,6 +347,70 @@ function applyUiMode(){
   document.getElementById('listBtn').classList.toggle('active',layout==='list');
   document.getElementById('gridBtn').classList.toggle('active',layout==='grid');
   document.getElementById('tvBtn').classList.toggle('active',tvMode);
+}
+
+async function checkAdmin(){
+  try{
+    const r=await fetch('/api/me',{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(d.is_admin)document.getElementById('adminBtn').style.display='';
+  }catch(e){}
+}
+function openAdmin(){
+  document.getElementById('adminPanel').classList.add('open');
+  loadAdminEdem();
+}
+function closeAdmin(){document.getElementById('adminPanel').classList.remove('open')}
+async function loadAdminEdem(){
+  const box=document.getElementById('adminRows');
+  box.innerHTML='<div class="adminEmpty">Загрузка…</div>';
+  try{
+    const r=await fetch('/api/admin/iptv/edem',{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const rows=d.users||[];
+    box.innerHTML=rows.length?rows.map(x=>
+      '<div class="adminRow"><div><b>ID '+esc(x.user_id)+'</b>'+
+      '<div class="adminMeta">Каналов: '+esc(x.channel_count)+' · Активно: '+esc(x.active_connections)+'/'+esc(x.max_connections)+
+      (x.last_playlist_refresh?' · Обновлено '+new Date(x.last_playlist_refresh*1000).toLocaleTimeString():'')+
+      '</div></div><div class="limitBox"><input id="lim-'+x.user_id+'" type="number" min="1" max="10" value="'+esc(x.max_connections)+'">'+
+      '<button onclick="setEdemLimit('+x.user_id+')">Лимит</button>'+
+      '<button onclick="removeEdem('+x.user_id+')" style="background:#d84b5b">Удалить</button></div></div>'
+    ).join(''):'<div class="adminEmpty">Пока нет назначенных Edem плейлистов</div>';
+  }catch(e){box.innerHTML='<div class="adminEmpty">Не удалось загрузить Edem пользователей</div>'}
+}
+async function assignEdem(){
+  const uid=document.getElementById('edemUid').value.trim();
+  const url=document.getElementById('edemUrl').value.trim();
+  if(!uid||!url)return;
+  const r=await fetch('/api/admin/iptv/edem/assign',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',...authHeaders()},
+    body:JSON.stringify({user_id:Number(uid),playlist_url:url})
+  });
+  if(r.ok){
+    document.getElementById('edemUrl').value='';
+    loadAdminEdem();
+  }
+}
+async function removeEdem(uid){
+  const r=await fetch('/api/admin/iptv/edem/assign',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',...authHeaders()},
+    body:JSON.stringify({user_id:Number(uid),playlist_url:''})
+  });
+  if(r.ok)loadAdminEdem();
+}
+async function setEdemLimit(uid){
+  const el=document.getElementById('lim-'+uid);
+  const limit=Math.max(1,Math.min(10,Number(el&&el.value||3)));
+  const r=await fetch('/api/admin/iptv/edem/limit',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',...authHeaders()},
+    body:JSON.stringify({user_id:Number(uid),max_connections:limit})
+  });
+  if(r.ok)loadAdminEdem();
 }
 
 function esc(s){
@@ -741,6 +822,7 @@ document.addEventListener('keydown',e=>{
 document.getElementById('app').classList.toggle('tvMode',tvMode);
 document.getElementById('tvBtn').classList.toggle('active',tvMode);
 applyUiMode();
+checkAdmin();
 load();
 loadSyncedState();
 setInterval(load,60000);
