@@ -637,6 +637,37 @@ async def api_tv_pair_start(request):
     }, headers={'Cache-Control':'no-store'})
 
 
+async def api_tv_pair_qr(request):
+    import io
+    import qrcode
+    import qrcode.image.svg
+    code = str(request.query.get('code') or '').strip()
+    if len(code) != 6 or not code.isdigit():
+        return web.json_response({'ok':False,'error':'bad_code'}, status=400)
+    raw = await get_setting(f'tv_pair:{code}', '')
+    if not raw:
+        return web.json_response({'ok':False,'error':'not_found'}, status=404)
+    try:
+        data = json.loads(raw)
+    except Exception:
+        data = {}
+    if int(data.get('expires_at') or 0) < int(time.time()):
+        return web.json_response({'ok':False,'error':'expired'}, status=410)
+    me = await request.app['bot'].get_me()
+    username = (me.username or '').lstrip('@')
+    if not username:
+        return web.json_response({'ok':False,'error':'bot_unavailable'}, status=503)
+    deeplink = f'https://t.me/{username}?start=tv_{code}'
+    img = qrcode.make(deeplink, image_factory=qrcode.image.svg.SvgPathImage, border=2, box_size=8)
+    buf = io.BytesIO()
+    img.save(buf)
+    return web.Response(
+        body=buf.getvalue(),
+        content_type='image/svg+xml',
+        headers={'Cache-Control':'no-store, max-age=0','X-Content-Type-Options':'nosniff'},
+    )
+
+
 async def api_tv_pair_status(request):
     code = str(request.query.get('code') or '').strip()
     device_id = str(request.query.get('device_id') or request.headers.get('X-Abaj-Device-Id') or '').strip()[:120]
@@ -769,7 +800,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/app-release', api_app_release); app.router.add_get('/api/app-download', api_app_download); app.router.add_get(PUBLIC_APK_PATH, api_app_download); app.router.add_get('/downloads/FaceTalkAI-latest.apk', api_app_download); app.router.add_post('/api/app-upload', api_app_upload)
     app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload)
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
-    app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
+    app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
