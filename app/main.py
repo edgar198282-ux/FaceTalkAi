@@ -17,7 +17,7 @@ from .webapp_plus import start_webapp
 from .storage import migrate_legacy_db
 
 logging.basicConfig(level=logging.INFO)
-BUILD_VERSION = 'iptv-v1-ottplayer-ui'
+BUILD_VERSION = 'abaj-tv-v1'
 
 bot = None
 dp = Dispatcher()
@@ -72,27 +72,27 @@ def language_keyboard():
     ])
 
 TEXTS={
- 'hy':('📺 IPTV Player','Բացեք Mini App-ը՝ հայկական և ռուսական ալիքներ դիտելու համար։'),
- 'ru':('📺 IPTV Player','Откройте Mini App для просмотра армянских и российских каналов.'),
- 'en':('📺 IPTV Player','Open the Mini App to watch Armenian and Russian channels.'),
+ 'hy':('📺 Abaj TV','Բացեք Mini App-ը՝ հայկական և ռուսական ալիքներ դիտելու համար։'),
+ 'ru':('📺 Abaj TV','Откройте Mini App для просмотра армянских и российских каналов.'),
+ 'en':('📺 Abaj TV','Open the Mini App to watch Armenian and Russian channels.'),
 }
 
 NO_MINIAPP_TEXT = {
-    'hy': 'IPTV Mini App-ը դեռ կարգավորված չէ։',
-    'ru': 'IPTV Mini App ещё не настроен.',
-    'en': 'IPTV Mini App is not configured yet.',
+    'hy': 'Abaj TV Mini App-ը դեռ կարգավորված չէ։',
+    'ru': 'Abaj TV Mini App ещё не настроен.',
+    'en': 'Abaj TV Mini App is not configured yet.',
 }
 
 APP_LOGIN_TEXT = {
-    'hy': 'Հաստատեք մուտքը IPTV Player։',
-    'ru': 'Подтвердите вход в IPTV Player.',
-    'en': 'Confirm sign-in to IPTV Player.',
+    'hy': 'Հաստատեք մուտքը Abaj TV։',
+    'ru': 'Подтвердите вход в Abaj TV.',
+    'en': 'Confirm sign-in to Abaj TV.',
 }
 
 APP_LOGIN_BUTTON = {
-    'hy': '✅ Բացել IPTV Player',
-    'ru': '✅ Открыть IPTV Player',
-    'en': '✅ Open IPTV Player',
+    'hy': '✅ Բացել Abaj TV',
+    'ru': '✅ Открыть Abaj TV',
+    'en': '✅ Open Abaj TV',
 }
 
 
@@ -105,7 +105,7 @@ def _telegram_lang(user) -> str:
     return 'ru'
 
 async def send_language_picker(m: Message):
-    caption='📺 IPTV Player\n\n🇦🇲 Ընտրեք լեզուն\n🇷🇺 Выберите язык\n🇬🇧 Choose language'
+    caption='📺 Abaj TV\n\n🇦🇲 Ընտրեք լեզուն\n🇷🇺 Выберите язык\n🇬🇧 Choose language'
     await m.answer(caption, reply_markup=language_keyboard())
 
 @dp.message(CommandStart())
@@ -146,13 +146,13 @@ async def change_language(m: Message):
 @dp.message(F.text)
 async def text_handler(m: Message):
     lang=await get_user_language(m.from_user.id if m.from_user else 0) or 'ru'
-    msg={'hy':'Բացեք IPTV Mini App-ը 👇','ru':'Откройте IPTV Mini App 👇','en':'Open IPTV Mini App 👇'}[lang]
+    msg={'hy':'Բացեք Abaj TV Mini App-ը 👇','ru':'Откройте Abaj TV Mini App 👇','en':'Open Abaj TV Mini App 👇'}[lang]
     await m.answer(msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
 
 @dp.message()
 async def other_handler(m: Message):
     lang=await get_user_language(m.from_user.id if m.from_user else 0) or 'ru'
-    msg={'hy':'IPTV ալիքները բացվում են Mini App-ում 👇','ru':'IPTV-каналы открываются внутри Mini App 👇','en':'IPTV channels open inside the Mini App 👇'}[lang]
+    msg={'hy':'Abaj TV ալիքները բացվում են Mini App-ում 👇','ru':'Каналы Abaj TV открываются внутри Mini App 👇','en':'Abaj TV channels open inside the Mini App 👇'}[lang]
     await m.answer(msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
 
 async def main():
@@ -186,9 +186,9 @@ async def main():
         ) from exc
 
     try:
-        await bot.set_my_name(name="IPTV Player")
+        await bot.set_my_name(name="Abaj TV")
         await bot.set_my_short_description(short_description="Армянские и российские IPTV каналы")
-        await bot.set_my_description(description="IPTV Player — армянские и российские телеканалы, поиск, избранное и TV режим.")
+        await bot.set_my_description(description="Abaj TV — армянские и российские телеканалы, поиск, избранное и TV режим.")
     except Exception as exc:
         logging.warning("Telegram bot profile rename skipped: %r", exc)
 
