@@ -249,9 +249,13 @@ const favs=new Set(JSON.parse(localStorage.getItem('iptv_favorites')||'[]'));
 let recent=JSON.parse(localStorage.getItem('iptv_recent')||'[]');
 let syncTimer=null;
 let syncReady=false;
+const deviceId=localStorage.getItem('abaj_device_id')||(
+  (crypto&&crypto.randomUUID)?crypto.randomUUID():('abaj-'+Date.now()+'-'+Math.random().toString(36).slice(2))
+);
+localStorage.setItem('abaj_device_id',deviceId);
 
 function authHeaders(){
-  const h={};
+  const h={'X-Abaj-Device-Id':deviceId};
   const qs=new URLSearchParams(location.search);
   const uid=qs.get('ft_uid')||'';
   const ts=qs.get('ft_ts')||'';
