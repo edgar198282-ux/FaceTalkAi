@@ -56,7 +56,7 @@ def _telegram_init_data_for_user(user) -> str:
 def miniapp_keyboard(user_id: int | None = None, lang: str = 'ru'):
     if not MINIAPP_URL:
         return None
-    labels={'hy':'📺 Բացել IPTV','ru':'📺 Открыть IPTV','en':'📺 Open IPTV'}
+    labels={'hy':'📺 Բացել Abaj TV','ru':'📺 Открыть Abaj TV','en':'📺 Open Abaj TV'}
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=labels.get(lang, labels['ru']), web_app=WebAppInfo(url=_miniapp_url_for_user(user_id)))],
                   [KeyboardButton(text='🌐 Հայերեն / Русский / English')]],
@@ -106,7 +106,11 @@ def _telegram_lang(user) -> str:
 
 async def send_language_picker(m: Message):
     caption='📺 Abaj TV\n\n🇦🇲 Ընտրեք լեզուն\n🇷🇺 Выберите язык\n🇬🇧 Choose language'
-    await m.answer(caption, reply_markup=language_keyboard())
+    logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'media', 'abaj_tv_logo.jpg')
+    if os.path.exists(logo_path):
+        await m.answer_photo(FSInputFile(logo_path), caption=caption, reply_markup=language_keyboard())
+    else:
+        await m.answer(caption, reply_markup=language_keyboard())
 
 @dp.message(CommandStart())
 async def start_handler(m: Message):
@@ -157,9 +161,9 @@ async def other_handler(m: Message):
 
 async def main():
     global bot
-    logging.info('FaceTalk build: %s', BUILD_VERSION)
-    logging.info('FaceTalk persistent data: %s', DATA_DIR)
-    logging.info('FaceTalk SQLite DB: %s', DB_PATH)
+    logging.info('Abaj TV build: %s', BUILD_VERSION)
+    logging.info('Abaj TV persistent data: %s', DATA_DIR)
+    logging.info('Abaj TV SQLite DB: %s', DB_PATH)
 
     if not TELEGRAM_BOT_TOKEN:
         raw = {
@@ -194,7 +198,7 @@ async def main():
 
     me = await bot.get_me()
     actual_username = (me.username or '').lstrip('@')
-    logging.info('FaceTalk Telegram bot authenticated as @%s (id=%s)', actual_username, me.id)
+    logging.info('Abaj TV Telegram bot authenticated as @%s (id=%s)', actual_username, me.id)
     if EXPECTED_BOT_USERNAME and actual_username.lower() != EXPECTED_BOT_USERNAME.lower():
         raise RuntimeError(
             f'WRONG TELEGRAM BOT TOKEN: expected @{EXPECTED_BOT_USERNAME}, '
