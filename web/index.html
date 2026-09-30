@@ -37,7 +37,7 @@ button{cursor:pointer}
   position:sticky;top:0;z-index:20;
   backdrop-filter:blur(14px)
 }
-.titleRow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.titleRow{display:flex;align-items:center;justify-content:space-between;gap:12px}.brandWrap{display:flex;align-items:center;gap:10px;min-width:0}.brandLogo{width:48px;height:48px;border-radius:14px;object-fit:cover;box-shadow:0 3px 12px rgba(0,85,170,.22)}
 .titleBlock{min-width:0}
 .title{font-size:27px;font-weight:400;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sub{font-size:14px;color:var(--muted);margin-top:1px}
@@ -163,9 +163,12 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 <div class="app" id="app">
   <header class="top">
     <div class="titleRow">
-      <div class="titleBlock">
-        <div class="title">ABAJ TV</div>
-        <div class="sub">Армения + Россия</div>
+      <div class="brandWrap">
+        <img class="brandLogo" src="/static/abaj_tv_logo.jpg" alt="Abaj TV">
+        <div class="titleBlock">
+          <div class="title">ABAJ TV</div>
+          <div class="sub">Армения + Россия</div>
+        </div>
       </div>
       <div class="icons">
         <button id="listBtn" class="iconBtn active" onclick="setLayout('list')" title="Список">☷</button>
