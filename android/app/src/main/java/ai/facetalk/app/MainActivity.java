@@ -33,6 +33,7 @@ import android.widget.Toast;
 import android.view.View;
 import android.view.KeyEvent;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 
 import org.json.JSONObject;
@@ -64,6 +65,7 @@ public class MainActivity extends Activity {
         isTv=uiModeManager!=null&&uiModeManager.getCurrentModeType()==Configuration.UI_MODE_TYPE_TELEVISION;
         if(isTv){
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_FULLSCREEN|
                 View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|
@@ -182,11 +184,11 @@ public class MainActivity extends Activity {
                 webView.evaluateJavascript("(function(){var v=document.getElementById('video');if(v){if(v.paused){v.play()}else{v.pause()}}})()",null);
                 return true;
             }
-            if(code==KeyEvent.KEYCODE_MEDIA_NEXT){
+            if(code==KeyEvent.KEYCODE_MEDIA_NEXT||code==KeyEvent.KEYCODE_CHANNEL_UP||code==KeyEvent.KEYCODE_PAGE_DOWN){
                 webView.evaluateJavascript("if(typeof playNext==='function')playNext()",null);
                 return true;
             }
-            if(code==KeyEvent.KEYCODE_MEDIA_PREVIOUS){
+            if(code==KeyEvent.KEYCODE_MEDIA_PREVIOUS||code==KeyEvent.KEYCODE_CHANNEL_DOWN||code==KeyEvent.KEYCODE_PAGE_UP){
                 webView.evaluateJavascript("if(typeof playPrev==='function')playPrev()",null);
                 return true;
             }
