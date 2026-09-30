@@ -322,6 +322,7 @@ let tvWasPlayingBeforePause=false;
 let tvWatchdogTimer=null;
 let tvWatchdogLastTime=-1;
 let tvWatchdogStalls=0;
+let tvAuthRefreshTimer=null;
 
 function authHeaders(){
   const h={'X-Abaj-Device-Id':deviceId};
@@ -347,6 +348,24 @@ function authHeaders(){
   const init=hp.get('tgWebAppData')||'';
   if(init)h['X-Telegram-Init-Data']=decodeURIComponent(init);
   return h;
+}
+
+async function refreshTvAuth(force=false){
+  if(!nativeTv)return false;
+  try{
+    const r=await fetch('/api/tv/device-auth',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Abaj-Device-Id':deviceId},
+      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,force:!!force})
+    });
+    if(!r.ok)return false;
+    const d=await r.json();
+    if(!d.paired)return false;
+    localStorage.setItem('abaj_tv_auth',JSON.stringify({
+      ft_uid:String(d.ft_uid),ft_ts:String(d.ft_ts),ft_sig:String(d.ft_sig)
+    }));
+    return true;
+  }catch(e){return false}
 }
 
 async function saveTvAuth(d){
@@ -1268,6 +1287,9 @@ loadEdemStatus();
 load();
 loadSyncedState();
 ensureTvPairing();
+if(nativeTv){
+  tvAuthRefreshTimer=setInterval(()=>refreshTvAuth(false),6*60*60*1000);
+}
 window.addEventListener('offline',handleOffline);
 window.addEventListener('online',handleOnline);
 document.addEventListener('visibilitychange',handleVisibilityChange);
