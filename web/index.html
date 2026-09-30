@@ -318,6 +318,7 @@ let tvRailIndex=0;
 let tvAutoResumeDone=false;
 let tvZapTimer=null;
 let networkRetryTimer=null;
+let tvWasPlayingBeforePause=false;
 
 function authHeaders(){
   const h={'X-Abaj-Device-Id':deviceId};
@@ -859,6 +860,29 @@ function openFocused(){
   if(cards[focusIndex])openPlayer(cards[focusIndex].dataset.id);
 }
 
+function suspendTvPlayback(){
+  if(!nativeTv)return;
+  const v=document.getElementById('video');
+  tvWasPlayingBeforePause=!!(current&&v&&!v.paused);
+  if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
+  if(hls){try{hls.stopLoad()}catch(e){};try{hls.destroy()}catch(e){};hls=null}
+  if(v){
+    try{v.pause()}catch(e){}
+    v.removeAttribute('src');
+    try{v.load()}catch(e){}
+  }
+}
+function resumeTvPlayback(){
+  if(!nativeTv||!current||!tvWasPlayingBeforePause)return;
+  tvWasPlayingBeforePause=false;
+  if(navigator.onLine!==false)startStream(current);
+}
+function handleVisibilityChange(){
+  if(!nativeTv)return;
+  if(document.hidden)suspendTvPlayback();
+  else resumeTvPlayback();
+}
+
 function showNetworkBanner(text,ok=false,ms=0){
   const el=document.getElementById('netBanner');
   if(!el)return;
@@ -1212,6 +1236,7 @@ loadSyncedState();
 ensureTvPairing();
 window.addEventListener('offline',handleOffline);
 window.addEventListener('online',handleOnline);
+document.addEventListener('visibilitychange',handleVisibilityChange);
 if(!navigator.onLine)handleOffline();
 setInterval(()=>{load();loadEdemStatus()},60000);
 </script>
