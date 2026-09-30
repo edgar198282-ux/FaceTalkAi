@@ -338,6 +338,7 @@ let tvGuideIndex=0;
 
 function authHeaders(){
   const h={'X-Abaj-Device-Id':deviceId};
+  if(nativeTv)h['X-Abaj-TV']='1';
   try{
     const tvAuth=JSON.parse(localStorage.getItem('abaj_tv_auth')||'{}');
     if(tvAuth.ft_uid&&tvAuth.ft_ts&&tvAuth.ft_sig){
@@ -372,7 +373,12 @@ async function refreshTvAuth(force=false){
     });
     if(!r.ok)return false;
     const d=await r.json();
-    if(!d.paired)return false;
+    if(!d.paired){
+      localStorage.removeItem('abaj_tv_auth');
+      if(current)closePlayer();
+      startTvPairing();
+      return false;
+    }
     localStorage.setItem('abaj_tv_auth',JSON.stringify({
       ft_uid:String(d.ft_uid),ft_ts:String(d.ft_ts),ft_sig:String(d.ft_sig)
     }));
