@@ -6,7 +6,7 @@ from urllib.parse import quote, urlencode, urlparse
 import aiohttp
 from aiohttp import web
 
-from .config import DATA_DIR, PORT
+from .config import DATA_DIR, PORT, ADMIN_ID
 from . import iptv
 from .db import get_setting, set_setting, list_settings_prefix
 from .webapp import (
@@ -456,6 +456,46 @@ async def api_admin_iptv_edem_limit(request):
     return web.json_response({'ok':True,'user_id':uid,'max_connections':limit})
 
 
+async def api_iptv_edem_payment_request(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    body = await request.json()
+    try:
+        plan_days = max(1, min(3650, int(body.get('plan_days') or 30)))
+        amount = max(0.0, float(body.get('amount') or 0))
+    except Exception:
+        return web.json_response({'ok':False,'error':'bad values'}, status=400)
+
+    payment = {
+        'status':'pending',
+        'requested_at':int(time.time()),
+        'last_paid_at':0,
+        'plan_days':plan_days,
+        'last_amount':amount,
+    }
+    await set_setting(f'edem_payment:{uid}', json.dumps(payment, ensure_ascii=False, separators=(',', ':')))
+
+    try:
+        if ADMIN_ID:
+            name = str(user.get('first_name') or user.get('username') or uid)
+            username = ('@' + str(user.get('username'))) if user.get('username') else ''
+            await request.app['bot'].send_message(
+                ADMIN_ID,
+                '💳 Abaj TV: запрос на подтверждение оплаты\n'
+                f'Пользователь: {name} {username}\n'
+                f'Telegram ID: {uid}\n'
+                f'Продление: {plan_days} дней'
+                + (f'\nСумма: {amount:g}' if amount else '')
+                + '\nОткройте ⚙ Edem Admin и нажмите «Оплачено».'
+            )
+    except Exception as e:
+        print('payment admin notify failed', repr(e))
+
+    return web.json_response({'ok':True,'payment':payment})
+
+
 async def api_admin_iptv_edem_payment(request):
     user = await _user_from_request(request)
     if not user or not _is_admin_user(user):
@@ -556,7 +596,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload)
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
-    app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy)
+    app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
     app.router.add_get('/api/admin/iptv/edem', api_admin_iptv_edem_list); app.router.add_post('/api/admin/iptv/edem/assign', api_admin_iptv_edem_assign); app.router.add_post('/api/admin/iptv/edem/limit', api_admin_iptv_edem_limit); app.router.add_post('/api/admin/iptv/edem/subscription', api_admin_iptv_edem_subscription); app.router.add_post('/api/admin/iptv/edem/payment', api_admin_iptv_edem_payment)
     app.router.add_get('/api/me', api_me); app.router.add_get('/api/admin/stats', api_admin_stats); app.router.add_get('/api/admin/keys', api_admin_keys); app.router.add_post('/api/admin/keys', api_admin_keys)
     app.router.add_get('/api/admin/gpu-health', api_admin_gpu_health); app.router.add_post('/api/admin/video-limit', api_admin_video_limit)
