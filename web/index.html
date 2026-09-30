@@ -166,9 +166,14 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 .tvZap{position:fixed;left:34px;bottom:34px;z-index:430;display:none;min-width:420px;max-width:68vw;background:rgba(3,14,28,.9);color:white;border-radius:18px;padding:16px 20px;box-shadow:0 12px 38px rgba(0,0,0,.4)}.tvZap.show{display:block}.tvZapTop{display:flex;align-items:center;gap:14px}.tvZapNo{font-size:34px;font-weight:900;color:#ffd400}.tvZapName{font-size:25px;font-weight:900}.tvZapNow{font-size:17px;margin-top:8px;color:#fff}.tvZapNext{font-size:14px;margin-top:5px;color:#a9c8da}.tvZapFav{font-size:24px;margin-left:auto}.playerClean .tvZap{display:none!important}
 .netBanner{position:fixed;left:50%;top:24px;transform:translateX(-50%);z-index:500;display:none;background:rgba(137,28,28,.94);color:#fff;border-radius:14px;padding:11px 18px;font-size:16px;font-weight:800;box-shadow:0 10px 28px rgba(0,0,0,.28)}.netBanner.show{display:block}.netBanner.ok{background:rgba(18,130,76,.94)}
 .tvShortcut{position:fixed;left:34px;top:28px;z-index:440;display:none;background:rgba(3,14,28,.92);color:#fff;border-radius:14px;padding:10px 16px;font-size:17px;font-weight:800}.tvShortcut.show{display:block}
+.tvGuide{position:fixed;inset:0;z-index:460;display:none;background:rgba(1,10,22,.96);color:#fff;padding:28px}.tvGuide.open{display:block}.tvGuideHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.tvGuideTitle{font-size:30px;font-weight:900}.tvGuideHint{font-size:15px;color:#9ec7df}.tvGuideList{height:calc(100vh - 92px);overflow:auto;display:grid;gap:7px}.tvGuideRow{display:grid;grid-template-columns:70px 220px 1fr 1fr;gap:14px;align-items:center;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.06);font-size:17px}.tvGuideRow.focused{background:#168de8;box-shadow:0 0 0 3px #ffd400 inset}.tvGuideNo{font-size:22px;font-weight:900;color:#ffd400}.tvGuideName{font-weight:900}.tvGuideNow,.tvGuideNext{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tvGuideNext{color:#a9c8da}
 </style>
 </head>
 <body>
+<div class="tvGuide" id="tvGuide">
+  <div class="tvGuideHead"><div class="tvGuideTitle">Телепрограмма</div><div class="tvGuideHint">↑ ↓ выбор · OK открыть · Back закрыть</div></div>
+  <div class="tvGuideList" id="tvGuideList"></div>
+</div>
 <div class="tvShortcut" id="tvShortcut"></div>
 <div class="netBanner" id="netBanner"></div>
 <div class="tvNumberOverlay" id="tvNumberOverlay"></div>
@@ -326,6 +331,7 @@ let tvWatchdogLastTime=-1;
 let tvWatchdogStalls=0;
 let tvAuthRefreshTimer=null;
 let tvShortcutTimer=null;
+let tvGuideIndex=0;
 
 function authHeaders(){
   const h={'X-Abaj-Device-Id':deviceId};
@@ -688,6 +694,50 @@ function toggleTvMode(){
   focusIndex=0;
   render();
 }
+function tvGuideOpen(){
+  return nativeTv&&document.getElementById('tvGuide').classList.contains('open');
+}
+function renderTvGuide(){
+  if(!nativeTv)return;
+  const rows=filteredNow.length?filteredNow:channels;
+  tvGuideIndex=Math.max(0,Math.min(tvGuideIndex,Math.max(0,rows.length-1)));
+  const box=document.getElementById('tvGuideList');
+  box.innerHTML=rows.slice(0,160).map((ch,i)=>{
+    const now=(ch.epg_now&&ch.epg_now.title)||ch.group||'LIVE';
+    const next=ch.epg_next?ch.epg_next.title:'';
+    return '<div class="tvGuideRow '+(i===tvGuideIndex?'focused':'')+'" data-guide-index="'+i+'">'+
+      '<div class="tvGuideNo">'+(i+1)+'</div>'+
+      '<div class="tvGuideName">'+esc(ch.name)+'</div>'+
+      '<div class="tvGuideNow">'+esc(now)+'</div>'+
+      '<div class="tvGuideNext">'+(next?('Далее: '+esc(next)):'')+'</div>'+
+    '</div>';
+  }).join('');
+  const el=box.querySelector('.tvGuideRow.focused');
+  if(el)el.scrollIntoView({block:'nearest'});
+}
+function toggleTvGuide(force){
+  if(!nativeTv)return;
+  const guide=document.getElementById('tvGuide');
+  const open=typeof force==='boolean'?force:!guide.classList.contains('open');
+  if(open){
+    const rows=filteredNow.length?filteredNow:channels;
+    tvGuideIndex=Math.max(0,rows.findIndex(x=>current&&x.id===current.id));
+    guide.classList.add('open');
+    renderTvGuide();
+  }else guide.classList.remove('open');
+}
+function moveTvGuide(delta){
+  const rows=(filteredNow.length?filteredNow:channels).slice(0,160);
+  if(!rows.length)return;
+  tvGuideIndex=Math.max(0,Math.min(rows.length-1,tvGuideIndex+delta));
+  renderTvGuide();
+}
+function openTvGuideFocused(){
+  const rows=(filteredNow.length?filteredNow:channels).slice(0,160);
+  const ch=rows[tvGuideIndex];
+  if(ch){toggleTvGuide(false);openPlayer(ch.id)}
+}
+
 function showTvShortcut(text){
   if(!nativeTv)return;
   const el=document.getElementById('tvShortcut');
@@ -978,6 +1028,7 @@ function handleTvBack(){
     if(tvPairPoll){clearInterval(tvPairPoll);tvPairPoll=null}
     return true;
   }
+  if(tvGuideOpen()){toggleTvGuide(false);return true}
   if(tvRailOpen()){toggleTvRail(false);return true}
   const player=document.getElementById('playerView');
   if(player&&player.classList.contains('open')){closePlayer();return true}
