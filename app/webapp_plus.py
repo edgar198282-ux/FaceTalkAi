@@ -8,7 +8,7 @@ from aiohttp import web
 
 from .config import DATA_DIR, PORT
 from . import iptv
-from .db import get_setting, set_setting
+from .db import get_setting, set_setting, list_settings_prefix
 from .webapp import (
     api_error_middleware,
     api_me,
@@ -43,6 +43,8 @@ PUBLIC_APK_PATH = '/downloads/AbajTV-latest.apk'
 os.makedirs(APK_DIR, exist_ok=True)
 
 _edem_cache = {}
+_edem_sessions = {}
+_edem_stream_tokens = {}
 
 
 def _read_apk_meta():
@@ -144,6 +146,110 @@ async def api_iptv_state_save(request):
     return web.json_response({'ok':True, **state}, headers={'Cache-Control':'no-store'})
 
 
+def _edem_prune_sessions(uid: int, ttl: int = 120):
+    now = int(time.time())
+    sessions = _edem_sessions.setdefault(uid, {})
+    dead = [k for k,v in sessions.items() if now - int(v.get('ts') or 0) > ttl]
+    for k in dead:
+        sessions.pop(k, None)
+    return sessions
+
+
+async def _edem_max_connections(uid: int) -> int:
+    raw = await get_setting(f'edem_max_connections:{uid}', '3')
+    try:
+        return max(1, min(10, int(raw)))
+    except Exception:
+        return 3
+
+
+async def _edem_touch_session(uid: int, device_id: str):
+    device_id = (device_id or '').strip()[:120]
+    if not device_id:
+        device_id = 'unknown'
+    sessions = _edem_prune_sessions(uid)
+    limit = await _edem_max_connections(uid)
+    if device_id not in sessions and len(sessions) >= limit:
+        return False, limit, len(sessions)
+    sessions[device_id] = {'ts': int(time.time())}
+    return True, limit, len(sessions)
+
+
+def _edem_stream_token(uid: int, device_id: str, url: str) -> str:
+    import hashlib, hmac
+    secret = (os.getenv('TELEGRAM_BOT_TOKEN') or os.getenv('FACETALK_BOT_TOKEN') or 'abaj-tv').encode()
+    payload = f'{uid}|{device_id}|{url}'.encode()
+    return hmac.new(secret, payload, hashlib.sha256).hexdigest()
+
+
+def _edem_store_stream(uid: int, device_id: str, url: str) -> str:
+    token = _edem_stream_token(uid, device_id, url)
+    _edem_stream_tokens[token] = {
+        'uid': uid,
+        'device_id': device_id,
+        'url': url,
+        'ts': int(time.time()),
+    }
+    return token
+
+
+def _rewrite_edem_hls(text: str, base: str, uid: int, device_id: str) -> str:
+    from urllib.parse import urljoin
+    import re
+    out = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            out.append('')
+            continue
+        if line.startswith('#'):
+            def repl(match):
+                target = urljoin(base, match.group(1))
+                token = _edem_store_stream(uid, device_id, target)
+                return 'URI="/api/iptv/edem/proxy?t=' + quote(token, safe='') + '"'
+            out.append(re.sub(r'URI="([^"]+)"', repl, raw))
+        else:
+            target = urljoin(base, line)
+            token = _edem_store_stream(uid, device_id, target)
+            out.append('/api/iptv/edem/proxy?t=' + quote(token, safe=''))
+    return '\n'.join(out) + '\n'
+
+
+async def api_iptv_edem_proxy(request):
+    token = (request.query.get('t') or '').strip()
+    entry = _edem_stream_tokens.get(token)
+    if not entry:
+        raise web.HTTPForbidden(text='Invalid stream token')
+    uid = int(entry['uid'])
+    device_id = str(entry['device_id'])
+    ok, limit, active = await _edem_touch_session(uid, device_id)
+    if not ok:
+        raise web.HTTPTooManyRequests(text=f'Connection limit reached ({active}/{limit})')
+    if int(time.time()) - int(entry.get('ts') or 0) > 600:
+        _edem_stream_tokens.pop(token, None)
+        raise web.HTTPForbidden(text='Expired stream token')
+    url = entry['url']
+    timeout = aiohttp.ClientTimeout(total=20, connect=6, sock_read=12)
+    async with aiohttp.ClientSession(headers={'User-Agent':'AbajTV/1.0'}) as session:
+        async with session.get(url, timeout=timeout, allow_redirects=True) as r:
+            body = await r.read()
+            ctype = (r.headers.get('content-type') or '').lower()
+            final_url = str(r.url)
+            status = r.status
+    if b'#EXTM3U' in body[:4096] or 'mpegurl' in ctype or final_url.lower().split('?')[0].endswith('.m3u8'):
+        return web.Response(
+            text=_rewrite_edem_hls(body.decode('utf-8','ignore'), final_url, uid, device_id),
+            content_type='application/vnd.apple.mpegurl',
+            headers={'Cache-Control':'no-store'}
+        )
+    return web.Response(
+        body=body,
+        status=status,
+        content_type=ctype.split(';')[0] if ctype else 'application/octet-stream',
+        headers={'Cache-Control':'private, max-age=20'}
+    )
+
+
 async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
     raw = await get_setting(f'edem_playlist:{uid}', '')
     playlist_url = (raw or '').strip()
@@ -217,6 +323,15 @@ async def api_iptv_edem_play(request):
     if not user:
         raise web.HTTPUnauthorized(text='Unauthorized')
     uid = int(user['id'])
+    device_id = (request.headers.get('X-Abaj-Device-Id') or '').strip()[:120] or 'unknown'
+    ok, limit, active = await _edem_touch_session(uid, device_id)
+    if not ok:
+        return web.json_response({
+            'ok':False,
+            'error':'connection_limit',
+            'limit':limit,
+            'active':active,
+        }, status=429)
     cid = (request.query.get('id') or '').strip()
     data = await _load_edem_playlist_for_uid(uid)
     item = next((x for x in (data.get('channels') or []) if x.get('id') == cid), None)
@@ -233,11 +348,55 @@ async def api_iptv_edem_play(request):
             body = await r.read()
     if b'#EXTM3U' in body[:4096] or 'mpegurl' in ctype or final_url.lower().split('?')[0].endswith('.m3u8'):
         return web.Response(
-            text=iptv._rewrite_hls(body.decode('utf-8','ignore'), final_url),
+            text=_rewrite_edem_hls(body.decode('utf-8','ignore'), final_url, uid, device_id),
             content_type='application/vnd.apple.mpegurl',
             headers={'Cache-Control':'no-store'}
         )
     raise web.HTTPBadGateway(text='Unsupported Edem stream type')
+
+
+async def api_admin_iptv_edem_list(request):
+    user = await _user_from_request(request)
+    if not user or not _is_admin_user(user):
+        return web.json_response({'ok':False,'error':'forbidden'}, status=403)
+    rows = await list_settings_prefix('edem_playlist:')
+    users = []
+    for row in rows:
+        key = row.get('key') or ''
+        try:
+            uid = int(key.split(':',1)[1])
+        except Exception:
+            continue
+        playlist = str(row.get('value') or '').strip()
+        if not playlist:
+            continue
+        sessions = _edem_prune_sessions(uid)
+        limit = await _edem_max_connections(uid)
+        cache = _edem_cache.get(uid) or {}
+        users.append({
+            'user_id': uid,
+            'configured': True,
+            'channel_count': len(cache.get('channels') or []),
+            'active_connections': len(sessions),
+            'max_connections': limit,
+            'last_playlist_refresh': int(cache.get('ts') or 0),
+        })
+    users.sort(key=lambda x: x['user_id'])
+    return web.json_response({'ok':True,'users':users}, headers={'Cache-Control':'no-store'})
+
+
+async def api_admin_iptv_edem_limit(request):
+    user = await _user_from_request(request)
+    if not user or not _is_admin_user(user):
+        return web.json_response({'ok':False,'error':'forbidden'}, status=403)
+    body = await request.json()
+    try:
+        uid = int(body.get('user_id'))
+        limit = max(1, min(10, int(body.get('max_connections'))))
+    except Exception:
+        return web.json_response({'ok':False,'error':'bad values'}, status=400)
+    await set_setting(f'edem_max_connections:{uid}', str(limit))
+    return web.json_response({'ok':True,'user_id':uid,'max_connections':limit})
 
 
 async def api_admin_iptv_edem_assign(request):
@@ -278,8 +437,8 @@ async def start_webapp(bot):
     app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload)
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
-    app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play)
-    app.router.add_post('/api/admin/iptv/edem/assign', api_admin_iptv_edem_assign)
+    app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy)
+    app.router.add_get('/api/admin/iptv/edem', api_admin_iptv_edem_list); app.router.add_post('/api/admin/iptv/edem/assign', api_admin_iptv_edem_assign); app.router.add_post('/api/admin/iptv/edem/limit', api_admin_iptv_edem_limit)
     app.router.add_get('/api/me', api_me); app.router.add_get('/api/admin/stats', api_admin_stats); app.router.add_get('/api/admin/keys', api_admin_keys); app.router.add_post('/api/admin/keys', api_admin_keys)
     app.router.add_get('/api/admin/gpu-health', api_admin_gpu_health); app.router.add_post('/api/admin/video-limit', api_admin_video_limit)
     app.router.add_get('/api/photo', api_photo); app.router.add_get('/api/profile-photo', api_profile_photo); app.router.add_post('/api/role', api_role); app.router.add_post('/api/mode', api_mode); app.router.add_post('/api/reset', api_reset)
