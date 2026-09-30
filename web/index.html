@@ -167,9 +167,17 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 .netBanner{position:fixed;left:50%;top:24px;transform:translateX(-50%);z-index:500;display:none;background:rgba(137,28,28,.94);color:#fff;border-radius:14px;padding:11px 18px;font-size:16px;font-weight:800;box-shadow:0 10px 28px rgba(0,0,0,.28)}.netBanner.show{display:block}.netBanner.ok{background:rgba(18,130,76,.94)}
 .tvShortcut{position:fixed;left:34px;top:28px;z-index:440;display:none;background:rgba(3,14,28,.92);color:#fff;border-radius:14px;padding:10px 16px;font-size:17px;font-weight:800}.tvShortcut.show{display:block}
 .tvGuide{position:fixed;inset:0;z-index:460;display:none;background:rgba(1,10,22,.96);color:#fff;padding:28px}.tvGuide.open{display:block}.tvGuideHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.tvGuideTitle{font-size:30px;font-weight:900}.tvGuideHint{font-size:15px;color:#9ec7df}.tvGuideList{height:calc(100vh - 92px);overflow:auto;display:grid;gap:7px}.tvGuideRow{display:grid;grid-template-columns:70px 220px 1fr 1fr;gap:14px;align-items:center;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.06);font-size:17px}.tvGuideRow.focused{background:#168de8;box-shadow:0 0 0 3px #ffd400 inset}.tvGuideNo{font-size:22px;font-weight:900;color:#ffd400}.tvGuideName{font-weight:900}.tvGuideNow,.tvGuideNext{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tvGuideNext{color:#a9c8da}
+.tvSearch{position:fixed;inset:0;z-index:470;display:none;align-items:flex-start;justify-content:center;background:rgba(1,10,22,.94);padding-top:72px}.tvSearch.open{display:flex}.tvSearchCard{width:min(900px,90vw);background:#fff;border-radius:24px;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,.4)}.tvSearchTitle{font-size:28px;font-weight:900;color:#0d4d86;margin-bottom:14px}.tvSearchInput{width:100%;font-size:30px;padding:16px 18px;border:3px solid #168de8;border-radius:16px;outline:none}.tvSearchHint{font-size:16px;color:#5b7488;margin-top:10px}
 </style>
 </head>
 <body>
+<div class="tvSearch" id="tvSearch">
+  <div class="tvSearchCard">
+    <div class="tvSearchTitle">Поиск канала</div>
+    <input id="tvSearchInput" class="tvSearchInput" placeholder="Введите название канала">
+    <div class="tvSearchHint">Введите название · OK применить · Back отменить</div>
+  </div>
+</div>
 <div class="tvGuide" id="tvGuide">
   <div class="tvGuideHead"><div class="tvGuideTitle">Телепрограмма</div><div class="tvGuideHint">↑ ↓ выбор · OK открыть · Back закрыть</div></div>
   <div class="tvGuideList" id="tvGuideList"></div>
@@ -733,6 +741,31 @@ function toggleTvMode(){
   focusIndex=0;
   render();
 }
+function tvSearchOpen(){
+  return nativeTv&&document.getElementById('tvSearch').classList.contains('open');
+}
+function openTvSearch(){
+  if(!nativeTv)return;
+  const box=document.getElementById('tvSearch');
+  const input=document.getElementById('tvSearchInput');
+  input.value=document.getElementById('search').value||'';
+  box.classList.add('open');
+  setTimeout(()=>{input.focus();input.select()},50);
+}
+function closeTvSearch(apply){
+  if(!nativeTv)return;
+  const box=document.getElementById('tvSearch');
+  const input=document.getElementById('tvSearchInput');
+  if(apply){
+    document.getElementById('search').value=input.value||'';
+    focusIndex=0;
+    render();
+    showTvShortcut(input.value?('Поиск: '+input.value):'Поиск очищен');
+  }
+  box.classList.remove('open');
+  try{document.activeElement.blur()}catch(e){}
+}
+
 function tvGuideOpen(){
   return nativeTv&&document.getElementById('tvGuide').classList.contains('open');
 }
@@ -1067,6 +1100,7 @@ function handleTvBack(){
     if(tvPairPoll){clearInterval(tvPairPoll);tvPairPoll=null}
     return true;
   }
+  if(tvSearchOpen()){closeTvSearch(false);return true}
   if(tvGuideOpen()){toggleTvGuide(false);return true}
   if(tvRailOpen()){toggleTvRail(false);return true}
   const player=document.getElementById('playerView');
