@@ -319,6 +319,9 @@ let tvAutoResumeDone=false;
 let tvZapTimer=null;
 let networkRetryTimer=null;
 let tvWasPlayingBeforePause=false;
+let tvWatchdogTimer=null;
+let tvWatchdogLastTime=-1;
+let tvWatchdogStalls=0;
 
 function authHeaders(){
   const h={'X-Abaj-Device-Id':deviceId};
@@ -862,6 +865,7 @@ function openFocused(){
 
 function suspendTvPlayback(){
   if(!nativeTv)return;
+  stopTvWatchdog();
   const v=document.getElementById('video');
   tvWasPlayingBeforePause=!!(current&&v&&!v.paused);
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
@@ -956,7 +960,36 @@ function openPlayer(id){
   startStream(ch);
   renderRail();
 }
+function stopTvWatchdog(){
+  if(tvWatchdogTimer){clearInterval(tvWatchdogTimer);tvWatchdogTimer=null}
+  tvWatchdogLastTime=-1;
+  tvWatchdogStalls=0;
+}
+function startTvWatchdog(ch){
+  if(!nativeTv)return;
+  stopTvWatchdog();
+  const v=document.getElementById('video');
+  tvWatchdogTimer=setInterval(()=>{
+    if(!current||current.id!==ch.id||document.hidden||!navigator.onLine)return;
+    if(!v||v.paused||v.seeking)return;
+    const t=Number(v.currentTime||0);
+    if(tvWatchdogLastTime>=0&&Math.abs(t-tvWatchdogLastTime)<0.15){
+      tvWatchdogStalls++;
+    }else{
+      tvWatchdogStalls=0;
+    }
+    tvWatchdogLastTime=t;
+    if(tvWatchdogStalls>=3){
+      tvWatchdogStalls=0;
+      const err=document.getElementById('playerError');
+      if(err)err.textContent='Поток завис. Переподключаю…';
+      startStream(ch);
+    }
+  },4000);
+}
+
 function startStream(ch){
+  stopTvWatchdog();
   const v=document.getElementById('video');
   const err=document.getElementById('playerError');
   err.textContent='';
@@ -994,7 +1027,7 @@ function startStream(ch){
     hls.on(Hls.Events.MANIFEST_PARSED,()=>{
       streamRetries=0;
       updateQualityMenu();
-      v.play().catch(()=>{});
+      v.play().then(()=>startTvWatchdog(ch)).catch(()=>{});
     });
 
     hls.on(Hls.Events.LEVEL_SWITCHED,()=>updateQualityMenu());
@@ -1027,7 +1060,7 @@ function startStream(ch){
         .catch(()=>scheduleReconnect(ch));
     }else{
       v.src=src;v.load();
-      v.play().then(()=>{streamRetries=0}).catch(()=>scheduleReconnect(ch));
+      v.play().then(()=>{streamRetries=0;startTvWatchdog(ch)}).catch(()=>scheduleReconnect(ch));
     }
   }
 }
@@ -1132,6 +1165,7 @@ function openTvRailFocused(){
 }
 function closePlayer(){
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
+  stopTvWatchdog();
   if(hls){hls.destroy();hls=null}
   const v=document.getElementById('video');
   v.pause();v.removeAttribute('src');v.load();
