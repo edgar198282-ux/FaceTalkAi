@@ -112,6 +112,16 @@ body.playerFullscreenActive{overflow:hidden!important;background:#000!important}
 .playerGestureHint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5000;display:none;pointer-events:none;background:rgba(0,0,0,.76);color:#fff;border-radius:16px;padding:12px 18px;font-size:18px;font-weight:800;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .playerGestureHint.show{display:block}
 .playerView.appFullscreen .playerGestureHint,.playerView:fullscreen .playerGestureHint,.playerView:-webkit-full-screen .playerGestureHint{position:fixed!important;left:50%!important;top:50%!important;z-index:2147483647!important}
+.playerChannelHud{position:absolute;left:14px;top:14px;z-index:9;display:none;align-items:center;gap:10px;max-width:min(82vw,430px);padding:8px 11px;border-radius:14px;background:rgba(0,0,0,.58);backdrop-filter:blur(8px);color:#fff;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.28)}
+.playerChannelHud.show{display:flex}
+.playerChannelHudLogo{width:46px;height:46px;min-width:46px;border-radius:10px;object-fit:contain;background:rgba(255,255,255,.92);padding:3px;box-sizing:border-box}
+.playerChannelHudFallback{width:46px;height:46px;min-width:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.92);color:#60727f;font-weight:900;font-size:14px}
+.playerChannelHudText{min-width:0}
+.playerChannelHudName{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.playerChannelHudTime{font-size:12px;color:#e9f6ff;margin-top:3px;white-space:nowrap}
+.playerChannelHudBar{height:4px;background:rgba(255,255,255,.24);border-radius:4px;overflow:hidden;margin-top:5px}
+.playerChannelHudBar span{display:block;height:100%;width:0;background:#38bdf8;border-radius:4px}
+.playerView.appFullscreen .playerChannelHud,.playerView:fullscreen .playerChannelHud,.playerView:-webkit-full-screen .playerChannelHud{position:fixed!important;left:18px!important;top:18px!important;z-index:2147483646!important}
 .playerBrand{position:fixed;inset:0;z-index:120;pointer-events:none;background:#031a4a;opacity:1;transition:opacity .12s ease;display:flex;align-items:center;justify-content:center}.playerHourglass{font-size:68px;line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));animation:hourglassPulse 1s ease-in-out infinite}@keyframes hourglassPulse{0%,100%{transform:scale(1);opacity:.72}50%{transform:scale(1.08);opacity:1}}
 .videoWrap.playing .playerBrand{opacity:0}
 video{width:100%;height:100%;object-fit:contain;background:transparent;position:relative;z-index:1}
@@ -356,6 +366,15 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   <div class="videoWrap" onclick="handlePlayerSurfaceClick(event)">
     <div class="playerBrand"><div class="playerHourglass">⌛</div></div>
     <video id="video" controls playsinline webkit-playsinline></video>
+    <div id="playerChannelHud" class="playerChannelHud">
+      <img id="playerChannelHudLogo" class="playerChannelHudLogo" alt="">
+      <div id="playerChannelHudFallback" class="playerChannelHudFallback" style="display:none">TV</div>
+      <div class="playerChannelHudText">
+        <div id="playerChannelHudName" class="playerChannelHudName"></div>
+        <div id="playerChannelHudTime" class="playerChannelHudTime"></div>
+        <div class="playerChannelHudBar"><span id="playerChannelHudProgress"></span></div>
+      </div>
+    </div>
     <div id="playerGestureHint" class="playerGestureHint"></div>
     <div id="channelRail" class="channelRail" onclick="event.stopPropagation()"></div>
   </div>
@@ -1586,20 +1605,61 @@ function fmtClock(ts){
   if(!ts)return '';
   try{return new Date(ts*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});}catch(e){return '';}
 }
+function fmtDurationCompact(sec){
+  sec=Math.max(0,Math.floor(Number(sec)||0));
+  const h=Math.floor(sec/3600);
+  const m=Math.floor((sec%3600)/60);
+  if(h>0)return h+'ч '+String(m).padStart(2,'0')+'м';
+  return Math.max(0,m)+'м';
+}
+function updatePlayerChannelHud(){
+  const hud=document.getElementById('playerChannelHud');
+  const logo=document.getElementById('playerChannelHudLogo');
+  const fallback=document.getElementById('playerChannelHudFallback');
+  const name=document.getElementById('playerChannelHudName');
+  const time=document.getElementById('playerChannelHudTime');
+  const progress=document.getElementById('playerChannelHudProgress');
+  if(!hud||!logo||!fallback||!name||!time||!progress)return;
+  if(!current){hud.classList.remove('show');return}
+  name.textContent=current.name||'Канал';
+  if(current.logo){
+    logo.style.display='block'; fallback.style.display='none';
+    logo.onerror=()=>{logo.style.display='none';fallback.style.display='flex'};
+    if(logo.getAttribute('src')!==current.logo)logo.setAttribute('src',current.logo);
+  }else{
+    logo.style.display='none'; fallback.style.display='flex';
+  }
+  const p=current.epg_now||{};
+  const now=Date.now()/1000;
+  if(p.start&&p.stop&&Number(p.stop)>Number(p.start)){
+    const elapsed=Math.max(0,now-Number(p.start));
+    const left=Math.max(0,Number(p.stop)-now);
+    const passedLabel=appLang==='hy'?'Անցել է':(appLang==='en'?'Elapsed':'Прошло');
+    const leftLabel=appLang==='hy'?'Մնացել է':(appLang==='en'?'Left':'Осталось');
+    time.textContent=passedLabel+' '+fmtDurationCompact(elapsed)+' · '+leftLabel+' '+fmtDurationCompact(left);
+    progress.style.width=epgProgress(p)+'%';
+    hud.classList.add('show');
+  }else{
+    time.textContent='LIVE';
+    progress.style.width='0%';
+    hud.classList.add('show');
+  }
+}
 function updatePlayerRemaining(){
   const el=document.getElementById('playerRemaining');
   if(!el)return;
-  if(!current||!current.epg_now||!current.epg_now.stop){el.textContent='';return}
+  if(!current||!current.epg_now||!current.epg_now.stop){el.textContent='';updatePlayerChannelHud();return}
   const left=Math.max(0,Math.floor(Number(current.epg_now.stop)-Date.now()/1000));
-  if(left<=0){el.textContent='';return}
+  if(left<=0){el.textContent='';updatePlayerChannelHud();return}
   const h=Math.floor(left/3600);
   const m=Math.max(1,Math.ceil((left%3600)/60));
   const label=appLang==='hy'?'Մնացել է':(appLang==='en'?'Remaining':'Осталось');
   const hour=appLang==='hy'?' ժ':(appLang==='en'?' h':' ч');
   const minute=appLang==='hy'?' ր':(appLang==='en'?' min':' мин');
   el.textContent=label+': '+(h>0?(h+hour+' '+m+minute):(m+minute));
+  updatePlayerChannelHud();
 }
-setInterval(updatePlayerRemaining,30000);
+setInterval(updatePlayerRemaining,15000);
 function epgProgress(p){
   if(!p||!p.start||!p.stop||p.stop<=p.start)return 0;
   const now=Date.now()/1000;
@@ -2093,6 +2153,7 @@ function openPlayer(id){
   document.getElementById('playerError').textContent='';
   updatePlayerFavoriteUi();
   updatePlayerRemaining();
+  updatePlayerChannelHud();
   const playerView=document.getElementById('playerView');
   playerView.classList.add('open');
   if(nativeTv){
