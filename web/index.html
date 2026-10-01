@@ -325,6 +325,8 @@ let activeCategory='';
 const launchParams=new URLSearchParams(location.search);
 const nativeTv=launchParams.get('tv')==='1'||launchParams.get('source')==='android_tv';
 const tvDeviceName=(launchParams.get('device_name')||'Android TV').slice(0,120);
+const tvAppVersion=(launchParams.get('app_version')||'').slice(0,40);
+const tvAppVersionCode=Math.max(0,Number(launchParams.get('app_version_code')||0));
 let layout=nativeTv?'grid':(localStorage.getItem('iptv_layout')||'list');
 let tvMode=nativeTv||localStorage.getItem('iptv_tv_mode')==='1';
 let hls=null;
@@ -404,7 +406,7 @@ async function refreshTvAuth(force=false){
     const r=await fetch('/api/tv/device-auth',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Abaj-Device-Id':deviceId},
-      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,device_name:tvDeviceName,force:!!force})
+      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,device_name:tvDeviceName,app_version:tvAppVersion,app_version_code:tvAppVersionCode,force:!!force})
     });
     if(!r.ok)return false;
     const d=await r.json();
@@ -438,7 +440,7 @@ async function tryTvDeviceAuth(){
     const r=await fetch('/api/tv/device-auth',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Abaj-Device-Id':deviceId},
-      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,device_name:tvDeviceName})
+      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,device_name:tvDeviceName,app_version:tvAppVersion,app_version_code:tvAppVersionCode})
     });
     if(!r.ok)return false;
     const d=await r.json();
@@ -456,7 +458,7 @@ async function startTvPairing(){
     const r=await fetch('/api/tv/pair/start',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Abaj-Device-Id':deviceId},
-      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,device_name:tvDeviceName})
+      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,device_name:tvDeviceName,app_version:tvAppVersion,app_version_code:tvAppVersionCode})
     });
     if(!r.ok)throw new Error('HTTP '+r.status);
     const d=await r.json();
@@ -667,8 +669,10 @@ async function loadAdminTvs(){
     box.innerHTML=rows.length?rows.map(x=>{
       const last=x.last_seen?new Date(x.last_seen*1000).toLocaleString():'—';
       const paired=x.paired_at?new Date(x.paired_at*1000).toLocaleString():'—';
+      const version=x.app_version?(' · APK '+esc(x.app_version)+(x.app_version_code?(' ('+esc(x.app_version_code)+')'):'') ):' · APK —';
+      const online=x.online?'ONLINE':'OFFLINE';
       return '<div class="adminRow"><div><b>'+esc(x.device_name||'Android TV')+'</b>'+
-        '<div class="adminMeta">Telegram ID '+esc(x.user_id)+' · '+(x.stream_active?'Сейчас смотрит':'Не активен')+
+        '<div class="adminMeta">'+online+' · Telegram ID '+esc(x.user_id)+' · '+(x.stream_active?'Сейчас смотрит Edem':'Edem не активен')+version+
         ' · Последняя связь: '+esc(last)+' · Привязан: '+esc(paired)+'</div>'+
         '<div class="adminMeta">TV ID: '+esc(x.device_id)+'</div></div>'+
         '<div class="limitBox"><button onclick="disconnectTv(\''+esc(x.device_id)+'\')" style="background:#d84b5b">Отключить ТВ</button></div></div>';
@@ -1572,7 +1576,7 @@ load();
 loadSyncedState();
 ensureTvPairing();
 if(nativeTv){
-  tvAuthRefreshTimer=setInterval(()=>refreshTvAuth(false),6*60*60*1000);
+  tvAuthRefreshTimer=setInterval(()=>refreshTvAuth(false),5*60*1000);
 }
 window.addEventListener('offline',handleOffline);
 window.addEventListener('online',handleOnline);

@@ -703,6 +703,9 @@ async def api_tv_pair_start(request):
     device_id = str(body.get('device_id') or request.headers.get('X-Abaj-Device-Id') or '').strip()[:120]
     device_secret = str(body.get('device_secret') or '').strip()[:180]
     device_name = str(body.get('device_name') or '').strip()[:120]
+    app_version = str(body.get('app_version') or '').strip()[:40]
+    try: app_version_code = max(0, int(body.get('app_version_code') or 0))
+    except Exception: app_version_code = 0
     if not device_id or not device_secret:
         return web.json_response({'ok':False,'error':'device_required'}, status=400)
 
@@ -718,6 +721,8 @@ async def api_tv_pair_start(request):
             now = int(time.time())
             data['last_seen'] = now
             if device_name: data['device_name'] = device_name
+            if app_version: data['app_version'] = app_version
+            if app_version_code: data['app_version_code'] = app_version_code
             await set_setting(f'tv_device:{device_id}', json.dumps(data, separators=(',',':')))
             ts = now
             return web.json_response({
@@ -739,6 +744,8 @@ async def api_tv_pair_start(request):
         'device_id':device_id,
         'device_secret':device_secret,
         'device_name':device_name,
+        'app_version':app_version,
+        'app_version_code':app_version_code,
         'created_at':int(time.time()),
         'expires_at':expires_at,
         'user_id':0,
@@ -806,6 +813,8 @@ async def api_tv_pair_status(request):
 
     await set_setting(f'tv_device:{device_id}', json.dumps({
         'secret':device_secret,'user_id':uid,'device_name':str(data.get('device_name') or '')[:120],
+        'app_version':str(data.get('app_version') or '')[:40],
+        'app_version_code':int(data.get('app_version_code') or 0),
         'paired_at':int(time.time()),'last_seen':int(time.time())
     }, separators=(',',':')))
     ts = int(time.time())
@@ -820,6 +829,9 @@ async def api_tv_device_auth(request):
     device_id = str(body.get('device_id') or request.headers.get('X-Abaj-Device-Id') or '').strip()[:120]
     device_secret = str(body.get('device_secret') or '').strip()[:180]
     device_name = str(body.get('device_name') or '').strip()[:120]
+    app_version = str(body.get('app_version') or '').strip()[:40]
+    try: app_version_code = max(0, int(body.get('app_version_code') or 0))
+    except Exception: app_version_code = 0
     if not device_id or not device_secret:
         return web.json_response({'ok':False,'error':'device_required'}, status=400)
     raw = await get_setting(f'tv_device:{device_id}', '')
@@ -837,6 +849,8 @@ async def api_tv_device_auth(request):
     now = int(time.time())
     data['last_seen'] = now
     if device_name: data['device_name'] = device_name
+    if app_version: data['app_version'] = app_version
+    if app_version_code: data['app_version_code'] = app_version_code
     await set_setting(f'tv_device:{device_id}', json.dumps(data, separators=(',',':')))
     ts = now
     return web.json_response({
@@ -864,12 +878,16 @@ async def api_admin_tv_devices(request):
             continue
         device_id = str(row.get('key') or '')[len('tv_device:'):]
         active = device_id in _edem_prune_sessions(uid)
+        last_seen = int(data.get('last_seen') or 0)
         devices.append({
             'device_id': device_id,
             'device_name': str(data.get('device_name') or 'Android TV')[:120],
             'user_id': uid,
             'paired_at': int(data.get('paired_at') or 0),
-            'last_seen': int(data.get('last_seen') or 0),
+            'last_seen': last_seen,
+            'online': bool(last_seen and int(time.time()) - last_seen <= 10 * 60),
+            'app_version': str(data.get('app_version') or '')[:40],
+            'app_version_code': int(data.get('app_version_code') or 0),
             'stream_active': bool(active),
         })
     devices.sort(key=lambda x: x.get('last_seen') or x.get('paired_at') or 0, reverse=True)
