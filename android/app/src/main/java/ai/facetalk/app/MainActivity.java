@@ -36,9 +36,14 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 
+import androidx.core.content.FileProvider;
+
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -176,7 +181,45 @@ public class MainActivity extends Activity {
     private void finishApkDownload(long id){if(id<=0||id!=pendingApkDownloadId)return;DownloadManager dm=(DownloadManager)getSystemService(DOWNLOAD_SERVICE);if(dm==null)return;DownloadManager.Query q=new DownloadManager.Query().setFilterById(id);try(Cursor cur=dm.query(q)){if(cur==null||!cur.moveToFirst())return;int status=cur.getInt(cur.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));if(status==DownloadManager.STATUS_SUCCESSFUL){pendingApkDownloadId=-1L;updateDownloadRunning=false;pendingApkUri=dm.getUriForDownloadedFile(id);runOnUiThread(this::requestInstallOrOpen);return;}if(status==DownloadManager.STATUS_FAILED){int reason=cur.getInt(cur.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON));pendingApkDownloadId=-1L;updateDownloadRunning=false;runOnUiThread(()->Toast.makeText(MainActivity.this,"Ошибка загрузки обновления ("+reason+")",Toast.LENGTH_LONG).show());}}catch(Exception ignored){}}
     private void pollApkDownload(long id,int attempt){if(id<=0||id!=pendingApkDownloadId)return;finishApkDownload(id);if(id!=pendingApkDownloadId)return;if(attempt>=300){pendingApkDownloadId=-1L;updateDownloadRunning=false;runOnUiThread(()->Toast.makeText(MainActivity.this,"Загрузка обновления не завершилась",Toast.LENGTH_LONG).show());return;}updateHandler.postDelayed(()->pollApkDownload(id,attempt+1),1000L);}
     private void registerApkDownloadReceiver(){if(downloadReceiver!=null)return;downloadReceiver=new BroadcastReceiver(){@Override public void onReceive(Context context,Intent intent){if(!DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction()))return;long id=intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID,-1L);finishApkDownload(id);}};IntentFilter f=new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);if(Build.VERSION.SDK_INT>=33)registerReceiver(downloadReceiver,f,Context.RECEIVER_EXPORTED);else registerReceiver(downloadReceiver,f);}
-    private void downloadAndInstallApk(String rawUrl){if(rawUrl==null||rawUrl.trim().isEmpty()||updateDownloadRunning)return;try{DownloadManager dm=(DownloadManager)getSystemService(DOWNLOAD_SERVICE);if(dm==null)throw new IllegalStateException("DownloadManager unavailable");String fileName="AbajTV-update-"+System.currentTimeMillis()+".apk";DownloadManager.Request req=new DownloadManager.Request(Uri.parse(rawUrl));req.setTitle("Abaj TV");req.setDescription("Загрузка обновления…");req.setMimeType("application/vnd.android.package-archive");req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);req.setAllowedOverMetered(true);req.setAllowedOverRoaming(true);req.setDestinationInExternalFilesDir(this,Environment.DIRECTORY_DOWNLOADS,fileName);pendingApkUri=null;updateDownloadRunning=true;pendingApkDownloadId=dm.enqueue(req);pollApkDownload(pendingApkDownloadId,0);}catch(Exception e){pendingApkDownloadId=-1L;updateDownloadRunning=false;Toast.makeText(this,"Не удалось загрузить обновление",Toast.LENGTH_LONG).show();}}
+    private void downloadAndInstallApk(String rawUrl){
+        if(rawUrl==null||rawUrl.trim().isEmpty()||updateDownloadRunning)return;
+        updateDownloadRunning=true;
+        pendingApkDownloadId=-1L;
+        pendingApkUri=null;
+        new Thread(()->{
+            HttpURLConnection c=null;
+            try{
+                URL u=new URL(rawUrl);
+                c=(HttpURLConnection)u.openConnection();
+                c.setConnectTimeout(15000);
+                c.setReadTimeout(60000);
+                c.setInstanceFollowRedirects(true);
+                c.setUseCaches(false);
+                c.setRequestProperty("Cache-Control","no-cache");
+                c.setRequestProperty("User-Agent","AbajTV-Updater/"+BuildConfig.VERSION_NAME);
+                int code=c.getResponseCode();
+                if(code<200||code>=300)throw new IllegalStateException("HTTP "+code);
+                File dir=getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                if(dir==null)throw new IllegalStateException("No downloads directory");
+                if(!dir.exists()&&!dir.mkdirs())throw new IllegalStateException("Cannot create downloads directory");
+                File apk=new File(dir,"AbajTV-update-"+System.currentTimeMillis()+".apk");
+                long total=0;
+                try(InputStream in=c.getInputStream();FileOutputStream out=new FileOutputStream(apk)){
+                    byte[] buf=new byte[65536]; int n;
+                    while((n=in.read(buf))!=-1){out.write(buf,0,n);total+=n;}
+                    out.flush();
+                }
+                if(total<300000L)throw new IllegalStateException("APK too small: "+total);
+                Uri uri=FileProvider.getUriForFile(this,getPackageName()+".fileprovider",apk);
+                pendingApkUri=uri;
+                updateDownloadRunning=false;
+                runOnUiThread(this::requestInstallOrOpen);
+            }catch(Exception ex){
+                updateDownloadRunning=false;
+                runOnUiThread(()->Toast.makeText(this,"Ошибка загрузки обновления: "+ex.getMessage(),Toast.LENGTH_LONG).show());
+            }finally{if(c!=null)c.disconnect();}
+        },"abajtv-apk-download").start();
+    }
     private void requestInstallOrOpen(){if(pendingApkUri==null)return;if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O&&!getPackageManager().canRequestPackageInstalls()){try{startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName())));Toast.makeText(this,"Разрешите Abaj TV устанавливать обновления",Toast.LENGTH_LONG).show();}catch(Exception ignored){}return;}Uri u=pendingApkUri;pendingApkUri=null;openPackageInstaller(u);}
     private void openPackageInstaller(Uri apkUri){if(apkUri==null)return;try{Intent install=new Intent(Intent.ACTION_VIEW);install.setDataAndType(apkUri,"application/vnd.android.package-archive");install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(install);}catch(Exception e){Toast.makeText(this,"APK скачан, но установщик не открылся",Toast.LENGTH_LONG).show();}}
     private void handleWebPermission(PermissionRequest r){if(r==null)return;if(BuildConfig.PLAY_STORE_BUILD){r.deny();return;}boolean mic=false,cam=false;for(String x:r.getResources()){if(PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(x))mic=true;if(PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(x))cam=true;}boolean mg=!mic||Build.VERSION.SDK_INT<23||checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED;boolean cg=!cam||Build.VERSION.SDK_INT<23||checkSelfPermission(Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED;if(mg&&cg){r.grant(r.getResources());return;}pendingWebPermission=r;if(Build.VERSION.SDK_INT>=23)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO,Manifest.permission.CAMERA},MEDIA_PERMISSION_REQUEST);else r.grant(r.getResources());}
