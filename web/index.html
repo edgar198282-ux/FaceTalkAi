@@ -1483,6 +1483,62 @@ function openFocused(){
   if(card&&card.dataset.id)openPlayer(card.dataset.id);
 }
 
+let tvChannelOkTimer=null;
+let tvChannelOkResetTimer=null;
+let tvChannelOkPendingId='';
+let tvChannelOkLongTriggered=false;
+
+function focusedChannelCard(){
+  const cards=[...document.querySelectorAll('.channel')];
+  const focused=document.activeElement&&document.activeElement.closest?document.activeElement.closest('.channel'):null;
+  return focused||cards[focusIndex]||null;
+}
+function handleTvChannelOk(){
+  if(!nativeTv){openFocused();return}
+  const card=focusedChannelCard();
+  if(!card||!card.dataset.id)return;
+  const id=card.dataset.id;
+
+  if(tvChannelOkLongTriggered){
+    if(tvChannelOkResetTimer)clearTimeout(tvChannelOkResetTimer);
+    tvChannelOkResetTimer=setTimeout(()=>{tvChannelOkLongTriggered=false},700);
+    return;
+  }
+
+  if(tvChannelOkTimer&&tvChannelOkPendingId===id){
+    clearTimeout(tvChannelOkTimer);
+    tvChannelOkTimer=null;
+    tvChannelOkPendingId='';
+    tvChannelOkLongTriggered=true;
+    const adding=!favs.has(id);
+    toggleFav(id);
+    showTvShortcut(adding?'★ Добавлено в избранное':'☆ Удалено из избранного');
+    if(tvChannelOkResetTimer)clearTimeout(tvChannelOkResetTimer);
+    tvChannelOkResetTimer=setTimeout(()=>{tvChannelOkLongTriggered=false},700);
+    requestAnimationFrame(()=>{
+      const same=[...document.querySelectorAll('.channel')].find(x=>x.dataset.id===id);
+      if(same){
+        const cards=[...document.querySelectorAll('.channel')];
+        const idx=cards.indexOf(same);
+        if(idx>=0)setTvFocus(idx,false);
+      }
+    });
+    return;
+  }
+
+  if(tvChannelOkTimer)clearTimeout(tvChannelOkTimer);
+  tvChannelOkPendingId=id;
+  tvChannelOkTimer=setTimeout(()=>{
+    tvChannelOkTimer=null;
+    const pending=tvChannelOkPendingId;
+    tvChannelOkPendingId='';
+    if(!tvChannelOkLongTriggered&&pending){
+      const same=[...document.querySelectorAll('.channel')].find(x=>x.dataset.id===pending);
+      if(same)openPlayer(pending);
+    }
+  },620);
+}
+
 function suspendTvPlayback(){
   if(!nativeTv)return;
   stopTvWatchdog();
@@ -2051,7 +2107,7 @@ function tvNativeRemote(action){
   else if(action==='right')moveFocusDirection('right');
   else if(action==='up')moveFocusDirection('up');
   else if(action==='down')moveFocusDirection('down');
-  else if(action==='ok')openFocused();
+  else if(action==='ok')handleTvChannelOk();
 }
 
 document.addEventListener('focusin',e=>{
@@ -2135,7 +2191,7 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='ArrowLeft'){e.preventDefault();moveFocusDirection('left')}
   else if(e.key==='ArrowDown'){e.preventDefault();moveFocusDirection('down')}
   else if(e.key==='ArrowUp'){e.preventDefault();moveFocusDirection('up')}
-  else if(e.key==='Enter'){e.preventDefault();openFocused()}
+  else if(e.key==='Enter'){e.preventDefault();if(nativeTv)handleTvChannelOk();else openFocused()}
 });
 
 document.getElementById('app').classList.toggle('tvMode',tvMode);
