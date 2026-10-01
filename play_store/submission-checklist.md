@@ -8,19 +8,31 @@
 - [x] Play build does not request microphone
 - [x] Play build does not request REQUEST_INSTALL_PACKAGES
 - [x] APK self-update disabled in Play build
-- [x] Google Play AAB workflow
-- [x] Signed AAB build verified
+- [x] Signed Google Play AAB workflow
+- [x] Existing AAB artifact downloaded and SHA256 verified
 - [x] RU listing
 - [x] HY listing
 - [x] EN listing
-- [x] Privacy policy page
+- [x] Privacy policy page live over HTTPS
 - [x] Data Safety draft
 - [x] Release notes RU/HY/EN
-- [ ] Final Play upload signing key must be private and not committed to Git
-- [ ] Google Play Console app entry
-- [ ] App access instructions for reviewer
-- [ ] Content rating questionnaire
-- [ ] Data Safety form in Play Console
-- [ ] TV screenshots uploaded
-- [ ] TV banner / store graphics reviewed
-- [ ] Closed testing / production track submission
+- [x] App Content draft
+- [x] Content Rating draft
+- [x] Reviewer access instructions
+- [x] Play icon 512x512
+- [x] Feature graphic 1024x500
+- [x] Android TV banner
+- [x] Android TV screenshot 1280x720
+- [x] Submission package assembled locally
+- [x] Separate private Play upload key generated locally outside the repository
+- [ ] Add private Play upload key to GitHub Actions secrets without exposing it
+- [ ] Rebuild final AAB with the private Play upload key
+- [ ] Create/confirm Google Play Console app entry
+- [ ] Add developer support email in Play Console
+- [ ] Enter App access instructions in Play Console
+- [ ] Complete Data Safety form in Play Console
+- [ ] Complete Content rating questionnaire in Play Console
+- [ ] Upload store graphics and Android TV screenshot
+- [ ] Upload final AAB to internal/closed testing
+- [ ] Review pre-launch report and resolve any blocking issues
+- [ ] Submit production release for review
