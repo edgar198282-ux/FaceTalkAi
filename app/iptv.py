@@ -1336,6 +1336,20 @@ async def api_refresh(request):
     return web.json_response({"ok": True, "running": True})
 
 
+async def api_ad_viewing(request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    cid = str((body or {}).get("channel_id") or "").strip()
+    item = _state["channels"].get(cid)
+    if not item or item.get("status") != "ONLINE":
+        return web.json_response({"ok": False, "error": "unknown channel"}, status=404)
+    _burned_ad_stats["last_free_play"] = int(time.time())
+    _burned_ad_stats["last_free_play_channel_id"] = cid
+    return web.json_response({"ok": True}, headers={"Cache-Control": "no-store"})
+
+
 async def api_ad_state(request):
     cid = str(request.query.get("id") or "").strip()
     item = _state["channels"].get(cid)
@@ -1666,6 +1680,7 @@ def install(app: web.Application):
     app.router.add_get("/api/iptv/diagnostics", api_diagnostics)
     app.router.add_post("/api/iptv/refresh", api_refresh)
     app.router.add_get("/api/iptv/play", api_play)
+    app.router.add_post("/api/iptv/ad-viewing", api_ad_viewing)
     app.router.add_get("/api/iptv/ad-state", api_ad_state)
     app.router.add_post("/api/iptv/ad-visual-observe", api_ad_visual_observe)
     app.router.add_get("/api/iptv/proxy", api_proxy)
