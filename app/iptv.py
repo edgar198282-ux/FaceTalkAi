@@ -535,9 +535,32 @@ async def refresh_channels(force: bool = False):
                     else:
                         candidates.extend(_parse_m3u(text, country, url))
                 candidates.extend(discovered_api)
+                # Enrich legacy M3U rows with logos discovered from the fresh API.
+                # Prefer exact tvg-id, then normalized channel name within the same country.
+                logo_by_id = {}
+                logo_by_name = {}
+                for x in discovered_api:
+                    logo = str(x.get('logo') or '').strip()
+                    if not logo:
+                        continue
+                    tvg_id = str(x.get('tvg_id') or '').strip().lower()
+                    if tvg_id and tvg_id not in logo_by_id:
+                        logo_by_id[tvg_id] = logo
+                    nkey = (str(x.get('country') or '').upper(), _normalize_name(x.get('name') or ''))
+                    if nkey[1] and nkey not in logo_by_name:
+                        logo_by_name[nkey] = logo
+                enriched_logos = 0
                 country_order = {code: i for i, code in enumerate(("AM","RU","GE","UA","BY","KZ","UZ","MD"))}
                 for item in candidates:
                     item['adult'] = _is_adult_channel(item)
+                    if not str(item.get('logo') or '').strip():
+                        tvg_id = str(item.get('tvg_id') or '').strip().lower()
+                        logo = logo_by_id.get(tvg_id) if tvg_id else None
+                        if not logo:
+                            logo = logo_by_name.get((str(item.get('country') or '').upper(), _normalize_name(item.get('name') or '')))
+                        if logo:
+                            item['logo'] = logo
+                            enriched_logos += 1
                 candidates.sort(key=lambda x: (
                     country_order.get(str(x.get("country") or "").upper(), 99),
                     0 if str(x.get("quality") or "").upper() in {"4K", "FHD"} else 1,
@@ -660,6 +683,7 @@ async def refresh_channels(force: bool = False):
                 "with_epg": sum(1 for x in channels.values() if bool(x.get("epg_now"))),
                 "scan_interval_seconds": 1800,
                 "discovered_api_streams": len(discovered_api),
+                "logos_enriched": enriched_logos,
             }
             try:
                 _save_json(HEALTH_PATH, _stream_health)
@@ -691,6 +715,8 @@ def public_state(compact: bool = False):
     rows.sort(key=lambda x: (x["status"] != "ONLINE", x.get("country", ""), x.get("group", ""), x.get("name", "")))
     stats = dict(_state["stats"])
     stats["epg_channels"] = len(_state["epg"]) if _state["epg"] else int(stats.get("epg_channels") or 0)
+    stats["with_epg"] = sum(1 for x in rows if bool(x.get("epg_now")))
+    stats["with_logo"] = sum(1 for x in rows if bool(x.get("logo")))
     return {
         "ok": not bool(_state["error"]),
         "running": _state["running"],
@@ -773,6 +799,7 @@ async def api_diagnostics(request):
                 "last_failover": x.get("last_failover", 0),
                 "failed_url": x.get("failed_url", ""),
                 "backup_count": x.get("backup_count", 0),
+                "failover_count": x.get("failover_count", 0),
             }
             for x in recent_failovers
         ],
@@ -961,6 +988,7 @@ async def api_play(request):
         item["backups"] = [x for x in urls if x != selected_url]
         item["backup_count"] = len(item["backups"])
         item["last_failover"] = int(time.time())
+        item["failover_count"] = int(item.get("failover_count") or 0) + 1
         item["failed_url"] = old_primary or ""
 
     if winner["kind"] == "redirect" or request.query.get("proxy") != "1":
