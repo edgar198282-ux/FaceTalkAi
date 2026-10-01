@@ -2,6 +2,15 @@ name: Build Abaj TV Android APK
 
 on:
   workflow_dispatch:
+    inputs:
+      release_channel:
+        description: OTA channel
+        required: true
+        default: stable
+        type: choice
+        options:
+          - stable
+          - beta
   push:
     branches: [ "main" ]
 
@@ -14,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      RELEASE_CHANNEL: ${{ github.event_name == 'workflow_dispatch' && inputs.release_channel || 'stable' }}
 
     steps:
       - uses: actions/checkout@v6
@@ -123,6 +134,7 @@ jobs:
           retention-days: 30
 
       - name: Publish direct APK as latest GitHub Release
+        if: env.RELEASE_CHANNEL == 'stable'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -156,7 +168,7 @@ jobs:
           WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
           APK="android/app/build/outputs/apk/release/app-release.apk"
           for attempt in $(seq 1 36); do
-            HTTP_CODE=$(curl -sS -o /tmp/facetalk-ota.json -w "%{http_code}" --connect-timeout 10 --max-time 180 -X POST "${WEB_APP_URL%/}/api/app-upload" -H "Content-Type: application/vnd.android.package-archive" -H "X-FaceTalk-Deploy-Token: $APK_DEPLOY_TOKEN" -H "X-FaceTalk-App-Version: ${{ steps.version.outputs.name }}" -H "X-FaceTalk-App-Version-Code: ${{ steps.version.outputs.code }}" --data-binary "@$APK" || true)
+            HTTP_CODE=$(curl -sS -o /tmp/facetalk-ota.json -w "%{http_code}" --connect-timeout 10 --max-time 180 -X POST "${WEB_APP_URL%/}/api/app-upload" -H "Content-Type: application/vnd.android.package-archive" -H "X-FaceTalk-Deploy-Token: $APK_DEPLOY_TOKEN" -H "X-FaceTalk-App-Version: ${{ steps.version.outputs.name }}" -H "X-FaceTalk-App-Version-Code: ${{ steps.version.outputs.code }}" -H "X-AbajTV-Channel: $RELEASE_CHANNEL" --data-binary "@$APK" || true)
             cat /tmp/facetalk-ota.json 2>/dev/null || true
             if [ "$HTTP_CODE" = "200" ]; then echo "Abaj TV OTA published successfully"; exit 0; fi
             echo "OTA attempt $attempt/36 returned HTTP $HTTP_CODE"; sleep 10

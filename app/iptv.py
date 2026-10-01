@@ -519,16 +519,34 @@ async def api_diagnostics(request):
             "consecutive_failures": x.get("consecutive_failures", 0),
             "last_ok": x.get("last_ok", 0),
             "sources": x.get("sources", []),
+            "last_failover": x.get("last_failover", 0),
+            "failed_url": x.get("failed_url", ""),
+            "backup_health": x.get("backup_health", []),
         }
         for x in rows
         if x.get("status") != "ONLINE" or int(x.get("backup_count") or 0) == 0
     ][:300]
+    recent_failovers = sorted(
+        [x for x in rows if int(x.get("last_failover") or 0) > 0],
+        key=lambda x: int(x.get("last_failover") or 0),
+        reverse=True,
+    )[:50]
     return web.json_response({
         "ok": True,
         "stats": state.get("stats") or {},
         "last_refresh": state.get("last_refresh"),
         "running": state.get("running"),
         "problem_channels": problem,
+        "recent_failovers": [
+            {
+                "id": x.get("id"),
+                "name": x.get("name"),
+                "last_failover": x.get("last_failover", 0),
+                "failed_url": x.get("failed_url", ""),
+                "backup_count": x.get("backup_count", 0),
+            }
+            for x in recent_failovers
+        ],
     }, headers={"Cache-Control": "no-store"})
 
 
