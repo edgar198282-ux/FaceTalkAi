@@ -13,7 +13,7 @@ from urllib.request import Request, urlopen
 import aiohttp
 from aiohttp import web
 
-COUNTRY_CODES = {"AM", "RU", "GE", "UA", "BY", "KZ", "UZ", "AZ", "KG", "MD", "TJ", "TR"}
+COUNTRY_CODES = {"AM", "RU", "GE", "UA", "BY", "KZ", "UZ", "KG", "MD", "TJ"}
 SOURCE_URLS = [
     ("HQ", "https://dearbulut.github.io/iptv/playlists/best.m3u"),
     ("AM", "https://iptv-org.github.io/iptv/countries/am.m3u"),
@@ -29,11 +29,9 @@ SOURCE_URLS = [
     ("BY", "https://iptv-org.github.io/iptv/countries/by.m3u"),
     ("KZ", "https://iptv-org.github.io/iptv/countries/kz.m3u"),
     ("UZ", "https://iptv-org.github.io/iptv/countries/uz.m3u"),
-    ("AZ", "https://iptv-org.github.io/iptv/countries/az.m3u"),
     ("KG", "https://iptv-org.github.io/iptv/countries/kg.m3u"),
     ("MD", "https://iptv-org.github.io/iptv/countries/md.m3u"),
     ("TJ", "https://iptv-org.github.io/iptv/countries/tj.m3u"),
-    ("TR", "https://iptv-org.github.io/iptv/countries/tr.m3u"),
 ]
 MAX_STREAMS = 1500
 REFRESH_SECONDS = max(300, int(os.getenv("IPTV_REFRESH_SECONDS", "300")))
@@ -458,7 +456,7 @@ async def refresh_channels(force: bool = False):
                         candidates.extend(_parse_hq_m3u(text, url))
                     else:
                         candidates.extend(_parse_m3u(text, country, url))
-                country_order = {code: i for i, code in enumerate(("AM","RU","GE","UA","BY","KZ","UZ","AZ","KG","MD","TJ","TR"))}
+                country_order = {code: i for i, code in enumerate(("AM","RU","GE","UA","BY","KZ","UZ","KG","MD","TJ"))}
                 candidates.sort(key=lambda x: (
                     country_order.get(str(x.get("country") or "").upper(), 99),
                     0 if str(x.get("quality") or "").upper() in {"4K", "FHD"} else 1,
