@@ -69,6 +69,9 @@ def _apk_download_url():
     parts = urlsplit(MINIAPP_URL)
     return urlunsplit((parts.scheme, parts.netloc, "/downloads/AbajTV-latest.apk", "", ""))
 
+def _tv_apk_download_url():
+    return "https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-tv-compat/AbajTV-TV-compat.apk"
+
 def start_keyboard(user_id: int | None = None, lang: str = "ru"):
     rows = []
     if MINIAPP_URL:
@@ -77,11 +80,18 @@ def start_keyboard(user_id: int | None = None, lang: str = "ru"):
             web_app=WebAppInfo(url=_miniapp_url_for_user(user_id))
         )])
     apk_url = _apk_download_url()
+    tv_apk_url = _tv_apk_download_url()
     if apk_url:
-        rows.append([InlineKeyboardButton(
-            text={"hy":"⬇️ Ներբեռնել APK","ru":"⬇️ Скачать APK","en":"⬇️ Download APK"}.get(lang, "⬇️ Скачать APK"),
-            url=apk_url
-        )])
+        rows.append([
+            InlineKeyboardButton(
+                text={"hy":"📱 Հեռախոս APK","ru":"📱 Телефон APK","en":"📱 Phone APK"}.get(lang, "📱 Телефон APK"),
+                url=apk_url
+            ),
+            InlineKeyboardButton(
+                text={"hy":"📺 Android TV APK","ru":"📺 Android TV APK","en":"📺 Android TV APK"}.get(lang, "📺 Android TV APK"),
+                url=tv_apk_url
+            )
+        ])
     rows.append([
         InlineKeyboardButton(text="🇦🇲 Հայերեն", callback_data="lang:hy"),
         InlineKeyboardButton(text="🇷🇺 Русский", callback_data="lang:ru"),
@@ -448,15 +458,20 @@ async def download_apk(m: Message):
     await _track_incoming(m)
     lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
     apk_url = _apk_download_url()
+    tv_apk_url = _tv_apk_download_url()
     if not apk_url:
         return
     await _answer(
         m,
-        {'hy':'⬇️ Ներբեռնեք Abaj TV APK-ը','ru':'⬇️ Скачайте APK Abaj TV','en':'⬇️ Download Abaj TV APK'}.get(lang, '⬇️ Скачайте APK Abaj TV'),
+        {'hy':'⬇️ Ընտրեք սարքը','ru':'⬇️ Выберите устройство','en':'⬇️ Choose your device'}.get(lang, '⬇️ Выберите устройство'),
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(
-                text={'hy':'⬇️ Ներբեռնել APK','ru':'⬇️ Скачать APK','en':'⬇️ Download APK'}.get(lang, '⬇️ Скачать APK'),
+                text={'hy':'📱 Հեռախոս','ru':'📱 Телефон','en':'📱 Phone'}.get(lang, '📱 Телефон'),
                 url=apk_url,
+            ),
+            InlineKeyboardButton(
+                text={'hy':'📺 Android TV','ru':'📺 Android TV','en':'📺 Android TV'}.get(lang, '📺 Android TV'),
+                url=tv_apk_url,
             )
         ]]),
     )
