@@ -16,9 +16,9 @@
         android:usesCleartextTraffic="false"
         android:theme="@style/AppTheme"
         android:label="Abaj TV"
-        android:icon="@drawable/abaj_tv_logo"
-        android:roundIcon="@drawable/abaj_tv_logo"
-        android:logo="@drawable/abaj_tv_logo"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:logo="@mipmap/ic_launcher"
         android:banner="@drawable/abaj_tv_banner">
         <activity
             android:name=".MainActivity"

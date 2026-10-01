@@ -87,6 +87,7 @@ async def _user_from_request(request):
             request.headers.get('X-FaceTalk-Uid', ''),
             request.headers.get('X-FaceTalk-Ts', ''),
             request.headers.get('X-FaceTalk-Sig', ''),
+            max_age=(30 * 86400 if 'AbajTV-Android/' in ua else 7 * 86400),
         )
     # DEV_USER_ID is useful for browser testing outside Telegram; leave unset in production.
     if not user and os.getenv('DEV_USER_ID'):

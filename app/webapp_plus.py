@@ -1,4 +1,6 @@
 import asyncio
+import hashlib
+import hmac
 import json
 import os
 import time
@@ -1113,8 +1115,17 @@ async def api_app_auth_start(request):
 
 async def api_app_auth_complete(request):
     init_data = (request.query.get('init_data') or '').strip()
-    if not validate_init_data(init_data, max_age=7*86400): raise web.HTTPForbidden(text='Invalid or expired Telegram login')
-    raise web.HTTPFound('facetalk://auth?' + urlencode({'init_data':init_data}))
+    user = validate_init_data(init_data, max_age=7*86400)
+    if not user: raise web.HTTPForbidden(text='Invalid or expired Telegram login')
+    uid = int(user['id'])
+    ts = int(time.time())
+    sig = hmac.new(TELEGRAM_BOT_TOKEN.encode(), f'{uid}:{ts}'.encode(), hashlib.sha256).hexdigest()
+    raise web.HTTPFound('facetalk://auth?' + urlencode({
+        'init_data': init_data,
+        'ft_uid': str(uid),
+        'ft_ts': str(ts),
+        'ft_sig': sig,
+    }))
 
 async def start_webapp(bot):
     app = web.Application(client_max_size=100*1024*1024, middlewares=[api_error_middleware]); app['bot']=bot
