@@ -144,13 +144,13 @@ public class MainActivity extends Activity {
     private boolean hasSignedAuth(){return !prefs.getString("ft_uid","").isEmpty()&&!prefs.getString("ft_ts","").isEmpty()&&!prefs.getString("ft_sig","").isEmpty();}
     private void loadOrAuthorize(){
         String init=prefs.getString("telegram_init_data","");
-        if((init==null||init.trim().isEmpty())&&!hasSignedAuth()){
-            if(isTv){loadAbajTv("");return;}
+        if(!isTv&&!hasSignedAuth()){
             String nonce=ensureAuthNonce();
             showTelegramLinkScreen();
             if(!telegramLaunchAttempted){telegramLaunchAttempted=true;openExternal(Uri.parse(baseUrl()+"/api/app-auth/telegram-start?nonce="+Uri.encode(nonce)));}
             return;
         }
+        if(isTv&&(init==null||init.trim().isEmpty())&&!hasSignedAuth()){loadAbajTv("");return;}
         loadAbajTv(init==null?"":init);
     }
     private void showTelegramLinkScreen(){String nonce=ensureAuthNonce();String updateButton=BuildConfig.PLAY_STORE_BUILD?"":"<button class='s' onclick=\"location.href='facetalk://check-update'\">Проверить обновление</button>";String h="<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><style>body{margin:0;background:linear-gradient(180deg,#061f59,#009cff);color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:24px;box-sizing:border-box}.b{max-width:380px;background:rgba(3,20,64,.78);border:1px solid rgba(255,255,255,.18);border-radius:24px;padding:28px;box-shadow:0 15px 45px rgba(0,0,0,.35)}p{color:#d6edff;line-height:1.5}button{width:100%;margin-top:14px;border:0;border-radius:15px;padding:15px;background:#00a6ff;color:white;font-weight:800;font-size:16px}.s{background:#123b78}</style></head><body><div class='b'><h2>Abaj TV</h2><p>Привяжите приложение к Telegram. После подтверждения просто вернитесь сюда.</p><button onclick=\"location.href='"+baseUrl()+"/api/app-auth/telegram-start?nonce="+Uri.encode(nonce)+"'\">Привязать через Telegram</button>"+updateButton+"</div></body></html>"; webView.loadDataWithBaseURL("https://abajtv.local/",h,"text/html","UTF-8",null);}
