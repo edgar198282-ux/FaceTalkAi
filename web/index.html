@@ -1474,7 +1474,23 @@ function moveFocusDirection(direction){
     const score=primary+secondary*2.4;
     if(score<bestScore){bestScore=score;best=i}
   });
-  if(best>=0)setTvFocus(best);
+  if(best>=0){
+    setTvFocus(best);
+    return;
+  }
+  if(nativeTv&&direction==='up'&&tvHeaderCollapsed){
+    const x=ax;
+    setTvHeaderCollapsed(false,false);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      const rows=tvTopRows();
+      if(!rows.length)return;
+      const bottomRow=rows[rows.length-1];
+      const target=nearestTopByX(bottomRow,x)||bottomRow[0];
+      focusTvTopElement(target);
+      const content=document.getElementById('content');
+      if(content)content.scrollTop=0;
+    }));
+  }
 }
 function openFocused(){
   const cards=[...document.querySelectorAll('.channel')];
