@@ -248,7 +248,18 @@ async def api_iptv_state_save(request):
     favorites = previous.get('favorites') if isinstance(previous.get('favorites'), list) else []
     recent = previous.get('recent') if isinstance(previous.get('recent'), list) else []
     last_channel = str(previous.get('last_channel') or '')[:80]
-    if 'favorites' in body:
+    fav_op = body.get('favorite_op') if isinstance(body.get('favorite_op'), dict) else None
+    if fav_op:
+        fid = str(fav_op.get('id') or '').strip()
+        enabled = bool(fav_op.get('enabled'))
+        if fid:
+            favset = set(str(x) for x in favorites if str(x).strip())
+            if enabled:
+                favset.add(fid)
+            else:
+                favset.discard(fid)
+            favorites = list(favset)[:500]
+    elif 'favorites' in body:
         favorites = [str(x) for x in (body.get('favorites') or []) if str(x).strip()][:500]
     if 'recent' in body:
         recent = [str(x) for x in (body.get('recent') or []) if str(x).strip()][:30]

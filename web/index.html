@@ -1146,15 +1146,39 @@ function setCategory(v){
   render();
   focusFirstChannelAfterFilter();
 }
+async function syncFavoriteNow(id,enabled){
+  try{
+    const r=await fetch('/api/iptv/state',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',...authHeaders()},
+      body:JSON.stringify({favorite_op:{id,enabled}})
+    });
+    if(!r.ok)return false;
+    const d=await r.json();
+    if(Array.isArray(d.favorites)){
+      favs.clear();
+      d.favorites.forEach(x=>favs.add(x));
+      localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));
+      syncUpdatedAt=Math.max(syncUpdatedAt,Number(d.updated_at||0));
+    }
+    return true;
+  }catch(e){return false}
+}
 function toggleFav(id){
-  if(favs.has(id))favs.delete(id);else favs.add(id);
-  saveFavs();
+  const enabled=!favs.has(id);
+  if(enabled)favs.add(id);else favs.delete(id);
+  localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));
+  syncDirtyFavorites=false;
+  syncFavoriteNow(id,enabled).then(()=>render());
   render();
 }
 function togglePlayerFavorite(){
   if(!current)return;
-  if(favs.has(current.id))favs.delete(current.id);else favs.add(current.id);
-  saveFavs();
+  const enabled=!favs.has(current.id);
+  if(enabled)favs.add(current.id);else favs.delete(current.id);
+  localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));
+  syncDirtyFavorites=false;
+  syncFavoriteNow(current.id,enabled).then(()=>{renderRail();if(current)showTvZap(current)});
   renderRail();
   if(current)showTvZap(current);
 }
