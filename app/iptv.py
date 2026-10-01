@@ -788,6 +788,15 @@ async def refresh_channels(force: bool = False):
                         primary["logo"] = inherited_logo
                         enriched_logos += 1
 
+                merged_aliases = []
+                for x in rows:
+                    for alias in [x.get("name"), *(x.get("epg_aliases") or [])]:
+                        alias = str(alias or "").strip()
+                        if alias and alias not in merged_aliases:
+                            merged_aliases.append(alias)
+                if merged_aliases:
+                    primary["epg_aliases"] = merged_aliases[:24]
+
                 online_rows = []
                 seen_streams = set()
                 for x in rows:
