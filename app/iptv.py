@@ -24,7 +24,7 @@ SOURCE_URLS = [
     ("RU", "https://ngrch.github.io/iptv/ru.m3u"),
     ("RU", "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_russia.m3u8"),
 ]
-MAX_STREAMS = 800
+MAX_STREAMS = 1000
 REFRESH_SECONDS = 900
 PROBE_CONCURRENCY = 40
 DATA_ROOT = os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or os.path.join(os.getcwd(), "data")
@@ -430,16 +430,28 @@ async def refresh_channels(force: bool = False):
                     0 if x.get("country") == "AM" else 1,
                     0 if str(x.get("quality") or "").upper() in {"4K", "FHD"} else 1,
                 ))
+                # First fill the probe budget with one stream per channel so large
+                # playlists cannot crowd out many distinct channels. Then use the
+                # remaining budget for backup streams.
                 seen_urls = set()
+                seen_channels = set()
                 unique = []
+                backups = []
                 for item in candidates:
                     url = item.get("url")
-                    if not url or url in seen_urls:
+                    cid = item.get("id")
+                    if not url or not cid or url in seen_urls:
                         continue
                     seen_urls.add(url)
-                    unique.append(item)
+                    if cid not in seen_channels:
+                        seen_channels.add(cid)
+                        unique.append(item)
+                    else:
+                        backups.append(item)
                     if len(unique) >= MAX_STREAMS:
                         break
+                if len(unique) < MAX_STREAMS:
+                    unique.extend(backups[:MAX_STREAMS-len(unique)])
                 sem = asyncio.Semaphore(PROBE_CONCURRENCY)
                 checked = await asyncio.gather(*[_probe(session, item, sem) for item in unique])
             grouped = {}
