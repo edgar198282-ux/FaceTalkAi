@@ -297,6 +297,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
     <div class="adminRow" style="display:block;margin-bottom:10px;background:#eaf6ff">
       <div style="display:flex;justify-content:space-between;gap:12px"><b id="settingsStatusLabel">Статус</b><b id="settingsStatusValue" style="color:#16865b">—</b></div>
       <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px"><span id="settingsUntilLabel">Доступ до</span><b id="settingsUntilValue">—</b></div>
+      <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px"><span id="settingsDevicesLabel">Устройства</span><b id="settingsDevicesValue">0 / 3</b></div>
     </div>
     <div class="settingsLabel" id="settingsLangLabel">Язык</div>
     <div class="settingsLang">
@@ -617,6 +618,14 @@ async function startTvPairing(){
         const q='/api/tv/pair/status?code='+encodeURIComponent(code)+'&device_id='+encodeURIComponent(deviceId)+'&device_secret='+encodeURIComponent(tvDeviceSecret);
         const sr=await fetch(q,{headers:{'X-Abaj-Device-Id':deviceId},cache:'no-store'});
         if(sr.status===410){clearInterval(tvPairPoll);tvPairPoll=null;document.getElementById('tvPairHint').textContent='Код истёк. Нажмите «Новый код».';return}
+        if(sr.status===409){
+          const sd=await sr.json().catch(()=>({}));
+          if(sd.error==='device_limit'){
+            clearInterval(tvPairPoll);tvPairPoll=null;
+            document.getElementById('tvPairHint').textContent='Лимит 3 устройства. Отключите старое устройство в Abaj TV и попробуйте снова.';
+          }
+          return;
+        }
         if(!sr.ok)return;
         const sd=await sr.json();
         if(sd.paired){
@@ -764,6 +773,8 @@ async function loadEdemStatus(){
     const payment=edemStatus.payment||{};
     const status=document.getElementById('settingsStatusValue');
     const until=document.getElementById('settingsUntilValue');
+    const devicesLabel=document.getElementById('settingsDevicesLabel');
+    const devicesValue=document.getElementById('settingsDevicesValue');
     if(status){
       status.textContent=payment.status==='pending'?t.pending:(edemStatus.active?t.active:t.inactive);
       status.style.color=edemStatus.active?'#16865b':(payment.status==='pending'?'#c28a13':'#d84b5b');
@@ -772,6 +783,11 @@ async function loadEdemStatus(){
       if(edemStatus.active&&edemStatus.days_left==null)until.textContent=t.unlimited;
       else if(edemStatus.active&&edemStatus.expires_at)until.textContent=new Date(edemStatus.expires_at*1000).toLocaleDateString(appLang==='hy'?'hy-AM':appLang==='en'?'en-US':'ru-RU');
       else until.textContent='—';
+    }
+    if(devicesLabel)devicesLabel.textContent=appLang==='hy'?'Սարքեր':(appLang==='en'?'Devices':'Устройства');
+    if(devicesValue){
+      const limit=Number(edemStatus.device_limit||0);
+      devicesValue.textContent=limit>0?(Number(edemStatus.device_count||0)+' / '+limit):(appLang==='hy'?'անսահմանափակ':(appLang==='en'?'unlimited':'без лимита'));
     }
   }catch(e){}
 }

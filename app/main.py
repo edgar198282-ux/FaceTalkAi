@@ -12,7 +12,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
 
 from .config import TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_TOKEN_SOURCE, MINIAPP_URL, DATA_DIR, DB_PATH, EXPECTED_BOT_USERNAME, ADMIN_ID
-from .db import init_db, set_user_language, get_user_language, get_setting, set_setting
+from .db import init_db, set_user_language, get_user_language, get_setting, set_setting, list_settings_prefix
 from .webapp_plus import start_webapp
 from .storage import migrate_legacy_db
 
@@ -140,9 +140,9 @@ def language_keyboard():
     ])
 
 TEXTS={
- 'hy':('📺 Abaj TV','3000+ ալիքներ։ Գինը՝ ընդամենը 1 USDT ամսական։ Նվազագույն վճարումը՝ 12 ամիս = 12 USDT։ Աշխատում է ցանկացած Android TV-ում։\n\nՎճարումից հետո սեղմեք «✅ Վճարել եմ»։ Ադմինիստրատորը կստուգի վճարումը և կսեղմի «Ստացել եմ», դրանից հետո ալիքները կբացվեն։ Մինչ հաստատումը ալիքների ցանկը դատարկ կլինի։'),
- 'ru':('📺 Abaj TV','Более 3000 каналов. Цена — всего 1 USDT в месяц. Минимальная оплата — 12 месяцев = 12 USDT. Работает на любом Android TV.\n\nПосле оплаты нажмите «✅ Оплатил». Администратор проверит перевод и нажмёт «Получил», после этого каналы откроются. До подтверждения список каналов будет пустым.'),
- 'en':('📺 Abaj TV','3000+ channels. Price: only 1 USDT per month. Minimum payment: 12 months = 12 USDT. Works on any Android TV.\n\nAfter payment, tap “✅ Paid”. The administrator will verify the transfer and confirm receipt, then the channels will unlock. Until approval, the channel list stays empty.'),
+ 'hy':('📺 Abaj TV','3000+ ալիքներ։ Գինը՝ ընդամենը 1 USDT ամսական։ Նվազագույն վճարումը՝ 12 ամիս = 12 USDT։ Աշխատում է ցանկացած Android TV-ում։ Վճարումից հետո կարող եք միացնել մինչև 3 սարք։\n\nՎճարումից հետո սեղմեք «✅ Վճարել եմ»։ Ադմինիստրատորը կստուգի վճարումը և կսեղմի «Ստացել եմ», դրանից հետո ալիքները կբացվեն։ Մինչ հաստատումը ալիքների ցանկը դատարկ կլինի։'),
+ 'ru':('📺 Abaj TV','Более 3000 каналов. Цена — всего 1 USDT в месяц. Минимальная оплата — 12 месяцев = 12 USDT. Работает на любом Android TV. После оплаты можно подключить до 3 устройств.\n\nПосле оплаты нажмите «✅ Оплатил». Администратор проверит перевод и нажмёт «Получил», после этого каналы откроются. До подтверждения список каналов будет пустым.'),
+ 'en':('📺 Abaj TV','3000+ channels. Price: only 1 USDT per month. Minimum payment: 12 months = 12 USDT. Works on any Android TV. After payment, you can connect up to 3 devices.\n\nAfter payment, tap “✅ Paid”. The administrator will verify the transfer and confirm receipt, then the channels will unlock. Until approval, the channel list stays empty.'),
 }
 
 PAYMENT_TEXT={
@@ -197,6 +197,24 @@ async def send_language_picker(m: Message):
         logging.warning("Abaj TV start photo failed, fallback to text: %r", exc)
     await _answer(m, caption, reply_markup=keyboard)
 
+async def _paired_device_count(uid: int, current_device_id: str = '') -> tuple[int, bool]:
+    rows = await list_settings_prefix('tv_device:')
+    count = 0
+    current_registered = False
+    for row in rows:
+        try:
+            data = json.loads(str(row.get('value') or '') or '{}')
+        except Exception:
+            continue
+        if int(data.get('user_id') or 0) != int(uid):
+            continue
+        device_id = str(row.get('key') or '')[len('tv_device:'):]
+        count += 1
+        if current_device_id and device_id == current_device_id:
+            current_registered = True
+    return count, current_registered
+
+
 async def _confirm_tv_pair_code(m: Message, code: str, lang: str) -> bool:
     code = str(code or '').strip()
     if len(code) != 6 or not code.isdigit() or not m.from_user:
@@ -208,7 +226,18 @@ async def _confirm_tv_pair_code(m: Message, code: str, lang: str) -> bool:
         data = {}
     now = int(time.time())
     if raw and int(data.get('expires_at') or 0) >= now and not int(data.get('user_id') or 0):
-        data['user_id'] = int(m.from_user.id)
+        uid = int(m.from_user.id)
+        device_id = str(data.get('device_id') or '')[:120]
+        if not (ADMIN_ID and uid == int(ADMIN_ID)):
+            count, already_registered = await _paired_device_count(uid, device_id)
+            if not already_registered and count >= 3:
+                await _answer(m, {
+                    'hy':'⚠️ Ձեր Abaj TV հաշվում արդեն միացված է առավելագույնը՝ 3 սարք։ Անջատեք հին սարքը և կրկին փորձեք։',
+                    'ru':'⚠️ К вашему Abaj TV уже подключено максимум 3 устройства. Отключите старое устройство и попробуйте снова.',
+                    'en':'⚠️ Your Abaj TV account already has the maximum of 3 devices. Disconnect an old device and try again.'
+                }.get(lang,'⚠️ Уже подключено максимум 3 устройства.'))
+                return True
+        data['user_id'] = uid
         data['paired_at'] = now
         await set_setting(f'tv_pair:{code}', json.dumps(data, separators=(',',':')))
         await _answer(m, {'hy':'✅ Հեռուստացույցը միացված է Abaj TV-ին։','ru':'✅ Телевизор подключён к вашему Abaj TV.','en':'✅ TV connected to your Abaj TV account.'}.get(lang,'✅ Телевизор подключён к вашему Abaj TV.'))

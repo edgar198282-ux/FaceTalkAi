@@ -474,6 +474,27 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
     return {'configured': True, 'channels': out, 'playlist_url': playlist_url, **sub}
 
 
+async def _tv_device_usage(uid: int, current_device_id: str = '') -> tuple[int, bool]:
+    rows = await list_settings_prefix('tv_device:')
+    count = 0
+    current_registered = False
+    for row in rows:
+        raw = str(row.get('value') or '').strip()
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except Exception:
+            continue
+        if int(data.get('user_id') or 0) != int(uid):
+            continue
+        device_id = str(row.get('key') or '')[len('tv_device:'):]
+        count += 1
+        if current_device_id and device_id == current_device_id:
+            current_registered = True
+    return count, current_registered
+
+
 async def _tv_binding_allowed(request, uid: int) -> bool:
     if str(request.headers.get('X-Abaj-TV') or '') != '1':
         return True
@@ -500,11 +521,15 @@ async def api_iptv_edem_status(request):
     raw = await get_setting(f'edem_playlist:{uid}', '')
     sub = await _edem_subscription_state(uid)
     pay = await _edem_payment_state(uid)
+    device_count, _ = await _tv_device_usage(uid)
+    device_limit = 0 if (ADMIN_ID and uid == int(ADMIN_ID)) else 3
     return web.json_response({
         'ok': True,
         'configured': bool((raw or '').strip()),
         **sub,
         'payment': pay,
+        'device_count': device_count,
+        'device_limit': device_limit,
     }, headers={'Cache-Control':'no-store'})
 
 
@@ -996,6 +1021,13 @@ async def api_tv_pair_status(request):
     uid = int(data.get('user_id') or 0)
     if uid <= 0:
         return web.json_response({'ok':True,'paired':False,'expires_at':int(data.get('expires_at') or 0)}, headers={'Cache-Control':'no-store'})
+
+    if not (ADMIN_ID and uid == int(ADMIN_ID)):
+        device_count, already_registered = await _tv_device_usage(uid, device_id)
+        if not already_registered and device_count >= 3:
+            return web.json_response({
+                'ok':False,'paired':False,'error':'device_limit','limit':3,'active':device_count
+            }, status=409, headers={'Cache-Control':'no-store'})
 
     await set_setting(f'tv_device:{device_id}', json.dumps({
         'secret':device_secret,'user_id':uid,'device_name':str(data.get('device_name') or '')[:120],
