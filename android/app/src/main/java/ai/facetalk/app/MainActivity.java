@@ -115,8 +115,10 @@ public class MainActivity extends Activity {
         });
         registerApkDownloadReceiver();
         loadOrAuthorize();
-        updateHandler.postDelayed(()->checkForAppUpdate(true,false),2500L);
-        updateHandler.postDelayed(periodicUpdateCheck,30L*60L*1000L);
+        if(!isTv){
+            updateHandler.postDelayed(()->checkForAppUpdate(true,false),2500L);
+            updateHandler.postDelayed(periodicUpdateCheck,30L*60L*1000L);
+        }
     }
 
     private void enterTvImmersive(){
@@ -191,7 +193,7 @@ public class MainActivity extends Activity {
         }
         if(pendingApkUri!=null&&(Build.VERSION.SDK_INT<Build.VERSION_CODES.O||getPackageManager().canRequestPackageInstalls())){
             Uri u=pendingApkUri;pendingApkUri=null;openPackageInstaller(u);
-        }else checkForAppUpdate(true,false);
+        }else if(!isTv)checkForAppUpdate(true,false);
     }
 
     @Override public void onWindowFocusChanged(boolean hasFocus){

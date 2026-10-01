@@ -1372,6 +1372,7 @@ function tvTopRows(){
     return r.width>0&&r.height>0;
   });
   return [
+    visible('#search'),
     visible('#sourceChips .chip'),
     visible('.chips:not(#sourceChips) .chip'),
     visible('#quickCats .cat')
@@ -2149,6 +2150,7 @@ function tvNativeRemote(action){
     }
     if(action==='ok'){
       const el=document.activeElement;
+      if(el&&el.id==='search'){openTvSearch();return}
       if(el&&typeof el.click==='function')el.click();
       return;
     }
