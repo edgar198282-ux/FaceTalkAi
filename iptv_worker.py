@@ -50,10 +50,9 @@ async def refresh_requested():
 async def publish():
     if not MAIN_URL or not TOKEN:
         raise RuntimeError("IPTV_MAIN_URL/MINIAPP_URL and IPTV_WORKER_TOKEN are required")
-    await asyncio.gather(
-        iptv.refresh_channels(force=True),
-        iptv.refresh_epg(force=False),
-    )
+    # The worker owns channel probing. EPG is refreshed by the main web service
+    # every few hours so we do not download/send the large XML feed every 30 min.
+    await iptv.refresh_channels(force=True)
     payload = {"state": iptv.public_state(), "health": iptv._stream_health}
     timeout = aiohttp.ClientTimeout(total=60)
     async with aiohttp.ClientSession(timeout=timeout) as session:

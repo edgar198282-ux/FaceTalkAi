@@ -1054,24 +1054,35 @@ async def api_proxy(request):
 
 
 async def start_background(app):
-    if str(os.getenv("IPTV_BACKGROUND_ENABLED", "1")).strip().lower() in {"0", "false", "no", "off"}:
+    worker_mode = str(os.getenv("IPTV_BACKGROUND_ENABLED", "1")).strip().lower() in {"0", "false", "no", "off"}
+
+    # EPG must live in the main web process because public channel responses are
+    # enriched there. Keep this lightweight task active even when channel scans
+    # are delegated to the separate worker.
+    async def epg_loop():
+        await asyncio.sleep(2)
+        while True:
+            await refresh_epg(force=False)
+            await asyncio.sleep(EPG_REFRESH_SECONDS)
+    app["iptv_epg_task"] = asyncio.create_task(epg_loop())
+
+    if worker_mode:
         app["iptv_task"] = None
         return
+
     async def loop():
         await asyncio.sleep(2)
         while True:
-            await asyncio.gather(
-                refresh_channels(force=True),
-                refresh_epg(force=False),
-            )
+            await refresh_channels(force=True)
             await asyncio.sleep(REFRESH_SECONDS)
     app["iptv_task"] = asyncio.create_task(loop())
 
 
 async def stop_background(app):
-    task = app.get("iptv_task")
-    if task:
-        task.cancel()
+    for key in ("iptv_task", "iptv_epg_task"):
+        task = app.get(key)
+        if task:
+            task.cancel()
 
 
 def install(app: web.Application):
