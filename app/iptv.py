@@ -127,6 +127,29 @@ _proxy_secret = (os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("FACETALK_BOT_TOKE
 _worker_control = {"refresh_requested_at": 0, "last_worker_snapshot": 0}
 
 
+def _restore_saved_snapshot():
+    saved = _load_json(SNAPSHOT_PATH, {})
+    state = saved.get("state") if isinstance(saved, dict) else None
+    if not isinstance(state, dict):
+        return
+    rows = state.get("channels")
+    if not isinstance(rows, list):
+        return
+    channels = {}
+    for row in rows:
+        if isinstance(row, dict) and row.get("id"):
+            channels[str(row["id"])] = dict(row)
+    if not channels:
+        return
+    _state["channels"] = channels
+    _state["last_refresh"] = int(state.get("last_refresh") or saved.get("saved_at") or 0)
+    _state["stats"] = dict(state.get("stats") or {})
+    _state["error"] = str(state.get("error") or "")[:300]
+
+
+_restore_saved_snapshot()
+
+
 def _attrs(line: str) -> dict[str, str]:
     return {k.lower(): v for k, v in re.findall(r'([\w-]+)="([^"]*)"', line)}
 
@@ -961,7 +984,11 @@ async def api_worker_snapshot(request):
 
 async def api_channels(request):
     if not _state["channels"]:
-        await refresh_channels()
+        worker_mode = str(os.getenv("IPTV_BACKGROUND_ENABLED", "1")).strip().lower() in {"0", "false", "no", "off"}
+        if worker_mode:
+            _worker_control["refresh_requested_at"] = int(time.time())
+        else:
+            await refresh_channels()
     compact = request.query.get("compact") == "1"
     return web.json_response(public_state(compact=compact), headers={"Cache-Control": "no-store"})
 
