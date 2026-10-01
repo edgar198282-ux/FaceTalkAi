@@ -222,7 +222,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
     </div>
     <div class="toolbar">
       <input id="search" class="search" placeholder="Поиск канала" oninput="render()">
-      <select id="group" class="select" onchange="render()"><option value="">ALL</option></select>
+      <select id="group" class="select" onchange="setGroup(this.value)"><option value="">ALL</option></select>
     </div>
     <div class="chips">
       <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
@@ -936,18 +936,39 @@ function tvSetModeFilter(v){
   const labels={all:'Все каналы',fav:'Избранное',recent:'Недавние',AM:'Армения',RU:'Россия'};
   showTvShortcut(labels[v]||'Каналы');
 }
+function focusFirstChannelAfterFilter(){
+  if(!nativeTv)return;
+  focusIndex=0;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const first=document.querySelector('.channel');
+    if(!first)return;
+    setTvFocus(0,false);
+    first.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'});
+  }));
+}
 function setModeFilter(btn,v){
   modeFilter=v;
   document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.toggle('active',x===btn));
+  focusIndex=0;
   render();
+  focusFirstChannelAfterFilter();
+}
+function setGroup(v){
+  activeCategory='';
+  document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',!v&&x.dataset.cat===''));
+  focusIndex=0;
+  render();
+  focusFirstChannelAfterFilter();
 }
 function setCategory(v){
   activeCategory=v;
   document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',x.dataset.cat===v));
   const sel=document.getElementById('group');
   if(v&&[...sel.options].some(o=>o.value===v))sel.value=v;
-  else if(!v)sel.value='';
+  else sel.value='';
+  focusIndex=0;
   render();
+  focusFirstChannelAfterFilter();
 }
 function toggleFav(id){
   if(favs.has(id))favs.delete(id);else favs.add(id);
@@ -976,20 +997,47 @@ function normalizeCat(group){
   return group||'Other';
 }
 
+const CHANNEL_CACHE_KEY='abajtv_channels_cache_v3';
+function cacheChannels(){
+  try{
+    const slim=channels.map(x=>({
+      id:x.id,name:x.name,group:x.group,country:x.country,logo:x.logo,status:x.status,tvg_id:x.tvg_id,
+      latency_ms:x.latency_ms,backup_count:x.backup_count,epg_now:x.epg_now,epg_next:x.epg_next,
+      personal:!!x.personal,provider:x.provider
+    }));
+    localStorage.setItem(CHANNEL_CACHE_KEY,JSON.stringify({ts:Date.now(),channels:slim}));
+  }catch(e){}
+}
+function restoreCachedChannels(){
+  try{
+    const cached=JSON.parse(localStorage.getItem(CHANNEL_CACHE_KEY)||'null');
+    if(!cached||!Array.isArray(cached.channels)||!cached.channels.length)return false;
+    if(Date.now()-Number(cached.ts||0)>12*60*60*1000)return false;
+    channels=cached.channels;
+    const groups=[...new Set(channels.map(x=>x.group||'Other'))].sort((a,b)=>a.localeCompare(b,'ru'));
+    const sel=document.getElementById('group');
+    sel.innerHTML='<option value="">ALL</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
+    buildQuickCats(groups);
+    document.getElementById('status').textContent='Каналы загружены · обновляю…';
+    render();
+    return true;
+  }catch(e){return false}
+}
 async function load(){
   try{
-    const r=await fetch('/api/iptv/channels',{cache:'no-store'});
-    const d=await r.json();
+    const mainPromise=fetch('/api/iptv/channels?compact=1',{cache:'no-store'}).then(async r=>{
+      if(!r.ok)throw new Error('channels '+r.status);
+      return await r.json();
+    });
+    const edemPromise=fetch('/api/iptv/edem/channels',{headers:authHeaders(),cache:'no-store'}).then(async r=>{
+      if(!r.ok)return {channels:[]};
+      return await r.json();
+    }).catch(()=>({channels:[]}));
+    const [d,ed]=await Promise.all([mainPromise,edemPromise]);
     let base=(d.channels||[]).filter(x=>x.status==='ONLINE');
-    try{
-      const er=await fetch('/api/iptv/edem/channels',{headers:authHeaders(),cache:'no-store'});
-      if(er.ok){
-        const ed=await er.json();
-        if(Array.isArray(ed.channels)&&ed.channels.length){
-          base=base.concat(ed.channels.map(x=>({...x,personal:true,provider:'Edem'})));
-        }
-      }
-    }catch(e){}
+    if(Array.isArray(ed.channels)&&ed.channels.length){
+      base=base.concat(ed.channels.map(x=>({...x,personal:true,provider:'Edem'})));
+    }
     const dedup=new Map();
     for(const ch of base){
       const key=((ch.tvg_id||'')+'|'+(ch.country||'')+'|'+(ch.name||'')).toLowerCase();
@@ -1006,6 +1054,7 @@ async function load(){
       'Online: '+channels.length+
       ' · Offline в проверке: '+((d.stats||{}).offline||0)+
       (d.running?' · обновляется…':'');
+    cacheChannels();
     render();
     if(lastChannelId&&!current&&document.visibilityState==='visible'){
       const last=channels.find(x=>x.id===lastChannelId);
@@ -1062,6 +1111,7 @@ function epgProgress(p){
 
 function render(){
   filteredNow=getFiltered();
+  const channelNumberMap=new Map(filteredNow.map((x,i)=>[x.id,i+1]));
   const grouped={};
   filteredNow.forEach(x=>{
     const k=x.group||'Other';
@@ -1072,9 +1122,9 @@ function render(){
     if(!tvMode&&layout!=='grid')out+='<div class="groupTitle">'+esc(group)+'</div>';
     grouped[group].forEach(ch=>{
       const logo=ch.logo
-        ?'<img class="logo" src="'+esc(ch.logo)+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"><div class="logoFallback" style="display:none">TV</div>'
+        ?'<img class="logo" loading="lazy" decoding="async" src="'+esc(ch.logo)+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"><div class="logoFallback" style="display:none">TV</div>'
         :'<div class="logoFallback">TV</div>';
-      const channelNo=Math.max(1,filteredNow.findIndex(x=>x.id===ch.id)+1);
+      const channelNo=(channelNumberMap.get(ch.id)||1);
       out+='<div class="channel" tabindex="'+(tvMode?'0':'-1')+'" data-id="'+esc(ch.id)+'" data-channel-no="'+channelNo+'" onclick="openPlayer(\''+ch.id+'\')">'+
         '<div class="channelNumber">'+channelNo+'</div>'+
         '<div class="logoWrap">'+logo+'</div>'+
@@ -1630,6 +1680,7 @@ document.getElementById('tvBtn').classList.toggle('active',tvMode);
 applyUiMode();
 checkAdmin();
 loadEdemStatus();
+restoreCachedChannels();
 load();
 loadSyncedState();
 ensureTvPairing();
