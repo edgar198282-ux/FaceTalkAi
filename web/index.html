@@ -501,7 +501,10 @@ let syncReady=false;
 let syncUpdatedAt=0;
 let syncPullBusy=false;
 let syncDirtyFavorites=false;
-const pendingFavoriteOps=new Map();
+let pendingFavoriteSeed={};
+try{pendingFavoriteSeed=JSON.parse(localStorage.getItem('abaj_tv_pending_favorites')||'{}')||{}}catch(e){pendingFavoriteSeed={}}
+const pendingFavoriteOps=new Map(Object.entries(pendingFavoriteSeed).map(([id,enabled])=>[id,!!enabled]));
+syncDirtyFavorites=pendingFavoriteOps.size>0;
 let favoriteRetryTimer=null;
 let syncDirtyRecent=false;
 let syncDirtyLast=false;
@@ -1569,12 +1572,21 @@ function setCategory(v){
   render();
   focusFirstChannelAfterFilter();
 }
+function persistPendingFavoriteOps(){
+  const obj={};
+  pendingFavoriteOps.forEach((enabled,id)=>{obj[id]=!!enabled});
+  try{
+    if(pendingFavoriteOps.size)localStorage.setItem('abaj_tv_pending_favorites',JSON.stringify(obj));
+    else localStorage.removeItem('abaj_tv_pending_favorites');
+  }catch(e){}
+}
 function scheduleFavoriteRetry(){
   if(favoriteRetryTimer||!pendingFavoriteOps.size)return;
   favoriteRetryTimer=setTimeout(()=>{favoriteRetryTimer=null;flushPendingFavorites()},2500);
 }
 async function syncFavoriteNow(id,enabled){
   pendingFavoriteOps.set(id,!!enabled);
+  persistPendingFavoriteOps();
   syncDirtyFavorites=true;
   try{
     const r=await fetch('/api/iptv/state',{
@@ -1584,7 +1596,10 @@ async function syncFavoriteNow(id,enabled){
     });
     if(!r.ok){scheduleFavoriteRetry();return false}
     const d=await r.json();
-    if(pendingFavoriteOps.get(id)===!!enabled)pendingFavoriteOps.delete(id);
+    if(pendingFavoriteOps.get(id)===!!enabled){
+      pendingFavoriteOps.delete(id);
+      persistPendingFavoriteOps();
+    }
     if(Array.isArray(d.favorites)){
       const merged=new Set(d.favorites);
       pendingFavoriteOps.forEach((wanted,fid)=>{if(wanted)merged.add(fid);else merged.delete(fid)});
@@ -1600,7 +1615,7 @@ async function syncFavoriteNow(id,enabled){
   }catch(e){scheduleFavoriteRetry();return false}
 }
 async function flushPendingFavorites(){
-  if(!pendingFavoriteOps.size){syncDirtyFavorites=false;return}
+  if(!pendingFavoriteOps.size){syncDirtyFavorites=false;persistPendingFavoriteOps();return}
   const ops=[...pendingFavoriteOps.entries()];
   for(const [id,enabled] of ops){
     if(pendingFavoriteOps.get(id)!==enabled)continue;
