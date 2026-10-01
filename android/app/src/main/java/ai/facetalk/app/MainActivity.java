@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.app.UiModeManager;
+import android.media.AudioManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -22,6 +23,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -58,6 +60,23 @@ public class MainActivity extends Activity {
     private long pendingApkDownloadId=-1L; private Uri pendingApkUri; private BroadcastReceiver downloadReceiver;
     private volatile boolean updateCheckRunning=false, updateDownloadRunning=false; private long lastUpdateCheckAt=0L;
     private final Handler updateHandler=new Handler(Looper.getMainLooper());
+    public final class AbajNativeBridge {
+        @JavascriptInterface public int adjustVolume(int delta){
+            AudioManager am=(AudioManager)getSystemService(Context.AUDIO_SERVICE);
+            if(am==null)return -1;
+            int max=Math.max(1,am.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
+            int cur=am.getStreamVolume(AudioManager.STREAM_MUSIC);
+            int target=Math.max(0,Math.min(max,cur+delta));
+            am.setStreamVolume(AudioManager.STREAM_MUSIC,target,0);
+            return Math.round(target*100f/max);
+        }
+        @JavascriptInterface public int getVolumePercent(){
+            AudioManager am=(AudioManager)getSystemService(Context.AUDIO_SERVICE);
+            if(am==null)return -1;
+            int max=Math.max(1,am.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
+            return Math.round(am.getStreamVolume(AudioManager.STREAM_MUSIC)*100f/max);
+        }
+    }
     private final Runnable periodicUpdateCheck=new Runnable(){
         @Override public void run(){
             checkForAppUpdate(true,false);
@@ -87,6 +106,7 @@ public class MainActivity extends Activity {
         webView.setFocusableInTouchMode(true);
         fullscreenContainer.addView(webView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(fullscreenContainer);
+        webView.addJavascriptInterface(new AbajNativeBridge(),"AbajNative");
         WebSettings s=webView.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setMediaPlaybackRequiresUserGesture(false); s.setCacheMode(WebSettings.LOAD_NO_CACHE); s.setAllowFileAccess(true); s.setAllowContentAccess(true); s.setUserAgentString(s.getUserAgentString()+" AbajTV-Android/"+BuildConfig.VERSION_NAME); webView.clearCache(true);
         if(isTv){
             s.setTextZoom(115);
