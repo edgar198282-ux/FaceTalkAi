@@ -1,22 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path android:fillColor="#0B2B7A" android:pathData="M20,4 L88,4 C97,4 104,11 104,20 L104,88 C104,97 97,104 88,104 L20,104 C11,104 4,97 4,88 L4,20 C4,11 11,4 20,4 Z"/>
-    <path android:fillColor="#087CFF" android:pathData="M4,61C29,49 58,48 79,55C91,59 99,64 104,68V88C104,97 97,104 88,104H20C11,104 4,97 4,88Z"/>
-    <path android:fillColor="#04163E" android:pathData="M20,22 L88,22 C95,22 100,27 100,34 L100,72 C100,79 95,84 88,84 L20,84 C13,84 8,79 8,72 L8,34 C8,27 13,22 20,22 Z"/>
-    <path android:strokeColor="#83EFFF" android:strokeWidth="4" android:fillColor="@android:color/transparent" android:pathData="M20,22 L88,22 C95,22 100,27 100,34 L100,72 C100,79 95,84 88,84 L20,84 C13,84 8,79 8,72 L8,34 C8,27 13,22 20,22 Z"/>
-    <path android:strokeColor="#19BFFF" android:strokeWidth="10" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="@android:color/transparent" android:pathData="M32,72 L53,31 L77,72"/>
-    <path android:fillColor="#D4FBFF" android:pathData="M49,45 L49,69 L72,57 Z"/>
-    <path android:strokeColor="#A6F7FF" android:strokeWidth="3" android:strokeLineCap="round" android:fillColor="@android:color/transparent" android:pathData="M40,21 L31,11 M68,21 L77,11"/>
-    <path android:fillColor="#D8FBFF" android:pathData="M27,9A4,4 0,1 0,35 9A4,4 0,1 0,27 9M73,9A4,4 0,1 0,81 9A4,4 0,1 0,73 9"/>
-    <path android:strokeColor="#FFFFFF" android:strokeWidth="2.2" android:strokeLineCap="square" android:strokeLineJoin="miter" android:fillColor="@android:color/transparent"
-        android:pathData="M25,97 L29,88 L33,97 M27,93 L31,93
-        M37,88 L37,97 M37,88 L42,88 C45,88 45,92 42,92 L37,92 M42,92 C46,92 46,97 42,97 L37,97
-        M49,97 L53,88 L57,97 M51,93 L55,93
-        M61,88 L61,97 M61,97 L66,97
-        M70,88 L76,88 M73,88 L73,97
-        M80,88 L84,97 L88,88"/>
-</vector>
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/abaj_tv_logo_exact"
+    android:gravity="fill" />

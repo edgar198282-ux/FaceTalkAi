@@ -18,7 +18,7 @@
         android:label="Abaj TV"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:banner="@drawable/abaj_tv_banner">
+        android:banner="@drawable/abaj_tv_banner_exact">
         <activity
             android:name=".MainActivity"
             android:exported="true"
