@@ -550,12 +550,30 @@ async def api_diagnostics(request):
     }, headers={"Cache-Control": "no-store"})
 
 
+async def api_worker_bootstrap(request):
+    supplied = (request.headers.get("X-IPTV-Worker-Token") or "").strip()
+    expected = (os.getenv("IPTV_WORKER_TOKEN") or os.getenv("FACETALK_APK_DEPLOY_TOKEN") or os.getenv("INTERNAL_API_SECRET") or "").strip()
+    if not expected or not supplied or not hmac.compare_digest(supplied, expected):
+        return web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    return web.json_response({"ok": True, "health": _stream_health}, headers={"Cache-Control": "no-store"})
+
+
 async def api_worker_snapshot(request):
     supplied = (request.headers.get("X-IPTV-Worker-Token") or "").strip()
     expected = (os.getenv("IPTV_WORKER_TOKEN") or os.getenv("FACETALK_APK_DEPLOY_TOKEN") or os.getenv("INTERNAL_API_SECRET") or "").strip()
     if not expected or not supplied or not hmac.compare_digest(supplied, expected):
         return web.json_response({"ok": False, "error": "unauthorized"}, status=401)
     body = await request.json()
+    health = body.get("health") if isinstance(body, dict) else None
+    if isinstance(health, dict):
+        _stream_health.clear()
+        for key, value in list(health.items())[:5000]:
+            if isinstance(key, str) and isinstance(value, dict):
+                _stream_health[key] = value
+        try:
+            _save_json(HEALTH_PATH, _stream_health)
+        except Exception:
+            pass
     state = body.get("state") if isinstance(body, dict) else None
     if not isinstance(state, dict) or not isinstance(state.get("channels"), list):
         return web.json_response({"ok": False, "error": "bad snapshot"}, status=400)
@@ -701,6 +719,7 @@ async def stop_background(app):
 
 def install(app: web.Application):
     app.router.add_get("/api/iptv/channels", api_channels)
+    app.router.add_get("/api/iptv/worker-bootstrap", api_worker_bootstrap)
     app.router.add_post("/api/iptv/worker-snapshot", api_worker_snapshot)
     app.router.add_get("/api/iptv/diagnostics", api_diagnostics)
     app.router.add_post("/api/iptv/refresh", api_refresh)
