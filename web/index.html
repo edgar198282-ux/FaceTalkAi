@@ -552,6 +552,8 @@ let burnedAdCanvas=null;
 let burnedAdPrevFrame=null;
 let burnedAdSamples=[];
 let burnedAdLastReportAt=0;
+let burnedAdStateTimer=null;
+let burnedAdFirstFrameSent=false;
 let tvWatchdogTimer=null;
 let tvWatchdogLastTime=-1;
 let tvWatchdogStalls=0;
@@ -2463,9 +2465,11 @@ function setFreeAdOverlay(active){
 }
 function stopBurnedAdObserver(){
   if(burnedAdTimer){clearInterval(burnedAdTimer);burnedAdTimer=null}
+  if(burnedAdStateTimer){clearTimeout(burnedAdStateTimer);burnedAdStateTimer=null}
   burnedAdPrevFrame=null;
   burnedAdSamples=[];
   burnedAdLastReportAt=0;
+  burnedAdFirstFrameSent=false;
 }
 function stopFreeAdWatch(){
   if(freeAdTimer){clearInterval(freeAdTimer);freeAdTimer=null}
@@ -2486,6 +2490,26 @@ async function checkFreeAdState(){
   }catch(e){}finally{
     freeAdRequestBusy=false;
   }
+}
+async function reportBurnedAdObserverState(ch,state,errorText=''){
+  if(!ch||ch.personal)return;
+  try{
+    await fetch('/api/iptv/ad-visual-observe',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        channel_id:ch.id,
+        score:0,
+        cut_rate:0,
+        avg_diff:0,
+        brightness_var:0,
+        samples:0,
+        observer_state:String(state||'').slice(0,40),
+        observer_error:String(errorText||'').slice(0,160)
+      }),
+      keepalive:true
+    });
+  }catch(e){}
 }
 async function reportBurnedAdObservation(ch,score,cutRate,avgDiff,brightnessVar,samples){
   const now=Date.now();
@@ -2535,6 +2559,10 @@ function sampleBurnedAdFrame(ch){
       diff/=(frame.length*255);
     }
     burnedAdPrevFrame=frame;
+    if(!burnedAdFirstFrameSent){
+      burnedAdFirstFrameSent=true;
+      reportBurnedAdObserverState(ch,'frame_ok');
+    }
     burnedAdSamples.push({diff,brightness,ts:Date.now()});
     if(burnedAdSamples.length>15)burnedAdSamples.shift();
     if(burnedAdSamples.length<6)return;
@@ -2555,28 +2583,19 @@ function sampleBurnedAdFrame(ch){
   }catch(e){
     const name=(e&&e.name)?String(e.name):'frame_error';
     const msg=(e&&e.message)?String(e.message).slice(0,120):'';
-    try{
-      fetch('/api/iptv/ad-visual-observe',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          channel_id:ch&&ch.id?ch.id:'',
-          score:0,
-          cut_rate:0,
-          avg_diff:0,
-          brightness_var:0,
-          samples:0,
-          observer_error:(name+': '+msg).slice(0,160)
-        }),
-        keepalive:true
-      });
-    }catch(_){}
+    reportBurnedAdObserverState(ch,'frame_error',(name+': '+msg).slice(0,160));
     stopBurnedAdObserver();
   }
 }
 function startBurnedAdObserver(ch){
   stopBurnedAdObserver();
   if(!ch||ch.personal)return;
+  reportBurnedAdObserverState(ch,'started');
+  burnedAdStateTimer=setTimeout(()=>{
+    if(!burnedAdFirstFrameSent&&current&&current.id===ch.id){
+      reportBurnedAdObserverState(ch,'waiting_video');
+    }
+  },12000);
   burnedAdTimer=setInterval(()=>sampleBurnedAdFrame(ch),4000);
 }
 function startFreeAdWatch(ch){
