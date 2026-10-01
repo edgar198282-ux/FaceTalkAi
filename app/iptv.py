@@ -38,7 +38,7 @@ SOURCE_URLS = [
     ("MD", "https://iptv-org.github.io/iptv/countries/md.m3u"),
 ]
 MAX_STREAMS = 1500
-REFRESH_SECONDS = max(300, int(os.getenv("IPTV_REFRESH_SECONDS", "300")))
+REFRESH_SECONDS = max(900, int(os.getenv("IPTV_REFRESH_SECONDS", "1800")))
 PROBE_CONCURRENCY = 40
 QUARANTINE_SECONDS = 60 * 60
 DATA_ROOT = os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or os.path.join(os.getcwd(), "data")
@@ -545,7 +545,23 @@ async def refresh_channels(force: bool = False):
                 primary["last_checked"] = int(time.time())
                 channels[cid] = primary
 
+            previous_channels = dict(_state.get("channels") or {})
+            previous_ids = set(previous_channels)
+            current_ids = set(channels)
             online = sum(1 for x in channels.values() if x.get("status") == "ONLINE")
+            newly_found = current_ids - previous_ids if previous_ids else set()
+            disappeared = previous_ids - current_ids if previous_ids else set()
+            recovered = 0
+            newly_offline = 0
+            if previous_ids:
+                for cid in current_ids & previous_ids:
+                    before = str((previous_channels.get(cid) or {}).get("status") or "")
+                    after = str((channels.get(cid) or {}).get("status") or "")
+                    if before != "ONLINE" and after == "ONLINE":
+                        recovered += 1
+                    elif before == "ONLINE" and after != "ONLINE":
+                        newly_offline += 1
+            quarantined_streams = sum(1 for url in _stream_health if _is_quarantined(url, now))
             _state["channels"] = channels
             _state["last_refresh"] = int(time.time())
             _state["stats"] = {
@@ -558,6 +574,15 @@ async def refresh_channels(force: bool = False):
                 "with_backups": sum(1 for x in channels.values() if int(x.get("backup_count") or 0) > 0),
                 "health_records": len(_stream_health),
                 "stable_95": sum(1 for x in channels.values() if float(x.get("uptime_pct") or 0) >= 95.0),
+                "new_channels": len(newly_found),
+                "disappeared_channels": len(disappeared),
+                "recovered_channels": recovered,
+                "newly_offline": newly_offline,
+                "quarantined_streams": quarantined_streams,
+                "adult_channels": sum(1 for x in channels.values() if bool(x.get("adult"))),
+                "with_logo": sum(1 for x in channels.values() if bool(x.get("logo"))),
+                "with_epg": sum(1 for x in channels.values() if bool(x.get("epg_now"))),
+                "scan_interval_seconds": 1800,
             }
             try:
                 _save_json(HEALTH_PATH, _stream_health)
