@@ -25,4 +25,14 @@ assert ua_rows[0]["name"] == "ATV Armenia"
 assert iptv._normalize_name("Test HD TV") == "test"
 assert iptv._token("https://example.com/a") == iptv._token("https://example.com/a")
 assert iptv._token("https://example.com/a") != iptv._token("https://example.com/b")
+low_sample = '''#EXTM3U
+#EXTINF:-1 tvg-id="am.low" group-title="General",Low 480p Feed
+https://example.com/low.m3u8
+'''
+assert iptv._parse_m3u(low_sample, "AM", "smoke") == []
+iptv._stream_health['https://example.com/dead.m3u8'] = {
+    'successes': 0, 'failures': 4, 'consecutive_failures': 4,
+    'uptime_pct': 0.0, 'last_fail': __import__('time').time()
+}
+assert iptv._is_quarantined('https://example.com/dead.m3u8')
 print("Abaj TV smoke checks passed")

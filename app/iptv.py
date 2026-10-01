@@ -27,6 +27,7 @@ SOURCE_URLS = [
 MAX_STREAMS = 1000
 REFRESH_SECONDS = max(300, int(os.getenv("IPTV_REFRESH_SECONDS", "300")))
 PROBE_CONCURRENCY = 40
+QUARANTINE_SECONDS = 60 * 60
 DATA_ROOT = os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or os.path.join(os.getcwd(), "data")
 HEALTH_PATH = os.path.join(DATA_ROOT, "iptv_health.json")
 SNAPSHOT_PATH = os.path.join(DATA_ROOT, "iptv_snapshot.json")
@@ -134,15 +135,35 @@ def _looks_junk(item: dict) -> bool:
         return True
     bad_name = (
         "test", "demo", "sample", "backup", "reserve", "technical",
-        "служеб", "тест", "резерв", "radio", "радио"
+        "служеб", "тест", "резерв", "radio", "радио", "webcam",
+        "promo", "preview", "placeholder", "mirror", "event feed"
     )
     if any(x in name for x in bad_name):
         return True
     if group in {"radio", "radios", "радио"}:
         return True
+    # Do not pollute TV/4K rows with explicitly low-resolution mirrors.
+    quality_text = " ".join((name, group))
+    if re.search(r"(^|[^0-9])(240p?|360p?|480p?|576p?)([^0-9]|$)", quality_text, re.I):
+        return True
+    if re.search(r"(^|[^a-z])(low[ ._-]?quality|low[ ._-]?res)([^a-z]|$)", quality_text, re.I):
+        return True
     if not url.startswith(("http://", "https://")):
         return True
     return False
+
+
+def _is_quarantined(url: str, now: int | None = None) -> bool:
+    h = _stream_health.get(str(url or "")) or {}
+    samples = int(h.get("successes") or 0) + int(h.get("failures") or 0)
+    if samples < 4 or int(h.get("consecutive_failures") or 0) < 3:
+        return False
+    if float(h.get("uptime_pct") or 0.0) >= 25.0:
+        return False
+    last_fail = int(h.get("last_fail") or 0)
+    if not last_fail:
+        return False
+    return int(now or time.time()) - last_fail < QUARANTINE_SECONDS
 
 
 def _extinf_name(line: str, fallback: str = "Channel") -> str:
@@ -441,6 +462,10 @@ async def refresh_channels(force: bool = False):
                     url = item.get("url")
                     cid = item.get("id")
                     if not url or not cid or url in seen_urls:
+                        continue
+                    # Repeatedly dead streams are temporarily quarantined. They are
+                    # retried automatically after the quarantine window expires.
+                    if _is_quarantined(url, now):
                         continue
                     seen_urls.add(url)
                     if cid not in seen_channels:
