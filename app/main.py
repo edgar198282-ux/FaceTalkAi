@@ -140,9 +140,9 @@ def language_keyboard():
     ])
 
 TEXTS={
- 'hy':('📺 Abaj TV','700+ ալիքներ։ Գինը՝ ընդամենը 1 USDT ամսական։ Նվազագույն վճարումը՝ 12 ամիս = 12 USDT։ Աշխատում է ցանկացած Android TV-ում։\n\nՎճարումից հետո սեղմեք «✅ Վճարել եմ»։ Ադմինիստրատորը կստուգի վճարումը և կսեղմի «Ստացել եմ», դրանից հետո ալիքները կբացվեն։ Մինչ հաստատումը ալիքների ցանկը դատարկ կլինի։'),
- 'ru':('📺 Abaj TV','Более 700 каналов. Цена — всего 1 USDT в месяц. Минимальная оплата — 12 месяцев = 12 USDT. Работает на любом Android TV.\n\nПосле оплаты нажмите «✅ Оплатил». Администратор проверит перевод и нажмёт «Получил», после этого каналы откроются. До подтверждения список каналов будет пустым.'),
- 'en':('📺 Abaj TV','700+ channels. Price: only 1 USDT per month. Minimum payment: 12 months = 12 USDT. Works on any Android TV.\n\nAfter payment, tap “✅ Paid”. The administrator will verify the transfer and confirm receipt, then the channels will unlock. Until approval, the channel list stays empty.'),
+ 'hy':('📺 Abaj TV','1500+ ալիքներ։ Գինը՝ ընդամենը 1 USDT ամսական։ Նվազագույն վճարումը՝ 12 ամիս = 12 USDT։ Աշխատում է ցանկացած Android TV-ում։\n\nՎճարումից հետո սեղմեք «✅ Վճարել եմ»։ Ադմինիստրատորը կստուգի վճարումը և կսեղմի «Ստացել եմ», դրանից հետո ալիքները կբացվեն։ Մինչ հաստատումը ալիքների ցանկը դատարկ կլինի։'),
+ 'ru':('📺 Abaj TV','Более 1500 каналов. Цена — всего 1 USDT в месяц. Минимальная оплата — 12 месяцев = 12 USDT. Работает на любом Android TV.\n\nПосле оплаты нажмите «✅ Оплатил». Администратор проверит перевод и нажмёт «Получил», после этого каналы откроются. До подтверждения список каналов будет пустым.'),
+ 'en':('📺 Abaj TV','1500+ channels. Price: only 1 USDT per month. Minimum payment: 12 months = 12 USDT. Works on any Android TV.\n\nAfter payment, tap “✅ Paid”. The administrator will verify the transfer and confirm receipt, then the channels will unlock. Until approval, the channel list stays empty.'),
 }
 
 PAYMENT_TEXT={
