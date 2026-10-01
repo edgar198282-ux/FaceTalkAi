@@ -759,6 +759,44 @@ async def api_tv_pair_start(request):
     }, headers={'Cache-Control':'no-store'})
 
 
+async def api_tv_pair_open(request):
+    code = str(request.query.get('code') or '').strip()
+    if len(code) != 6 or not code.isdigit():
+        raise web.HTTPBadRequest(text='Invalid TV code')
+    raw = await get_setting(f'tv_pair:{code}', '')
+    if not raw:
+        raise web.HTTPNotFound(text='TV code not found')
+    try:
+        data = json.loads(raw)
+    except Exception:
+        data = {}
+    if int(data.get('expires_at') or 0) < int(time.time()):
+        raise web.HTTPGone(text='TV code expired')
+    me = await request.app['bot'].get_me()
+    username = (me.username or '').lstrip('@')
+    if not username:
+        raise web.HTTPServiceUnavailable(text='Telegram bot unavailable')
+    tg_url = f'tg://resolve?domain={username}&start=tv_{code}'
+    web_url = f'https://t.me/{username}?start=tv_{code}'
+    page = f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Abaj TV</title><style>
+body{{font-family:Arial,sans-serif;background:#eef7ff;margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center;color:#123}}
+.card{{width:min(460px,90vw);background:#fff;border-radius:24px;padding:26px;text-align:center;box-shadow:0 12px 40px #1253a522}}
+h1{{color:#087fe1}} .code{{font-size:42px;font-weight:900;letter-spacing:7px;margin:18px 0}}
+a{{display:block;text-decoration:none;border-radius:14px;padding:15px;margin:10px 0;font-weight:800}}
+.primary{{background:#087fe1;color:#fff}} .secondary{{background:#e7f3ff;color:#087fe1}}
+.small{{color:#657b8d;font-size:14px;line-height:1.4}}
+</style></head><body><div class="card">
+<h1>Подключить Abaj TV</h1><div class="code">{code}</div>
+<a class="primary" href="{tg_url}">Открыть Telegram и подключить</a>
+<a class="secondary" href="{web_url}">Открыть через t.me</a>
+<div class="small">Если Telegram откроет только профиль бота, откройте чат и отправьте код <b>{code}</b> обычным сообщением.</div>
+</div><script>
+setTimeout(function(){{ window.location.href={json.dumps(tg_url)}; }},250);
+</script></body></html>"""
+    return web.Response(text=page, content_type='text/html', headers={'Cache-Control':'no-store, max-age=0'})
+
+
 async def api_tv_pair_qr(request):
     import io
     import qrcode
@@ -775,12 +813,8 @@ async def api_tv_pair_qr(request):
         data = {}
     if int(data.get('expires_at') or 0) < int(time.time()):
         return web.json_response({'ok':False,'error':'expired'}, status=410)
-    me = await request.app['bot'].get_me()
-    username = (me.username or '').lstrip('@')
-    if not username:
-        return web.json_response({'ok':False,'error':'bot_unavailable'}, status=503)
-    deeplink = f'https://t.me/{username}?start=tv_{code}'
-    img = qrcode.make(deeplink, image_factory=qrcode.image.svg.SvgPathImage, border=2, box_size=8)
+    landing = f'{request.scheme}://{request.host}/api/tv/pair/open?code={code}'
+    img = qrcode.make(landing, image_factory=qrcode.image.svg.SvgPathImage, border=2, box_size=8)
     buf = io.BytesIO()
     img.save(buf)
     return web.Response(
@@ -943,7 +977,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/app-release', api_app_release); app.router.add_get('/api/app-download', api_app_download); app.router.add_get(PUBLIC_APK_PATH, api_app_download); app.router.add_get(PUBLIC_APK_BETA_PATH, api_app_download); app.router.add_get('/downloads/FaceTalkAI-latest.apk', api_app_download); app.router.add_post('/api/app-upload', api_app_upload)
     app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload); app.router.add_post('/api/admin/app-rollback', api_admin_app_rollback); app.router.add_post('/api/admin/app-promote-beta', api_admin_app_promote_beta)
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
-    app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
+    app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/open', api_tv_pair_open); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
