@@ -58,6 +58,11 @@ async def ensure_user(user_id:int):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute('INSERT OR IGNORE INTO users(user_id) VALUES(?)',(user_id,)); await db.commit()
 
+async def list_user_ids():
+    async with aiosqlite.connect(DB_PATH) as db:
+        rows = await (await db.execute('SELECT user_id FROM users ORDER BY user_id')).fetchall()
+    return [int(r[0]) for r in rows]
+
 async def set_role(user_id, role):
     await ensure_user(user_id)
     async with aiosqlite.connect(DB_PATH) as db:

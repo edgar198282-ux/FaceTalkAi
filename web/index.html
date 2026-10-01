@@ -301,6 +301,17 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
     </div>
     <button onclick="openSettings()" style="width:100%;margin:14px 0 12px;border:0;border-radius:14px;background:#087fe1;color:#fff;padding:14px 16px;font-size:17px;font-weight:900">⚙ Настройки Edem TV</button>
 
+    <div style="font-size:18px;font-weight:900;margin:12px 0 10px">Доступ пользователей</div>
+    <div id="accessStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+      <div class="adminRow" style="display:block;text-align:center"><b id="accessTotal">0</b><div class="adminMeta">Всего</div></div>
+      <div class="adminRow" style="display:block;text-align:center"><b id="accessActive">0</b><div class="adminMeta">Активировано</div></div>
+      <div class="adminRow" style="display:block;text-align:center"><b id="accessPending">0</b><div class="adminMeta">Ожидают</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><input id="accessSearch" placeholder="ID, имя или username" oninput="renderAdminAccess()" style="flex:1;height:42px;border:1px solid #b9dff5;border-radius:11px;padding:0 12px"><button onclick="loadAdminAccess()" style="border:0;border-radius:11px;background:#087fe1;color:white;padding:0 14px;font-weight:800">Обновить</button></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px"><input id="accessGrantUid" inputmode="numeric" placeholder="Telegram ID — дать доступ" style="flex:1;height:42px;border:1px solid #b9dff5;border-radius:11px;padding:0 12px"><button onclick="grantAccessById()" style="border:0;border-radius:11px;background:#16a05d;color:white;padding:0 14px;font-weight:800">+ Дать 12 мес.</button></div>
+    <div class="adminRows" id="accessRows"><div class="adminEmpty">Загрузка…</div></div>
+
+    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Edem пользователи</div>
     <div class="adminRows" id="adminRows"><div class="adminEmpty">Загрузка…</div></div>
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Привязанные телевизоры</div>
     <div class="adminRows" id="adminTvRows"><div class="adminEmpty">Загрузка…</div></div>
@@ -694,14 +705,62 @@ function openSettings(){
 }
 function closeSettings(){document.getElementById('settingsModal').classList.remove('open')}
 
+let adminAccessUsers=[];
 function openAdmin(){
   document.getElementById('adminPanel').classList.add('open');
+  loadAdminAccess();
   loadAdminEdem();
   loadAdminTvs();
   loadIptvDiagnostics();
   loadOtaInfo();
 }
 function closeAdmin(){document.getElementById('adminPanel').classList.remove('open')}
+async function loadAdminAccess(){
+  const box=document.getElementById('accessRows');
+  if(!box)return;
+  box.innerHTML='<div class="adminEmpty">Загрузка…</div>';
+  try{
+    const r=await fetch('/api/admin/access/users',{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    adminAccessUsers=d.users||[];
+    document.getElementById('accessTotal').textContent=Number(d.total||0);
+    document.getElementById('accessActive').textContent=Number(d.active_count||0);
+    document.getElementById('accessPending').textContent=Number(d.pending_count||0);
+    renderAdminAccess();
+  }catch(e){box.innerHTML='<div class="adminEmpty">Не удалось загрузить пользователей</div>'}
+}
+function renderAdminAccess(){
+  const box=document.getElementById('accessRows');
+  if(!box)return;
+  const q=String(document.getElementById('accessSearch')?.value||'').trim().toLowerCase();
+  const rows=adminAccessUsers.filter(x=>!q||String(x.user_id).includes(q)||String(x.name||'').toLowerCase().includes(q)||String(x.username||'').toLowerCase().includes(q));
+  box.innerHTML=rows.length?rows.map(x=>{
+    const who=esc(x.name||('ID '+x.user_id))+(x.username?(' · @'+esc(x.username)):'');
+    const status=x.is_admin?'Администратор':(x.active?'✅ Активен':'⛔ Нет доступа');
+    const days=x.is_admin?'без срока':(x.days_left==null?'—':(x.days_left+' дн.'));
+    const pending=x.payment_status==='pending'?' · 💳 ожидает проверки':'';
+    const action=x.is_admin?'':(x.active
+      ?'<button onclick="setUserAccess('+x.user_id+',\'revoke\')" style="background:#d84b5b">Отключить</button>'
+      :'<button onclick="setUserAccess('+x.user_id+',\'grant\')" style="background:#16a05d">Дать 12 мес.</button>');
+    return '<div class="adminRow"><div><b>'+who+'</b><div class="adminMeta">ID '+esc(x.user_id)+' · '+status+' · '+days+pending+'</div></div><div class="limitBox">'+action+'</div></div>';
+  }).join(''):'<div class="adminEmpty">Пользователи не найдены</div>';
+}
+async function setUserAccess(uid,action){
+  const r=await fetch('/api/admin/access/set',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',...authHeaders()},
+    body:JSON.stringify({user_id:Number(uid),action})
+  });
+  if(r.ok){await loadAdminAccess();await loadAdminEdem()}
+}
+async function grantAccessById(){
+  const el=document.getElementById('accessGrantUid');
+  const uid=Number(String(el?.value||'').trim());
+  if(!Number.isInteger(uid)||uid<=0)return;
+  await setUserAccess(uid,'grant');
+  if(el)el.value='';
+}
 async function loadAdminEdem(){
   const box=document.getElementById('adminRows');
   box.innerHTML='<div class="adminEmpty">Загрузка…</div>';
