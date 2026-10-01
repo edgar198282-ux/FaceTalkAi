@@ -547,6 +547,11 @@ let freeAdTimer=null;
 let freeAdActive=false;
 let freeAdMuteBefore=false;
 let freeAdRequestBusy=false;
+let burnedAdTimer=null;
+let burnedAdCanvas=null;
+let burnedAdPrevFrame=null;
+let burnedAdSamples=[];
+let burnedAdLastReportAt=0;
 let tvWatchdogTimer=null;
 let tvWatchdogLastTime=-1;
 let tvWatchdogStalls=0;
@@ -2456,8 +2461,15 @@ function setFreeAdOverlay(active){
     if(v)v.muted=freeAdMuteBefore;
   }
 }
+function stopBurnedAdObserver(){
+  if(burnedAdTimer){clearInterval(burnedAdTimer);burnedAdTimer=null}
+  burnedAdPrevFrame=null;
+  burnedAdSamples=[];
+  burnedAdLastReportAt=0;
+}
 function stopFreeAdWatch(){
   if(freeAdTimer){clearInterval(freeAdTimer);freeAdTimer=null}
+  stopBurnedAdObserver();
   freeAdRequestBusy=false;
   setFreeAdOverlay(false);
 }
@@ -2475,11 +2487,86 @@ async function checkFreeAdState(){
     freeAdRequestBusy=false;
   }
 }
+async function reportBurnedAdObservation(ch,score,cutRate,avgDiff,brightnessVar,samples){
+  const now=Date.now();
+  if(!ch||ch.personal||now-burnedAdLastReportAt<18000)return;
+  burnedAdLastReportAt=now;
+  try{
+    await fetch('/api/iptv/ad-visual-observe',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        channel_id:ch.id,
+        score,
+        cut_rate:cutRate,
+        avg_diff:avgDiff,
+        brightness_var:brightnessVar,
+        samples
+      }),
+      keepalive:true
+    });
+  }catch(e){}
+}
+function sampleBurnedAdFrame(ch){
+  if(!ch||ch.personal||!current||current.id!==ch.id)return;
+  const v=document.getElementById('video');
+  if(!v||v.readyState<2||v.videoWidth<16||v.videoHeight<16||v.paused)return;
+  try{
+    if(!burnedAdCanvas){
+      burnedAdCanvas=document.createElement('canvas');
+      burnedAdCanvas.width=32;
+      burnedAdCanvas.height=18;
+    }
+    const ctx=burnedAdCanvas.getContext('2d',{willReadFrequently:true});
+    if(!ctx)return;
+    ctx.drawImage(v,0,0,32,18);
+    const px=ctx.getImageData(0,0,32,18).data;
+    const frame=new Uint8Array(32*18);
+    let brightness=0;
+    for(let i=0,j=0;i<px.length;i+=4,j++){
+      const y=Math.round(px[i]*0.299+px[i+1]*0.587+px[i+2]*0.114);
+      frame[j]=y;
+      brightness+=y;
+    }
+    brightness/=(frame.length*255);
+    let diff=0;
+    if(burnedAdPrevFrame&&burnedAdPrevFrame.length===frame.length){
+      for(let i=0;i<frame.length;i++)diff+=Math.abs(frame[i]-burnedAdPrevFrame[i]);
+      diff/=(frame.length*255);
+    }
+    burnedAdPrevFrame=frame;
+    burnedAdSamples.push({diff,brightness,ts:Date.now()});
+    if(burnedAdSamples.length>15)burnedAdSamples.shift();
+    if(burnedAdSamples.length<6)return;
+    const useful=burnedAdSamples.slice(1);
+    const diffs=useful.map(x=>x.diff);
+    const avgDiff=diffs.reduce((a,b)=>a+b,0)/Math.max(1,diffs.length);
+    const cuts=diffs.filter(x=>x>=0.18).length;
+    const cutRate=cuts/Math.max(1,diffs.length);
+    const br=burnedAdSamples.map(x=>x.brightness);
+    const meanBr=br.reduce((a,b)=>a+b,0)/br.length;
+    const brightnessVar=Math.sqrt(br.reduce((a,b)=>a+(b-meanBr)*(b-meanBr),0)/br.length);
+    const score=Math.max(0,Math.min(100,Math.round(
+      Math.min(1,cutRate/0.45)*65+
+      Math.min(1,avgDiff/0.22)*25+
+      Math.min(1,brightnessVar/0.16)*10
+    )));
+    reportBurnedAdObservation(ch,score,cutRate,avgDiff,brightnessVar,burnedAdSamples.length);
+  }catch(e){
+    stopBurnedAdObserver();
+  }
+}
+function startBurnedAdObserver(ch){
+  stopBurnedAdObserver();
+  if(!ch||ch.personal)return;
+  burnedAdTimer=setInterval(()=>sampleBurnedAdFrame(ch),4000);
+}
 function startFreeAdWatch(ch){
   stopFreeAdWatch();
   if(!ch||ch.personal)return;
   checkFreeAdState();
   freeAdTimer=setInterval(checkFreeAdState,3000);
+  startBurnedAdObserver(ch);
 }
 
 function openPlayer(id){
