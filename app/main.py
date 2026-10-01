@@ -83,9 +83,10 @@ def miniapp_keyboard(user_id: int | None = None, lang: str = 'ru'):
     if not MINIAPP_URL:
         return None
     labels={'hy':'📺 Բացել Abaj TV','ru':'📺 Открыть Abaj TV','en':'📺 Open Abaj TV'}
+    apk_labels={'hy':'⬇️ Ներբեռնել APK','ru':'⬇️ Скачать APK','en':'⬇️ Download APK'}
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=labels.get(lang, labels['ru']), web_app=WebAppInfo(url=_miniapp_url_for_user(user_id)))],
-                  [KeyboardButton(text='🌐 Հայերեն / Русский / English')]],
+                  [KeyboardButton(text=apk_labels.get(lang, apk_labels['ru']))]],
         resize_keyboard=True,
         is_persistent=True,
     )
@@ -227,6 +228,22 @@ async def language_handler(q: CallbackQuery):
 @dp.message(F.text == '🌐 Հայերեն / Русский / English')
 async def change_language(m: Message):
     await send_language_picker(m)
+
+@dp.message(F.text.in_({'⬇️ Ներբեռնել APK','⬇️ Скачать APK','⬇️ Download APK'}))
+async def download_apk(m: Message):
+    lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
+    apk_url = _apk_download_url()
+    if not apk_url:
+        return
+    await m.answer(
+        {'hy':'⬇️ Ներբեռնեք Abaj TV APK-ը','ru':'⬇️ Скачайте APK Abaj TV','en':'⬇️ Download Abaj TV APK'}.get(lang, '⬇️ Скачайте APK Abaj TV'),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(
+                text={'hy':'⬇️ Ներբեռնել APK','ru':'⬇️ Скачать APK','en':'⬇️ Download APK'}.get(lang, '⬇️ Скачать APK'),
+                url=apk_url,
+            )
+        ]]),
+    )
 
 @dp.message(F.text)
 async def text_handler(m: Message):
