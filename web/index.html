@@ -1330,12 +1330,71 @@ function tvTopFocusables(){
     return r.width>0&&r.height>0;
   });
 }
+function tvTopRows(){
+  const visible=sel=>[...document.querySelectorAll(sel)].filter(el=>{
+    const r=el.getBoundingClientRect();
+    return r.width>0&&r.height>0;
+  });
+  return [
+    visible('#sourceChips .chip'),
+    visible('.chips:not(#sourceChips) .chip'),
+    visible('#quickCats .cat')
+  ].filter(row=>row.length);
+}
+function focusTvTopElement(el){
+  if(!el)return;
+  try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(_){}}
+}
+function nearestTopByX(row,x){
+  if(!row||!row.length)return null;
+  let best=row[0],bestDist=Infinity;
+  row.forEach(el=>{
+    const r=el.getBoundingClientRect();
+    const cx=r.left+r.width/2;
+    const d=Math.abs(cx-x);
+    if(d<bestDist){bestDist=d;best=el}
+  });
+  return best;
+}
+function moveTvTopSpatial(direction){
+  const rows=tvTopRows();
+  if(!rows.length)return;
+  let rowIndex=-1,colIndex=-1,current=document.activeElement;
+  rows.forEach((row,ri)=>{
+    const ci=row.indexOf(current);
+    if(ci>=0){rowIndex=ri;colIndex=ci}
+  });
+  if(rowIndex<0){
+    rowIndex=Math.min(1,rows.length-1);
+    current=rows[rowIndex].find(el=>el.classList.contains('active'))||rows[rowIndex][0];
+    colIndex=Math.max(0,rows[rowIndex].indexOf(current));
+  }
+  const row=rows[rowIndex];
+  if(direction==='left'||direction==='right'){
+    const step=direction==='right'?1:-1;
+    colIndex=(colIndex+step+row.length)%row.length;
+    focusTvTopElement(row[colIndex]);
+    return;
+  }
+  const rect=current.getBoundingClientRect();
+  const x=rect.left+rect.width/2;
+  if(direction==='up'){
+    if(rowIndex>0)focusTvTopElement(nearestTopByX(rows[rowIndex-1],x));
+    return;
+  }
+  if(direction==='down'){
+    if(rowIndex<rows.length-1){
+      focusTvTopElement(nearestTopByX(rows[rowIndex+1],x));
+      return;
+    }
+    const cards=[...document.querySelectorAll('.channel')];
+    if(!cards.length)return;
+    setTvHeaderCollapsed(true,false);
+    setTvFocus(Math.max(0,Math.min(focusIndex,cards.length-1)),true);
+  }
+}
 function moveTvTopFocus(delta){
-  const els=tvTopFocusables();
-  if(!els.length)return;
-  let i=els.indexOf(document.activeElement);
-  if(i<0)i=0; else i=(i+delta+els.length)%els.length;
-  try{els[i].focus({preventScroll:true})}catch(e){try{els[i].focus()}catch(_){}}
+  moveTvTopSpatial(delta>0?'right':'left');
 }
 function bindTvFocus(){
   if(!tvMode)return;
@@ -1962,13 +2021,8 @@ function tvNativeRemote(action){
     return;
   }
   if(!tvHeaderCollapsed){
-    if(action==='left'){moveTvTopFocus(-1);return}
-    if(action==='right'){moveTvTopFocus(1);return}
-    if(action==='down'){
-      const cards=[...document.querySelectorAll('.channel')];
-      if(!cards.length)return;
-      setTvHeaderCollapsed(true,false);
-      setTvFocus(Math.max(0,Math.min(focusIndex,cards.length-1)),true);
+    if(action==='left'||action==='right'||action==='up'||action==='down'){
+      moveTvTopSpatial(action);
       return;
     }
     if(action==='ok'){
@@ -2053,21 +2107,10 @@ document.addEventListener('keydown',e=>{
   }
   if(!tvMode)return;
   if(nativeTv&&!tvHeaderCollapsed&&!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.channel'))){
-    if(e.key==='ArrowRight'){e.preventDefault();moveTvTopFocus(1);return}
-    if(e.key==='ArrowLeft'){e.preventDefault();moveTvTopFocus(-1);return}
-    if(e.key==='ArrowDown'){
-      e.preventDefault();
-      const cards=[...document.querySelectorAll('.channel')];
-      if(!cards.length)return;
-      setTvHeaderCollapsed(true,false);
-      const idx=Math.max(0,Math.min(focusIndex,cards.length-1));
-      focusIndex=idx;
-      cards.forEach((x,i)=>x.classList.toggle('focused',i===idx));
-      const el=cards[idx];
-      try{el.focus({preventScroll:true})}catch(_){try{el.focus()}catch(__){}}
-      el.scrollIntoView({block:'start',inline:'nearest',behavior:'auto'});
-      return;
-    }
+    if(e.key==='ArrowRight'){e.preventDefault();moveTvTopSpatial('right');return}
+    if(e.key==='ArrowLeft'){e.preventDefault();moveTvTopSpatial('left');return}
+    if(e.key==='ArrowUp'){e.preventDefault();moveTvTopSpatial('up');return}
+    if(e.key==='ArrowDown'){e.preventDefault();moveTvTopSpatial('down');return}
     if(e.key==='Enter'&&document.activeElement&&typeof document.activeElement.click==='function'){
       e.preventDefault();document.activeElement.click();return;
     }
