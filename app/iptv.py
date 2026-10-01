@@ -18,8 +18,6 @@ SOURCE_URLS = [
     ("AM", "https://iptv-org.github.io/iptv/languages/hye.m3u"),
     ("AM", "https://dearbulut.github.io/iptv/playlists/country/am.m3u"),
     ("AM", "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_armenia.m3u8"),
-    ("AM", "https://raw.githubusercontent.com/MichaelJorky/Free-IPTV-M3U-Playlist/main/iptv-armenia.m3u"),
-    ("RU4K", "https://raw.githubusercontent.com/iptvru/iptv/main/ru(ver48.0).m3u"),
     ("RU", "https://iptv-org.github.io/iptv/countries/ru.m3u"),
     ("RU", "https://raw.githubusercontent.com/substanc1/iptv-russia/main/streams/ru.m3u"),
     ("RU", "https://ngrch.github.io/iptv/ru.m3u"),
@@ -144,15 +142,6 @@ def _looks_junk(item: dict) -> bool:
     if not url.startswith(("http://", "https://")):
         return True
     return False
-
-
-def _looks_4k(item: dict) -> bool:
-    raw = " ".join([
-        str(item.get("name") or ""),
-        str(item.get("group") or ""),
-        str(item.get("tvg_id") or ""),
-    ]).lower()
-    return bool(re.search(r"(^|[^a-z0-9])(4k|4к|uhd|2160p?|3840x2160)([^a-z0-9]|$)", raw, flags=re.I))
 
 
 def _extinf_name(line: str, fallback: str = "Channel") -> str:
@@ -384,14 +373,8 @@ async def refresh_channels(force: bool = False):
                 fetched = await asyncio.gather(*[_fetch_text(session, url) for _, url in SOURCE_URLS])
                 candidates = []
                 for (country, url), text in zip(SOURCE_URLS, fetched):
-                    if "#EXTM3U" not in text[:4096]:
-                        continue
-                    parsed = _parse_m3u(text, "RU" if country == "RU4K" else country, url)
-                    if country == "RU4K":
-                        parsed = [item for item in parsed if _looks_4k(item)]
-                        for item in parsed:
-                            item["quality"] = "4K"
-                    candidates.extend(parsed)
+                    if "#EXTM3U" in text[:4096]:
+                        candidates.extend(_parse_m3u(text, country, url))
                 seen_urls = set()
                 unique = []
                 for item in candidates:
@@ -481,7 +464,7 @@ async def refresh_channels(force: bool = False):
 def public_state(compact: bool = False):
     rows = []
     compact_keys = {
-        "id", "name", "group", "country", "logo", "status", "tvg_id", "quality",
+        "id", "name", "group", "country", "logo", "status", "tvg_id",
         "latency_ms", "backup_count", "epg_now", "epg_next",
         "uptime_pct", "health_score", "health_samples", "unreliable"
     }
