@@ -320,7 +320,8 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
 let channels=[];
-
+let modeFilter='all';
+let activeCategory='';
 const launchParams=new URLSearchParams(location.search);
 const nativeTv=launchParams.get('tv')==='1'||launchParams.get('source')==='android_tv';
 const tvDeviceName=(launchParams.get('device_name')||'Android TV').slice(0,120);
@@ -332,7 +333,7 @@ let hls=null;
 let current=null;
 let currentIndex=-1;
 let filteredNow=[];
-
+let focusIndex=0;
 let streamRetries=0;
 let reconnectTimer=null;
 let lastChannelId=localStorage.getItem('iptv_last_channel')||'';
@@ -362,7 +363,7 @@ let tvNumberBuffer='';
 let tvNumberTimer=null;
 let tvRailIndex=0;
 let tvAutoResumeDone=false;
-
+let tvZapTimer=null;
 let networkRetryTimer=null;
 let tvWasPlayingBeforePause=false;
 let tvWatchdogTimer=null;
@@ -915,7 +916,14 @@ function openTvGuideFocused(){
   if(ch){toggleTvGuide(false);openPlayer(ch.id)}
 }
 
-
+function showTvShortcut(text){
+  if(!nativeTv)return;
+  const el=document.getElementById('tvShortcut');
+  el.textContent=text;
+  el.classList.add('show');
+  if(tvShortcutTimer)clearTimeout(tvShortcutTimer);
+  tvShortcutTimer=setTimeout(()=>el.classList.remove('show'),1800);
+}
 function tvSetModeFilter(v){
   if(!nativeTv)return;
   modeFilter=v;
@@ -923,7 +931,9 @@ function tvSetModeFilter(v){
   const sel=document.getElementById('group'); if(sel)sel.value='';
   document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.toggle('active',x.dataset.filter===v));
   document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',x.dataset.cat===''));
-
+  focusIndex=0;
+  render();
+  const labels={all:'Все каналы',fav:'Избранное',recent:'Недавние',AM:'Армения',RU:'Россия'};
   showTvShortcut(labels[v]||'Каналы');
 }
 function focusFirstChannelAfterFilter(){
@@ -936,15 +946,31 @@ function focusFirstChannelAfterFilter(){
     first.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'});
   }));
 }
-
-
+function setModeFilter(btn,v){
+  modeFilter=v;
+  document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.toggle('active',x===btn));
+  focusIndex=0;
+  render();
+  focusFirstChannelAfterFilter();
+}
+function setGroup(v){
+  activeCategory='';
+  document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',!v&&x.dataset.cat===''));
+  focusIndex=0;
+  render();
+  focusFirstChannelAfterFilter();
+}
 function setCategory(v){
   activeCategory=v;
   document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',x.dataset.cat===v));
   const sel=document.getElementById('group');
   if(v&&[...sel.options].some(o=>o.value===v))sel.value=v;
   else sel.value='';
-
+  focusIndex=0;
+  render();
+  focusFirstChannelAfterFilter();
+}
+function toggleFav(id){
   if(favs.has(id))favs.delete(id);else favs.add(id);
   saveFavs();
   render();
@@ -991,7 +1017,8 @@ function restoreCachedChannels(){
     const groups=[...new Set(channels.map(x=>x.group||'Other'))].sort((a,b)=>a.localeCompare(b,'ru'));
     const sel=document.getElementById('group');
     sel.innerHTML='<option value="">ALL</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
-
+    buildQuickCats(groups);
+    document.getElementById('status').textContent='Каналы загружены · обновляю…';
     render();
     return true;
   }catch(e){return false}
@@ -1022,7 +1049,9 @@ async function load(){
     const old=sel.value;
     sel.innerHTML='<option value="">ALL</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
     if(groups.includes(old))sel.value=old;
-
+    buildQuickCats(groups);
+    document.getElementById('status').textContent=
+      'Online: '+channels.length+
       ' · Offline в проверке: '+((d.stats||{}).offline||0)+
       (d.running?' · обновляется…':'');
     cacheChannels();
@@ -1101,7 +1130,7 @@ function render(){
         '<div class="logoWrap">'+logo+'</div>'+
         '<div class="info">'+
           '<div class="name">'+esc(ch.name)+'</div>'+
-          
+          '<div class="now">'+esc((ch.epg_now&&ch.epg_now.title)||ch.group||'Live')+'</div>'+
           '<div class="progress"><span style="width:'+epgProgress(ch.epg_now)+'%"></span></div>'+
           '<div class="times"><span>'+(ch.epg_now?fmtClock(ch.epg_now.start):'LIVE')+'</span><span>'+(ch.epg_now?fmtClock(ch.epg_now.stop):Math.max(1,Math.round((ch.latency_ms||0)/1000))+'s')+'</span></div>'+
           (ch.epg_next?'<div class="next">Далее: '+esc(ch.epg_next.title)+'</div>':'')+
@@ -1136,7 +1165,8 @@ function tvGridColumns(){
 function setTvFocus(index,scroll=true){
   const cards=[...document.querySelectorAll('.channel')];
   if(!cards.length)return;
-((x,i)=>x.classList.toggle('focused',i===focusIndex));
+  focusIndex=Math.max(0,Math.min(cards.length-1,index));
+  cards.forEach((x,i)=>x.classList.toggle('focused',i===focusIndex));
   const el=cards[focusIndex];
   try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(_){}}
   if(scroll)el.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'});
@@ -1232,7 +1262,7 @@ function showTvZap(ch){
   const no=Math.max(1,rows.findIndex(x=>x.id===ch.id)+1);
   document.getElementById('tvZapNo').textContent=String(no);
   document.getElementById('tvZapName').textContent=ch.name||'Канал';
-
+  document.getElementById('tvZapNow').textContent=(ch.epg_now&&ch.epg_now.title)||ch.group||'LIVE';
   document.getElementById('tvZapNext').textContent=ch.epg_next?('Далее: '+ch.epg_next.title):'';
   document.getElementById('tvZapFav').textContent=favs.has(ch.id)?'★':'☆';
   const z=document.getElementById('tvZap');
@@ -1300,11 +1330,13 @@ function openPlayer(id){
   currentIndex=Math.max(0,filteredNow.findIndex(x=>x.id===id));
   document.getElementById('playerTitle').textContent=ch.name;
   document.getElementById('playerName').textContent=ch.name;
-
+  document.getElementById('playerGroup').textContent=
+    (ch.country==='AM'?'Армения':'Россия')+' · '+((ch.epg_now&&ch.epg_now.title)||ch.group||'Live');
   document.getElementById('playerError').textContent='';
   const playerView=document.getElementById('playerView');
   playerView.classList.add('open');
-
+  if(nativeTv)playerView.classList.add('tvFullscreen');
+  showTvZap(ch);
   startStream(ch);
   renderRail();
   if(nativeTv){
@@ -1515,7 +1547,8 @@ function openTvRailFocused(){
   const ch=rows[tvRailIndex];
   if(ch){toggleTvRail(false);openPlayer(ch.id)}
 }
-clearTimeout(reconnectTimer);reconnectTimer=null}
+function closePlayer(){
+  if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   stopTvWatchdog();
   if(hls){hls.destroy();hls=null}
   const v=document.getElementById('video');
@@ -1538,7 +1571,10 @@ function tvToggleFavoriteCurrent(){
   saveFavs();
   renderRail();
 }
-
+function tvTogglePlayerUi(){
+  if(!nativeTv)return;
+  document.body.classList.toggle('playerClean');
+}
 function playNext(){
   const rows=filteredNow.length?filteredNow:channels;
   if(!rows.length)return;
@@ -1622,7 +1658,13 @@ document.addEventListener('keydown',e=>{
       playNext();
       return
     }
-
+    if(e.key==='Enter'){
+      e.preventDefault();
+      if(nativeTv&&tvRailOpen()){openTvRailFocused();return}
+      const v=document.getElementById('video');
+      if(v.paused)v.play().catch(()=>{});else v.pause();
+      return;
+    }
   }
   if(!tvMode)return;
   if(nativeTv&&/^[0-9]$/.test(e.key)){e.preventDefault();tvNumberInput(e.key);return}
