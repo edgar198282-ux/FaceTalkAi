@@ -370,6 +370,7 @@ let tvWatchdogTimer=null;
 let tvWatchdogLastTime=-1;
 let tvWatchdogStalls=0;
 let tvAuthRefreshTimer=null;
+let tvChannelHeartbeatTimer=null;
 let tvShortcutTimer=null;
 let tvGuideIndex=0;
 
@@ -1264,6 +1265,10 @@ function openPlayer(id){
   showTvZap(ch);
   startStream(ch);
   renderRail();
+  if(nativeTv){
+    if(tvChannelHeartbeatTimer)clearTimeout(tvChannelHeartbeatTimer);
+    tvChannelHeartbeatTimer=setTimeout(()=>refreshTvAuth(false),1200);
+  }
 }
 function stopTvWatchdog(){
   if(tvWatchdogTimer){clearInterval(tvWatchdogTimer);tvWatchdogTimer=null}
