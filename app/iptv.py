@@ -44,6 +44,7 @@ QUARANTINE_SECONDS = 60 * 60
 DATA_ROOT = os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or os.path.join(os.getcwd(), "data")
 HEALTH_PATH = os.path.join(DATA_ROOT, "iptv_health.json")
 SNAPSHOT_PATH = os.path.join(DATA_ROOT, "iptv_snapshot.json")
+HISTORY_PATH = os.path.join(DATA_ROOT, "iptv_scan_history.json")
 os.makedirs(DATA_ROOT, exist_ok=True)
 
 def _load_json(path: str, default):
@@ -837,9 +838,13 @@ async def api_diagnostics(request):
         key=lambda x: int(x.get("last_failover") or 0),
         reverse=True,
     )[:50]
+    history = _load_json(HISTORY_PATH, [])
+    if not isinstance(history, list):
+        history = []
     return web.json_response({
         "ok": True,
         "stats": state.get("stats") or {},
+        "scan_history": history[-48:],
         "last_refresh": state.get("last_refresh"),
         "running": state.get("running"),
         "problem_channels": problem,
@@ -909,6 +914,30 @@ async def api_worker_snapshot(request):
     _state["channels"] = channels
     _state["last_refresh"] = int(state.get("last_refresh") or time.time())
     _state["stats"] = dict(state.get("stats") or {})
+    try:
+        history = _load_json(HISTORY_PATH, [])
+        if not isinstance(history, list):
+            history = []
+        st = _state["stats"]
+        entry = {
+            "ts": int(time.time()),
+            "total": int(st.get("total") or len(channels)),
+            "online": int(st.get("online") or 0),
+            "offline": int(st.get("offline") or 0),
+            "with_backups": int(st.get("with_backups") or 0),
+            "with_logo": int(st.get("with_logo") or 0),
+            "with_epg": int(st.get("with_epg") or 0),
+            "quarantined_streams": int(st.get("quarantined_streams") or 0),
+            "discovered_api_streams": int(st.get("discovered_api_streams") or 0),
+            "candidate_streams": int(st.get("candidate_streams") or 0),
+        }
+        # Avoid duplicate entries when the same worker snapshot is retried.
+        if not history or int(history[-1].get("ts") or 0) < entry["ts"] - 10:
+            history.append(entry)
+            history = history[-96:]
+            _save_json(HISTORY_PATH, history)
+    except Exception:
+        pass
     _state["epg_last_refresh"] = int(state.get("epg_last_refresh") or 0)
     _state["epg_error"] = str(state.get("epg_error") or "")[:300]
     _state["error"] = str(state.get("error") or "")[:300]
