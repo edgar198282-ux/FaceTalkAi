@@ -240,6 +240,28 @@ async def _free_channel_ad_state(item: dict) -> dict:
                     observed.append(tag)
                     counts = _ad_scan_stats.setdefault("tag_counts", {})
                     counts[tag] = int(counts.get(tag) or 0) + 1
+            # Keep only aggregate names of uncommon HLS tags for diagnostics.
+            # Never store segment URLs or manifest bodies.
+            uncommon = _ad_scan_stats.setdefault("other_hls_tags", {})
+            common_tags = {
+                "#EXTM3U", "#EXTINF", "#EXT-X-VERSION", "#EXT-X-TARGETDURATION",
+                "#EXT-X-MEDIA-SEQUENCE", "#EXT-X-KEY", "#EXT-X-MAP",
+                "#EXT-X-PROGRAM-DATE-TIME", "#EXT-X-DISCONTINUITY",
+                "#EXT-X-ENDLIST", "#EXT-X-INDEPENDENT-SEGMENTS",
+                "#EXT-X-STREAM-INF", "#EXT-X-MEDIA", "#EXT-X-BYTERANGE",
+            }
+            for raw_line in text.splitlines():
+                tag_line = raw_line.strip().upper()
+                if not tag_line.startswith("#"):
+                    continue
+                tag_name = tag_line.split(":", 1)[0]
+                if tag_name.startswith("#EXT") and tag_name not in common_tags and tag_name not in {
+                    "#EXT-X-CUE-OUT", "#EXT-X-CUE-IN", "#EXT-X-DATERANGE", "#EXT-X-INTERSTITIAL"
+                }:
+                    uncommon[tag_name] = int(uncommon.get(tag_name) or 0) + 1
+            if len(uncommon) > 30:
+                top = sorted(uncommon.items(), key=lambda kv: kv[1], reverse=True)[:30]
+                _ad_scan_stats["other_hls_tags"] = dict(top)
             result["observed_tags"] = observed
             active, marker = _detect_hls_ad_break(text)
             result.update({"active": bool(active), "marker": marker})
