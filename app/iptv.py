@@ -14,6 +14,7 @@ import aiohttp
 from aiohttp import web
 
 SOURCE_URLS = [
+    ("HQ", "https://dearbulut.github.io/iptv/playlists/best.m3u"),
     ("AM", "https://iptv-org.github.io/iptv/countries/am.m3u"),
     ("AM", "https://iptv-org.github.io/iptv/languages/hye.m3u"),
     ("AM", "https://dearbulut.github.io/iptv/playlists/country/am.m3u"),
@@ -183,6 +184,52 @@ def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
             row["id"] = hashlib.sha1(key_src.encode("utf-8")).hexdigest()[:16]
             if not _looks_junk(row):
                 out.append(row)
+            pending = None
+    return out
+
+
+def _parse_hq_m3u(text: str, source: str) -> list[dict]:
+    out = []
+    pending = None
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("#EXTINF"):
+            attrs = _attrs(line)
+            country = str(attrs.get("tvg-country") or "").strip().upper()
+            if country not in {"AM", "RU"}:
+                pending = None
+                continue
+            score = int(attrs.get("nexus-score") or 0)
+            if score < 90:
+                pending = None
+                continue
+            name = _extinf_name(line, attrs.get("tvg-name", "Channel"))
+            raw_quality = " ".join([name or "", attrs.get("tvg-name", ""), attrs.get("group-title", "")])
+            is_4k = bool(re.search(r"(^|[^a-z0-9])(4k|4к|uhd|2160p?|3840x2160)([^a-z0-9]|$)", raw_quality, re.I))
+            is_fhd = bool(re.search(r"(^|[^a-z0-9])(fhd|full[ ._-]?hd|1080p?|1920x1080)([^a-z0-9]|$)", raw_quality, re.I))
+            if not (is_4k or is_fhd):
+                pending = None
+                continue
+            pending = {
+                "name": name or "Channel",
+                "group": attrs.get("group-title", "") or "Other",
+                "tvg_id": attrs.get("tvg-id", ""),
+                "logo": attrs.get("tvg-logo", ""),
+                "country": country,
+                "source": source,
+                "quality": "4K" if is_4k else "FHD",
+                "height": 2160 if is_4k else 1080,
+            }
+        elif not line.startswith("#") and pending and line.startswith(("http://", "https://")):
+            row = dict(pending)
+            row["url"] = line
+            key_src = _channel_key(row)
+            if key_src:
+                row["id"] = hashlib.sha1(key_src.encode("utf-8")).hexdigest()[:16]
+                if not _looks_junk(row):
+                    out.append(row)
             pending = None
     return out
 
@@ -373,7 +420,11 @@ async def refresh_channels(force: bool = False):
                 fetched = await asyncio.gather(*[_fetch_text(session, url) for _, url in SOURCE_URLS])
                 candidates = []
                 for (country, url), text in zip(SOURCE_URLS, fetched):
-                    if "#EXTM3U" in text[:4096]:
+                    if "#EXTM3U" not in text[:4096]:
+                        continue
+                    if country == "HQ":
+                        candidates.extend(_parse_hq_m3u(text, url))
+                    else:
                         candidates.extend(_parse_m3u(text, country, url))
                 seen_urls = set()
                 unique = []
@@ -395,6 +446,7 @@ async def refresh_channels(force: bool = False):
             for cid, rows in grouped.items():
                 rows.sort(key=lambda x: (
                     x.get("status") != "ONLINE",
+                    0 if str(x.get("quality") or "").upper() == "4K" else (1 if str(x.get("quality") or "").upper() == "FHD" else 2),
                     -float(x.get("health_score") or _health_score(str(x.get("url") or ""))),
                     int(x.get("consecutive_failures") or 0),
                     int(x.get("runtime_startup_ms") or 999999),
@@ -465,6 +517,7 @@ def public_state(compact: bool = False):
     rows = []
     compact_keys = {
         "id", "name", "group", "country", "logo", "status", "tvg_id",
+        "quality", "height",
         "latency_ms", "backup_count", "epg_now", "epg_next",
         "uptime_pct", "health_score", "health_samples", "unreliable"
     }
