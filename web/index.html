@@ -1272,8 +1272,9 @@ function render(){
           '<div class="badge">'+(ch.personal?'🔐 Edem':(ch.country==='AM'?'🇦🇲 Armenia':'🇷🇺 Russia'))+'</div>'+
         '</div>'+
         '<div class="side">'+
-          '<button class="more" onclick="event.stopPropagation()">⋮</button>'+
-          '<button class="fav '+(favs.has(ch.id)?'on':'')+'" onclick="event.stopPropagation();toggleFav(\''+ch.id+'\')">♡</button>'+
+          (nativeTv
+            ?'<div class="fav tvFavIndicator '+(favs.has(ch.id)?'on':'')+'" aria-hidden="true">♡</div>'
+            :'<button class="more" onclick="event.stopPropagation()">⋮</button><button class="fav '+(favs.has(ch.id)?'on':'')+'" onclick="event.stopPropagation();toggleFav(\''+ch.id+'\')">♡</button>')+
           '<div class="country">'+(ch.country==='AM'?'AM':'RU')+'</div>'+
         '</div>'+
       '</div>';
@@ -1284,6 +1285,12 @@ function render(){
 }
 function bindTvFocus(){
   if(!tvMode)return;
+  const list=document.getElementById('list');
+  if(nativeTv&&list){
+    list.querySelectorAll('button,a,input,select,[tabindex]').forEach(el=>{
+      if(!el.classList.contains('channel'))el.setAttribute('tabindex','-1');
+    });
+  }
   const cards=[...document.querySelectorAll('.channel')];
   if(!cards.length)return;
   focusIndex=Math.max(0,Math.min(focusIndex,cards.length-1));
@@ -1338,7 +1345,9 @@ function moveFocusDirection(direction){
 }
 function openFocused(){
   const cards=[...document.querySelectorAll('.channel')];
-  if(cards[focusIndex])openPlayer(cards[focusIndex].dataset.id);
+  const focused=document.activeElement&&document.activeElement.closest?document.activeElement.closest('.channel'):null;
+  const card=focused||cards[focusIndex];
+  if(card&&card.dataset.id)openPlayer(card.dataset.id);
 }
 
 function suspendTvPlayback(){
