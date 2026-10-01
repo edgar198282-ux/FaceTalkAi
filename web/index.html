@@ -2153,8 +2153,18 @@ function showTvZap(ch){
   if(tvZapTimer)clearTimeout(tvZapTimer);
   tvZapTimer=setTimeout(()=>z.classList.remove('show'),4200);
 }
+function handleAppBack(){
+  const player=document.getElementById('playerView');
+  if(player&&player.classList.contains('open')){closePlayer();return true}
+  if(tvSettingsOpen()){closeTvSettings();return true}
+  const admin=document.getElementById('adminPanel');
+  if(admin&&admin.classList.contains('open')){closeAdmin();return true}
+  const settings=document.getElementById('settingsModal');
+  if(settings&&settings.classList.contains('open')){closeSettings();return true}
+  return false;
+}
 function handleTvBack(){
-  if(!nativeTv)return false;
+  if(!nativeTv)return handleAppBack();
   const pair=document.getElementById('tvPair');
   if(pair&&pair.classList.contains('open')){
     pair.classList.remove('open');

@@ -394,6 +394,17 @@ public class MainActivity extends Activity {
             );
             return;
         }
-        if(webView!=null&&webView.canGoBack())webView.goBack();else super.onBackPressed();
+        if(webView!=null){
+            webView.evaluateJavascript(
+                "(function(){try{return (typeof handleAppBack==='function')?handleAppBack():false}catch(e){return false}})()",
+                value->{
+                    if("true".equals(value))return;
+                    if(webView.canGoBack())webView.goBack();
+                    else super.onBackPressed();
+                }
+            );
+            return;
+        }
+        super.onBackPressed();
     }
 }
