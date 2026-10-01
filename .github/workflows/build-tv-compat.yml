@@ -1,0 +1,98 @@
+name: Build Abaj TV Compat APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "android/**"
+      - ".github/workflows/build-tv-compat.yml"
+
+concurrency:
+  group: abajtv-tv-compat
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Gradle 8.10.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -o /tmp/gradle.zip
+          sudo unzip -q /tmp/gradle.zip -d /opt/gradle
+          echo "/opt/gradle/gradle-8.10.2/bin" >> "$GITHUB_PATH"
+
+      - name: Restore signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d android/facetalk-upload-key.jks.b64 > android/facetalk-upload-key.jks
+          test -s android/facetalk-upload-key.jks
+
+      - name: Build Android TV compatibility APK
+        working-directory: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle :app:assembleRelease \
+            -PWEB_APP_URL="https://facetalkai-production.up.railway.app" \
+            -PAPP_ID="ai.abaj.tv" \
+            -PAPP_VERSION_NAME="tv-compat-${{ github.run_number }}" \
+            -PAPP_VERSION_CODE="${{ github.run_number }}"
+
+      - name: Verify Android TV APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$AAPT" dump badging "$APK" | tee /tmp/tv-badging.txt
+          grep -q "package: name='ai.abaj.tv'" /tmp/tv-badging.txt
+          grep -q "sdkVersion:'21'" /tmp/tv-badging.txt
+          grep -q "leanback-launchable-activity" /tmp/tv-badging.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/tv-signature.txt
+          grep -q "Verified using v1 scheme (JAR signing): true" /tmp/tv-signature.txt
+          grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" /tmp/tv-signature.txt
+          mkdir -p dist
+          cp "$APK" dist/AbajTV-TV-compat.apk
+          sha256sum dist/AbajTV-TV-compat.apk > dist/AbajTV-TV-compat.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AbajTV-TV-compat
+          path: |
+            dist/AbajTV-TV-compat.apk
+            dist/AbajTV-TV-compat.sha256
+          if-no-files-found: error
+
+      - name: Publish TV compat release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="abajtv-tv-compat"
+          gh release delete "$TAG" --cleanup-tag -y >/dev/null 2>&1 || true
+          git push origin ":refs/tags/$TAG" >/dev/null 2>&1 || true
+          gh release create "$TAG" \
+            "dist/AbajTV-TV-compat.apk#AbajTV-TV-compat.apk" \
+            "dist/AbajTV-TV-compat.sha256#AbajTV-TV-compat.sha256" \
+            --target "${{ github.sha }}" \
+            --title "Abaj TV Android TV Compat" \
+            --notes "Android TV compatibility build: Android 5.0+, package ai.abaj.tv, verified v1/v2 signing."
