@@ -368,6 +368,8 @@ let tvPlayerUiTimer=null;
 let tvLastAutoTimer=null;
 let tvLastAutoInterval=null;
 let tvLastAutoCancelled=false;
+let tvZapStepTimer=null;
+let tvZapStepOffset=0;
 let networkRetryTimer=null;
 let tvWasPlayingBeforePause=false;
 let tvWatchdogTimer=null;
@@ -1644,13 +1646,31 @@ function tvTogglePlayerUi(){
     if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
   }
 }
+function queueTvChannelStep(delta){
+  const rows=filteredNow.length?filteredNow:channels;
+  if(!rows.length)return;
+  let base=current?rows.findIndex(x=>x.id===current.id):currentIndex;
+  if(base<0)base=0;
+  tvZapStepOffset+=delta;
+  const target=(base+tvZapStepOffset%rows.length+rows.length)%rows.length;
+  const ch=rows[target];
+  if(ch)showTvShortcut((target+1)+'. '+ch.name);
+  if(tvZapStepTimer)clearTimeout(tvZapStepTimer);
+  tvZapStepTimer=setTimeout(()=>{
+    tvZapStepTimer=null;
+    tvZapStepOffset=0;
+    if(ch)openPlayer(ch.id);
+  },220);
+}
 function playNext(){
+  if(nativeTv){queueTvChannelStep(1);return}
   const rows=filteredNow.length?filteredNow:channels;
   if(!rows.length)return;
   currentIndex=(currentIndex+1+rows.length)%rows.length;
   openPlayer(rows[currentIndex].id);
 }
 function playPrev(){
+  if(nativeTv){queueTvChannelStep(-1);return}
   const rows=filteredNow.length?filteredNow:channels;
   if(!rows.length)return;
   currentIndex=(currentIndex-1+rows.length)%rows.length;
