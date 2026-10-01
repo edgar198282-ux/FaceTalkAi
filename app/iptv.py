@@ -1298,6 +1298,30 @@ async def api_proxy(request):
 async def start_background(app):
     worker_mode = str(os.getenv("IPTV_BACKGROUND_ENABLED", "1")).strip().lower() in {"0", "false", "no", "off"}
 
+    async def ad_watch_loop():
+        await asyncio.sleep(15)
+        cursor = 0
+        while True:
+            try:
+                rows = [x for x in _state["channels"].values() if x.get("status") == "ONLINE"]
+                if rows:
+                    batch = []
+                    for _ in range(min(12, len(rows))):
+                        batch.append(rows[cursor % len(rows)])
+                        cursor += 1
+                    sem = asyncio.Semaphore(3)
+                    async def probe_one(item):
+                        async with sem:
+                            try:
+                                await _free_channel_ad_state(item)
+                            except Exception:
+                                pass
+                    await asyncio.gather(*(probe_one(item) for item in batch))
+            except Exception:
+                pass
+            await asyncio.sleep(30)
+    app["iptv_ad_watch_task"] = asyncio.create_task(ad_watch_loop())
+
     # EPG must live in the main web process because public channel responses are
     # enriched there. Keep this lightweight task active even when channel scans
     # are delegated to the separate worker.
@@ -1321,7 +1345,7 @@ async def start_background(app):
 
 
 async def stop_background(app):
-    for key in ("iptv_task", "iptv_epg_task"):
+    for key in ("iptv_task", "iptv_epg_task", "iptv_ad_watch_task"):
         task = app.get(key)
         if task:
             task.cancel()
