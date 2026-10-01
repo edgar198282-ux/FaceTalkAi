@@ -166,6 +166,36 @@ async def api_admin_app_rollback(request):
     return web.json_response({'ok':True,'rolled_back_to':code,**meta})
 
 
+async def api_admin_app_promote_beta(request):
+    user = await _user_from_request(request)
+    if not user or not _is_admin_user(user):
+        return web.json_response({'ok':False,'error':'forbidden'}, status=403)
+    if not os.path.isfile(APK_BETA_PATH) or os.path.getsize(APK_BETA_PATH) < MIN_APK_SIZE:
+        return web.json_response({'ok':False,'error':'beta not available'}, status=404)
+    beta = _read_apk_meta('beta')
+    beta_code = int(beta.get('version_code') or 0)
+    if beta_code <= 0:
+        return web.json_response({'ok':False,'error':'invalid beta metadata'}, status=400)
+    if os.path.isfile(APK_PATH) and os.path.getsize(APK_PATH) >= MIN_APK_SIZE:
+        prev = _read_apk_meta('stable')
+        prev_code = int(prev.get('version_code') or 0)
+        if prev_code > 0:
+            import shutil
+            shutil.copy2(APK_PATH, os.path.join(APK_HISTORY_DIR, f'AbajTV-{prev_code}.apk'))
+            with open(os.path.join(APK_HISTORY_DIR, f'AbajTV-{prev_code}.json'),'w',encoding='utf-8') as f:
+                json.dump(prev,f,ensure_ascii=False)
+    import shutil
+    shutil.copy2(APK_BETA_PATH, APK_PATH)
+    meta = dict(beta)
+    meta['channel'] = 'stable'
+    meta['published_at'] = int(time.time())
+    meta['promoted_from'] = 'beta'
+    with open(APK_META_PATH+'.tmp','w',encoding='utf-8') as f:
+        json.dump(meta,f,ensure_ascii=False)
+    os.replace(APK_META_PATH+'.tmp', APK_META_PATH)
+    return web.json_response({'ok':True,'promoted_version_code':beta_code,**meta})
+
+
 async def api_iptv_state(request):
     user = await _user_from_request(request)
     if not user:
@@ -883,7 +913,7 @@ async def start_webapp(bot):
     app.router.add_get('/', index)
     iptv.install(app)
     app.router.add_get('/api/app-release', api_app_release); app.router.add_get('/api/app-download', api_app_download); app.router.add_get(PUBLIC_APK_PATH, api_app_download); app.router.add_get(PUBLIC_APK_BETA_PATH, api_app_download); app.router.add_get('/downloads/FaceTalkAI-latest.apk', api_app_download); app.router.add_post('/api/app-upload', api_app_upload)
-    app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload); app.router.add_post('/api/admin/app-rollback', api_admin_app_rollback)
+    app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload); app.router.add_post('/api/admin/app-rollback', api_admin_app_rollback); app.router.add_post('/api/admin/app-promote-beta', api_admin_app_promote_beta)
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
