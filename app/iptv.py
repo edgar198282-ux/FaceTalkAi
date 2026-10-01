@@ -263,6 +263,7 @@ async def _free_channel_ad_state(item: dict) -> dict:
                 top = sorted(uncommon.items(), key=lambda kv: kv[1], reverse=True)[:30]
                 _ad_scan_stats["other_hls_tags"] = dict(top)
             result["observed_tags"] = observed
+            result["marker_capable"] = bool(observed)
             active, marker = _detect_hls_ad_break(text)
             result.update({"active": bool(active), "marker": marker})
             _record_ad_transition(item, bool(active), marker)
@@ -1052,6 +1053,7 @@ async def api_diagnostics(request):
             "channels_seen": len({str(x.get("channel_id") or "") for x in ad_starts if x.get("channel_id")}),
             "last_event": ad_history[-1] if ad_history else None,
             "scanner": dict(_ad_scan_stats),
+            "marker_detection_supported": bool((_ad_scan_stats.get("tag_counts") or {})),
         },
         "last_refresh": state.get("last_refresh"),
         "running": state.get("running"),
