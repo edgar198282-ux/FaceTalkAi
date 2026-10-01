@@ -1,4 +1,4 @@
-name: Build FaceTalk Android APK
+name: Build Abaj TV Android APK
 
 on:
   workflow_dispatch:
@@ -31,6 +31,20 @@ jobs:
           sudo unzip -q /tmp/gradle.zip -d /opt/gradle
           echo "/opt/gradle/gradle-8.10.2/bin" >> "$GITHUB_PATH"
 
+      - name: Smoke check backend and web
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile app/iptv.py app/webapp_plus.py iptv_worker.py
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          html=Path('web/index.html').read_text(encoding='utf-8')
+          parts=re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>',html,re.S|re.I)
+          Path('/tmp/abajtv-inline.js').write_text('\n'.join(parts),encoding='utf-8')
+          PY
+          node --check /tmp/abajtv-inline.js
+
       - name: Resolve version
         id: version
         shell: bash
@@ -38,13 +52,13 @@ jobs:
           echo "name=1.1.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
           echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
-      - name: Restore real FaceTalk logo
+      - name: Validate Abaj TV branding
         shell: bash
         run: |
           set -euo pipefail
-          cp web/facetalk_logo.png android/app/src/main/res/drawable/facetalk_logo.png
-          test -s android/app/src/main/res/drawable/facetalk_logo.png
-          file android/app/src/main/res/drawable/facetalk_logo.png
+          cp web/abaj_tv_logo.jpg android/app/src/main/res/drawable/abaj_tv_logo.jpg
+          test -s android/app/src/main/res/drawable/abaj_tv_logo.jpg
+          file android/app/src/main/res/drawable/abaj_tv_logo.jpg
 
       - name: Restore and validate signing key
         shell: bash
@@ -92,18 +106,18 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp android/app/build/outputs/apk/release/app-release.apk "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk"
-          cp android/app/build/outputs/apk/release/app-release.apk "dist/FaceTalkAI-latest.apk"
-          sha256sum dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk dist/FaceTalkAI-latest.apk > dist/SHA256SUMS.txt
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/AbajTV-${{ steps.version.outputs.name }}.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/AbajTV-latest.apk"
+          sha256sum dist/AbajTV-${{ steps.version.outputs.name }}.apk dist/AbajTV-latest.apk > dist/SHA256SUMS.txt
           ls -lh dist/*.apk
 
       - name: Upload Actions artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FaceTalkAI-${{ steps.version.outputs.name }}
+          name: AbajTV-${{ steps.version.outputs.name }}
           path: |
-            dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk
-            dist/FaceTalkAI-latest.apk
+            dist/AbajTV-${{ steps.version.outputs.name }}.apk
+            dist/AbajTV-latest.apk
             dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
@@ -114,16 +128,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="facetalk-latest"
+          TAG="abajtv-latest"
           gh release delete "$TAG" --cleanup-tag -y >/dev/null 2>&1 || true
           git push origin ":refs/tags/$TAG" >/dev/null 2>&1 || true
           gh release create "$TAG" \
-            "dist/FaceTalkAI-${{ steps.version.outputs.name }}.apk#FaceTalkAI-${{ steps.version.outputs.name }}.apk" \
-            "dist/FaceTalkAI-latest.apk#FaceTalkAI-latest.apk" \
+            "dist/AbajTV-${{ steps.version.outputs.name }}.apk#AbajTV-${{ steps.version.outputs.name }}.apk" \
+            "dist/AbajTV-latest.apk#AbajTV-latest.apk" \
             "dist/SHA256SUMS.txt#SHA256SUMS.txt" \
             --target "${{ github.sha }}" \
-            --title "FaceTalk AI Android ${{ steps.version.outputs.name }}" \
-            --notes "Verified signed APK with stable FaceTalkAI-latest.apk asset for Mini App installation."
+            --title "Abaj TV Android ${{ steps.version.outputs.name }}" \
+            --notes "Verified signed APK with stable AbajTV-latest.apk asset for Mini App installation."
 
       - name: Publish OTA to Railway
         shell: bash
@@ -144,8 +158,8 @@ jobs:
           for attempt in $(seq 1 36); do
             HTTP_CODE=$(curl -sS -o /tmp/facetalk-ota.json -w "%{http_code}" --connect-timeout 10 --max-time 180 -X POST "${WEB_APP_URL%/}/api/app-upload" -H "Content-Type: application/vnd.android.package-archive" -H "X-FaceTalk-Deploy-Token: $APK_DEPLOY_TOKEN" -H "X-FaceTalk-App-Version: ${{ steps.version.outputs.name }}" -H "X-FaceTalk-App-Version-Code: ${{ steps.version.outputs.code }}" --data-binary "@$APK" || true)
             cat /tmp/facetalk-ota.json 2>/dev/null || true
-            if [ "$HTTP_CODE" = "200" ]; then echo "FaceTalk OTA published successfully"; exit 0; fi
+            if [ "$HTTP_CODE" = "200" ]; then echo "Abaj TV OTA published successfully"; exit 0; fi
             echo "OTA attempt $attempt/36 returned HTTP $HTTP_CODE"; sleep 10
           done
-          echo "::error::FaceTalk APK was built but OTA publication failed"
+          echo "::error::Abaj TV APK was built but OTA publication failed"
           exit 1

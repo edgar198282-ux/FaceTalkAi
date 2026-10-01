@@ -258,6 +258,18 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
     <div class="adminRows" id="adminRows"><div class="adminEmpty">Загрузка…</div></div>
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Привязанные телевизоры</div>
     <div class="adminRows" id="adminTvRows"><div class="adminEmpty">Загрузка…</div></div>
+    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Диагностика IPTV</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button onclick="loadIptvDiagnostics()" style="background:#087fe1;color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:800">Обновить диагностику</button>
+      <button onclick="forceIptvRefresh()" style="background:#16a05d;color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:800">Перепроверить каналы</button>
+    </div>
+    <div class="adminRows" id="iptvDiagRows"><div class="adminEmpty">Нажмите «Обновить диагностику»</div></div>
+    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Обновления Abaj TV</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button onclick="loadOtaInfo()" style="background:#087fe1;color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:800">Проверить OTA</button>
+      <button onclick="rollbackApp()" style="background:#d87824;color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:800">Откатить stable</button>
+    </div>
+    <div class="adminRows" id="otaInfoRows"><div class="adminEmpty">Stable / Beta</div></div>
   </div>
 </div>
 
@@ -311,6 +323,9 @@ let focusIndex=0;
 let streamRetries=0;
 let reconnectTimer=null;
 let lastChannelId=localStorage.getItem('iptv_last_channel')||'';
+let previousChannelId=localStorage.getItem('iptv_previous_channel')||'';
+let tvDigitBuffer='';
+let tvDigitTimer=null;
 if(nativeTv){
   localStorage.setItem('iptv_tv_mode','1');
   localStorage.setItem('iptv_layout','grid');
@@ -591,6 +606,8 @@ function openAdmin(){
   document.getElementById('adminPanel').classList.add('open');
   loadAdminEdem();
   loadAdminTvs();
+  loadIptvDiagnostics();
+  loadOtaInfo();
 }
 function closeAdmin(){document.getElementById('adminPanel').classList.remove('open')}
 async function loadAdminEdem(){
@@ -647,6 +664,58 @@ async function disconnectTv(deviceId){
     body:JSON.stringify({device_id:deviceId})
   });
   if(r.ok)loadAdminTvs();
+}
+
+async function loadOtaInfo(){
+  const box=document.getElementById('otaInfoRows'); if(!box)return;
+  box.innerHTML='<div class="adminEmpty">Загрузка…</div>';
+  try{
+    const [stableR,betaR]=await Promise.all([
+      fetch('/api/app-release?channel=stable',{cache:'no-store'}),
+      fetch('/api/app-release?channel=beta',{cache:'no-store'})
+    ]);
+    const stable=await stableR.json(), beta=await betaR.json();
+    const row=(x,label)=>'<div class="adminRow"><div><b>'+label+'</b><div>'+
+      (x.available?('v'+esc(x.version_name||'')+' · code '+Number(x.version_code||0)+' · '+Math.round(Number(x.size_bytes||0)/1024)+' KB'):'не опубликована')+
+      '</div></div></div>';
+    box.innerHTML=row(stable,'Stable')+row(beta,'Beta');
+  }catch(e){box.innerHTML='<div class="adminEmpty">OTA недоступна</div>'}
+}
+async function rollbackApp(){
+  if(!confirm('Откатить stable APK на предыдущую сохранённую версию?'))return;
+  try{
+    const r=await fetch('/api/admin/app-rollback',{method:'POST',headers:{...authHeaders(),'Content-Type':'application/json'},body:'{}'});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||'rollback failed');
+    alert('Откат выполнен: code '+d.rolled_back_to);
+    loadOtaInfo();
+  }catch(e){alert('Откат не выполнен: '+String(e.message||e))}
+}
+
+async function loadIptvDiagnostics(){
+  const box=document.getElementById('iptvDiagRows'); if(!box)return;
+  box.innerHTML='<div class="adminEmpty">Загрузка…</div>';
+  try{
+    const r=await fetch('/api/iptv/diagnostics',{headers:authHeaders(),cache:'no-store'});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||'diagnostics failed');
+    const st=d.stats||{}, rows=d.problem_channels||[];
+    const summary='<div class="adminRow"><div><b>Каналы: '+(st.total||0)+'</b><div>ONLINE '+(st.online||0)+' · OFFLINE '+(st.offline||0)+' · стабильных ≥95% '+(st.stable_95||0)+'</div><div>С резервами '+(st.with_backups||0)+' · потоков в истории '+(st.health_records||0)+'</div></div></div>';
+    box.innerHTML=summary+(rows.length?rows.slice(0,80).map(x=>
+      '<div class="adminRow"><div><b>'+esc(x.name||x.id||'Канал')+'</b><div>'+esc(x.status||'')+
+      ' · '+Math.round(Number(x.latency_ms||0))+' ms · uptime '+Number(x.uptime_pct||0).toFixed(1)+'%'+
+      ' · backup '+Number(x.backup_count||0)+'</div><div style="font-size:12px;color:#789">'+
+      (x.consecutive_failures?('сбоев подряд '+x.consecutive_failures+' · '):'')+esc(x.error||'')+
+      '</div></div></div>'
+    ).join(''):'<div class="adminEmpty">Проблемных каналов нет</div>');
+  }catch(e){box.innerHTML='<div class="adminEmpty">Ошибка диагностики: '+esc(String(e.message||e))+'</div>'}
+}
+async function forceIptvRefresh(){
+  try{
+    await fetch('/api/iptv/refresh',{method:'POST',headers:authHeaders(),cache:'no-store'});
+    const box=document.getElementById('iptvDiagRows'); if(box)box.innerHTML='<div class="adminEmpty">Перепроверка запущена…</div>';
+    setTimeout(loadIptvDiagnostics,4500);
+  }catch(e){}
 }
 
 async function assignEdem(){
@@ -1108,9 +1177,39 @@ function handleTvBack(){
   return false;
 }
 
+function tvTuneDigit(d){
+  if(!nativeTv)return;
+  tvDigitBuffer=(tvDigitBuffer+String(d)).slice(-3);
+  showTvShortcut('Канал '+tvDigitBuffer);
+  if(tvDigitTimer)clearTimeout(tvDigitTimer);
+  tvDigitTimer=setTimeout(()=>{
+    const rows=filteredNow.length?filteredNow:channels;
+    const n=parseInt(tvDigitBuffer,10);
+    tvDigitBuffer='';
+    if(Number.isFinite(n)&&n>=1&&n<=rows.length)openPlayer(rows[n-1].id);
+  },850);
+}
+function playPreviousChannel(){
+  if(!previousChannelId)return;
+  const id=previousChannelId;
+  previousChannelId=current?current.id:lastChannelId;
+  localStorage.setItem('iptv_previous_channel',previousChannelId||'');
+  openPlayer(id);
+}
+function showTvInfo(){
+  if(current)showTvZap(current);
+}
+
 function openPlayer(id){
   const ch=channels.find(x=>x.id===id);
   if(!ch)return;
+  if(current&&current.id!==ch.id){
+    previousChannelId=current.id;
+    localStorage.setItem('iptv_previous_channel',previousChannelId);
+  }else if(lastChannelId&&lastChannelId!==ch.id&&!previousChannelId){
+    previousChannelId=lastChannelId;
+    localStorage.setItem('iptv_previous_channel',previousChannelId);
+  }
   current=ch;
   lastChannelId=ch.id;
   localStorage.setItem('iptv_last_channel',ch.id);

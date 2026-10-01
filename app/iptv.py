@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import hmac
+import json
 import os
 import re
 import time
@@ -23,6 +24,61 @@ SOURCE_URLS = [
 MAX_STREAMS = 800
 REFRESH_SECONDS = 900
 PROBE_CONCURRENCY = 40
+DATA_ROOT = os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or os.path.join(os.getcwd(), "data")
+HEALTH_PATH = os.path.join(DATA_ROOT, "iptv_health.json")
+SNAPSHOT_PATH = os.path.join(DATA_ROOT, "iptv_snapshot.json")
+os.makedirs(DATA_ROOT, exist_ok=True)
+
+def _load_json(path: str, default):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, type(default)) else default
+    except Exception:
+        return default
+
+def _save_json(path: str, data):
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+
+_stream_health = _load_json(HEALTH_PATH, {})
+
+def _health_score(url: str) -> float:
+    h = _stream_health.get(url) or {}
+    total = int(h.get("successes") or 0) + int(h.get("failures") or 0)
+    uptime = (int(h.get("successes") or 0) / total) if total else 0.5
+    latency = max(1, int(h.get("avg_latency_ms") or 2500))
+    consecutive = int(h.get("consecutive_failures") or 0)
+    return round(uptime * 1000.0 - min(latency, 10000) / 25.0 - consecutive * 90.0, 3)
+
+def _record_health(row: dict):
+    url = str(row.get("url") or "")
+    if not url:
+        return
+    now = int(time.time())
+    h = dict(_stream_health.get(url) or {})
+    ok = row.get("status") == "ONLINE"
+    h["successes"] = int(h.get("successes") or 0) + (1 if ok else 0)
+    h["failures"] = int(h.get("failures") or 0) + (0 if ok else 1)
+    h["consecutive_failures"] = 0 if ok else int(h.get("consecutive_failures") or 0) + 1
+    if ok:
+        h["last_ok"] = now
+    else:
+        h["last_fail"] = now
+        h["last_error"] = str(row.get("error") or "")[:160]
+    latency = max(0, int(row.get("latency_ms") or 0))
+    if latency:
+        old = int(h.get("avg_latency_ms") or latency)
+        h["avg_latency_ms"] = int(old * 0.8 + latency * 0.2)
+    total = h["successes"] + h["failures"]
+    h["uptime_pct"] = round((h["successes"] * 100.0 / total), 2) if total else 0.0
+    h["score"] = _health_score(url)
+    h["updated_at"] = now
+    _stream_health[url] = h
 
 EPG_URLS = [
     ("AM", "https://iptv-org.github.io/epg/guides/am/tv.mail.ru.epg.xml"),
@@ -258,6 +314,12 @@ async def _probe(session: aiohttp.ClientSession, item: dict, sem: asyncio.Semaph
         "latency_ms": int((time.perf_counter() - started) * 1000),
         "error": error,
     })
+    _record_health(row)
+    h = _stream_health.get(str(row.get("url") or "")) or {}
+    row["uptime_pct"] = float(h.get("uptime_pct") or 0.0)
+    row["health_score"] = float(h.get("score") or _health_score(str(row.get("url") or "")))
+    row["consecutive_failures"] = int(h.get("consecutive_failures") or 0)
+    row["last_ok"] = int(h.get("last_ok") or 0)
     return row
 
 
@@ -297,8 +359,10 @@ async def refresh_channels(force: bool = False):
             for cid, rows in grouped.items():
                 rows.sort(key=lambda x: (
                     x.get("status") != "ONLINE",
-                    0 if str(x.get("logo") or "").startswith("http") else 1,
+                    -float(x.get("health_score") or _health_score(str(x.get("url") or ""))),
+                    int(x.get("consecutive_failures") or 0),
                     int(x.get("latency_ms") or 999999),
+                    0 if str(x.get("logo") or "").startswith("http") else 1,
                 ))
                 primary = dict(rows[0])
 
@@ -314,6 +378,15 @@ async def refresh_channels(force: bool = False):
                     online_rows.append(x)
 
                 primary["backups"] = [x["url"] for x in online_rows[1:] if x.get("url") != primary.get("url")]
+                primary["backup_health"] = [
+                    {
+                        "url": x["url"],
+                        "uptime_pct": float(x.get("uptime_pct") or 0.0),
+                        "health_score": float(x.get("health_score") or 0.0),
+                        "latency_ms": int(x.get("latency_ms") or 0),
+                    }
+                    for x in online_rows[1:] if x.get("url") != primary.get("url")
+                ]
                 primary["backup_count"] = len(primary["backups"])
                 primary["candidate_count"] = len(rows)
                 primary["duplicate_count"] = max(0, len(rows) - 1)
@@ -333,7 +406,14 @@ async def refresh_channels(force: bool = False):
                 "candidate_streams": len(checked),
                 "duplicates_removed": max(0, len(checked) - len(channels)),
                 "with_backups": sum(1 for x in channels.values() if int(x.get("backup_count") or 0) > 0),
+                "health_records": len(_stream_health),
+                "stable_95": sum(1 for x in channels.values() if float(x.get("uptime_pct") or 0) >= 95.0),
             }
+            try:
+                _save_json(HEALTH_PATH, _stream_health)
+                _save_json(SNAPSHOT_PATH, {"saved_at": int(time.time()), "state": public_state()})
+            except Exception:
+                pass
         except Exception as exc:
             _state["error"] = repr(exc)[:300]
         finally:
@@ -345,8 +425,8 @@ def public_state():
     for source in _state["channels"].values():
         row = dict(source)
         current, nxt = _epg_for_channel(row)
-        row["epg_now"] = current
-        row["epg_next"] = nxt
+        row["epg_now"] = current if current is not None else row.get("epg_now")
+        row["epg_next"] = nxt if nxt is not None else row.get("epg_next")
         rows.append(row)
     rows.sort(key=lambda x: (x["status"] != "ONLINE", x.get("country", ""), x.get("group", ""), x.get("name", "")))
     stats = dict(_state["stats"])
@@ -403,6 +483,11 @@ async def api_diagnostics(request):
             "duplicate_count": x.get("duplicate_count", 0),
             "source_count": len(x.get("sources") or []),
             "error": x.get("error", ""),
+            "uptime_pct": x.get("uptime_pct", 0),
+            "health_score": x.get("health_score", 0),
+            "consecutive_failures": x.get("consecutive_failures", 0),
+            "last_ok": x.get("last_ok", 0),
+            "sources": x.get("sources", []),
         }
         for x in rows
         if x.get("status") != "ONLINE" or int(x.get("backup_count") or 0) == 0
@@ -414,6 +499,29 @@ async def api_diagnostics(request):
         "running": state.get("running"),
         "problem_channels": problem,
     }, headers={"Cache-Control": "no-store"})
+
+
+async def api_worker_snapshot(request):
+    supplied = (request.headers.get("X-IPTV-Worker-Token") or "").strip()
+    expected = (os.getenv("IPTV_WORKER_TOKEN") or os.getenv("FACETALK_APK_DEPLOY_TOKEN") or os.getenv("INTERNAL_API_SECRET") or "").strip()
+    if not expected or not supplied or not hmac.compare_digest(supplied, expected):
+        return web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    body = await request.json()
+    state = body.get("state") if isinstance(body, dict) else None
+    if not isinstance(state, dict) or not isinstance(state.get("channels"), list):
+        return web.json_response({"ok": False, "error": "bad snapshot"}, status=400)
+    channels = {}
+    for row in state.get("channels") or []:
+        if not isinstance(row, dict) or not row.get("id"):
+            continue
+        channels[str(row["id"])] = dict(row)
+    if not channels:
+        return web.json_response({"ok": False, "error": "empty snapshot"}, status=400)
+    _state["channels"] = channels
+    _state["last_refresh"] = int(state.get("last_refresh") or time.time())
+    _state["stats"] = dict(state.get("stats") or {})
+    _state["error"] = str(state.get("error") or "")[:300]
+    return web.json_response({"ok": True, "channels": len(channels), "last_refresh": _state["last_refresh"]})
 
 
 async def api_channels(request):
@@ -517,6 +625,9 @@ async def api_proxy(request):
 
 
 async def start_background(app):
+    if str(os.getenv("IPTV_BACKGROUND_ENABLED", "1")).strip().lower() in {"0", "false", "no", "off"}:
+        app["iptv_task"] = None
+        return
     async def loop():
         await asyncio.sleep(2)
         while True:
@@ -536,6 +647,7 @@ async def stop_background(app):
 
 def install(app: web.Application):
     app.router.add_get("/api/iptv/channels", api_channels)
+    app.router.add_post("/api/iptv/worker-snapshot", api_worker_snapshot)
     app.router.add_get("/api/iptv/diagnostics", api_diagnostics)
     app.router.add_post("/api/iptv/refresh", api_refresh)
     app.router.add_get("/api/iptv/play", api_play)

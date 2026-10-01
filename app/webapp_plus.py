@@ -36,20 +36,32 @@ from .webapp import (
 )
 
 APK_DIR = os.path.join(DATA_DIR, 'apk')
-APK_PATH = os.path.join(APK_DIR, 'FaceTalkAI-latest.apk')
+APK_PATH = os.path.join(APK_DIR, 'AbajTV-latest.apk')
 APK_META_PATH = os.path.join(APK_DIR, 'release.json')
+APK_BETA_PATH = os.path.join(APK_DIR, 'AbajTV-beta.apk')
+APK_BETA_META_PATH = os.path.join(APK_DIR, 'release-beta.json')
+APK_HISTORY_DIR = os.path.join(APK_DIR, 'history')
 MIN_APK_SIZE = 300_000
 PUBLIC_APK_PATH = '/downloads/AbajTV-latest.apk'
+PUBLIC_APK_BETA_PATH = '/downloads/AbajTV-beta.apk'
 os.makedirs(APK_DIR, exist_ok=True)
+os.makedirs(APK_HISTORY_DIR, exist_ok=True)
 
 _edem_cache = {}
 _edem_sessions = {}
 _edem_stream_tokens = {}
 
 
-def _read_apk_meta():
+def _apk_target(channel='stable'):
+    channel = 'beta' if str(channel or '').lower() == 'beta' else 'stable'
+    if channel == 'beta':
+        return APK_BETA_PATH, APK_BETA_META_PATH, PUBLIC_APK_BETA_PATH, channel
+    return APK_PATH, APK_META_PATH, PUBLIC_APK_PATH, channel
+
+def _read_apk_meta(channel='stable'):
+    _, meta_path, _, _ = _apk_target(channel)
     try:
-        with open(APK_META_PATH, 'r', encoding='utf-8') as f:
+        with open(meta_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
             return data if isinstance(data, dict) else {}
     except Exception:
@@ -60,18 +72,23 @@ async def index(request):
     return web.FileResponse(path, headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0','Pragma':'no-cache'})
 
 async def api_app_release(request):
-    meta = _read_apk_meta()
-    available = os.path.isfile(APK_PATH) and os.path.getsize(APK_PATH) >= MIN_APK_SIZE
-    return web.json_response({'ok':True,'service':'facetalk-ota','available':available,'version_name':str(meta.get('version_name') or ''),'version_code':int(meta.get('version_code') or 0),'size_bytes':os.path.getsize(APK_PATH) if available else 0,'download_url':PUBLIC_APK_PATH if available else '','published_at':meta.get('published_at')}, headers={'Cache-Control':'no-store, max-age=0'})
+    channel = request.query.get('channel') or request.headers.get('X-AbajTV-Channel') or 'stable'
+    apk_path, _, public_path, channel = _apk_target(channel)
+    meta = _read_apk_meta(channel)
+    available = os.path.isfile(apk_path) and os.path.getsize(apk_path) >= MIN_APK_SIZE
+    return web.json_response({'ok':True,'service':'abajtv-ota','channel':channel,'available':available,'version_name':str(meta.get('version_name') or ''),'version_code':int(meta.get('version_code') or 0),'size_bytes':os.path.getsize(apk_path) if available else 0,'download_url':public_path if available else '','published_at':meta.get('published_at')}, headers={'Cache-Control':'no-store, max-age=0'})
 
 async def api_app_download(request):
-    if not os.path.isfile(APK_PATH) or os.path.getsize(APK_PATH) < MIN_APK_SIZE:
+    channel = 'beta' if request.path.endswith('AbajTV-beta.apk') or request.query.get('channel') == 'beta' else 'stable'
+    apk_path, _, _, channel = _apk_target(channel)
+    if not os.path.isfile(apk_path) or os.path.getsize(apk_path) < MIN_APK_SIZE:
         raise web.HTTPNotFound(text='APK not published yet')
+    filename = 'AbajTV-beta.apk' if channel == 'beta' else 'AbajTV-latest.apk'
     return web.FileResponse(
-        APK_PATH,
+        apk_path,
         headers={
             'Content-Type':'application/vnd.android.package-archive',
-            'Content-Disposition':'attachment; filename="AbajTV-latest.apk"',
+            'Content-Disposition':f'attachment; filename="{filename}"',
             'Cache-Control':'no-store, max-age=0',
             'X-Content-Type-Options':'nosniff',
         },
@@ -90,18 +107,64 @@ async def api_app_upload(request):
     if not configured or not _valid_deploy_token(supplied): return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     raw = await request.read()
     if len(raw) < MIN_APK_SIZE or not raw.startswith(b'PK'): return web.json_response({'ok':False,'error':'invalid apk'}, status=400)
-    version_name = (request.headers.get('X-FaceTalk-App-Version') or '').strip() or '1.0.0'
-    try: version_code = int(request.headers.get('X-FaceTalk-App-Version-Code') or '0')
+    version_name = (request.headers.get('X-FaceTalk-App-Version') or request.headers.get('X-AbajTV-App-Version') or '').strip() or '1.0.0'
+    try: version_code = int(request.headers.get('X-FaceTalk-App-Version-Code') or request.headers.get('X-AbajTV-App-Version-Code') or '0')
     except Exception: version_code = 0
     if version_code <= 0: return web.json_response({'ok':False,'error':'invalid version code'}, status=400)
-    tmp = APK_PATH + '.tmp'
+    channel = request.headers.get('X-AbajTV-Channel') or request.query.get('channel') or 'stable'
+    apk_path, meta_path, public_path, channel = _apk_target(channel)
+    if channel == 'stable' and os.path.isfile(apk_path) and os.path.getsize(apk_path) >= MIN_APK_SIZE:
+        prev = _read_apk_meta('stable')
+        prev_code = int(prev.get('version_code') or 0)
+        if prev_code > 0:
+            import shutil
+            shutil.copy2(apk_path, os.path.join(APK_HISTORY_DIR, f'AbajTV-{prev_code}.apk'))
+            with open(os.path.join(APK_HISTORY_DIR, f'AbajTV-{prev_code}.json'),'w',encoding='utf-8') as f:
+                json.dump(prev,f,ensure_ascii=False)
+    tmp = apk_path + '.tmp'
     with open(tmp, 'wb') as f:
         f.write(raw); f.flush(); os.fsync(f.fileno())
-    os.replace(tmp, APK_PATH)
-    meta={'version_name':version_name,'version_code':version_code,'size_bytes':len(raw),'published_at':int(time.time())}
+    os.replace(tmp, apk_path)
+    meta={'version_name':version_name,'version_code':version_code,'size_bytes':len(raw),'published_at':int(time.time()),'channel':channel}
+    with open(meta_path+'.tmp','w',encoding='utf-8') as f: json.dump(meta,f,ensure_ascii=False)
+    os.replace(meta_path+'.tmp', meta_path)
+    return web.json_response({'ok':True,'download_url':public_path,**meta})
+
+async def api_admin_app_rollback(request):
+    user = await _user_from_request(request)
+    if not user or not _is_admin_user(user):
+        return web.json_response({'ok':False,'error':'forbidden'}, status=403)
+    body = await request.json()
+    requested = int(body.get('version_code') or 0)
+    candidates = []
+    for name in os.listdir(APK_HISTORY_DIR):
+        if not name.startswith('AbajTV-') or not name.endswith('.apk'):
+            continue
+        try:
+            code = int(name[len('AbajTV-'):-4])
+        except Exception:
+            continue
+        candidates.append(code)
+    if not candidates:
+        return web.json_response({'ok':False,'error':'no rollback builds'}, status=404)
+    code = requested if requested in candidates else max(candidates)
+    src = os.path.join(APK_HISTORY_DIR, f'AbajTV-{code}.apk')
+    meta_src = os.path.join(APK_HISTORY_DIR, f'AbajTV-{code}.json')
+    if not os.path.isfile(src):
+        return web.json_response({'ok':False,'error':'rollback build missing'}, status=404)
+    import shutil
+    shutil.copy2(src, APK_PATH)
+    meta = {}
+    try:
+        with open(meta_src,'r',encoding='utf-8') as f: meta=json.load(f)
+    except Exception:
+        meta={'version_name':f'rollback-{code}','version_code':code}
+    meta['published_at']=int(time.time())
+    meta['rollback']=True
     with open(APK_META_PATH+'.tmp','w',encoding='utf-8') as f: json.dump(meta,f,ensure_ascii=False)
     os.replace(APK_META_PATH+'.tmp', APK_META_PATH)
-    return web.json_response({'ok':True,**meta})
+    return web.json_response({'ok':True,'rolled_back_to':code,**meta})
+
 
 async def api_iptv_state(request):
     user = await _user_from_request(request)
@@ -819,8 +882,8 @@ async def start_webapp(bot):
     app = web.Application(client_max_size=100*1024*1024, middlewares=[api_error_middleware]); app['bot']=bot
     app.router.add_get('/', index)
     iptv.install(app)
-    app.router.add_get('/api/app-release', api_app_release); app.router.add_get('/api/app-download', api_app_download); app.router.add_get(PUBLIC_APK_PATH, api_app_download); app.router.add_get('/downloads/FaceTalkAI-latest.apk', api_app_download); app.router.add_post('/api/app-upload', api_app_upload)
-    app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload)
+    app.router.add_get('/api/app-release', api_app_release); app.router.add_get('/api/app-download', api_app_download); app.router.add_get(PUBLIC_APK_PATH, api_app_download); app.router.add_get(PUBLIC_APK_BETA_PATH, api_app_download); app.router.add_get('/downloads/FaceTalkAI-latest.apk', api_app_download); app.router.add_post('/api/app-upload', api_app_upload)
+    app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload); app.router.add_post('/api/admin/app-rollback', api_admin_app_rollback)
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)

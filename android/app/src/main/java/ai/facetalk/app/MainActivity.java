@@ -211,6 +211,19 @@ public class MainActivity extends Activity {
     @Override public boolean dispatchKeyEvent(KeyEvent event){
         if(isTv&&event.getAction()==KeyEvent.ACTION_DOWN&&webView!=null){
             int code=event.getKeyCode();
+            if(code>=KeyEvent.KEYCODE_0&&code<=KeyEvent.KEYCODE_9){
+                int digit=code-KeyEvent.KEYCODE_0;
+                webView.evaluateJavascript("if(typeof tvTuneDigit==='function')tvTuneDigit('"+digit+"')",null);
+                return true;
+            }
+            if(code==KeyEvent.KEYCODE_LAST_CHANNEL){
+                webView.evaluateJavascript("if(typeof playPreviousChannel==='function')playPreviousChannel()",null);
+                return true;
+            }
+            if((code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER)&&event.getRepeatCount()>0){
+                webView.evaluateJavascript("if(typeof showTvInfo==='function')showTvInfo()",null);
+                return true;
+            }
             if(code==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||code==KeyEvent.KEYCODE_SPACE){
                 webView.evaluateJavascript("(function(){var v=document.getElementById('video');if(v){if(v.paused){v.play()}else{v.pause()}}})()",null);
                 return true;
