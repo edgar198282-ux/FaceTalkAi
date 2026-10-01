@@ -139,6 +139,10 @@ _burned_ad_stats = {
     "last_seen": 0,
     "last_free_play": 0,
     "last_free_play_channel_id": "",
+    "server_probes": 0,
+    "server_probe_errors": 0,
+    "server_last_probe": 0,
+    "server_last_score": 0,
 }
 _burned_ad_last_report = {}
 _compact_response_cache = {"key": None, "body": b"", "expires_at": 0.0}
@@ -283,6 +287,102 @@ async def _free_channel_ad_state(item: dict) -> dict:
         result["error"] = str(exc)[:120]
     _ad_probe_cache[cid] = result
     return result
+
+
+async def _server_burned_ad_probe(item: dict) -> dict:
+    cid = str(item.get("id") or "")
+    url = str(item.get("url") or "")
+    result = {"ok": False, "score": 0, "samples": 0, "error": ""}
+    if not cid or not url.startswith(("http://", "https://")):
+        result["error"] = "bad channel"
+        return result
+    frame_size = 32 * 18
+    cmd = [
+        "ffmpeg", "-hide_banner", "-loglevel", "error",
+        "-i", url,
+        "-vf", "fps=1/3,scale=32:18,format=gray",
+        "-frames:v", "6",
+        "-f", "rawvideo", "pipe:1",
+    ]
+    proc = None
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=22)
+        frames = [
+            stdout[i:i + frame_size]
+            for i in range(0, len(stdout) - frame_size + 1, frame_size)
+        ][:6]
+        if len(frames) < 3:
+            result["error"] = ("too_few_frames " + str(len(frames)) + " " + stderr.decode("utf-8", "ignore")[:80]).strip()
+            return result
+
+        diffs = []
+        brightness = []
+        for frame in frames:
+            brightness.append(sum(frame) / (len(frame) * 255.0))
+        for a, b in zip(frames, frames[1:]):
+            diffs.append(sum(abs(x - y) for x, y in zip(a, b)) / (frame_size * 255.0))
+        avg_diff = sum(diffs) / max(1, len(diffs))
+        cut_rate = sum(1 for x in diffs if x >= 0.18) / max(1, len(diffs))
+        mean_br = sum(brightness) / len(brightness)
+        brightness_var = (sum((x - mean_br) ** 2 for x in brightness) / len(brightness)) ** 0.5
+        score = round(max(0.0, min(100.0,
+            min(1.0, cut_rate / 0.45) * 65.0
+            + min(1.0, avg_diff / 0.22) * 25.0
+            + min(1.0, brightness_var / 0.16) * 10.0
+        )))
+        result.update({
+            "ok": True,
+            "score": int(score),
+            "samples": len(frames),
+            "cut_rate": round(cut_rate, 3),
+            "avg_diff": round(avg_diff, 3),
+            "brightness_var": round(brightness_var, 3),
+        })
+        return result
+    except asyncio.TimeoutError:
+        if proc and proc.returncode is None:
+            proc.kill()
+            try:
+                await proc.communicate()
+            except Exception:
+                pass
+        result["error"] = "ffmpeg_timeout"
+        return result
+    except Exception as exc:
+        result["error"] = str(exc)[:120]
+        return result
+
+
+def _store_server_burned_probe(item: dict, probe: dict):
+    now = int(time.time())
+    cid = str(item.get("id") or "")
+    _burned_ad_stats["server_probes"] = int(_burned_ad_stats.get("server_probes") or 0) + 1
+    _burned_ad_stats["server_last_probe"] = now
+    if not probe.get("ok"):
+        _burned_ad_stats["server_probe_errors"] = int(_burned_ad_stats.get("server_probe_errors") or 0) + 1
+    else:
+        _burned_ad_stats["server_last_score"] = int(probe.get("score") or 0)
+
+    channels = _burned_ad_stats.setdefault("channels", {})
+    current = dict(channels.get(cid) or {})
+    current.update({
+        "name": str(item.get("name") or "")[:120],
+        "country": str(item.get("country") or "")[:8],
+        "server_score": int(probe.get("score") or 0),
+        "server_samples": int(probe.get("samples") or 0),
+        "server_cut_rate": float(probe.get("cut_rate") or 0),
+        "server_avg_diff": float(probe.get("avg_diff") or 0),
+        "server_brightness_var": float(probe.get("brightness_var") or 0),
+        "server_error": str(probe.get("error") or "")[:120],
+        "server_seen_at": now,
+        "seen_at": max(int(current.get("seen_at") or 0), now),
+    })
+    channels[cid] = current
 
 
 def _restore_saved_snapshot():
@@ -1073,6 +1173,10 @@ async def api_diagnostics(request):
                 "last_seen": int(_burned_ad_stats.get("last_seen") or 0),
                 "last_free_play": int(_burned_ad_stats.get("last_free_play") or 0),
                 "last_free_play_channel_id": str(_burned_ad_stats.get("last_free_play_channel_id") or ""),
+                "server_probes": int(_burned_ad_stats.get("server_probes") or 0),
+                "server_probe_errors": int(_burned_ad_stats.get("server_probe_errors") or 0),
+                "server_last_probe": int(_burned_ad_stats.get("server_last_probe") or 0),
+                "server_last_score": int(_burned_ad_stats.get("server_last_score") or 0),
                 "observer_expected": bool(
                     int(_burned_ad_stats.get("last_free_play") or 0)
                     and int(_burned_ad_stats.get("last_free_play") or 0) > int(_burned_ad_stats.get("last_seen") or 0)
@@ -1488,6 +1592,7 @@ async def start_background(app):
     async def ad_watch_loop():
         await asyncio.sleep(15)
         cursor = 0
+        server_probe_last = 0.0
         while True:
             try:
                 rows = [x for x in _state["channels"].values() if x.get("status") == "ONLINE"]
@@ -1504,6 +1609,21 @@ async def start_background(app):
                             except Exception:
                                 pass
                     await asyncio.gather(*(probe_one(item) for item in batch))
+
+                now = time.time()
+                last_play = int(_burned_ad_stats.get("last_free_play") or 0)
+                last_cid = str(_burned_ad_stats.get("last_free_play_channel_id") or "")
+                if (
+                    last_cid
+                    and last_play
+                    and now - last_play <= 180
+                    and now - server_probe_last >= 60
+                ):
+                    item = _state["channels"].get(last_cid)
+                    if item and item.get("status") == "ONLINE":
+                        server_probe_last = now
+                        probe = await _server_burned_ad_probe(item)
+                        _store_server_burned_probe(item, probe)
             except Exception:
                 pass
             await asyncio.sleep(30)
