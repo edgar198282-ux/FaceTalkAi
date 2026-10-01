@@ -331,6 +331,12 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
       <input id="themeHue" class="themeHue" type="range" min="0" max="359" step="1" value="204" oninput="setThemeHue(this.value)">
       <button class="themeReset" id="themeResetBtn" onclick="resetThemeHue()">Сбросить цвет</button>
     </div>
+    <div class="settingsLabel" id="settingsPlayerLabel">Плеер</div>
+    <select id="tvPlayerPref" class="settingsAction" onchange="setTvPlayerMode(this.value)" style="appearance:auto">
+      <option value="auto">Auto</option>
+      <option value="hls">HLS.js</option>
+      <option value="system">Системный</option>
+    </select>
     <div class="settingsLabel" id="settingsQualityLabel">Качество по умолчанию</div>
     <select id="tvQualityPref" class="settingsAction" onchange="setTvPreferredQuality(this.value)" style="appearance:auto">
       <option value="auto">Auto</option>
@@ -520,6 +526,7 @@ let streamWarmController=null;
 let tvHideUnreliable=localStorage.getItem('abaj_tv_hide_unreliable')!=='0';
 let tvAutoStartLast=localStorage.getItem('abaj_tv_autostart_last')!=='0';
 let tvPreferredQuality=localStorage.getItem('abaj_tv_quality')||'auto';
+let tvPlayerMode=['auto','hls','system'].includes(localStorage.getItem('abaj_tv_player_mode'))?localStorage.getItem('abaj_tv_player_mode'):'auto';
 let appThemeHue=Math.max(0,Math.min(359,Number(localStorage.getItem('abaj_tv_theme_hue')||204)||204));
 let tvHeaderCollapsed=false;
 let mobileHeaderRaf=0;
@@ -1160,6 +1167,8 @@ function paintTvSettings(){
   const adult=document.getElementById('tvAdultBtn');
   const adultChip=document.getElementById('adultChip');
   const q=document.getElementById('tvQualityPref');
+  const p=document.getElementById('tvPlayerPref');
+  const playerLabel=document.getElementById('settingsPlayerLabel');
   const hue=document.getElementById('themeHue');
   const preview=document.getElementById('themePreview');
   const themeLabel=document.getElementById('settingsThemeLabel');
@@ -1173,6 +1182,12 @@ function paintTvSettings(){
   }
   if(adultChip)adultChip.classList.toggle('visible',adultEnabled);
   if(q)q.value=tvPreferredQuality;
+  if(p){
+    p.value=tvPlayerMode;
+    const systemOpt=p.querySelector('option[value="system"]');
+    if(systemOpt)systemOpt.textContent=appLang==='hy'?'Համակարգային':(appLang==='en'?'System':'Системный');
+  }
+  if(playerLabel)playerLabel.textContent=appLang==='hy'?'Փլեյեր':(appLang==='en'?'Player':'Плеер');
   if(hue)hue.value=String(appThemeHue);
   if(preview)preview.style.background='hsl('+appThemeHue+' 78% 56%)';
   if(themeLabel)themeLabel.textContent=appLang==='hy'?'Հավելվածի ֆոնի գույնը':(appLang==='en'?'App background color':'Цвет фона приложения');
@@ -1304,6 +1319,16 @@ function toggleAdultSetting(){
   refreshGroupFilters();
   paintTvSettings();
   render();
+}
+function setTvPlayerMode(value){
+  tvPlayerMode=['hls','system'].includes(String(value))?String(value):'auto';
+  localStorage.setItem('abaj_tv_player_mode',tvPlayerMode);
+  paintTvSettings();
+  if(current){
+    streamRetries=0;
+    if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
+    startStream(current,false);
+  }
 }
 function setTvPreferredQuality(value){
   tvPreferredQuality=['720','1080'].includes(String(value))?String(value):'auto';
@@ -2541,7 +2566,8 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   const src=basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now();
   resetQualityMenu();
 
-  if(window.Hls&&Hls.isSupported()){
+  const useHlsJs=tvPlayerMode!=='system'&&window.Hls&&Hls.isSupported();
+  if(useHlsJs){
     hls=new Hls({
       enableWorker:true,
       lowLatencyMode:false,
