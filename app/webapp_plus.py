@@ -5,6 +5,7 @@ from urllib.parse import quote, urlencode, urlparse
 
 import aiohttp
 from aiohttp import web
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from .config import DATA_DIR, PORT, ADMIN_ID, TELEGRAM_BOT_TOKEN
 from . import iptv
@@ -412,8 +413,10 @@ async def _edem_subscription_state(uid: int):
     except Exception:
         expires_at = 0
     now = int(time.time())
-    active = expires_at == 0 or expires_at > now
-    days_left = None if expires_at == 0 else max(0, (expires_at - now + 86399) // 86400)
+    pay = await _edem_payment_state(uid)
+    is_admin = bool(ADMIN_ID and int(uid) == int(ADMIN_ID))
+    active = is_admin or (pay.get('status') == 'paid' and expires_at > now)
+    days_left = None if is_admin else (max(0, (expires_at - now + 86399) // 86400) if expires_at else 0)
     return {
         'active': active,
         'expires_at': expires_at,
@@ -621,8 +624,8 @@ async def api_iptv_edem_payment_request(request):
     uid = int(user['id'])
     body = await request.json()
     try:
-        plan_days = max(1, min(3650, int(body.get('plan_days') or 30)))
-        amount = max(0.0, float(body.get('amount') or 0))
+        plan_days = max(365, min(3650, int(body.get('plan_days') or 365)))
+        amount = max(12.0, float(body.get('amount') or 12))
     except Exception:
         return web.json_response({'ok':False,'error':'bad values'}, status=400)
 
@@ -641,12 +644,13 @@ async def api_iptv_edem_payment_request(request):
             username = ('@' + str(user.get('username'))) if user.get('username') else ''
             await request.app['bot'].send_message(
                 ADMIN_ID,
-                '💳 Abaj TV: запрос на подтверждение оплаты\n'
+                '💳 Abaj TV: пользователь нажал «Оплатил»\n'
                 f'Пользователь: {name} {username}\n'
                 f'Telegram ID: {uid}\n'
-                f'Продление: {plan_days} дней'
-                + (f'\nСумма: {amount:g}' if amount else '')
-                + '\nОткройте ⚙ Edem Admin и нажмите «Оплачено».'
+                f'Тариф: {plan_days} дней · {amount:g} USDT · TRC20',
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text='✅ Получил', callback_data=f'payment:received:{uid}')
+                ]])
             )
     except Exception as e:
         print('payment admin notify failed', repr(e))
@@ -661,8 +665,8 @@ async def api_admin_iptv_edem_payment(request):
     body = await request.json()
     try:
         uid = int(body.get('user_id'))
-        plan_days = max(1, min(3650, int(body.get('plan_days') or 30)))
-        amount = max(0.0, float(body.get('amount') or 0))
+        plan_days = max(365, min(3650, int(body.get('plan_days') or 365)))
+        amount = max(12.0, float(body.get('amount') or 12))
     except Exception:
         return web.json_response({'ok':False,'error':'bad values'}, status=400)
     action = str(body.get('action') or 'paid').strip().lower()

@@ -11,7 +11,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
 
-from .config import TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_TOKEN_SOURCE, MINIAPP_URL, DATA_DIR, DB_PATH, EXPECTED_BOT_USERNAME
+from .config import TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_TOKEN_SOURCE, MINIAPP_URL, DATA_DIR, DB_PATH, EXPECTED_BOT_USERNAME, ADMIN_ID
 from .db import init_db, set_user_language, get_user_language, get_setting, set_setting
 from .webapp_plus import start_webapp
 from .storage import migrate_legacy_db
@@ -140,9 +140,15 @@ def language_keyboard():
     ])
 
 TEXTS={
- 'hy':('📺 Abaj TV','Բացեք Mini App-ը՝ հայկական և ռուսական ալիքներ դիտելու համար։'),
- 'ru':('📺 Abaj TV','Откройте Mini App для просмотра армянских и российских каналов.'),
- 'en':('📺 Abaj TV','Open the Mini App to watch Armenian and Russian channels.'),
+ 'hy':('📺 Abaj TV','700+ ալիքներ։ Գինը՝ ընդամենը 1 USDT ամսական։ Նվազագույն վճարումը՝ 12 ամիս = 12 USDT։ Աշխատում է ցանկացած Android TV-ում։\n\nՎճարում՝ USDT TRC20\nTG9ZpZAax6uSoWi62CZMKuqE3N9yTD8rJ2\n\nՎճարումից հետո սեղմեք «✅ Վճարել եմ»։ Ադմինիստրատորը կստուգի վճարումը և կսեղմի «Ստացել եմ», դրանից հետո ալիքները կբացվեն։ Մինչ հաստատումը ալիքների ցանկը դատարկ կլինի։'),
+ 'ru':('📺 Abaj TV','Более 700 каналов. Цена — всего 1 USDT в месяц. Минимальная оплата — 12 месяцев = 12 USDT. Работает на любом Android TV.\n\nОплата: USDT TRC20\nTG9ZpZAax6uSoWi62CZMKuqE3N9yTD8rJ2\n\nПосле оплаты нажмите «✅ Оплатил». Администратор проверит перевод и нажмёт «Получил», после этого каналы откроются. До подтверждения список каналов будет пустым.'),
+ 'en':('📺 Abaj TV','700+ channels. Price: only 1 USDT per month. Minimum payment: 12 months = 12 USDT. Works on any Android TV.\n\nPayment: USDT TRC20\nTG9ZpZAax6uSoWi62CZMKuqE3N9yTD8rJ2\n\nAfter payment, tap “✅ Paid”. The administrator will verify the transfer and confirm receipt, then the channels will unlock. Until approval, the channel list stays empty.'),
+}
+
+PAY_BUTTON={
+ 'hy':'✅ Վճարել եմ',
+ 'ru':'✅ Оплатил',
+ 'en':'✅ Paid',
 }
 
 NO_MINIAPP_TEXT = {
@@ -259,9 +265,75 @@ async def language_handler(q: CallbackQuery):
     title,body=TEXTS[lang]
     sent = await q.message.answer(
         f'{title}\n\n{body}',
-        reply_markup=miniapp_keyboard(q.from_user.id, lang)
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text=PAY_BUTTON[lang], callback_data='payment:paid')
+        ]])
     )
     await _track_message(sent.chat.id, sent.message_id)
+    menu = await q.message.answer(
+        {'hy':'Ընտրեք գործողությունը ստորև։','ru':'Выберите действие внизу.','en':'Choose an action below.'}[lang],
+        reply_markup=miniapp_keyboard(q.from_user.id, lang)
+    )
+    await _track_message(menu.chat.id, menu.message_id)
+
+@dp.callback_query(F.data == 'payment:paid')
+async def payment_paid_handler(q: CallbackQuery):
+    uid = int(q.from_user.id)
+    lang = await get_user_language(uid) or _telegram_lang(q.from_user)
+    payment = {
+        'status':'pending',
+        'requested_at':int(time.time()),
+        'last_paid_at':0,
+        'plan_days':365,
+        'last_amount':12,
+    }
+    await set_setting(f'edem_payment:{uid}', json.dumps(payment, ensure_ascii=False, separators=(',', ':')))
+    await q.answer({'hy':'Ուղարկվել է ստուգման','ru':'Отправлено на проверку','en':'Sent for verification'}[lang], show_alert=True)
+    try:
+        if ADMIN_ID:
+            name = str(q.from_user.full_name or uid)
+            username = ('@' + q.from_user.username) if q.from_user.username else ''
+            sent = await bot.send_message(
+                ADMIN_ID,
+                '💳 Abaj TV: пользователь нажал «Оплатил»\n'
+                f'Пользователь: {name} {username}\n'
+                f'Telegram ID: {uid}\n'
+                'Тариф: 12 месяцев · 12 USDT · TRC20',
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text='✅ Получил', callback_data=f'payment:received:{uid}')
+                ]])
+            )
+            await _track_message(sent.chat.id, sent.message_id)
+    except Exception as exc:
+        logging.warning('Payment admin notify failed: %r', exc)
+
+@dp.callback_query(F.data.startswith('payment:received:'))
+async def payment_received_handler(q: CallbackQuery):
+    if not ADMIN_ID or int(q.from_user.id) != int(ADMIN_ID):
+        await q.answer('Недоступно', show_alert=True)
+        return
+    try:
+        uid = int(q.data.rsplit(':', 1)[1])
+    except Exception:
+        await q.answer('Ошибка ID', show_alert=True)
+        return
+    now = int(time.time())
+    expires_at = now + 365 * 86400
+    await set_setting(f'edem_expires_at:{uid}', str(expires_at))
+    payment = {'status':'paid','last_paid_at':now,'plan_days':365,'last_amount':12}
+    await set_setting(f'edem_payment:{uid}', json.dumps(payment, ensure_ascii=False, separators=(',', ':')))
+    await q.answer('Доступ активирован на 12 месяцев', show_alert=True)
+    try:
+        lang = await get_user_language(uid) or 'ru'
+        text = {
+            'hy':'✅ Վճարումը հաստատված է։ Abaj TV ալիքները բացված են 12 ամսով։',
+            'ru':'✅ Оплата подтверждена. Каналы Abaj TV открыты на 12 месяцев.',
+            'en':'✅ Payment confirmed. Abaj TV channels are unlocked for 12 months.'
+        }[lang]
+        sent = await bot.send_message(uid, text, reply_markup=miniapp_keyboard(uid, lang))
+        await _track_message(sent.chat.id, sent.message_id)
+    except Exception as exc:
+        logging.warning('Payment user notify failed: %r', exc)
 
 @dp.message(F.text == '🌐 Հայերեն / Русский / English')
 async def change_language(m: Message):
