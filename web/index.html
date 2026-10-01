@@ -646,9 +646,9 @@ function applyUiMode(){
 
 let appLang=localStorage.getItem('abaj_tv_lang')||'ru';
 const UI_TEXT={
-  ru:{settings:'⚙ Настройки',status:'Статус',active:'Активен',inactive:'Не активен',pending:'Ожидает подтверждения',until:'Доступ до',unlimited:'Без срока',language:'Язык',auto:'Автостарт последнего канала',hide:'Скрывать нестабильные каналы',quality:'Качество по умолчанию',admin:'🛠 Админ-панель',close:'Закрыть',sub:'Армения + Россия',search:'Поиск канала'},
-  hy:{settings:'⚙ Կարգավորումներ',status:'Կարգավիճակ',active:'Ակտիվ է',inactive:'Ակտիվ չէ',pending:'Սպասում է հաստատման',until:'Մուտքը մինչև',unlimited:'Անժամկետ',language:'Լեզու',auto:'Վերջին ալիքի ավտոմեկնարկ',hide:'Թաքցնել անկայուն ալիքները',quality:'Լռելյայն որակ',admin:'🛠 Ադմին վահանակ',close:'Փակել',sub:'Հայաստան + Ռուսաստան',search:'Ալիքի որոնում'},
-  en:{settings:'⚙ Settings',status:'Status',active:'Active',inactive:'Inactive',pending:'Pending approval',until:'Access until',unlimited:'Unlimited',language:'Language',auto:'Autostart last channel',hide:'Hide unstable channels',quality:'Default quality',admin:'🛠 Admin panel',close:'Close',sub:'Armenia + Russia',search:'Search channel'}
+  ru:{settings:'⚙ Настройки',status:'Статус',active:'Активен',inactive:'Не активен',pending:'Ожидает подтверждения',until:'Доступ до',unlimited:'Без срока',language:'Язык',auto:'Автостарт последнего канала',hide:'Скрывать нестабильные каналы',quality:'Качество по умолчанию',admin:'🛠 Админ-панель',close:'Закрыть',sub:'Армения + Россия',search:'Поиск канала',all:'ALL',free:'FREE',edem:'EDEM',armenia:'🇦🇲 АРМЕНИЯ',russia:'🇷🇺 РОССИЯ',favorites:'♡ ИЗБРАННОЕ',recent:'↺ НЕДАВНИЕ',allCategories:'Все категории',general:'Общие',news:'Новости',sports:'Спорт',movies:'Фильмы',kids:'Детские',music:'Музыка',offline:'Offline в проверке',last:'Последний',updating:'обновляется…',loading:'Загрузка каналов…',refreshing:'Обновление каналов…',loadError:'Ошибка загрузки каналов',next:'Далее',noChannels:'Каналы не найдены'},
+  hy:{settings:'⚙ Կարգավորումներ',status:'Կարգավիճակ',active:'Ակտիվ է',inactive:'Ակտիվ չէ',pending:'Սպասում է հաստատման',until:'Մուտքը մինչև',unlimited:'Անժամկետ',language:'Լեզու',auto:'Վերջին ալիքի ավտոմեկնարկ',hide:'Թաքցնել անկայուն ալիքները',quality:'Լռելյայն որակ',admin:'🛠 Ադմին վահանակ',close:'Փակել',sub:'Հայաստան + Ռուսաստան',search:'Ալիքի որոնում',all:'ԲՈԼՈՐԸ',free:'ԱՆՎՃԱՐ',edem:'EDEM',armenia:'🇦🇲 ՀԱՅԱՍՏԱՆ',russia:'🇷🇺 ՌՈՒՍԱՍՏԱՆ',favorites:'♡ ՍԻՐԵԼԻՆԵՐ',recent:'↺ ՎԵՐՋԻՆՆԵՐ',allCategories:'Բոլոր կատեգորիաները',general:'Ընդհանուր',news:'Նորություններ',sports:'Սպորտ',movies:'Ֆիլմեր',kids:'Մանկական',music:'Երաժշտություն',offline:'Offline ստուգման մեջ',last:'Վերջինը',updating:'թարմացվում է…',loading:'Ալիքները բեռնվում են…',refreshing:'Ալիքները թարմացվում են…',loadError:'Չհաջողվեց բեռնել ալիքները',next:'Հաջորդը',noChannels:'Ալիքներ չեն գտնվել'},
+  en:{settings:'⚙ Settings',status:'Status',active:'Active',inactive:'Inactive',pending:'Pending approval',until:'Access until',unlimited:'Unlimited',language:'Language',auto:'Autostart last channel',hide:'Hide unstable channels',quality:'Default quality',admin:'🛠 Admin panel',close:'Close',sub:'Armenia + Russia',search:'Search channel',all:'ALL',free:'FREE',edem:'EDEM',armenia:'🇦🇲 ARMENIA',russia:'🇷🇺 RUSSIA',favorites:'♡ FAVORITES',recent:'↺ RECENT',allCategories:'All categories',general:'General',news:'News',sports:'Sports',movies:'Movies',kids:'Kids',music:'Music',offline:'Offline under check',last:'Last',updating:'updating…',loading:'Loading channels…',refreshing:'Refreshing channels…',loadError:'Failed to load channels',next:'Next',noChannels:'No channels found'}
 };
 function setAppLanguage(lang){
   appLang=['hy','ru','en'].includes(lang)?lang:'ru';
@@ -656,6 +656,7 @@ function setAppLanguage(lang){
   applyAppLanguage();
   paintTvSettings();
   loadEdemStatus();
+  if(channels.length){render();load()}
 }
 function applyAppLanguage(){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
@@ -663,7 +664,13 @@ function applyAppLanguage(){
   const search=document.getElementById('search'); if(search)search.placeholder=t.search;
   const map={settingsTitle:t.settings,settingsStatusLabel:t.status,settingsUntilLabel:t.until,settingsLangLabel:t.language,settingsQualityLabel:t.quality,settingsAdminBtn:t.admin,settingsCloseBtn:t.close};
   Object.entries(map).forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.textContent=v});
+  const sourceLabels={all:t.all,free:t.free,edem:t.edem};
+  document.querySelectorAll('#sourceChips [data-source]').forEach(b=>{const k=b.dataset.source;if(sourceLabels[k])b.textContent=sourceLabels[k]});
+  const filterLabels={all:t.all,AM:t.armenia,RU:t.russia,HD:'HD','4K':'4K',fav:t.favorites,recent:t.recent};
+  document.querySelectorAll('[data-filter]').forEach(b=>{const k=b.dataset.filter;if(filterLabels[k])b.textContent=filterLabels[k]});
+  const group=document.getElementById('group'); if(group&&group.options.length)group.options[0].textContent=t.all;
   ['hy','ru','en'].forEach(x=>document.getElementById('lang'+x[0].toUpperCase()+x.slice(1)+'Btn')?.classList.toggle('active',x===appLang));
+  if(channels.length)buildQuickCats([...new Set(channels.map(x=>x.group||'Other'))]);
 }
 async function loadEdemStatus(){
   try{
@@ -1276,6 +1283,12 @@ function normalizeCat(group){
   if(g.includes('general'))return 'General';
   return group||'Other';
 }
+function localizedCategoryLabel(group){
+  const t=UI_TEXT[appLang]||UI_TEXT.ru;
+  const key=normalizeCat(group);
+  const labels={General:t.general,News:t.news,Sports:t.sports,Movies:t.movies,Kids:t.kids,Music:t.music};
+  return labels[key]||group||'';
+}
 function channelQuality(ch){
   const raw=[
     ch&&ch.quality,ch&&ch.resolution,ch&&ch.video_quality,ch&&ch.height,
@@ -1353,43 +1366,47 @@ async function load(){
     }
     channels=[...dedup.values()];
     const groups=[...new Set(channels.map(x=>x.group||'Other'))].sort((a,b)=>a.localeCompare(b,'ru'));
+    const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const sel=document.getElementById('group');
     const old=sel.value;
-    sel.innerHTML='<option value="">ALL</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
+    sel.innerHTML='<option value="">'+esc(t.all)+'</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
     if(groups.includes(old))sel.value=old;
     buildQuickCats(groups);
     applyTvBrowseUi();
     const freeCount=channels.filter(x=>!x.personal).length;
     const edemCount=channels.filter(x=>!!x.personal).length;
     document.getElementById('status').textContent=
-      'FREE: '+freeCount+' · EDEM: '+edemCount+
-      ' · Offline в проверке: '+((d.stats||{}).offline||0)+
-      (d.running?' · обновляется…':'');
+      t.free+': '+freeCount+' · '+t.edem+': '+edemCount+
+      ' · '+t.offline+': '+((d.stats||{}).offline||0)+
+      (d.running?' · '+t.updating:'');
     cacheChannels();
     render();
     if(lastChannelId&&!current&&document.visibilityState==='visible'){
       const last=channels.find(x=>x.id===lastChannelId);
       if(last){
-        document.getElementById('status').textContent+=' · Последний: '+last.name;
+        document.getElementById('status').textContent+=' · '+t.last+': '+last.name;
         if(nativeTv&&!tvAutoResumeDone&&!document.getElementById('tvPair').classList.contains('open')){
           scheduleLastChannelAutoStart(last);
         }
       }
     }
   }catch(e){
-    document.getElementById('status').textContent='Ошибка загрузки каналов';
+    document.getElementById('status').textContent=(UI_TEXT[appLang]||UI_TEXT.ru).loadError;
   }
 }
 function buildQuickCats(groups){
+  const t=UI_TEXT[appLang]||UI_TEXT.ru;
   const preferred=['General','News','Sports','Movies','Kids','Music'];
+  const labels={General:t.general,News:t.news,Sports:t.sports,Movies:t.movies,Kids:t.kids,Music:t.music};
   const normalized=new Set(groups.map(normalizeCat));
   const cats=preferred.filter(x=>normalized.has(x));
   document.getElementById('quickCats').innerHTML=
-    '<button class="cat active" data-cat="" onclick="setCategory(\'\')">Все категории</button>'+
-    cats.map(x=>'<button class="cat" data-cat="'+esc(x)+'" onclick="setCategory(\''+x+'\')">'+esc(x)+'</button>').join('');
+    '<button class="cat active" data-cat="" onclick="setCategory(\'\')">'+esc(t.allCategories)+'</button>'+
+    cats.map(x=>'<button class="cat" data-cat="'+esc(x)+'" onclick="setCategory(\''+x+'\')">'+esc(labels[x]||x)+'</button>').join('');
+  document.querySelectorAll('#quickCats .cat').forEach(b=>b.classList.toggle('active',(b.dataset.cat||'')===activeCategory));
 }
 async function refreshChannels(){
-  document.getElementById('status').textContent='Обновление каналов…';
+  document.getElementById('status').textContent=(UI_TEXT[appLang]||UI_TEXT.ru).refreshing;
   try{await fetch('/api/iptv/refresh',{method:'POST'})}catch(e){}
   setTimeout(load,2500);
   setTimeout(load,9000);
@@ -1424,6 +1441,7 @@ function epgProgress(p){
 }
 
 function render(){
+  const t=UI_TEXT[appLang]||UI_TEXT.ru;
   filteredNow=getFiltered();
   const channelNumberMap=new Map(filteredNow.map((x,i)=>[x.id,i+1]));
   const grouped={};
@@ -1433,7 +1451,7 @@ function render(){
   });
   let out='';
   Object.keys(grouped).sort((a,b)=>a.localeCompare(b,'ru')).forEach(group=>{
-    if(!tvMode&&layout!=='grid')out+='<div class="groupTitle">'+esc(group)+'</div>';
+    if(!tvMode&&layout!=='grid')out+='<div class="groupTitle">'+esc(localizedCategoryLabel(group))+'</div>';
     grouped[group].forEach(ch=>{
       const logo=ch.logo
         ?'<img class="logo" loading="lazy" decoding="async" src="'+esc(ch.logo)+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"><div class="logoFallback" style="display:none">TV</div>'
@@ -1444,11 +1462,11 @@ function render(){
         '<div class="logoWrap">'+logo+'</div>'+
         '<div class="info">'+
           '<div class="name">'+esc(ch.name)+'</div>'+
-          '<div class="now">'+esc(cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'LIVE'))+'</div>'+
+          '<div class="now">'+esc(ch.epg_now&&ch.epg_now.title?cleanTvLabel(ch.epg_now.title,'LIVE'):localizedCategoryLabel(ch.group))+'</div>'+
           '<div class="progress"><span style="width:'+epgProgress(ch.epg_now)+'%"></span></div>'+
           '<div class="times"><span>'+(ch.epg_now?fmtClock(ch.epg_now.start):'LIVE')+'</span><span>'+(ch.epg_now?fmtClock(ch.epg_now.stop):Math.max(1,Math.round((ch.latency_ms||0)/1000))+'s')+'</span></div>'+
-          (ch.epg_next?'<div class="next">Далее: '+esc(ch.epg_next.title)+'</div>':'')+
-          '<div class="badge">'+(ch.personal?'★ EDEM':(ch.country==='AM'?'🇦🇲 Armenia':'🇷🇺 Russia'))+'</div>'+
+          (ch.epg_next?'<div class="next">'+esc(t.next)+': '+esc(ch.epg_next.title)+'</div>':'')+
+          '<div class="badge">'+(ch.personal?'★ EDEM':(ch.country==='AM'?t.armenia:t.russia))+'</div>'+
         '</div>'+
         '<div class="side">'+
           (nativeTv
@@ -1459,7 +1477,7 @@ function render(){
       '</div>';
     });
   });
-  document.getElementById('list').innerHTML=out||'<div class="empty">Каналы не найдены</div>';
+  document.getElementById('list').innerHTML=out||'<div class="empty">'+esc(t.noChannels)+'</div>';
   bindTvFocus();
 }
 function setTvHeaderCollapsed(collapsed,focusTop=false){
