@@ -414,6 +414,8 @@ let syncReady=false;
 let syncUpdatedAt=0;
 let syncPullBusy=false;
 let syncDirtyFavorites=false;
+const pendingFavoriteOps=new Map();
+let favoriteRetryTimer=null;
 let syncDirtyRecent=false;
 let syncDirtyLast=false;
 let syncDirtyUi=false;
@@ -592,9 +594,11 @@ async function loadSyncedState(force=false){
     const d=await r.json();
     const serverUpdated=Number(d.updated_at||0);
     if(!force&&syncReady&&serverUpdated&&serverUpdated<=syncUpdatedAt)return;
-    if(Array.isArray(d.favorites)&&!syncDirtyFavorites){
+    if(Array.isArray(d.favorites)){
+      const merged=new Set(d.favorites);
+      pendingFavoriteOps.forEach((enabled,id)=>{if(enabled)merged.add(id);else merged.delete(id)});
       favs.clear();
-      d.favorites.forEach(x=>favs.add(x));
+      merged.forEach(x=>favs.add(x));
       localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));
     }
     if(Array.isArray(d.recent)&&!syncDirtyRecent){
@@ -1253,29 +1257,49 @@ function setCategory(v){
   render();
   focusFirstChannelAfterFilter();
 }
+function scheduleFavoriteRetry(){
+  if(favoriteRetryTimer||!pendingFavoriteOps.size)return;
+  favoriteRetryTimer=setTimeout(()=>{favoriteRetryTimer=null;flushPendingFavorites()},2500);
+}
 async function syncFavoriteNow(id,enabled){
+  pendingFavoriteOps.set(id,!!enabled);
+  syncDirtyFavorites=true;
   try{
     const r=await fetch('/api/iptv/state',{
       method:'POST',
       headers:{'Content-Type':'application/json',...authHeaders()},
       body:JSON.stringify({favorite_op:{id,enabled}})
     });
-    if(!r.ok)return false;
+    if(!r.ok){scheduleFavoriteRetry();return false}
     const d=await r.json();
+    if(pendingFavoriteOps.get(id)===!!enabled)pendingFavoriteOps.delete(id);
     if(Array.isArray(d.favorites)){
+      const merged=new Set(d.favorites);
+      pendingFavoriteOps.forEach((wanted,fid)=>{if(wanted)merged.add(fid);else merged.delete(fid)});
       favs.clear();
-      d.favorites.forEach(x=>favs.add(x));
+      merged.forEach(x=>favs.add(x));
       localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));
       syncUpdatedAt=Math.max(syncUpdatedAt,Number(d.updated_at||0));
     }
+    syncDirtyFavorites=pendingFavoriteOps.size>0;
+    if(syncDirtyFavorites)scheduleFavoriteRetry();
     return true;
-  }catch(e){return false}
+  }catch(e){scheduleFavoriteRetry();return false}
+}
+async function flushPendingFavorites(){
+  if(!pendingFavoriteOps.size){syncDirtyFavorites=false;return}
+  const ops=[...pendingFavoriteOps.entries()];
+  for(const [id,enabled] of ops){
+    if(pendingFavoriteOps.get(id)!==enabled)continue;
+    const ok=await syncFavoriteNow(id,enabled);
+    if(!ok)break;
+  }
 }
 function toggleFav(id){
   const enabled=!favs.has(id);
   if(enabled)favs.add(id);else favs.delete(id);
   localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));
-  syncDirtyFavorites=false;
+  syncDirtyFavorites=true;
   syncFavoriteNow(id,enabled).then(()=>render());
   render();
 }
@@ -1296,7 +1320,7 @@ function togglePlayerFavorite(){
   const enabled=!favs.has(current.id);
   if(enabled)favs.add(current.id);else favs.delete(current.id);
   localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));
-  syncDirtyFavorites=false;
+  syncDirtyFavorites=true;
   updatePlayerFavoriteUi();
   syncFavoriteNow(current.id,enabled).then(()=>{renderRail();if(current)showTvZap(current)});
   renderRail();
@@ -2573,11 +2597,11 @@ if(nativeTv){
   tvAuthRefreshTimer=setInterval(()=>refreshTvAuth(false),5*60*1000);
 }
 window.addEventListener('offline',handleOffline);
-window.addEventListener('online',handleOnline);
+window.addEventListener('online',()=>{handleOnline();flushPendingFavorites();loadSyncedState(true)});
 document.addEventListener('visibilitychange',handleVisibilityChange);
 if(!navigator.onLine)handleOffline();
 setInterval(()=>{load()},60000);
-setInterval(()=>{if(!document.hidden)loadSyncedState(false)},4000);
+setInterval(()=>{if(!document.hidden){flushPendingFavorites();loadSyncedState(false)}},4000);
 </script>
 </body>
 </html>
