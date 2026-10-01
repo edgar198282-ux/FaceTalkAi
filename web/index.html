@@ -1233,6 +1233,10 @@ function handleTvBack(){
   if(tvRailOpen()){toggleTvRail(false);return true}
   const player=document.getElementById('playerView');
   if(player&&player.classList.contains('open')){closePlayer();return true}
+  if(nativeTv){
+    if(typeof showTvShortcut==='function')showTvShortcut('Abaj TV');
+    return true;
+  }
   return false;
 }
 
