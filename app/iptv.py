@@ -15,7 +15,8 @@ from aiohttp import web
 
 SOURCE_URLS = [
     ("AM", "https://iptv-org.github.io/iptv/countries/am.m3u"),
-    ("AM", "https://iptv-org.github.io/iptv/languages/hy.m3u"),
+    ("AM", "https://iptv-org.github.io/iptv/languages/hye.m3u"),
+    ("AM", "https://dearbulut.github.io/iptv/playlists/country/am.m3u"),
     ("AM", "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_armenia.m3u8"),
     ("RU", "https://iptv-org.github.io/iptv/countries/ru.m3u"),
     ("RU", "https://raw.githubusercontent.com/substanc1/iptv-russia/main/streams/ru.m3u"),
