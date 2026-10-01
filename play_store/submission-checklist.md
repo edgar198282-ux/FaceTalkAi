@@ -1,0 +1,26 @@
+# Abaj TV — Google Play submission checklist
+
+- [x] Dedicated Android TV applicationId: ai.abaj.tv
+- [x] Android TV Leanback launcher
+- [x] Touchscreen not required
+- [x] Target SDK 35
+- [x] Play build does not request camera
+- [x] Play build does not request microphone
+- [x] Play build does not request REQUEST_INSTALL_PACKAGES
+- [x] APK self-update disabled in Play build
+- [x] Google Play AAB workflow
+- [x] Signed AAB build verified
+- [x] RU listing
+- [x] HY listing
+- [x] EN listing
+- [x] Privacy policy page
+- [x] Data Safety draft
+- [x] Release notes RU/HY/EN
+- [ ] Final Play upload signing key must be private and not committed to Git
+- [ ] Google Play Console app entry
+- [ ] App access instructions for reviewer
+- [ ] Content rating questionnaire
+- [ ] Data Safety form in Play Console
+- [ ] TV screenshots uploaded
+- [ ] TV banner / store graphics reviewed
+- [ ] Closed testing / production track submission

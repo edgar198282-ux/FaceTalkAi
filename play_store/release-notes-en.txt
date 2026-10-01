@@ -1,0 +1,2 @@
+First Google Play release of Abaj TV for Android TV.
+Includes search, categories, favorites, recent channels, remote-control navigation, three languages and TV linking through Telegram.
