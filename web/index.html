@@ -352,6 +352,8 @@ let filteredNow=[];
 let focusIndex=Math.max(0,Number(localStorage.getItem('abaj_tv_focus_index')||0));
 let streamRetries=0;
 let reconnectTimer=null;
+let firstFrameTimer=null;
+let streamAttemptToken=0;
 let lastChannelId=localStorage.getItem('iptv_last_channel')||'';
 let previousChannelId=localStorage.getItem('iptv_previous_channel')||'';
 let tvDigitBuffer='';
@@ -1390,6 +1392,8 @@ function openFocused(){
 function suspendTvPlayback(){
   if(!nativeTv)return;
   stopTvWatchdog();
+  clearFirstFrameTimer();
+  streamAttemptToken++;
   const v=document.getElementById('video');
   tvWasPlayingBeforePause=!!(current&&v&&!v.paused);
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
@@ -1545,6 +1549,28 @@ function stopTvWatchdog(){
   tvWatchdogLastTime=-1;
   tvWatchdogStalls=0;
 }
+function clearFirstFrameTimer(){
+  if(firstFrameTimer){clearTimeout(firstFrameTimer);firstFrameTimer=null}
+}
+function armFirstFrameTimer(ch,preferBackup,token){
+  clearFirstFrameTimer();
+  if(!nativeTv||!ch)return;
+  const waitMs=Number(ch.backup_count||0)>0?3500:6000;
+  firstFrameTimer=setTimeout(()=>{
+    firstFrameTimer=null;
+    if(token!==streamAttemptToken||!current||current.id!==ch.id)return;
+    const v=document.getElementById('video');
+    if(v&&v.readyState>=3&&!v.paused)return;
+    const err=document.getElementById('playerError');
+    if(!preferBackup&&Number(ch.backup_count||0)>0){
+      if(err)err.textContent='Медленный старт. Переключаю резерв…';
+      startStream(ch,true);
+      return;
+    }
+    if(err)err.textContent='Канал долго запускается. Переподключаю…';
+    scheduleReconnect(ch,true);
+  },waitMs);
+}
 function startTvWatchdog(ch){
   if(!nativeTv)return;
   stopTvWatchdog();
@@ -1570,6 +1596,8 @@ function startTvWatchdog(ch){
 
 function startStream(ch,preferBackup=false){
   stopTvWatchdog();
+  clearFirstFrameTimer();
+  const attemptToken=++streamAttemptToken;
   const v=document.getElementById('video');
   const err=document.getElementById('playerError');
   err.textContent='';
@@ -1608,6 +1636,7 @@ function startStream(ch,preferBackup=false){
       hls.attachMedia(v);
     }
 
+    armFirstFrameTimer(ch,preferBackup,attemptToken);
     hls.on(Hls.Events.MANIFEST_PARSED,()=>{
       streamRetries=0;
       updateQualityMenu();
@@ -1622,7 +1651,17 @@ function startStream(ch,preferBackup=false){
           if(best>=0)hls.currentLevel=best;
         }
       }
-      v.play().then(()=>startTvWatchdog(ch)).catch(()=>{});
+      v.play().then(()=>{
+        if(attemptToken!==streamAttemptToken)return;
+        const onPlaying=()=>{
+          if(attemptToken!==streamAttemptToken)return;
+          clearFirstFrameTimer();
+          v.removeEventListener('playing',onPlaying);
+          startTvWatchdog(ch);
+        };
+        if(!v.paused&&v.readyState>=3){clearFirstFrameTimer();startTvWatchdog(ch)}
+        else v.addEventListener('playing',onPlaying,{once:true});
+      }).catch(()=>{});
     });
 
     hls.on(Hls.Events.LEVEL_SWITCHED,()=>updateQualityMenu());
@@ -1631,6 +1670,7 @@ function startStream(ch,preferBackup=false){
       if(!data||!data.fatal)return;
 
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR && nativeTv&&Number(ch.backup_count||0)>0){
+        clearFirstFrameTimer();
         err.textContent='Переключаю резерв…';
         startStream(ch,true);
         return;
@@ -1652,20 +1692,22 @@ function startStream(ch,preferBackup=false){
       scheduleReconnect(ch,true);
     });
   }else{
+    armFirstFrameTimer(ch,preferBackup,attemptToken);
     if(ch.personal){
       fetch(src,{headers:auth,cache:'no-store'})
         .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob()})
         .then(blob=>{v.src=URL.createObjectURL(blob);v.load();return v.play()})
-        .then(()=>{streamRetries=0})
+        .then(()=>{streamRetries=0;clearFirstFrameTimer();startTvWatchdog(ch)})
         .catch(()=>scheduleReconnect(ch));
     }else{
       v.src=src;v.load();
-      v.play().then(()=>{streamRetries=0;startTvWatchdog(ch)}).catch(()=>scheduleReconnect(ch));
+      v.play().then(()=>{streamRetries=0;clearFirstFrameTimer();startTvWatchdog(ch)}).catch(()=>scheduleReconnect(ch));
     }
   }
 }
 
 function scheduleReconnect(ch,preferBackup=false){
+  clearFirstFrameTimer();
   const err=document.getElementById('playerError');
   if(reconnectTimer)return;
   if(streamRetries>=5){
@@ -1771,6 +1813,8 @@ function openTvRailFocused(){
   if(ch){toggleTvRail(false);openPlayer(ch.id)}
 }
 function closePlayer(){
+  clearFirstFrameTimer();
+  streamAttemptToken++;
   if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
   document.body.classList.remove('playerClean');
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
