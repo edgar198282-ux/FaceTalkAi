@@ -1274,7 +1274,7 @@ function render(){
         '<div class="side">'+
           (nativeTv
             ?'<div class="fav tvFavIndicator '+(favs.has(ch.id)?'on':'')+'" aria-hidden="true">♡</div>'
-            :'<button class="more" onclick="event.stopPropagation()">⋮</button><button class="fav '+(favs.has(ch.id)?'on':'')+'" onclick="event.stopPropagation();toggleFav(\''+ch.id+'\')">♡</button>')+
+            :'<button class="fav '+(favs.has(ch.id)?'on':'')+'" onclick="event.stopPropagation();toggleFav(\''+ch.id+'\')">♡</button>')+
           '<div class="country">'+(ch.country==='AM'?'AM':'RU')+'</div>'+
         '</div>'+
       '</div>';
