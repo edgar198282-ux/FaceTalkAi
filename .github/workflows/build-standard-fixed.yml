@@ -1,0 +1,133 @@
+name: Build Abaj TV Standard Fixed
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "android/**"
+      - ".github/workflows/build-standard-fixed.yml"
+
+concurrency:
+  group: abajtv-standard-fixed
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Gradle 8.10.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -o /tmp/gradle.zip
+          sudo unzip -q /tmp/gradle.zip -d /opt/gradle
+          echo "/opt/gradle/gradle-8.10.2/bin" >> "$GITHUB_PATH"
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          CODE="$(date +%s)"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "name=1.2.$CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Restore signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d android/facetalk-upload-key.jks.b64 > android/facetalk-upload-key.jks
+          test -s android/facetalk-upload-key.jks
+
+      - name: Build standard APK
+        working-directory: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle :app:assembleRelease \
+            -PWEB_APP_URL="https://facetalkai-production.up.railway.app" \
+            -PAPP_ID="ai.facetalk.app" \
+            -PAPP_VERSION_NAME="${{ steps.version.outputs.name }}" \
+            -PAPP_VERSION_CODE="${{ steps.version.outputs.code }}"
+
+      - name: Verify standard APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$AAPT" dump badging "$APK" | tee /tmp/abajtv-standard-badging.txt
+          grep -q "package: name='ai.facetalk.app'" /tmp/abajtv-standard-badging.txt
+          grep -q "sdkVersion:'21'" /tmp/abajtv-standard-badging.txt
+          grep -q "leanback-launchable-activity" /tmp/abajtv-standard-badging.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/abajtv-standard-signature.txt
+          grep -q "Verified using v1 scheme (JAR signing): true" /tmp/abajtv-standard-signature.txt
+          grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" /tmp/abajtv-standard-signature.txt
+          mkdir -p dist
+          cp "$APK" dist/AbajTV-latest.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AbajTV-standard-fixed
+          path: dist/AbajTV-latest.apk
+          if-no-files-found: error
+
+      - name: Publish OTA to Railway
+        shell: bash
+        env:
+          SECRET_TOKEN: ${{ secrets.FACETALK_APK_DEPLOY_TOKEN }}
+          INTERNAL_TOKEN: ${{ secrets.INTERNAL_API_SECRET }}
+          VARIABLE_TOKEN: ${{ vars.FACETALK_APK_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          TOKEN="${SECRET_TOKEN:-${VARIABLE_TOKEN:-$INTERNAL_TOKEN}}"
+          test -n "$TOKEN"
+          APK="dist/AbajTV-latest.apk"
+          for attempt in $(seq 1 24); do
+            CODE=$(curl -sS -o /tmp/ota.json -w "%{http_code}" --connect-timeout 10 --max-time 180 \
+              -X POST "https://facetalkai-production.up.railway.app/api/app-upload" \
+              -H "Content-Type: application/vnd.android.package-archive" \
+              -H "X-FaceTalk-Deploy-Token: $TOKEN" \
+              -H "X-FaceTalk-App-Version: ${{ steps.version.outputs.name }}" \
+              -H "X-FaceTalk-App-Version-Code: ${{ steps.version.outputs.code }}" \
+              -H "X-AbajTV-Channel: stable" \
+              --data-binary "@$APK" || true)
+            cat /tmp/ota.json || true
+            if [ "$CODE" = "200" ]; then exit 0; fi
+            sleep 10
+          done
+          exit 1
+
+      - name: Verify OTA
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,urllib.request,time
+          expected=int("${{ steps.version.outputs.code }}")
+          for _ in range(20):
+              try:
+                  with urllib.request.urlopen("https://facetalkai-production.up.railway.app/api/app-release?channel=stable",timeout=20) as r:
+                      d=json.load(r)
+                  print(d)
+                  if int(d.get("version_code") or 0)==expected and d.get("available"):
+                      raise SystemExit(0)
+              except Exception as e:
+                  print(e)
+              time.sleep(5)
+          raise SystemExit(1)
+          PY
