@@ -1084,6 +1084,65 @@ async def api_tv_device_auth(request):
     }, headers={'Cache-Control':'no-store'})
 
 
+async def api_tv_devices(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    current_device_id = str(request.headers.get('X-Abaj-Device-Id') or '').strip()[:120]
+    rows = await list_settings_prefix('tv_device:')
+    devices = []
+    now = int(time.time())
+    for row in rows:
+        raw = str(row.get('value') or '').strip()
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+        except Exception:
+            continue
+        if int(data.get('user_id') or 0) != uid:
+            continue
+        device_id = str(row.get('key') or '')[len('tv_device:'):]
+        last_seen = int(data.get('last_seen') or 0)
+        devices.append({
+            'device_id': device_id,
+            'device_name': str(data.get('device_name') or 'Android TV')[:120],
+            'paired_at': int(data.get('paired_at') or 0),
+            'last_seen': last_seen,
+            'online': bool(last_seen and now - last_seen <= 10 * 60),
+            'current': bool(current_device_id and device_id == current_device_id),
+            'app_version': str(data.get('app_version') or '')[:40],
+        })
+    devices.sort(key=lambda x: (not x.get('current'), -(x.get('last_seen') or x.get('paired_at') or 0)))
+    limit = 0 if (ADMIN_ID and uid == int(ADMIN_ID)) else 3
+    return web.json_response({'ok':True,'devices':devices,'limit':limit}, headers={'Cache-Control':'no-store'})
+
+
+async def api_tv_disconnect(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    body = await request.json()
+    device_id = str(body.get('device_id') or '').strip()[:120]
+    if not device_id:
+        return web.json_response({'ok':False,'error':'device_required'}, status=400)
+    raw = await get_setting(f'tv_device:{device_id}', '')
+    if not raw:
+        return web.json_response({'ok':True,'removed':False}, headers={'Cache-Control':'no-store'})
+    try:
+        data = json.loads(raw)
+    except Exception:
+        data = {}
+    if int(data.get('user_id') or 0) != uid:
+        return web.json_response({'ok':False,'error':'forbidden'}, status=403)
+    await set_setting(f'tv_device:{device_id}', '')
+    sessions = _edem_sessions.get(uid) or {}
+    sessions.pop(device_id, None)
+    return web.json_response({'ok':True,'removed':True,'device_id':device_id}, headers={'Cache-Control':'no-store'})
+
+
 async def api_admin_tv_devices(request):
     user = await _user_from_request(request)
     if not user or not _is_admin_user(user):
@@ -1194,6 +1253,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload); app.router.add_post('/api/admin/app-rollback', api_admin_app_rollback); app.router.add_post('/api/admin/app-promote-beta', api_admin_app_promote_beta)
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/status', api_app_auth_status); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/open', api_tv_pair_open); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
+    app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
