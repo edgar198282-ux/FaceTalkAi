@@ -217,7 +217,8 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
         <button id="gridBtn" class="iconBtn" onclick="setLayout('grid')" title="Плитка">▦</button>
         <button id="tvBtn" class="iconBtn" onclick="toggleTvMode()" title="TV режим">📺</button>
         <button class="iconBtn" onclick="refreshChannels()" title="Обновить">↻</button>
-        <button id="adminBtn" class="iconBtn" onclick="openAdmin()" title="Edem Admin" style="display:none">⚙</button>
+        <button id="tvSettingsBtn" class="iconBtn" onclick="openTvSettings()" title="Настройки TV" style="display:none">⚙</button>
+        <button id="adminBtn" class="iconBtn" onclick="openAdmin()" title="Edem Admin" style="display:none">🛠</button>
       </div>
     </div>
     <div class="toolbar">
@@ -242,6 +243,21 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
   <main class="content" id="content">
     <div class="list" id="list"></div>
   </main>
+</div>
+
+<div class="settingsModal" id="tvSettingsModal" onclick="if(event.target===this)closeTvSettings()">
+  <div class="settingsCard">
+    <div class="settingsTitle">⚙ Настройки Abaj TV</div>
+    <button class="settingsAction" id="tvAutoStartBtn" onclick="toggleTvAutoStartSetting()">Автостарт последнего канала</button>
+    <button class="settingsAction" id="tvHideBadBtn" onclick="toggleTvHideBadSetting()">Скрывать нестабильные каналы</button>
+    <div class="settingsLabel">Качество по умолчанию</div>
+    <select id="tvQualityPref" class="settingsAction" onchange="setTvPreferredQuality(this.value)" style="appearance:auto">
+      <option value="auto">Auto</option>
+      <option value="720">720p</option>
+      <option value="1080">1080p</option>
+    </select>
+    <button class="settingsClose" onclick="closeTvSettings()">Закрыть</button>
+  </div>
 </div>
 
 <div class="settingsModal" id="settingsModal" onclick="if(event.target===this)closeSettings()">
@@ -567,6 +583,8 @@ function applyUiMode(){
   document.getElementById('listBtn').classList.toggle('active',layout==='list');
   document.getElementById('gridBtn').classList.toggle('active',layout==='grid');
   document.getElementById('tvBtn').classList.toggle('active',tvMode);
+  const tvSettingsBtn=document.getElementById('tvSettingsBtn');
+  if(tvSettingsBtn)tvSettingsBtn.style.display=nativeTv?'':'none';
 }
 
 async function loadEdemStatus(){
@@ -856,6 +874,56 @@ function toggleTvMode(){
   focusIndex=0;
   render();
 }
+function tvSettingsOpen(){
+  return nativeTv&&document.getElementById('tvSettingsModal')?.classList.contains('open');
+}
+function paintTvSettings(){
+  const auto=document.getElementById('tvAutoStartBtn');
+  const bad=document.getElementById('tvHideBadBtn');
+  const q=document.getElementById('tvQualityPref');
+  if(auto)auto.textContent=(tvAutoStartLast?'✓ ':'✕ ')+'Автостарт последнего канала';
+  if(bad)bad.textContent=(tvHideUnreliable?'✓ ':'✕ ')+'Скрывать нестабильные каналы';
+  if(q)q.value=tvPreferredQuality;
+}
+function openTvSettings(){
+  if(!nativeTv)return;
+  paintTvSettings();
+  const modal=document.getElementById('tvSettingsModal');
+  if(modal)modal.classList.add('open');
+}
+function closeTvSettings(){
+  const modal=document.getElementById('tvSettingsModal');
+  if(modal)modal.classList.remove('open');
+}
+function toggleTvAutoStartSetting(){
+  tvAutoStartLast=!tvAutoStartLast;
+  localStorage.setItem('abaj_tv_autostart_last',tvAutoStartLast?'1':'0');
+  paintTvSettings();
+}
+function toggleTvHideBadSetting(){
+  tvHideUnreliable=!tvHideUnreliable;
+  localStorage.setItem('abaj_tv_hide_unreliable',tvHideUnreliable?'1':'0');
+  paintTvSettings();
+  load();
+}
+function setTvPreferredQuality(value){
+  tvPreferredQuality=['720','1080'].includes(String(value))?String(value):'auto';
+  localStorage.setItem('abaj_tv_quality',tvPreferredQuality);
+  if(hls&&Array.isArray(hls.levels)){
+    if(tvPreferredQuality==='auto')hls.currentLevel=-1;
+    else{
+      const target=parseInt(tvPreferredQuality,10);
+      let best=-1,bestDiff=1e9;
+      hls.levels.forEach((lvl,i)=>{
+        const h=Number(lvl.height||0); if(!h)return;
+        const diff=Math.abs(h-target); if(diff<bestDiff){bestDiff=diff;best=i}
+      });
+      if(best>=0)hls.currentLevel=best;
+    }
+  }
+  paintTvSettings();
+}
+
 function tvSearchOpen(){
   return nativeTv&&document.getElementById('tvSearch').classList.contains('open');
 }
@@ -1079,7 +1147,7 @@ function restoreCachedChannels(){
     const cached=JSON.parse(localStorage.getItem(CHANNEL_CACHE_KEY)||'null');
     if(!cached||!Array.isArray(cached.channels)||!cached.channels.length)return false;
     if(Date.now()-Number(cached.ts||0)>12*60*60*1000)return false;
-    channels=cached.channels;
+    channels=cached.channels.filter(x=>!tvHideUnreliable||!x.unreliable||x.personal);
     const groups=[...new Set(channels.map(x=>x.group||'Other'))].sort((a,b)=>a.localeCompare(b,'ru'));
     const sel=document.getElementById('group');
     sel.innerHTML='<option value="">ALL</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
@@ -1346,6 +1414,7 @@ function handleTvBack(){
     if(tvPairPoll){clearInterval(tvPairPoll);tvPairPoll=null}
     return true;
   }
+  if(tvSettingsOpen()){closeTvSettings();return true}
   if(tvSearchOpen()){closeTvSearch(false);return true}
   if(tvGuideOpen()){toggleTvGuide(false);return true}
   if(tvRailOpen()){toggleTvRail(false);return true}
@@ -1575,6 +1644,13 @@ function setQuality(value){
   if(!hls)return;
   const level=parseInt(value,10);
   hls.currentLevel=Number.isFinite(level)?level:-1;
+  if(nativeTv){
+    if(level<0)setTvPreferredQuality('auto');
+    else if(hls.levels&&hls.levels[level]&&hls.levels[level].height){
+      const h=Number(hls.levels[level].height);
+      setTvPreferredQuality(h>=900?'1080':'720');
+    }
+  }
 }
 
 async function togglePiP(){
@@ -1731,6 +1807,10 @@ function tvNumberInput(digit){
 
 document.addEventListener('keydown',e=>{
   if(nativeTv&&tvLastAutoTimer)cancelLastChannelAutoStart(true);
+  if(tvSettingsOpen()){
+    if(e.key==='Escape'||e.key==='Backspace'){e.preventDefault();closeTvSettings()}
+    return;
+  }
   if(tvSearchOpen()){
     if(e.key==='Escape'){e.preventDefault();closeTvSearch(false);return}
     if(e.key==='Enter'){e.preventDefault();closeTvSearch(true);return}
