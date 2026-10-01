@@ -218,7 +218,11 @@ def _parse_epg_xml(text: str) -> tuple[dict, dict]:
         if node is not None and node.text:
             display = node.text.strip()
         if display:
-            names[_normalize_name(display)] = cid
+            normalized = _normalize_name(display)
+            names[normalized] = cid
+            short = re.sub(r"^(?:am|ru)\s+", "", normalized).strip()
+            if short and short != normalized:
+                names.setdefault(short, cid)
 
     now = int(time.time())
     min_ts = now - 4 * 60 * 60
@@ -273,6 +277,9 @@ async def refresh_epg(force: bool = False):
 def _epg_for_channel(item: dict) -> tuple[dict | None, dict | None]:
     cid = str(item.get("tvg_id") or "").strip()
     rows = _state["epg"].get(cid) if cid else None
+    if not rows and cid:
+        base_cid = cid.split("@", 1)[0].strip()
+        rows = _state["epg"].get(base_cid) if base_cid else None
     if not rows:
         mapped = _state["epg_names"].get(_normalize_name(item.get("name") or ""))
         rows = _state["epg"].get(mapped) if mapped else None
