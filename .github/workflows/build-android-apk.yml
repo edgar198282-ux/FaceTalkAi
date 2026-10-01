@@ -95,7 +95,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APK="/tmp/AbajTV-standard.apk"
+          APK="android/app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
           SIZE=$(stat -c%s "$APK")
           echo "REAL APK SIZE: $SIZE bytes"
