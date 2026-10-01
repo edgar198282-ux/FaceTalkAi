@@ -302,14 +302,27 @@ def _parse_epg_xml(text: str) -> tuple[dict, dict]:
         cid = str(ch.attrib.get("id") or "").strip()
         if not cid:
             continue
-        display = ""
-        node = ch.find("display-name")
-        if node is not None and node.text:
-            display = node.text.strip()
-        if display:
+        # XMLTV feeds often expose several display-name variants for the same
+        # channel (local language, latin spelling, short name). Index all of
+        # them instead of only the first one so playlist names match far more
+        # reliably without fuzzy guesses.
+        aliases = []
+        for node in ch.findall("display-name"):
+            if node is not None and node.text:
+                value = node.text.strip()
+                if value and value not in aliases:
+                    aliases.append(value)
+        # The XMLTV channel id itself is also useful as a conservative alias.
+        aliases.append(cid)
+        base_cid = cid.split("@", 1)[0].strip()
+        if base_cid and base_cid != cid:
+            aliases.append(base_cid)
+        for display in aliases:
             normalized = _normalize_name(display)
-            names[normalized] = cid
-            short = re.sub(r"^(?:am|ru)\s+", "", normalized).strip()
+            if not normalized:
+                continue
+            names.setdefault(normalized, cid)
+            short = re.sub(r"^(?:am|ru|ua|by|kz|uz|md|ge)\s+", "", normalized).strip()
             if short and short != normalized:
                 names.setdefault(short, cid)
 
