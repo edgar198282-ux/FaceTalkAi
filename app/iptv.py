@@ -654,7 +654,7 @@ async def api_play(request):
     if request.query.get("failover") == "1" and len(urls) > 1:
         urls = urls[1:] + urls[:1]
 
-    timeout = aiohttp.ClientTimeout(total=15, connect=6, sock_read=8)
+    timeout = aiohttp.ClientTimeout(total=8, connect=3, sock_read=4)
     last_error = ""
     async with aiohttp.ClientSession(headers={"User-Agent": "IPTV-Player/1.0"}) as session:
         for idx, url in enumerate(urls):
@@ -717,16 +717,46 @@ async def api_proxy(request):
     sig = request.query.get("s", "")
     if not url.startswith(("http://", "https://")) or not hmac.compare_digest(sig, _token(url)):
         raise web.HTTPForbidden(text="Invalid stream token")
-    timeout = aiohttp.ClientTimeout(total=20, connect=6, sock_read=12)
-    async with aiohttp.ClientSession(headers={"User-Agent": "IPTV-Player/1.0"}) as session:
-        async with session.get(url, timeout=timeout, allow_redirects=True) as r:
+    timeout = aiohttp.ClientTimeout(total=None, connect=3, sock_read=10)
+    session = aiohttp.ClientSession(headers={"User-Agent": "IPTV-Player/1.0"})
+    try:
+        r = await session.get(url, timeout=timeout, allow_redirects=True)
+        ctype = (r.headers.get("content-type") or "").lower()
+        final_url = str(r.url)
+        status = r.status
+        is_hls = "mpegurl" in ctype or urlparse(final_url).path.lower().endswith(".m3u8")
+        if is_hls:
             body = await r.read()
-            ctype = (r.headers.get("content-type") or "").lower()
-            final_url = str(r.url)
-            status = r.status
-    if b"#EXTM3U" in body[:4096] or "mpegurl" in ctype or urlparse(final_url).path.lower().endswith(".m3u8"):
-        return web.Response(text=_rewrite_hls(body.decode("utf-8", "ignore"), final_url), content_type="application/vnd.apple.mpegurl", headers={"Cache-Control": "no-store"})
-    return web.Response(body=body, status=status, content_type=ctype.split(";")[0] if ctype else "application/octet-stream", headers={"Cache-Control": "private, max-age=30"})
+            await r.release()
+            await session.close()
+            return web.Response(
+                text=_rewrite_hls(body.decode("utf-8", "ignore"), final_url),
+                content_type="application/vnd.apple.mpegurl",
+                headers={"Cache-Control": "no-store"},
+            )
+
+        content_type = ctype.split(";")[0] if ctype else "application/octet-stream"
+        resp = web.StreamResponse(
+            status=status,
+            headers={
+                "Content-Type": content_type,
+                "Cache-Control": "private, max-age=30",
+            },
+        )
+        if r.content_length is not None:
+            resp.content_length = r.content_length
+        await resp.prepare(request)
+        try:
+            async for chunk in r.content.iter_chunked(64 * 1024):
+                await resp.write(chunk)
+            await resp.write_eof()
+        finally:
+            r.release()
+            await session.close()
+        return resp
+    except Exception:
+        await session.close()
+        raise
 
 
 async def start_background(app):
