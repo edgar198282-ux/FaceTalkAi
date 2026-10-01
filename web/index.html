@@ -225,6 +225,11 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
       <input id="search" class="search" placeholder="Поиск канала" oninput="render()">
       <select id="group" class="select" onchange="setGroup(this.value)"><option value="">ALL</option></select>
     </div>
+    <div class="chips" id="sourceChips">
+      <button class="chip active" data-source="all" onclick="setSourceFilter(this,'all')">ALL</button>
+      <button class="chip" data-source="free" onclick="setSourceFilter(this,'free')">FREE</button>
+      <button class="chip" data-source="edem" onclick="setSourceFilter(this,'edem')">EDEM</button>
+    </div>
     <div class="chips">
       <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
       <button class="chip" data-filter="AM" onclick="setModeFilter(this,'AM')">🇦🇲 ARMENIA</button>
@@ -336,6 +341,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
 let channels=[];
+let sourceFilter=localStorage.getItem('abaj_tv_source_filter')||'all';
 let modeFilter=localStorage.getItem('abaj_tv_filter')||'all';
 let activeCategory=localStorage.getItem('abaj_tv_category')||'';
 const launchParams=new URLSearchParams(location.search);
@@ -1077,8 +1083,17 @@ function persistTvBrowseState(){
 }
 function applyTvBrowseUi(){
   if(!nativeTv)return;
+  document.querySelectorAll('.chip[data-source]').forEach(x=>x.classList.toggle('active',x.dataset.source===sourceFilter));
   document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.toggle('active',x.dataset.filter===modeFilter));
   document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',x.dataset.cat===activeCategory));
+}
+function setSourceFilter(btn,v){
+  sourceFilter=v;
+  localStorage.setItem('abaj_tv_source_filter',v);
+  document.querySelectorAll('.chip[data-source]').forEach(x=>x.classList.toggle('active',x===btn));
+  focusIndex=0;
+  render();
+  focusFirstChannelAfterFilter();
 }
 function setModeFilter(btn,v){
   modeFilter=v;
@@ -1179,8 +1194,9 @@ async function load(){
     }
     const dedup=new Map();
     for(const ch of base){
-      const key=((ch.tvg_id||'')+'|'+(ch.country||'')+'|'+(ch.name||'')).toLowerCase();
-      if(!dedup.has(key)||(!dedup.get(key).personal&&ch.personal))dedup.set(key,ch);
+      const providerKey=ch.personal?'edem':'free';
+      const key=(providerKey+'|'+(ch.tvg_id||'')+'|'+(ch.country||'')+'|'+(ch.name||'')).toLowerCase();
+      if(!dedup.has(key))dedup.set(key,ch);
     }
     channels=[...dedup.values()];
     const groups=[...new Set(channels.map(x=>x.group||'Other'))].sort((a,b)=>a.localeCompare(b,'ru'));
@@ -1190,8 +1206,10 @@ async function load(){
     if(groups.includes(old))sel.value=old;
     buildQuickCats(groups);
     applyTvBrowseUi();
+    const freeCount=channels.filter(x=>!x.personal).length;
+    const edemCount=channels.filter(x=>!!x.personal).length;
     document.getElementById('status').textContent=
-      'Online: '+channels.length+
+      'FREE: '+freeCount+' · EDEM: '+edemCount+
       ' · Offline в проверке: '+((d.stats||{}).offline||0)+
       (d.running?' · обновляется…':'');
     cacheChannels();
@@ -1227,6 +1245,8 @@ function getFiltered(){
   const q=(document.getElementById('search').value||'').trim().toLowerCase();
   const g=document.getElementById('group').value||'';
   let rows=channels.slice();
+  if(sourceFilter==='free')rows=rows.filter(x=>!x.personal);
+  else if(sourceFilter==='edem')rows=rows.filter(x=>!!x.personal);
   if(modeFilter==='AM'||modeFilter==='RU')rows=rows.filter(x=>x.country===modeFilter);
   if(modeFilter==='fav')rows=rows.filter(x=>favs.has(x.id));
   if(modeFilter==='recent'){
@@ -1273,7 +1293,7 @@ function render(){
           '<div class="progress"><span style="width:'+epgProgress(ch.epg_now)+'%"></span></div>'+
           '<div class="times"><span>'+(ch.epg_now?fmtClock(ch.epg_now.start):'LIVE')+'</span><span>'+(ch.epg_now?fmtClock(ch.epg_now.stop):Math.max(1,Math.round((ch.latency_ms||0)/1000))+'s')+'</span></div>'+
           (ch.epg_next?'<div class="next">Далее: '+esc(ch.epg_next.title)+'</div>':'')+
-          '<div class="badge">'+(ch.personal?'🔐 Edem':(ch.country==='AM'?'🇦🇲 Armenia':'🇷🇺 Russia'))+'</div>'+
+          '<div class="badge">'+(ch.personal?'★ EDEM':(ch.country==='AM'?'🇦🇲 Armenia':'🇷🇺 Russia'))+'</div>'+
         '</div>'+
         '<div class="side">'+
           (nativeTv
