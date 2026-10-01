@@ -130,6 +130,15 @@ _worker_control = {"refresh_requested_at": 0, "last_worker_snapshot": 0}
 _ad_probe_cache = {}
 _ad_last_state = {}
 _ad_scan_stats = {"probes": 0, "errors": 0, "last_probe": 0, "last_channel_id": "", "tag_counts": {}}
+_burned_ad_stats = {
+    "samples": 0,
+    "channels": {},
+    "high_score_count": 0,
+    "last_score": 0,
+    "last_channel_id": "",
+    "last_seen": 0,
+}
+_burned_ad_last_report = {}
 _compact_response_cache = {"key": None, "body": b"", "expires_at": 0.0}
 
 def _record_ad_transition(item: dict, active: bool, marker: str):
@@ -1053,6 +1062,20 @@ async def api_diagnostics(request):
             "channels_seen": len({str(x.get("channel_id") or "") for x in ad_starts if x.get("channel_id")}),
             "last_event": ad_history[-1] if ad_history else None,
             "scanner": dict(_ad_scan_stats),
+            "burned_in_observer": {
+                "samples": int(_burned_ad_stats.get("samples") or 0),
+                "channels_seen": len(_burned_ad_stats.get("channels") or {}),
+                "high_score_count": int(_burned_ad_stats.get("high_score_count") or 0),
+                "last_score": int(_burned_ad_stats.get("last_score") or 0),
+                "last_channel_id": str(_burned_ad_stats.get("last_channel_id") or ""),
+                "last_seen": int(_burned_ad_stats.get("last_seen") or 0),
+                "channels": sorted(
+                    list((_burned_ad_stats.get("channels") or {}).values()),
+                    key=lambda x: int((x or {}).get("score") or 0),
+                    reverse=True,
+                )[:20],
+                "mode": "observe_only",
+            },
             "marker_detection_supported": bool((_ad_scan_stats.get("tag_counts") or {})),
         },
         "last_refresh": state.get("last_refresh"),
@@ -1213,6 +1236,65 @@ async def api_ad_state(request):
         "marker": str(data.get("marker") or ""),
         "checked_at": float(data.get("checked_at") or 0),
     }, headers={"Cache-Control": "no-store"})
+
+
+async def api_ad_visual_observe(request):
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "bad json"}, status=400)
+    if not isinstance(body, dict):
+        return web.json_response({"ok": False, "error": "bad body"}, status=400)
+
+    cid = str(body.get("channel_id") or "").strip()
+    item = _state["channels"].get(cid)
+    if not item:
+        return web.json_response({"ok": False, "error": "unknown channel"}, status=404)
+
+    # This observer is intentionally Free-only. Personal/Edem playback is never
+    # sampled by the burned-in ad experiment.
+    if bool(item.get("personal")):
+        return web.json_response({"ok": False, "error": "not supported"}, status=400)
+
+    now = time.time()
+    last = float(_burned_ad_last_report.get(cid) or 0)
+    if now - last < 8.0:
+        return web.json_response({"ok": True, "ignored": True}, headers={"Cache-Control": "no-store"})
+
+    try:
+        score = max(0, min(100, int(round(float(body.get("score") or 0)))))
+        cut_rate = max(0.0, min(1.0, float(body.get("cut_rate") or 0)))
+        avg_diff = max(0.0, min(1.0, float(body.get("avg_diff") or 0)))
+        brightness_var = max(0.0, min(1.0, float(body.get("brightness_var") or 0)))
+        samples = max(0, min(60, int(body.get("samples") or 0)))
+    except Exception:
+        return web.json_response({"ok": False, "error": "bad values"}, status=400)
+
+    _burned_ad_last_report[cid] = now
+    _burned_ad_stats["samples"] = int(_burned_ad_stats.get("samples") or 0) + 1
+    _burned_ad_stats["last_score"] = score
+    _burned_ad_stats["last_channel_id"] = cid
+    _burned_ad_stats["last_seen"] = int(now)
+    if score >= 70:
+        _burned_ad_stats["high_score_count"] = int(_burned_ad_stats.get("high_score_count") or 0) + 1
+
+    channels = _burned_ad_stats.setdefault("channels", {})
+    channels[cid] = {
+        "name": str(item.get("name") or "")[:120],
+        "country": str(item.get("country") or "")[:8],
+        "score": score,
+        "cut_rate": round(cut_rate, 3),
+        "avg_diff": round(avg_diff, 3),
+        "brightness_var": round(brightness_var, 3),
+        "samples": samples,
+        "seen_at": int(now),
+    }
+    if len(channels) > 80:
+        oldest = sorted(channels.items(), key=lambda kv: int((kv[1] or {}).get("seen_at") or 0))[:-80]
+        for key, _ in oldest:
+            channels.pop(key, None)
+
+    return web.json_response({"ok": True, "score": score}, headers={"Cache-Control": "no-store"})
 
 
 async def api_play(request):
@@ -1449,6 +1531,7 @@ def install(app: web.Application):
     app.router.add_post("/api/iptv/refresh", api_refresh)
     app.router.add_get("/api/iptv/play", api_play)
     app.router.add_get("/api/iptv/ad-state", api_ad_state)
+    app.router.add_post("/api/iptv/ad-visual-observe", api_ad_visual_observe)
     app.router.add_get("/api/iptv/proxy", api_proxy)
     app.on_startup.append(start_background)
     app.on_cleanup.append(stop_background)
