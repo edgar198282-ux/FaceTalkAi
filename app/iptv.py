@@ -1267,6 +1267,7 @@ async def api_ad_visual_observe(request):
         avg_diff = max(0.0, min(1.0, float(body.get("avg_diff") or 0)))
         brightness_var = max(0.0, min(1.0, float(body.get("brightness_var") or 0)))
         samples = max(0, min(60, int(body.get("samples") or 0)))
+        observer_error = str(body.get("observer_error") or "").strip()[:160]
     except Exception:
         return web.json_response({"ok": False, "error": "bad values"}, status=400)
 
@@ -1287,6 +1288,7 @@ async def api_ad_visual_observe(request):
         "avg_diff": round(avg_diff, 3),
         "brightness_var": round(brightness_var, 3),
         "samples": samples,
+        "observer_error": observer_error,
         "seen_at": int(now),
     }
     if len(channels) > 80:
