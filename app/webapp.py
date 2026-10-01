@@ -73,7 +73,13 @@ def _validate_launch_fallback(uid_raw: str, ts_raw: str, sig: str, max_age=7*864
 
 async def _user_from_request(request):
     init_data = request.headers.get('X-Telegram-Init-Data', '')
-    user = validate_init_data(init_data)
+    # The standalone Abaj TV APK stores the Telegram-signed login locally so the
+    # same account can keep favorites synced with the Mini App between launches.
+    # Keep the normal Telegram WebApp window short, but allow the signed APK
+    # session to live longer on the user's own device.
+    ua = request.headers.get('User-Agent', '')
+    init_max_age = 30 * 86400 if 'AbajTV-Android/' in ua else 86400
+    user = validate_init_data(init_data, max_age=init_max_age)
     # Some Telegram Desktop/WebApp launches can occasionally expose empty initData.
     # The bot therefore adds a signed uid+timestamp to its WebApp button as a safe fallback.
     if not user:

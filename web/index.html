@@ -231,7 +231,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   <header class="top">
     <div class="titleRow">
       <div class="brandWrap">
-        <img class="brandLogo" src="/static/abaj_tv_logo.svg" alt="Abaj TV">
+        <img class="brandLogo" src="/static/abaj_tv_logo.jpg" alt="Abaj TV" onerror="this.onerror=null;this.src='/static/abaj_tv_logo.svg'">
         <div class="titleBlock">
           <div class="title">ABAJ TV</div>
           <div class="sub">Армения + Россия</div>
@@ -1288,6 +1288,7 @@ async function syncFavoriteNow(id,enabled){
     }
     syncDirtyFavorites=pendingFavoriteOps.size>0;
     if(syncDirtyFavorites)scheduleFavoriteRetry();
+    setTimeout(()=>loadSyncedState(true),120);
     return true;
   }catch(e){scheduleFavoriteRetry();return false}
 }
@@ -2667,7 +2668,7 @@ window.addEventListener('online',()=>{handleOnline();flushPendingFavorites();loa
 document.addEventListener('visibilitychange',handleVisibilityChange);
 if(!navigator.onLine)handleOffline();
 setInterval(()=>{load()},60000);
-setInterval(()=>{if(!document.hidden){flushPendingFavorites();loadSyncedState(false)}},4000);
+setInterval(()=>{if(!document.hidden){flushPendingFavorites();loadSyncedState(false)}},2000);
 </script>
 </body>
 </html>
