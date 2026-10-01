@@ -54,10 +54,10 @@ button{cursor:pointer}
 }
 .search:focus,.select:focus{border-color:#73c9f4;box-shadow:0 0 0 3px rgba(0,166,255,.12)}
 .select{width:82px;min-width:82px;padding:0 30px 0 14px;font-weight:700;text-align:center;text-align-last:center;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,#2b6b93 50%),linear-gradient(135deg,#2b6b93 50%,transparent 50%),linear-gradient(180deg,rgba(255,255,255,.98),rgba(231,246,255,.96));background-position:calc(100% - 16px) 20px,calc(100% - 11px) 20px,0 0;background-size:5px 5px,5px 5px,100% 100%;background-repeat:no-repeat;box-shadow:0 3px 10px rgba(0,78,145,.14)}
-.chips,.quickCats{
-  display:flex;gap:8px;overflow:auto;padding:10px 0 0;scrollbar-width:none
+.chips,.countryChips,.modeChips,.quickCats{
+  display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:10px 0 0;scrollbar-width:none;-webkit-overflow-scrolling:touch
 }
-.chips::-webkit-scrollbar,.quickCats::-webkit-scrollbar{display:none}
+.chips::-webkit-scrollbar,.countryChips::-webkit-scrollbar,.modeChips::-webkit-scrollbar,.quickCats::-webkit-scrollbar{display:none}
 .chip,.cat{
   border:1px solid #c9dde8;border-radius:20px;background:rgba(255,255,255,.86);color:#1f5377;
   padding:8px 14px;white-space:nowrap
@@ -260,8 +260,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
       <input id="search" class="search" placeholder="Поиск канала" oninput="render()">
       <select id="group" class="select" onchange="setGroup(this.value)"><option value="">ALL</option></select>
     </div>
-    <div class="chips">
-      <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
+    <div class="countryChips" id="countryChips">
       <button class="chip flagOnly" data-filter="AM" onclick="setModeFilter(this,'AM')" title="Армения" aria-label="Армения">🇦🇲</button>
       <button class="chip flagOnly" data-filter="RU" onclick="setModeFilter(this,'RU')" title="Россия" aria-label="Россия">🇷🇺</button>
       <button class="chip flagOnly" data-filter="GE" onclick="setModeFilter(this,'GE')" title="Грузия" aria-label="Грузия">🇬🇪</button>
@@ -272,6 +271,9 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
       <button class="chip flagOnly" data-filter="KG" onclick="setModeFilter(this,'KG')" title="Кыргызстан" aria-label="Кыргызстан">🇰🇬</button>
       <button class="chip flagOnly" data-filter="MD" onclick="setModeFilter(this,'MD')" title="Молдова" aria-label="Молдова">🇲🇩</button>
       <button class="chip flagOnly" data-filter="TJ" onclick="setModeFilter(this,'TJ')" title="Таджикистан" aria-label="Таджикистан">🇹🇯</button>
+    </div>
+    <div class="modeChips" id="modeChips">
+      <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
       <button class="chip" data-filter="HD" onclick="setModeFilter(this,'HD')">HD</button>
       <button class="chip" data-filter="4K" onclick="setModeFilter(this,'4K')">4K</button>
       <button class="chip" data-filter="fav" onclick="setModeFilter(this,'fav')">♡ FAVORITES</button>
