@@ -102,8 +102,10 @@ button{cursor:pointer}
 }
 .back{width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:white;font-size:29px}
 .playerTitle{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
-.videoWrap{flex:1;display:flex;align-items:center;justify-content:center;background:#000;position:relative}
-video{width:100%;height:100%;object-fit:contain;background:#000}
+.videoWrap{flex:1;display:flex;align-items:center;justify-content:center;background:#020b16;position:relative;overflow:hidden}
+.videoWrap::before{content:"";position:absolute;inset:0;background:url('/static/abaj_tv_logo.svg') center center/34% auto no-repeat;opacity:.13;filter:saturate(.75) brightness(.8);z-index:0;pointer-events:none;transition:opacity .18s ease}
+.videoWrap.playing::before{opacity:0}
+video{width:100%;height:100%;object-fit:contain;background:transparent;position:relative;z-index:1}
 .playerBottom{padding:12px 14px 18px;background:#0a0a0a;border-top:1px solid #222}
 .playerMeta{display:flex;justify-content:space-between;gap:10px;align-items:center}
 .live{color:#ff4052;font-size:13px}
@@ -158,6 +160,13 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
   .tvMode:not(.nativeTv) .channelRail{display:none}
 }
 .nativeTv .list{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important}
+.nativeTv.nativeList .list{display:block!important;padding-left:18px!important;padding-right:18px!important}
+.nativeTv.nativeList .channel{display:grid!important;grid-template-columns:120px minmax(0,1fr) auto!important;min-height:92px!important;margin-bottom:9px!important}
+.nativeTv.nativeList .channel .logoWrap{height:92px!important}
+.nativeTv.nativeList .channel .info{padding:10px 12px!important}
+.nativeTv.nativeList .channel .name{font-size:20px!important}
+.nativeTv.nativeList .channel .now{font-size:14px!important}
+.nativeTv.nativeList .channel .side{flex-direction:column!important;padding:8px!important}
 .nativeTv .channel{min-height:146px!important}
 .nativeTv .channel .logoWrap{height:72px!important}
 .nativeTv .channel .logo{max-height:47px!important}
@@ -225,7 +234,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
         </div>
       </div>
       <div class="icons">
-        <button id="listBtn" class="iconBtn active" onclick="setLayout('list')" title="Список">☷</button>
+        <button id="listBtn" class="iconBtn active" onclick="toggleLayoutMode()" title="Список / Плитка">☷</button>
         <button class="iconBtn" onclick="refreshChannels()" title="Обновить">↻</button>
         <button id="tvSettingsBtn" class="iconBtn" onclick="openTvSettings()" title="Настройки">⚙</button>
       </div>
@@ -378,7 +387,7 @@ const nativeTv=launchParams.get('tv')==='1'||launchParams.get('source')==='andro
 const tvDeviceName=(launchParams.get('device_name')||'Android TV').slice(0,120);
 const tvAppVersion=(launchParams.get('app_version')||'').slice(0,40);
 const tvAppVersionCode=Math.max(0,Number(launchParams.get('app_version_code')||0));
-let layout=nativeTv?'grid':(localStorage.getItem('iptv_layout')||'list');
+let layout=localStorage.getItem('iptv_layout')||(nativeTv?'grid':'list');
 let tvMode=nativeTv||localStorage.getItem('iptv_tv_mode')==='1';
 let hls=null;
 let current=null;
@@ -395,7 +404,6 @@ let tvDigitBuffer='';
 let tvDigitTimer=null;
 if(nativeTv){
   localStorage.setItem('iptv_tv_mode','1');
-  localStorage.setItem('iptv_layout','grid');
 }
 
 const favs=new Set(JSON.parse(localStorage.getItem('iptv_favorites')||'[]'));
@@ -638,10 +646,14 @@ function scheduleStateSync(){
 
 function applyUiMode(){
   document.body.classList.toggle('nativeTv',nativeTv);
+  document.body.classList.toggle('nativeList',nativeTv&&layout==='list');
   document.getElementById('app').classList.toggle('gridMode',layout==='grid'&&!tvMode);
   document.getElementById('app').classList.toggle('tvMode',tvMode);
   const listBtn=document.getElementById('listBtn');
-  if(listBtn)listBtn.classList.toggle('active',layout==='list');
+  if(listBtn){
+    listBtn.classList.toggle('active',layout==='list');
+    listBtn.textContent=layout==='list'?'☷':'▦';
+  }
 }
 
 let appLang=localStorage.getItem('abaj_tv_lang')||'ru';
@@ -965,12 +977,15 @@ function saveFavs(){localStorage.setItem('iptv_favorites',JSON.stringify([...fav
 function saveRecent(){localStorage.setItem('iptv_recent',JSON.stringify(recent.slice(0,30)));syncDirtyRecent=true;scheduleStateSync()}
 
 function setLayout(v){
-  layout=v;
-  localStorage.setItem('iptv_layout',v);
+  layout=v==='grid'?'grid':'list';
+  localStorage.setItem('iptv_layout',layout);
   applyUiMode();
   syncDirtyUi=true;
   scheduleStateSync();
   render();
+}
+function toggleLayoutMode(){
+  setLayout(layout==='grid'?'list':'grid');
 }
 function toggleTvMode(){
   if(nativeTv){tvMode=true;applyUiMode();return}
@@ -1956,6 +1971,8 @@ function startStream(ch,preferBackup=false){
   clearFirstFrameTimer();
   const attemptToken=++streamAttemptToken;
   const v=document.getElementById('video');
+  const wrap=document.querySelector('.videoWrap');
+  if(wrap)wrap.classList.remove('playing');
   const err=document.getElementById('playerError');
   err.textContent='';
   if(hls){hls.destroy();hls=null}
@@ -2014,9 +2031,11 @@ function startStream(ch,preferBackup=false){
           if(attemptToken!==streamAttemptToken)return;
           clearFirstFrameTimer();
           v.removeEventListener('playing',onPlaying);
+          const wrap=document.querySelector('.videoWrap');
+          if(wrap)wrap.classList.add('playing');
           startTvWatchdog(ch);
         };
-        if(!v.paused&&v.readyState>=3){clearFirstFrameTimer();startTvWatchdog(ch)}
+        if(!v.paused&&v.readyState>=3){clearFirstFrameTimer();const wrap=document.querySelector('.videoWrap');if(wrap)wrap.classList.add('playing');startTvWatchdog(ch)}
         else v.addEventListener('playing',onPlaying,{once:true});
       }).catch(()=>{});
     });
@@ -2054,11 +2073,11 @@ function startStream(ch,preferBackup=false){
       fetch(src,{headers:auth,cache:'no-store'})
         .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.blob()})
         .then(blob=>{v.src=URL.createObjectURL(blob);v.load();return v.play()})
-        .then(()=>{streamRetries=0;clearFirstFrameTimer();startTvWatchdog(ch)})
+        .then(()=>{streamRetries=0;clearFirstFrameTimer();const wrap=document.querySelector('.videoWrap');if(wrap)wrap.classList.add('playing');startTvWatchdog(ch)})
         .catch(()=>scheduleReconnect(ch));
     }else{
       v.src=src;v.load();
-      v.play().then(()=>{streamRetries=0;clearFirstFrameTimer();startTvWatchdog(ch)}).catch(()=>scheduleReconnect(ch));
+      v.play().then(()=>{streamRetries=0;clearFirstFrameTimer();const wrap=document.querySelector('.videoWrap');if(wrap)wrap.classList.add('playing');startTvWatchdog(ch)}).catch(()=>scheduleReconnect(ch));
     }
   }
 }
@@ -2179,6 +2198,8 @@ function closePlayer(){
   if(hls){hls.destroy();hls=null}
   const v=document.getElementById('video');
   v.pause();v.removeAttribute('src');v.load();
+  const wrap=document.querySelector('.videoWrap');
+  if(wrap)wrap.classList.remove('playing');
   const closingId=current&&current.id;
   const playerView=document.getElementById('playerView');
   playerView.classList.remove('open');
