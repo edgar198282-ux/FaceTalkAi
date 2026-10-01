@@ -406,7 +406,7 @@ async function refreshTvAuth(force=false){
     const r=await fetch('/api/tv/device-auth',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Abaj-Device-Id':deviceId},
-      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,device_name:tvDeviceName,app_version:tvAppVersion,app_version_code:tvAppVersionCode,force:!!force})
+      body:JSON.stringify({device_id:deviceId,device_secret:tvDeviceSecret,device_name:tvDeviceName,app_version:tvAppVersion,app_version_code:tvAppVersionCode,current_channel_id:current?current.id:'',current_channel_name:current?current.name:'',force:!!force})
     });
     if(!r.ok)return false;
     const d=await r.json();
@@ -674,6 +674,7 @@ async function loadAdminTvs(){
       return '<div class="adminRow"><div><b>'+esc(x.device_name||'Android TV')+'</b>'+
         '<div class="adminMeta">'+online+' · Telegram ID '+esc(x.user_id)+' · '+(x.stream_active?'Сейчас смотрит Edem':'Edem не активен')+version+
         ' · Последняя связь: '+esc(last)+' · Привязан: '+esc(paired)+'</div>'+
+        '<div class="adminMeta">Канал: '+esc(x.current_channel_name||'—')+' · переключений '+Number(x.channel_switches||0)+'</div>'+
         '<div class="adminMeta">TV ID: '+esc(x.device_id)+'</div></div>'+
         '<div class="limitBox"><button onclick="disconnectTv(\''+esc(x.device_id)+'\')" style="background:#d84b5b">Отключить ТВ</button></div></div>';
     }).join(''):'<div class="adminEmpty">Привязанных телевизоров пока нет</div>';

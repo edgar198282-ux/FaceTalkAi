@@ -832,6 +832,8 @@ async def api_tv_device_auth(request):
     app_version = str(body.get('app_version') or '').strip()[:40]
     try: app_version_code = max(0, int(body.get('app_version_code') or 0))
     except Exception: app_version_code = 0
+    current_channel_id = str(body.get('current_channel_id') or '').strip()[:120]
+    current_channel_name = str(body.get('current_channel_name') or '').strip()[:160]
     if not device_id or not device_secret:
         return web.json_response({'ok':False,'error':'device_required'}, status=400)
     raw = await get_setting(f'tv_device:{device_id}', '')
@@ -851,6 +853,11 @@ async def api_tv_device_auth(request):
     if device_name: data['device_name'] = device_name
     if app_version: data['app_version'] = app_version
     if app_version_code: data['app_version_code'] = app_version_code
+    previous_channel = str(data.get('current_channel_id') or '')
+    if current_channel_id and current_channel_id != previous_channel:
+        data['channel_switches'] = int(data.get('channel_switches') or 0) + 1
+    data['current_channel_id'] = current_channel_id
+    data['current_channel_name'] = current_channel_name
     await set_setting(f'tv_device:{device_id}', json.dumps(data, separators=(',',':')))
     ts = now
     return web.json_response({
@@ -888,6 +895,9 @@ async def api_admin_tv_devices(request):
             'online': bool(last_seen and int(time.time()) - last_seen <= 10 * 60),
             'app_version': str(data.get('app_version') or '')[:40],
             'app_version_code': int(data.get('app_version_code') or 0),
+            'current_channel_id': str(data.get('current_channel_id') or '')[:120],
+            'current_channel_name': str(data.get('current_channel_name') or '')[:160],
+            'channel_switches': int(data.get('channel_switches') or 0),
             'stream_active': bool(active),
         })
     devices.sort(key=lambda x: x.get('last_seen') or x.get('paired_at') or 0, reverse=True)
