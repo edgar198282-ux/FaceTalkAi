@@ -129,7 +129,7 @@ _worker_control = {"refresh_requested_at": 0, "last_worker_snapshot": 0}
 
 _ad_probe_cache = {}
 _ad_last_state = {}
-_ad_scan_stats = {"probes": 0, "errors": 0, "last_probe": 0, "last_channel_id": ""}
+_ad_scan_stats = {"probes": 0, "errors": 0, "last_probe": 0, "last_channel_id": "", "tag_counts": {}}
 _compact_response_cache = {"key": None, "body": b"", "expires_at": 0.0}
 
 def _record_ad_transition(item: dict, active: bool, marker: str):
@@ -233,6 +233,14 @@ async def _free_channel_ad_state(item: dict) -> dict:
                         break
                 if media_url:
                     text = await fetch_manifest(media_url)
+            upper_manifest = text.upper()
+            observed = []
+            for tag in ("#EXT-X-CUE-OUT", "#EXT-X-CUE-IN", "#EXT-X-DATERANGE", "SCTE35-OUT", "SCTE35-IN", "SCTE35-CMD", "#EXT-X-INTERSTITIAL"):
+                if tag in upper_manifest:
+                    observed.append(tag)
+                    counts = _ad_scan_stats.setdefault("tag_counts", {})
+                    counts[tag] = int(counts.get(tag) or 0) + 1
+            result["observed_tags"] = observed
             active, marker = _detect_hls_ad_break(text)
             result.update({"active": bool(active), "marker": marker})
             _record_ad_transition(item, bool(active), marker)
