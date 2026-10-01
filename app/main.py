@@ -140,9 +140,15 @@ def language_keyboard():
     ])
 
 TEXTS={
- 'hy':('📺 Abaj TV','700+ ալիքներ։ Գինը՝ ընդամենը 1 USDT ամսական։ Նվազագույն վճարումը՝ 12 ամիս = 12 USDT։ Աշխատում է ցանկացած Android TV-ում։\n\nՎճարում՝ USDT TRC20\nTG9ZpZAax6uSoWi62CZMKuqE3N9yTD8rJ2\n\nՎճարումից հետո սեղմեք «✅ Վճարել եմ»։ Ադմինիստրատորը կստուգի վճարումը և կսեղմի «Ստացել եմ», դրանից հետո ալիքները կբացվեն։ Մինչ հաստատումը ալիքների ցանկը դատարկ կլինի։'),
- 'ru':('📺 Abaj TV','Более 700 каналов. Цена — всего 1 USDT в месяц. Минимальная оплата — 12 месяцев = 12 USDT. Работает на любом Android TV.\n\nОплата: USDT TRC20\nTG9ZpZAax6uSoWi62CZMKuqE3N9yTD8rJ2\n\nПосле оплаты нажмите «✅ Оплатил». Администратор проверит перевод и нажмёт «Получил», после этого каналы откроются. До подтверждения список каналов будет пустым.'),
- 'en':('📺 Abaj TV','700+ channels. Price: only 1 USDT per month. Minimum payment: 12 months = 12 USDT. Works on any Android TV.\n\nPayment: USDT TRC20\nTG9ZpZAax6uSoWi62CZMKuqE3N9yTD8rJ2\n\nAfter payment, tap “✅ Paid”. The administrator will verify the transfer and confirm receipt, then the channels will unlock. Until approval, the channel list stays empty.'),
+ 'hy':('📺 Abaj TV','700+ ալիքներ։ Գինը՝ ընդամենը 1 USDT ամսական։ Նվազագույն վճարումը՝ 12 ամիս = 12 USDT։ Աշխատում է ցանկացած Android TV-ում։\n\nՎճարումից հետո սեղմեք «✅ Վճարել եմ»։ Ադմինիստրատորը կստուգի վճարումը և կսեղմի «Ստացել եմ», դրանից հետո ալիքները կբացվեն։ Մինչ հաստատումը ալիքների ցանկը դատարկ կլինի։'),
+ 'ru':('📺 Abaj TV','Более 700 каналов. Цена — всего 1 USDT в месяц. Минимальная оплата — 12 месяцев = 12 USDT. Работает на любом Android TV.\n\nПосле оплаты нажмите «✅ Оплатил». Администратор проверит перевод и нажмёт «Получил», после этого каналы откроются. До подтверждения список каналов будет пустым.'),
+ 'en':('📺 Abaj TV','700+ channels. Price: only 1 USDT per month. Minimum payment: 12 months = 12 USDT. Works on any Android TV.\n\nAfter payment, tap “✅ Paid”. The administrator will verify the transfer and confirm receipt, then the channels will unlock. Until approval, the channel list stays empty.'),
+}
+
+PAYMENT_TEXT={
+ 'hy':'💳 <b>Վճարում՝ USDT TRC20</b>\n\n<code>TG9ZpZAax6uSoWi62CZMKuqE3N9yTD8rJ2</code>',
+ 'ru':'💳 <b>Оплата: USDT TRC20</b>\n\n<code>TG9ZpZAax6uSoWi62CZMKuqE3N9yTD8rJ2</code>',
+ 'en':'💳 <b>Payment: USDT TRC20</b>\n\n<code>TG9ZpZAax6uSoWi62CZMKuqE3N9yTD8rJ2</code>',
 }
 
 PAY_BUTTON={
@@ -263,13 +269,16 @@ async def language_handler(q: CallbackQuery):
     await set_user_language(q.from_user.id, lang)
     await q.answer()
     title,body=TEXTS[lang]
-    sent = await q.message.answer(
-        f'{title}\n\n{body}',
+    sent = await q.message.answer(f'{title}\n\n{body}')
+    await _track_message(sent.chat.id, sent.message_id)
+    payment = await q.message.answer(
+        PAYMENT_TEXT[lang],
+        parse_mode='HTML',
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(text=PAY_BUTTON[lang], callback_data='payment:paid')
         ]])
     )
-    await _track_message(sent.chat.id, sent.message_id)
+    await _track_message(payment.chat.id, payment.message_id)
     menu = await q.message.answer(
         {'hy':'Ընտրեք գործողությունը ստորև։','ru':'Выберите действие внизу.','en':'Choose an action below.'}[lang],
         reply_markup=miniapp_keyboard(q.from_user.id, lang)
