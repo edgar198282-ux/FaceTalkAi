@@ -9,7 +9,7 @@ from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
-from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
+from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
 
 from .config import TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_TOKEN_SOURCE, MINIAPP_URL, DATA_DIR, DB_PATH, EXPECTED_BOT_USERNAME
 from .db import init_db, set_user_language, get_user_language, get_setting, set_setting
@@ -21,6 +21,47 @@ BUILD_VERSION = 'abaj-tv-v1'
 
 bot = None
 dp = Dispatcher()
+
+async def _track_message(chat_id: int, message_id: int):
+    if not bot:
+        return
+    key = f'chat_recent_messages:{int(chat_id)}'
+    raw = await get_setting(key, '[]')
+    try:
+        ids = [int(x) for x in json.loads(raw or '[]') if int(x) > 0]
+    except Exception:
+        ids = []
+    if message_id not in ids:
+        ids.append(int(message_id))
+    stale = ids[:-3]
+    ids = ids[-3:]
+    await set_setting(key, json.dumps(ids, separators=(',', ':')))
+    for old_id in stale:
+        try:
+            await bot.delete_message(chat_id=chat_id, message_id=old_id)
+        except Exception:
+            pass
+
+async def _track_incoming(m: Message):
+    if m.chat:
+        await _track_message(m.chat.id, m.message_id)
+
+async def _answer(m: Message, *args, **kwargs):
+    sent = await m.answer(*args, **kwargs)
+    await _track_message(sent.chat.id, sent.message_id)
+    return sent
+
+async def _answer_photo(m: Message, *args, **kwargs):
+    sent = await m.answer_photo(*args, **kwargs)
+    await _track_message(sent.chat.id, sent.message_id)
+    return sent
+
+async def _hide_reply_keyboard(m: Message):
+    try:
+        sent = await m.answer('·', reply_markup=ReplyKeyboardRemove())
+        await bot.delete_message(chat_id=sent.chat.id, message_id=sent.message_id)
+    except Exception:
+        pass
 
 def _apk_download_url():
     if not MINIAPP_URL:
@@ -132,21 +173,17 @@ def _telegram_lang(user) -> str:
     return 'ru'
 
 async def send_language_picker(m: Message):
-    lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
-    caption = {
-        'hy':'📺 Abaj TV\n\nՀայկական և ռուսական հեռուստաալիքներ',
-        'ru':'📺 Abaj TV\n\nАрмянские и российские телеканалы',
-        'en':'📺 Abaj TV\n\nArmenian and Russian TV channels'
-    }.get(lang, '📺 Abaj TV')
+    await _hide_reply_keyboard(m)
+    caption = '🌐 Ընտրեք լեզուն / Выберите язык / Choose language'
     logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'media', 'abaj_tv_logo.jpg')
-    keyboard = start_keyboard(m.from_user.id if m.from_user else None, lang)
+    keyboard = language_keyboard()
     try:
         if os.path.exists(logo_path):
-            await m.answer_photo(FSInputFile(logo_path), caption=caption, reply_markup=keyboard)
+            await _answer_photo(m, FSInputFile(logo_path), caption=caption, reply_markup=keyboard)
             return
     except Exception as exc:
         logging.warning("Abaj TV start photo failed, fallback to text: %r", exc)
-    await m.answer(caption, reply_markup=keyboard)
+    await _answer(m, caption, reply_markup=keyboard)
 
 async def _confirm_tv_pair_code(m: Message, code: str, lang: str) -> bool:
     code = str(code or '').strip()
@@ -162,16 +199,17 @@ async def _confirm_tv_pair_code(m: Message, code: str, lang: str) -> bool:
         data['user_id'] = int(m.from_user.id)
         data['paired_at'] = now
         await set_setting(f'tv_pair:{code}', json.dumps(data, separators=(',',':')))
-        await m.answer({'hy':'✅ Հեռուստացույցը միացված է Abaj TV-ին։','ru':'✅ Телевизор подключён к вашему Abaj TV.','en':'✅ TV connected to your Abaj TV account.'}.get(lang,'✅ Телевизор подключён к вашему Abaj TV.'))
+        await _answer(m, {'hy':'✅ Հեռուստացույցը միացված է Abaj TV-ին։','ru':'✅ Телевизор подключён к вашему Abaj TV.','en':'✅ TV connected to your Abaj TV account.'}.get(lang,'✅ Телевизор подключён к вашему Abaj TV.'))
         logging.info('Abaj TV TV pairing confirmed: code=%s user_id=%s device_id=%s', code, m.from_user.id, data.get('device_id'))
         return True
-    await m.answer({'hy':'Կոդը ժամկետանց է կամ անվավեր։ Ստացեք նոր կոդ հեռուստացույցում։','ru':'Код истёк или недействителен. Получите новый код на телевизоре.','en':'The code expired or is invalid. Get a new code on the TV.'}.get(lang,'Код истёк или недействителен.'))
+    await _answer(m, {'hy':'Կոդը ժամկետանց է կամ անվավեր։ Ստացեք նոր կոդ հեռուստացույցում։','ru':'Код истёк или недействителен. Получите новый код на телевизоре.','en':'The code expired or is invalid. Get a new code on the TV.'}.get(lang,'Код истёк или недействителен.'))
     logging.warning('Abaj TV TV pairing rejected: code=%s user_id=%s', code, m.from_user.id)
     return True
 
 
 @dp.message(CommandStart())
 async def start_handler(m: Message):
+    await _track_incoming(m)
     lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
     payload = ''
     if m.text:
@@ -181,7 +219,8 @@ async def start_handler(m: Message):
     if payload == 'app_login' and MINIAPP_URL:
         init_data = _telegram_init_data_for_user(m.from_user)
         complete = MINIAPP_URL.rstrip('/') + '/api/app-auth/complete?' + urlencode({'init_data': init_data})
-        await m.answer(
+        await _answer(
+            m,
             APP_LOGIN_TEXT.get(lang, APP_LOGIN_TEXT['ru']),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
                 InlineKeyboardButton(text=APP_LOGIN_BUTTON.get(lang, APP_LOGIN_BUTTON['ru']), url=complete)
@@ -198,13 +237,11 @@ async def start_handler(m: Message):
         await send_language_picker(m)
     except Exception as exc:
         logging.exception("Abaj TV /start failed: %r", exc)
-        await m.answer(
-            '📺 Abaj TV',
-            reply_markup=start_keyboard(m.from_user.id if m.from_user else None, lang)
-        )
+        await _answer(m, '🌐 Ընտրեք լեզուն / Выберите язык / Choose language', reply_markup=language_keyboard())
 
-@dp.message(F.text)
+@dp.message(F.text.regexp(r'^\d{6}$'))
 async def tv_pair_code_handler(m: Message):
+    await _track_incoming(m)
     if not m.from_user or not m.text:
         return
     code = m.text.strip()
@@ -220,22 +257,26 @@ async def language_handler(q: CallbackQuery):
     await set_user_language(q.from_user.id, lang)
     await q.answer()
     title,body=TEXTS[lang]
-    await q.message.answer(
+    sent = await q.message.answer(
         f'{title}\n\n{body}',
-        reply_markup=start_keyboard(q.from_user.id, lang)
+        reply_markup=miniapp_keyboard(q.from_user.id, lang)
     )
+    await _track_message(sent.chat.id, sent.message_id)
 
 @dp.message(F.text == '🌐 Հայերեն / Русский / English')
 async def change_language(m: Message):
+    await _track_incoming(m)
     await send_language_picker(m)
 
 @dp.message(F.text.in_({'⬇️ Ներբեռնել APK','⬇️ Скачать APK','⬇️ Download APK'}))
 async def download_apk(m: Message):
+    await _track_incoming(m)
     lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
     apk_url = _apk_download_url()
     if not apk_url:
         return
-    await m.answer(
+    await _answer(
+        m,
         {'hy':'⬇️ Ներբեռնեք Abaj TV APK-ը','ru':'⬇️ Скачайте APK Abaj TV','en':'⬇️ Download Abaj TV APK'}.get(lang, '⬇️ Скачайте APK Abaj TV'),
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(
@@ -247,15 +288,17 @@ async def download_apk(m: Message):
 
 @dp.message(F.text)
 async def text_handler(m: Message):
+    await _track_incoming(m)
     lang=await get_user_language(m.from_user.id if m.from_user else 0) or 'ru'
     msg={'hy':'Բացեք Abaj TV Mini App-ը 👇','ru':'Откройте Abaj TV Mini App 👇','en':'Open Abaj TV Mini App 👇'}[lang]
-    await m.answer(msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
+    await _answer(m, msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
 
 @dp.message()
 async def other_handler(m: Message):
+    await _track_incoming(m)
     lang=await get_user_language(m.from_user.id if m.from_user else 0) or 'ru'
     msg={'hy':'Abaj TV ալիքները բացվում են Mini App-ում 👇','ru':'Каналы Abaj TV открываются внутри Mini App 👇','en':'Abaj TV channels open inside the Mini App 👇'}[lang]
-    await m.answer(msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
+    await _answer(m, msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
 
 async def main():
     global bot
