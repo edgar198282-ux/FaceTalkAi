@@ -1586,19 +1586,36 @@ function handleTvChannelOk(){
     tvChannelOkTimer=null;
     tvChannelOkPendingId='';
     tvChannelOkLongTriggered=true;
-    const adding=!favs.has(id);
-    toggleFav(id);
-    showTvShortcut(adding?'★ Добавлено в избранное':'☆ Удалено из избранного');
+    const oldIndex=focusIndex;
+    if(modeFilter==='fav'){
+      if(favs.has(id)){
+        favs.delete(id);
+        localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));
+        syncDirtyFavorites=false;
+        syncFavoriteNow(id,false);
+      }
+      showTvShortcut('☆ Удалено из избранного');
+      render();
+      requestAnimationFrame(()=>{
+        const cards=[...document.querySelectorAll('.channel')];
+        if(cards.length)setTvFocus(Math.min(oldIndex,cards.length-1),false);
+        else setTvHeaderCollapsed(false,true);
+      });
+    }else{
+      const adding=!favs.has(id);
+      toggleFav(id);
+      showTvShortcut(adding?'★ Добавлено в избранное':'☆ Удалено из избранного');
+      requestAnimationFrame(()=>{
+        const same=[...document.querySelectorAll('.channel')].find(x=>x.dataset.id===id);
+        if(same){
+          const cards=[...document.querySelectorAll('.channel')];
+          const idx=cards.indexOf(same);
+          if(idx>=0)setTvFocus(idx,false);
+        }
+      });
+    }
     if(tvChannelOkResetTimer)clearTimeout(tvChannelOkResetTimer);
     tvChannelOkResetTimer=setTimeout(()=>{tvChannelOkLongTriggered=false},700);
-    requestAnimationFrame(()=>{
-      const same=[...document.querySelectorAll('.channel')].find(x=>x.dataset.id===id);
-      if(same){
-        const cards=[...document.querySelectorAll('.channel')];
-        const idx=cards.indexOf(same);
-        if(idx>=0)setTvFocus(idx,false);
-      }
-    });
     return;
   }
 
