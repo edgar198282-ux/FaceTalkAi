@@ -97,6 +97,11 @@ button{cursor:pointer}
   position:fixed;inset:0;background:#000;color:#fff;z-index:100;display:none;flex-direction:column
 }
 .playerView.open{display:flex}
+.playerView.appFullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;transform:none!important;z-index:1000!important;background:#000!important}
+.playerView.appFullscreen .playerTop,.playerView.appFullscreen .playerBottom{display:none!important}
+.playerView.appFullscreen .videoWrap{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;background:#000!important;padding:0!important}
+.playerView.appFullscreen video{width:100%!important;height:100%!important;object-fit:contain!important}
+body.playerFullscreenActive{overflow:hidden!important;background:#000!important}
 .playerTop{
   height:58px;display:flex;align-items:center;gap:12px;padding:0 12px;background:rgba(0,0,0,.86)
 }
@@ -2016,6 +2021,7 @@ function openPlayer(id){
     try{document.activeElement.blur()}catch(e){}
   }
   showTvZap(ch);
+  if(!nativeTv&&window.innerWidth>window.innerHeight)setAppFullscreen(true);
   startStream(ch);
   renderRail();
   if(nativeTv){
@@ -2377,6 +2383,9 @@ function closePlayer(){
   const playerView=document.getElementById('playerView');
   playerView.classList.remove('open');
   playerView.classList.remove('tvFullscreen');
+  playerView.classList.remove('appFullscreen');
+  document.body.classList.remove('playerFullscreenActive');
+  try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}
   toggleTvRail(false);
   current=null;currentIndex=-1;
   if(nativeTv&&closingId){
@@ -2426,18 +2435,30 @@ function playPrev(){
   currentIndex=(currentIndex-1+rows.length)%rows.length;
   openPlayer(rows[currentIndex].id);
 }
+function setAppFullscreen(on){
+  const player=document.getElementById('playerView');
+  if(!player)return;
+  player.classList.toggle('appFullscreen',!!on);
+  document.body.classList.toggle('playerFullscreenActive',!!on);
+}
 async function toggleFullscreen(){
   const player=document.getElementById('playerView');
-  if(nativeTv&&player){
+  if(!player)return;
+  if(nativeTv){
     player.classList.toggle('tvFullscreen');
     showTvShortcut(player.classList.contains('tvFullscreen')?'Полный экран':'Окно плеера');
     return;
   }
-  const v=document.getElementById('video');
+  const turningOn=!player.classList.contains('appFullscreen');
+  setAppFullscreen(turningOn);
+  if(!turningOn){
+    try{if(document.fullscreenElement)await document.exitFullscreen()}catch(e){}
+    return;
+  }
   try{
-    if(document.fullscreenElement){await document.exitFullscreen();return}
-    if(v.requestFullscreen){await v.requestFullscreen();return}
-    if(v.webkitEnterFullscreen){v.webkitEnterFullscreen();return}
+    if(player.requestFullscreen){await player.requestFullscreen();return}
+    const v=document.getElementById('video');
+    if(v&&v.webkitEnterFullscreen){v.webkitEnterFullscreen()}
   }catch(e){}
 }
 
@@ -2638,6 +2659,18 @@ ensureTvPairing();
 if(nativeTv){
   tvAuthRefreshTimer=setInterval(()=>refreshTvAuth(false),5*60*1000);
 }
+function syncPlayerFullscreenToOrientation(){
+  if(nativeTv)return;
+  const player=document.getElementById('playerView');
+  if(!player||!player.classList.contains('open'))return;
+  const landscape=window.innerWidth>window.innerHeight;
+  setAppFullscreen(landscape);
+}
+window.addEventListener('orientationchange',()=>setTimeout(syncPlayerFullscreenToOrientation,180),{passive:true});
+window.addEventListener('resize',()=>{
+  clearTimeout(window.__abajOrientationTimer);
+  window.__abajOrientationTimer=setTimeout(syncPlayerFullscreenToOrientation,120);
+},{passive:true});
 window.addEventListener('offline',handleOffline);
 window.addEventListener('online',()=>{handleOnline();flushPendingFavorites();loadSyncedState(true)});
 document.addEventListener('visibilitychange',handleVisibilityChange);
