@@ -158,6 +158,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
   .tvMode .channelRail{display:none}
 }
 .adminPanel{position:fixed;inset:0;background:rgba(3,27,62,.72);z-index:220;display:none;align-items:flex-end;justify-content:center;padding:12px}.adminPanel.open{display:flex}.adminCard{width:min(760px,100%);max-height:88vh;overflow:auto;background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}.adminHead{display:flex;align-items:center;justify-content:space-between;gap:10px}.adminTitle{font-size:22px;font-weight:800;color:#0d4d86}.adminClose{border:0;background:#d9efff;color:#0b5f9e;border-radius:12px;padding:10px 13px;font-weight:800}.adminForm{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin:14px 0}.adminForm input{height:44px;border:1px solid #aad7f2;border-radius:11px;padding:0 11px;background:white}.adminForm button{border:0;border-radius:11px;background:#087fe1;color:white;padding:0 14px;font-weight:800}.adminRows{display:grid;gap:8px}.adminRow{background:white;border:1px solid #cde7f7;border-radius:14px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.adminMeta{font-size:12px;color:#55758c;margin-top:4px}.limitBox{display:flex;gap:6px;align-items:center}.limitBox input{width:58px;height:36px;border:1px solid #b9dff5;border-radius:9px;padding:0 8px}.limitBox button{height:36px;border:0;border-radius:9px;background:#168de8;color:white;padding:0 10px}.adminEmpty{padding:18px;text-align:center;color:#66869a}@media(max-width:650px){.adminForm{grid-template-columns:1fr}.adminRow{grid-template-columns:1fr}.limitBox{justify-content:flex-start}}
+.settingsModal{position:fixed;inset:0;z-index:520;display:none;align-items:flex-end;justify-content:center;background:rgba(3,27,62,.72);padding:12px}.settingsModal.open{display:flex}.settingsCard{width:min(560px,100%);background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}.settingsTitle{font-size:22px;font-weight:900;color:#0d4d86;margin-bottom:14px}.settingsLabel{font-size:13px;color:#55758c;margin:10px 0 7px}.settingsLang{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.settingsLang button,.settingsAction{border:0;border-radius:12px;padding:12px 10px;background:#e2f2ff;color:#0b5f9e;font-weight:800}.settingsLang button.active{background:#087fe1;color:#fff}.settingsAction{width:100%;margin-top:10px;background:#087fe1;color:#fff}.settingsClose{width:100%;margin-top:9px;border:0;border-radius:12px;padding:11px;background:#d9efff;color:#0b5f9e;font-weight:800}
 .payBar{display:none;margin:10px 0 0;background:rgba(255,255,255,.94);border:1px solid #cbe7f8;border-radius:14px;padding:10px 12px;color:#174b6d;font-size:13px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.payBar.show{display:flex}.payBar b{font-size:14px}.payBar button{border:0;border-radius:10px;background:#1489e7;color:white;padding:9px 13px;font-weight:800}.payBar.pending{border-color:#f1d995;background:#fffaf0}.payBar.pending button{background:#c28a13}
 .nativeTv{overflow:hidden}.nativeTv .top{padding-top:22px}.nativeTv .title{font-size:34px}.nativeTv .sub{font-size:16px}.nativeTv .iconBtn{min-width:48px;min-height:48px}.nativeTv .toolbar{gap:14px}.nativeTv .search,.nativeTv .select{height:56px;font-size:20px}.nativeTv .chip,.nativeTv .cat{font-size:18px;padding:11px 18px}.nativeTv .status{font-size:15px}.nativeTv .channel{cursor:pointer}.nativeTv .playerTop{height:66px}.nativeTv .playerTitle{font-size:22px}.nativeTv .ctrl{font-size:17px;padding:13px 18px}.nativeTv .playerBottom{padding:14px 20px 20px}
 .tvPair{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:linear-gradient(180deg,#0b2b7a,#168de8);padding:28px}.tvPair.open{display:flex}.tvPairCard{width:min(900px,92vw);background:white;border-radius:28px;padding:30px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.35)}.tvPairTitle{font-size:34px;font-weight:900;color:#0d4d86}.tvPairText{font-size:20px;color:#517087;margin-top:10px}.tvPairCode{font-size:64px;font-weight:900;letter-spacing:10px;color:#0b2b7a;margin:20px 0}.tvPairQr{width:220px;height:220px;border-radius:16px;background:#fff}.tvPairHint{font-size:18px;color:#4f6e82;margin-top:14px}.tvPairOk{font-size:22px;color:#16865b;font-weight:800}.tvPairRetry{border:0;border-radius:14px;background:#168de8;color:white;padding:13px 20px;font-size:18px;font-weight:800;margin-top:16px}
@@ -243,11 +244,29 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
   </main>
 </div>
 
+<div class="settingsModal" id="settingsModal" onclick="if(event.target===this)closeSettings()">
+  <div class="settingsCard">
+    <div class="settingsTitle">⚙ Настройки</div>
+    <div class="settingsLabel">Язык приложения</div>
+    <div class="settingsLang">
+      <button data-settings-lang="ru" onclick="setSettingsLanguage('ru')">Русский</button>
+      <button data-settings-lang="hy" onclick="setSettingsLanguage('hy')">Հայերեն</button>
+      <button data-settings-lang="en" onclick="setSettingsLanguage('en')">English</button>
+    </div>
+    <button class="settingsAction" onclick="checkAppUpdate()">🔄 Проверить обновление</button>
+    <button class="settingsAction" onclick="downloadLatestApk()">📲 Скачать Abaj TV APK</button>
+    <button class="settingsClose" onclick="closeSettings()">Закрыть</button>
+  </div>
+</div>
+
 <div class="adminPanel" id="adminPanel" onclick="if(event.target===this)closeAdmin()">
   <div class="adminCard">
     <div class="adminHead">
       <div class="adminTitle">Edem · Управление</div>
-      <button class="adminClose" onclick="closeAdmin()">Закрыть</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="adminClose" onclick="openSettings()">⚙ Настройки</button>
+        <button class="adminClose" onclick="closeAdmin()">Закрыть</button>
+      </div>
     </div>
     <div class="adminForm">
       <input id="edemUid" inputmode="numeric" placeholder="Telegram ID пользователя">
@@ -602,6 +621,37 @@ async function checkAdmin(){
     if(d.is_admin)document.getElementById('adminBtn').style.display='';
   }catch(e){}
 }
+function currentSettingsLanguage(){
+  const v=(localStorage.getItem('facetalk_lang')||document.documentElement.lang||'ru').toLowerCase();
+  return v.startsWith('hy')?'hy':v.startsWith('en')?'en':'ru';
+}
+function paintSettingsLanguage(){
+  const lang=currentSettingsLanguage();
+  document.querySelectorAll('[data-settings-lang]').forEach(b=>b.classList.toggle('active',b.dataset.settingsLang===lang));
+}
+function openSettings(){
+  paintSettingsLanguage();
+  document.getElementById('settingsModal').classList.add('open');
+}
+function closeSettings(){document.getElementById('settingsModal').classList.remove('open')}
+function setSettingsLanguage(lang){
+  if(!['ru','hy','en'].includes(lang))return;
+  localStorage.setItem('facetalk_lang',lang);
+  document.documentElement.lang=lang;
+  paintSettingsLanguage();
+}
+function checkAppUpdate(){
+  if(/FaceTalkAI-Android|AbajTV|; wv\)/i.test(navigator.userAgent)){
+    location.href='facetalk://check-update';
+    return;
+  }
+  loadOtaInfo();
+  alert('Проверка обновления выполнена');
+}
+function downloadLatestApk(){
+  location.href='/downloads/AbajTV-latest.apk';
+}
+
 function openAdmin(){
   document.getElementById('adminPanel').classList.add('open');
   loadAdminEdem();
