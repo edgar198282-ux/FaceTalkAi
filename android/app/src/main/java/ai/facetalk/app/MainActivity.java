@@ -48,7 +48,7 @@ public class MainActivity extends Activity {
     private WebView webView; private ValueCallback<Uri[]> fileCallback; private PermissionRequest pendingWebPermission;
     private View customView; private WebChromeClient.CustomViewCallback customViewCallback;
     private FrameLayout fullscreenContainer;
-    private SharedPreferences prefs; private boolean telegramLaunchAttempted=false; private boolean isTv=false;
+    private SharedPreferences prefs; private boolean telegramLaunchAttempted=false; private boolean isTv=false; private long lastTvBackAt=0L;
     private long pendingApkDownloadId=-1L; private Uri pendingApkUri; private BroadcastReceiver downloadReceiver;
     private volatile boolean updateCheckRunning=false, updateDownloadRunning=false; private long lastUpdateCheckAt=0L;
     private final Handler updateHandler=new Handler(Looper.getMainLooper());
@@ -187,7 +187,7 @@ public class MainActivity extends Activity {
         super.onResume();
         enterTvImmersive();
         if(isTv&&webView!=null){
-            webView.evaluateJavascript("if(typeof resumeTvPlayback==='function')resumeTvPlayback()",null);
+            webView.evaluateJavascript("if(typeof resumeTvPlayback==='function')resumeTvPlayback();if(typeof load==='function'&&!document.getElementById('playerView')?.classList.contains('open'))load();if(typeof refreshTvAuth==='function')refreshTvAuth(true)",null);
         }
         if(pendingApkUri!=null&&(Build.VERSION.SDK_INT<Build.VERSION_CODES.O||getPackageManager().canRequestPackageInstalls())){
             Uri u=pendingApkUri;pendingApkUri=null;openPackageInstaller(u);
@@ -284,9 +284,17 @@ public class MainActivity extends Activity {
             webView.evaluateJavascript(
                 "(function(){try{return (typeof handleTvBack==='function')?handleTvBack():false}catch(e){return false}})()",
                 value->{
-                    if(!"true".equals(value)){
-                        if(webView.canGoBack())webView.goBack();else finish();
+                    if("true".equals(value)){
+                        lastTvBackAt=0L;
+                        return;
                     }
+                    long now=System.currentTimeMillis();
+                    if(now-lastTvBackAt<=1500L){
+                        finish();
+                        return;
+                    }
+                    lastTvBackAt=now;
+                    webView.evaluateJavascript("if(typeof showTvShortcut==='function')showTvShortcut('Нажмите Назад ещё раз для выхода')",null);
                 }
             );
             return;
