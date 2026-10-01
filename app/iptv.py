@@ -14,6 +14,12 @@ import aiohttp
 from aiohttp import web
 
 COUNTRY_CODES = {"AM", "RU", "GE", "UA", "BY", "KZ", "UZ", "MD"}
+ADULT_KEYWORDS = re.compile(r'(^|[^a-z0-9])(18\+|xxx|adult|erotic|erotica|porn|porno|playboy|penthouse|hustler|dorcel|brazzers|redlight)([^a-z0-9]|$)', re.I)
+
+def _is_adult_channel(row):
+    raw = ' '.join(str(row.get(k) or '') for k in ('name','group','tvg_id')).lower()
+    return bool(ADULT_KEYWORDS.search(raw))
+
 SOURCE_URLS = [
     ("HQ", "https://dearbulut.github.io/iptv/playlists/best.m3u"),
     ("AM", "https://iptv-org.github.io/iptv/countries/am.m3u"),
@@ -455,6 +461,8 @@ async def refresh_channels(force: bool = False):
                     else:
                         candidates.extend(_parse_m3u(text, country, url))
                 country_order = {code: i for i, code in enumerate(("AM","RU","GE","UA","BY","KZ","UZ","MD"))}
+                for item in candidates:
+                    item['adult'] = _is_adult_channel(item)
                 candidates.sort(key=lambda x: (
                     country_order.get(str(x.get("country") or "").upper(), 99),
                     0 if str(x.get("quality") or "").upper() in {"4K", "FHD"} else 1,

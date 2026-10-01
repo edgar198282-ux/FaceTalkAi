@@ -468,6 +468,7 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
         item['candidate_count'] = 1
         item['personal'] = True
         item['provider'] = 'Edem'
+        item['adult'] = bool(iptv._is_adult_channel(item))
         out.append(item)
     _edem_cache[uid] = {'url': playlist_url, 'ts': now, 'channels': out}
     return {'configured': True, 'channels': out, 'playlist_url': playlist_url, **sub}

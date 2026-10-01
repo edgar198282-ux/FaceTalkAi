@@ -1106,6 +1106,7 @@ function toggleTvHideBadSetting(){
 }
 function isAdultChannel(ch){
   if(!ch)return false;
+  if(ch.adult===true)return true;
   const raw=(' '+String(ch.group||'')+' '+String(ch.name||'')+' '+String(ch.tvg_id||'')+' ').toLowerCase();
   return /(^|[^a-z0-9])(18\+|xxx|adult|erotic|erotica|porn|porno|playboy|penthouse|hustler|dorcel|brazzers|redlight)([^a-z0-9]|$)/i.test(raw);
 }
@@ -1558,7 +1559,7 @@ function cacheChannels(){
       id:x.id,name:x.name,group:x.group,country:x.country,logo:x.logo,status:x.status,tvg_id:x.tvg_id,
       quality:x.quality,resolution:x.resolution,video_quality:x.video_quality,height:x.height,
       latency_ms:x.latency_ms,backup_count:x.backup_count,uptime_pct:x.uptime_pct,health_score:x.health_score,health_samples:x.health_samples,unreliable:!!x.unreliable,epg_now:x.epg_now,epg_next:x.epg_next,
-      personal:!!x.personal,provider:x.provider
+      personal:!!x.personal,provider:x.provider,adult:!!x.adult
     }));
     localStorage.setItem(CHANNEL_CACHE_KEY,JSON.stringify({ts:Date.now(),channels:slim}));
   }catch(e){}
