@@ -1372,7 +1372,8 @@ function tvTopRows(){
     return r.width>0&&r.height>0;
   });
   return [
-    visible('#search'),
+    visible('.titleRow .icons .iconBtn'),
+    visible('.toolbar > input, .toolbar > select'),
     visible('#sourceChips .chip'),
     visible('.chips:not(#sourceChips) .chip'),
     visible('#quickCats .cat')
