@@ -746,7 +746,7 @@ def public_state(compact: bool = False):
         "id", "name", "group", "country", "logo", "status", "tvg_id",
         "quality", "height",
         "latency_ms", "backup_count", "epg_now", "epg_next",
-        "uptime_pct", "health_score", "health_samples", "unreliable", "adult"
+        "unreliable", "adult"
     }
     for source in _state["channels"].values():
         row = dict(source)
@@ -755,6 +755,14 @@ def public_state(compact: bool = False):
         row["epg_next"] = nxt if nxt is not None else row.get("epg_next")
         if compact:
             row = {k: row.get(k) for k in compact_keys if k in row}
+            for epg_key in ("epg_now", "epg_next"):
+                epg = row.get(epg_key)
+                if isinstance(epg, dict):
+                    row[epg_key] = {
+                        "title": epg.get("title"),
+                        "start": epg.get("start"),
+                        "stop": epg.get("stop"),
+                    }
         rows.append(row)
     rows.sort(key=lambda x: (x["status"] != "ONLINE", x.get("country", ""), x.get("group", ""), x.get("name", "")))
     stats = dict(_state["stats"])
