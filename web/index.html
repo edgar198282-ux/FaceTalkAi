@@ -364,6 +364,7 @@ let tvNumberTimer=null;
 let tvRailIndex=0;
 let tvAutoResumeDone=false;
 let tvZapTimer=null;
+let tvPlayerUiTimer=null;
 let networkRetryTimer=null;
 let tvWasPlayingBeforePause=false;
 let tvWatchdogTimer=null;
@@ -924,6 +925,21 @@ function showTvShortcut(text){
   if(tvShortcutTimer)clearTimeout(tvShortcutTimer);
   tvShortcutTimer=setTimeout(()=>el.classList.remove('show'),1800);
 }
+function cleanTvLabel(v,fallback='LIVE'){
+  const t=String(v||'').trim();
+  return (!t||/^(undefined|null|none)$/i.test(t))?fallback:t;
+}
+function showTvPlayerUi(autoHide=true){
+  if(!nativeTv)return;
+  document.body.classList.remove('playerClean');
+  if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
+  if(autoHide){
+    tvPlayerUiTimer=setTimeout(()=>{
+      const p=document.getElementById('playerView');
+      if(p&&p.classList.contains('open')&&!tvRailOpen())document.body.classList.add('playerClean');
+    },4000);
+  }
+}
 function tvSetModeFilter(v){
   if(!nativeTv)return;
   modeFilter=v;
@@ -1130,7 +1146,7 @@ function render(){
         '<div class="logoWrap">'+logo+'</div>'+
         '<div class="info">'+
           '<div class="name">'+esc(ch.name)+'</div>'+
-          '<div class="now">'+esc((ch.epg_now&&ch.epg_now.title)||ch.group||'Live')+'</div>'+
+          '<div class="now">'+esc(cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'LIVE'))+'</div>'+
           '<div class="progress"><span style="width:'+epgProgress(ch.epg_now)+'%"></span></div>'+
           '<div class="times"><span>'+(ch.epg_now?fmtClock(ch.epg_now.start):'LIVE')+'</span><span>'+(ch.epg_now?fmtClock(ch.epg_now.stop):Math.max(1,Math.round((ch.latency_ms||0)/1000))+'s')+'</span></div>'+
           (ch.epg_next?'<div class="next">Далее: '+esc(ch.epg_next.title)+'</div>':'')+
@@ -1262,7 +1278,7 @@ function showTvZap(ch){
   const no=Math.max(1,rows.findIndex(x=>x.id===ch.id)+1);
   document.getElementById('tvZapNo').textContent=String(no);
   document.getElementById('tvZapName').textContent=ch.name||'Канал';
-  document.getElementById('tvZapNow').textContent=(ch.epg_now&&ch.epg_now.title)||ch.group||'LIVE';
+  document.getElementById('tvZapNow').textContent=cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'LIVE');
   document.getElementById('tvZapNext').textContent=ch.epg_next?('Далее: '+ch.epg_next.title):'';
   document.getElementById('tvZapFav').textContent=favs.has(ch.id)?'★':'☆';
   const z=document.getElementById('tvZap');
@@ -1331,11 +1347,11 @@ function openPlayer(id){
   document.getElementById('playerTitle').textContent=ch.name;
   document.getElementById('playerName').textContent=ch.name;
   document.getElementById('playerGroup').textContent=
-    (ch.country==='AM'?'Армения':'Россия')+' · '+((ch.epg_now&&ch.epg_now.title)||ch.group||'Live');
+    (ch.country==='AM'?'Армения':'Россия')+' · '+cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'LIVE');
   document.getElementById('playerError').textContent='';
   const playerView=document.getElementById('playerView');
   playerView.classList.add('open');
-  if(nativeTv)playerView.classList.add('tvFullscreen');
+  if(nativeTv){playerView.classList.add('tvFullscreen');showTvPlayerUi(true)}
   showTvZap(ch);
   startStream(ch);
   renderRail();
@@ -1548,6 +1564,8 @@ function openTvRailFocused(){
   if(ch){toggleTvRail(false);openPlayer(ch.id)}
 }
 function closePlayer(){
+  if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
+  document.body.classList.remove('playerClean');
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   stopTvWatchdog();
   if(hls){hls.destroy();hls=null}
@@ -1573,7 +1591,11 @@ function tvToggleFavoriteCurrent(){
 }
 function tvTogglePlayerUi(){
   if(!nativeTv)return;
-  document.body.classList.toggle('playerClean');
+  if(document.body.classList.contains('playerClean'))showTvPlayerUi(true);
+  else{
+    document.body.classList.add('playerClean');
+    if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
+  }
 }
 function playNext(){
   const rows=filteredNow.length?filteredNow:channels;
@@ -1661,6 +1683,7 @@ document.addEventListener('keydown',e=>{
     if(e.key==='Enter'){
       e.preventDefault();
       if(nativeTv&&tvRailOpen()){openTvRailFocused();return}
+      if(nativeTv){tvTogglePlayerUi();return}
       const v=document.getElementById('video');
       if(v.paused)v.play().catch(()=>{});else v.pause();
       return;
