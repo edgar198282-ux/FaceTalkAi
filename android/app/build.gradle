@@ -5,7 +5,8 @@ plugins {
 def webUrl = providers.gradleProperty('WEB_APP_URL').orElse('https://facetalkai-production.up.railway.app').get()
 def vCode = providers.gradleProperty('APP_VERSION_CODE').orElse('1').get().toInteger()
 def vName = providers.gradleProperty('APP_VERSION_NAME').orElse('1.0.0').get()
-def appId = providers.gradleProperty('APP_ID').orElse('ai.facetalk.app').get()
+def playStoreBuild = providers.gradleProperty('PLAY_STORE_BUILD').orElse('false').get().toBoolean()
+def appId = providers.gradleProperty('APP_ID').orElse(playStoreBuild ? 'ai.abaj.tv' : 'ai.facetalk.app').get()
 
 android {
     namespace 'ai.facetalk.app'
@@ -18,6 +19,7 @@ android {
         versionCode vCode
         versionName vName
         buildConfigField 'String', 'WEB_APP_URL', '"' + webUrl + '"'
+        buildConfigField 'boolean', 'PLAY_STORE_BUILD', playStoreBuild.toString()
     }
 
     signingConfigs {
@@ -37,6 +39,12 @@ android {
             minifyEnabled false
             shrinkResources false
             signingConfig signingConfigs.release
+        }
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile(playStoreBuild ? 'src/play/AndroidManifest.xml' : 'src/main/AndroidManifest.xml')
         }
     }
 

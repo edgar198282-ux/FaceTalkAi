@@ -1,0 +1,98 @@
+name: Build Abaj TV Play Store AAB
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "android/**"
+      - ".github/workflows/build-play-store-aab.yml"
+
+concurrency:
+  group: abajtv-play-store
+  cancel-in-progress: true
+
+jobs:
+  build-play-aab:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Gradle 8.10.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -o /tmp/gradle.zip
+          sudo unzip -q /tmp/gradle.zip -d /opt/gradle
+          echo "/opt/gradle/gradle-8.10.2/bin" >> "$GITHUB_PATH"
+
+      - name: Validate Play Store manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          M=android/app/src/play/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' "$M"
+          grep -q 'android.software.leanback" android:required="true' "$M"
+          ! grep -q 'REQUEST_INSTALL_PACKAGES' "$M"
+          ! grep -q 'android.permission.CAMERA' "$M"
+          ! grep -q 'android.permission.RECORD_AUDIO' "$M"
+
+      - name: Prepare branding and signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp web/abaj_tv_logo.jpg android/app/src/main/res/drawable/abaj_tv_logo.jpg
+          base64 -d android/facetalk-upload-key.jks.b64 > android/facetalk-upload-key.jks
+          test -s android/facetalk-upload-key.jks
+          keytool -list -keystore android/facetalk-upload-key.jks -storepass FaceTalk2026 -alias facetalk >/dev/null
+
+      - name: Build signed Play Store AAB
+        working-directory: android
+        env:
+          FACETALK_WEB_APP_URL: ${{ vars.FACETALK_WEB_APP_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
+          VERSION_CODE=$((100000 + ${{ github.run_number }}))
+          VERSION_NAME="1.0.${{ github.run_number }}"
+          gradle :app:bundleRelease \
+            -PPLAY_STORE_BUILD=true \
+            -PAPP_ID="ai.abaj.tv" \
+            -PWEB_APP_URL="$WEB_APP_URL" \
+            -PAPP_VERSION_NAME="$VERSION_NAME" \
+            -PAPP_VERSION_CODE="$VERSION_CODE"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+
+      - name: Verify AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAB="android/app/build/outputs/bundle/release/app-release.aab"
+          test -s "$AAB"
+          test "$(stat -c%s "$AAB")" -ge 250000
+          unzip -t "$AAB" >/dev/null
+          unzip -l "$AAB" | grep -q 'base/manifest/AndroidManifest.xml'
+          mkdir -p dist
+          cp "$AAB" "dist/AbajTV-Play-${VERSION_NAME}.aab"
+          sha256sum "dist/AbajTV-Play-${VERSION_NAME}.aab" > dist/AbajTV-Play-SHA256.txt
+          ls -lh dist/*
+
+      - name: Upload Play Store bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: AbajTV-Play-${{ env.VERSION_NAME }}
+          path: |
+            dist/AbajTV-Play-${{ env.VERSION_NAME }}.aab
+            dist/AbajTV-Play-SHA256.txt
+          if-no-files-found: error
+          retention-days: 30
