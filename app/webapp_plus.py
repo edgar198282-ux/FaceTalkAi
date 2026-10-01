@@ -1033,6 +1033,9 @@ async def api_tv_pair_qr(request):
     )
 
 
+_tv_pair_lock = asyncio.Lock()
+
+
 async def api_tv_pair_status(request):
     code = str(request.query.get('code') or '').strip()
     device_id = str(request.query.get('device_id') or request.headers.get('X-Abaj-Device-Id') or '').strip()[:120]
@@ -1054,19 +1057,20 @@ async def api_tv_pair_status(request):
     if uid <= 0:
         return web.json_response({'ok':True,'paired':False,'expires_at':int(data.get('expires_at') or 0)}, headers={'Cache-Control':'no-store'})
 
-    if not (ADMIN_ID and uid == int(ADMIN_ID)):
-        device_count, already_registered = await _tv_device_usage(uid, device_id)
-        if not already_registered and device_count >= 3:
-            return web.json_response({
-                'ok':False,'paired':False,'error':'device_limit','limit':3,'active':device_count
-            }, status=409, headers={'Cache-Control':'no-store'})
+    async with _tv_pair_lock:
+        if not (ADMIN_ID and uid == int(ADMIN_ID)):
+            device_count, already_registered = await _tv_device_usage(uid, device_id)
+            if not already_registered and device_count >= 3:
+                return web.json_response({
+                    'ok':False,'paired':False,'error':'device_limit','limit':3,'active':device_count
+                }, status=409, headers={'Cache-Control':'no-store'})
 
-    await set_setting(f'tv_device:{device_id}', json.dumps({
-        'secret':device_secret,'user_id':uid,'device_name':str(data.get('device_name') or '')[:120],
-        'app_version':str(data.get('app_version') or '')[:40],
-        'app_version_code':int(data.get('app_version_code') or 0),
-        'paired_at':int(time.time()),'last_seen':int(time.time())
-    }, separators=(',',':')))
+        await set_setting(f'tv_device:{device_id}', json.dumps({
+            'secret':device_secret,'user_id':uid,'device_name':str(data.get('device_name') or '')[:120],
+            'app_version':str(data.get('app_version') or '')[:40],
+            'app_version_code':int(data.get('app_version_code') or 0),
+            'paired_at':int(time.time()),'last_seen':int(time.time())
+        }, separators=(',',':')))
     ts = int(time.time())
     return web.json_response({
         'ok':True,'paired':True,'user_id':uid,
