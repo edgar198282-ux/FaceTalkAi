@@ -1269,12 +1269,12 @@ function startTvWatchdog(ch){
       tvWatchdogStalls=0;
       const err=document.getElementById('playerError');
       if(err)err.textContent='Поток завис. Переподключаю…';
-      startStream(ch);
+      startStream(ch,true);
     }
   },4000);
 }
 
-function startStream(ch){
+function startStream(ch,preferBackup=false){
   stopTvWatchdog();
   const v=document.getElementById('video');
   const err=document.getElementById('playerError');
@@ -1283,7 +1283,7 @@ function startStream(ch){
   v.pause();v.removeAttribute('src');v.load();
   const basePath=ch.personal?'/api/iptv/edem/play':'/api/iptv/play';
   const auth=ch.personal?authHeaders():{};
-  const src=basePath+'?id='+encodeURIComponent(ch.id)+'&t='+Date.now();
+  const src=basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+'&t='+Date.now();
   resetQualityMenu();
 
   if(window.Hls&&Hls.isSupported()){
@@ -1335,7 +1335,7 @@ function startStream(ch){
         return;
       }
 
-      scheduleReconnect(ch);
+      scheduleReconnect(ch,true);
     });
   }else{
     if(ch.personal){
@@ -1351,7 +1351,7 @@ function startStream(ch){
   }
 }
 
-function scheduleReconnect(ch){
+function scheduleReconnect(ch,preferBackup=false){
   const err=document.getElementById('playerError');
   if(reconnectTimer)return;
   if(streamRetries>=5){
@@ -1362,7 +1362,7 @@ function scheduleReconnect(ch){
   err.textContent='Автопереподключение через 2 сек…';
   reconnectTimer=setTimeout(()=>{
     reconnectTimer=null;
-    if(current&&current.id===ch.id)startStream(ch);
+    if(current&&current.id===ch.id)startStream(ch,preferBackup);
   },2000);
 }
 

@@ -454,7 +454,7 @@ def public_state():
         rows.append(row)
     rows.sort(key=lambda x: (x["status"] != "ONLINE", x.get("country", ""), x.get("group", ""), x.get("name", "")))
     stats = dict(_state["stats"])
-    stats["epg_channels"] = len(_state["epg"])
+    stats["epg_channels"] = len(_state["epg"]) if _state["epg"] else int(stats.get("epg_channels") or 0)
     return {
         "ok": not bool(_state["error"]),
         "running": _state["running"],
@@ -544,8 +544,10 @@ async def api_worker_snapshot(request):
     _state["channels"] = channels
     _state["last_refresh"] = int(state.get("last_refresh") or time.time())
     _state["stats"] = dict(state.get("stats") or {})
+    _state["epg_last_refresh"] = int(state.get("epg_last_refresh") or 0)
+    _state["epg_error"] = str(state.get("epg_error") or "")[:300]
     _state["error"] = str(state.get("error") or "")[:300]
-    return web.json_response({"ok": True, "channels": len(channels), "last_refresh": _state["last_refresh"]})
+    return web.json_response({"ok": True, "channels": len(channels), "last_refresh": _state["last_refresh"], "epg_last_refresh": _state["epg_last_refresh"]})
 
 
 async def api_channels(request):
@@ -569,9 +571,12 @@ async def api_play(request):
         raise web.HTTPNotFound(text="Channel unavailable")
 
     urls = []
-    for url in [item.get("url"), *(item.get("backups") or [])]:
+    original_primary = item.get("url") or ""
+    for url in [original_primary, *(item.get("backups") or [])]:
         if url and url not in urls:
             urls.append(url)
+    if request.query.get("failover") == "1" and len(urls) > 1:
+        urls = urls[1:] + urls[:1]
 
     timeout = aiohttp.ClientTimeout(total=15, connect=6, sock_read=8)
     last_error = ""
@@ -592,8 +597,8 @@ async def api_play(request):
                             last_error = "invalid HLS manifest"
                             continue
 
-                        if idx > 0:
-                            old_primary = item.get("url")
+                        if url != original_primary:
+                            old_primary = original_primary
                             item["url"] = url
                             item["backups"] = [x for x in urls if x != url]
                             item["backup_count"] = len(item["backups"])
@@ -606,14 +611,14 @@ async def api_play(request):
                             content_type="application/vnd.apple.mpegurl",
                             headers={
                                 "Cache-Control": "no-store",
-                                "X-IPTV-Source": "backup" if idx > 0 else "primary",
+                                "X-IPTV-Source": "backup" if url != original_primary else "primary",
                                 "X-IPTV-Backups": str(len(item.get("backups") or [])),
                             },
                         )
 
                     if ctype.startswith(("video/", "audio/")) or "octet-stream" in ctype:
-                        if idx > 0:
-                            old_primary = item.get("url")
+                        if url != original_primary:
+                            old_primary = original_primary
                             item["url"] = url
                             item["backups"] = [x for x in urls if x != url]
                             item["backup_count"] = len(item["backups"])
