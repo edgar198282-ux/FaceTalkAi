@@ -25,8 +25,9 @@
 - [x] Android TV screenshot 1280x720
 - [x] Submission package assembled locally
 - [x] Separate private Play upload key generated locally outside the repository
-- [ ] Add private Play upload key to GitHub Actions secrets without exposing it
-- [ ] Rebuild final AAB with the private Play upload key
+- [x] Private Play upload key added to GitHub Actions secrets without exposing it
+- [x] Final AAB rebuilt with the private Play upload key
+- [x] Final AAB SHA256 verified and JAR signature verified
 - [ ] Create/confirm Google Play Console app entry
 - [ ] Add developer support email in Play Console
 - [ ] Enter App access instructions in Play Console
