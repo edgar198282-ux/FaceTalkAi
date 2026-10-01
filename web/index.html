@@ -248,7 +248,6 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
         <img class="brandLogo" src="/static/abaj_tv_logo.svg" alt="Abaj TV" onerror="this.onerror=null;this.src='/static/abaj_tv_logo.jpg'">
         <div class="titleBlock">
           <div class="title">ABAJ TV</div>
-          <div class="sub">Армения + Россия</div>
         </div>
       </div>
       <div class="icons">
@@ -265,6 +264,16 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
       <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
       <button class="chip flagOnly" data-filter="AM" onclick="setModeFilter(this,'AM')" title="Армения" aria-label="Армения">🇦🇲</button>
       <button class="chip flagOnly" data-filter="RU" onclick="setModeFilter(this,'RU')" title="Россия" aria-label="Россия">🇷🇺</button>
+      <button class="chip flagOnly" data-filter="GE" onclick="setModeFilter(this,'GE')" title="Грузия" aria-label="Грузия">🇬🇪</button>
+      <button class="chip flagOnly" data-filter="UA" onclick="setModeFilter(this,'UA')" title="Украина" aria-label="Украина">🇺🇦</button>
+      <button class="chip flagOnly" data-filter="BY" onclick="setModeFilter(this,'BY')" title="Беларусь" aria-label="Беларусь">🇧🇾</button>
+      <button class="chip flagOnly" data-filter="KZ" onclick="setModeFilter(this,'KZ')" title="Казахстан" aria-label="Казахстан">🇰🇿</button>
+      <button class="chip flagOnly" data-filter="UZ" onclick="setModeFilter(this,'UZ')" title="Узбекистан" aria-label="Узбекистан">🇺🇿</button>
+      <button class="chip flagOnly" data-filter="AZ" onclick="setModeFilter(this,'AZ')" title="Азербайджан" aria-label="Азербайджан">🇦🇿</button>
+      <button class="chip flagOnly" data-filter="KG" onclick="setModeFilter(this,'KG')" title="Кыргызстан" aria-label="Кыргызстан">🇰🇬</button>
+      <button class="chip flagOnly" data-filter="MD" onclick="setModeFilter(this,'MD')" title="Молдова" aria-label="Молдова">🇲🇩</button>
+      <button class="chip flagOnly" data-filter="TJ" onclick="setModeFilter(this,'TJ')" title="Таджикистан" aria-label="Таджикистан">🇹🇯</button>
+      <button class="chip flagOnly" data-filter="TR" onclick="setModeFilter(this,'TR')" title="Турция" aria-label="Турция">🇹🇷</button>
       <button class="chip" data-filter="HD" onclick="setModeFilter(this,'HD')">HD</button>
       <button class="chip" data-filter="4K" onclick="setModeFilter(this,'4K')">4K</button>
       <button class="chip" data-filter="fav" onclick="setModeFilter(this,'fav')">♡ FAVORITES</button>
@@ -409,7 +418,14 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
 let channels=[];
 let sourceFilter='all';
 try{localStorage.removeItem('abaj_tv_source_filter')}catch(e){}
+const COUNTRY_META={
+  AM:{flag:'🇦🇲',name:'Армения'},RU:{flag:'🇷🇺',name:'Россия'},GE:{flag:'🇬🇪',name:'Грузия'},UA:{flag:'🇺🇦',name:'Украина'},
+  BY:{flag:'🇧🇾',name:'Беларусь'},KZ:{flag:'🇰🇿',name:'Казахстан'},UZ:{flag:'🇺🇿',name:'Узбекистан'},AZ:{flag:'🇦🇿',name:'Азербайджан'},
+  KG:{flag:'🇰🇬',name:'Кыргызстан'},MD:{flag:'🇲🇩',name:'Молдова'},TJ:{flag:'🇹🇯',name:'Таджикистан'},TR:{flag:'🇹🇷',name:'Турция'}
+};
+const COUNTRY_FILTERS=new Set(Object.keys(COUNTRY_META));
 let modeFilter=localStorage.getItem('abaj_tv_filter')||'all';
+if(modeFilter!=='all'&&!COUNTRY_FILTERS.has(modeFilter)&&!['HD','4K','fav','recent'].includes(modeFilter))modeFilter='all';
 let activeCategory=localStorage.getItem('abaj_tv_category')||'';
 const launchParams=new URLSearchParams(location.search);
 const nativeTv=launchParams.get('tv')==='1'||launchParams.get('source')==='android_tv';
@@ -710,7 +726,6 @@ function setAppLanguage(lang){
 }
 function applyAppLanguage(){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
-  const sub=document.querySelector('.sub'); if(sub)sub.textContent=t.sub;
   const search=document.getElementById('search'); if(search)search.placeholder=t.search;
   const map={settingsTitle:t.settings,settingsStatusLabel:t.status,settingsUntilLabel:t.until,settingsLangLabel:t.language,settingsQualityLabel:t.quality,settingsAdminBtn:t.admin,settingsCloseBtn:t.close};
   Object.entries(map).forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.textContent=v});
@@ -719,8 +734,7 @@ function applyAppLanguage(){
   const filterLabels={all:t.all,HD:'HD','4K':'4K',fav:t.favorites,recent:t.recent};
   document.querySelectorAll('[data-filter]').forEach(b=>{
     const k=b.dataset.filter;
-    if(k==='AM'){b.textContent='🇦🇲';return;}
-    if(k==='RU'){b.textContent='🇷🇺';return;}
+    if(COUNTRY_META[k]){b.textContent=COUNTRY_META[k].flag;return;}
     if(filterLabels[k])b.textContent=filterLabels[k];
   });
   const group=document.getElementById('group'); if(group&&group.options.length)group.options[0].textContent=t.all;
@@ -1221,8 +1235,8 @@ function tvSetModeFilter(v){
   persistTvBrowseState();
   render();
   focusFirstChannelAfterFilter();
-  const labels={all:'Все каналы',fav:'Избранное',recent:'Недавние',AM:'Армения',RU:'Россия'};
-  showTvShortcut(labels[v]||'Каналы');
+  const labels={all:'Все каналы',fav:'Избранное',recent:'Недавние'};
+  showTvShortcut((COUNTRY_META[v]&&COUNTRY_META[v].name)||labels[v]||'Каналы');
 }
 function focusFirstChannelAfterFilter(){
   if(!nativeTv)return;
@@ -1259,8 +1273,9 @@ function setSourceFilter(btn,v){
 }
 function setModeFilter(btn,v){
   modeFilter=v;
-  if(v!=='AM'&&v!=='RU')activeCategory='';
-  if(v==='AM'||v==='RU'){
+  const isCountry=COUNTRY_FILTERS.has(v);
+  if(!isCountry)activeCategory='';
+  if(isCountry){
     sourceFilter='all';
     localStorage.setItem('abaj_tv_source_filter','all');
     document.querySelectorAll('#sourceChips .chip').forEach(x=>x.classList.toggle('active',x.dataset.source==='all'));
@@ -1588,7 +1603,7 @@ function getFiltered(){
   let rows=channels.slice();
   if(sourceFilter==='free')rows=rows.filter(x=>!x.personal);
   else if(sourceFilter==='edem')rows=rows.filter(x=>!!x.personal);
-  if(modeFilter==='AM'||modeFilter==='RU')rows=rows.filter(x=>x.country===modeFilter);
+  if(COUNTRY_FILTERS.has(modeFilter))rows=rows.filter(x=>x.country===modeFilter);
   if(modeFilter==='HD')rows=rows.filter(x=>channelQuality(x)==='HD');
   if(modeFilter==='4K')rows=rows.filter(x=>channelQuality(x)==='4K');
   if(modeFilter==='fav')rows=rows.filter(x=>favs.has(x.id));
@@ -1692,13 +1707,13 @@ function render(){
           '<div class="progress"><span style="width:'+epgProgress(ch.epg_now)+'%"></span></div>'+
           '<div class="times"><span>'+(ch.epg_now?fmtClock(ch.epg_now.start):'LIVE')+'</span><span>'+(ch.epg_now?fmtClock(ch.epg_now.stop):Math.max(1,Math.round((ch.latency_ms||0)/1000))+'s')+'</span></div>'+
           (ch.epg_next?'<div class="next">'+esc(t.next)+': '+esc(ch.epg_next.title)+'</div>':'')+
-          '<div class="badge">'+(ch.personal?'★ EDEM':(ch.country==='AM'?t.armenia:t.russia))+'</div>'+
+          '<div class="badge">'+(ch.personal?'★ EDEM':((COUNTRY_META[ch.country]&&COUNTRY_META[ch.country].flag)||esc(ch.country||'')))+'</div>'+
         '</div>'+
         '<div class="side">'+
           (nativeTv
             ?'<div class="fav tvFavIndicator '+(favs.has(ch.id)?'on':'')+'" aria-hidden="true">♡</div>'
             :'<button class="fav '+(favs.has(ch.id)?'on':'')+'" onclick="event.stopPropagation();toggleFav(\''+ch.id+'\')">♡</button>')+
-          '<div class="country">'+(ch.country==='AM'?'AM':'RU')+'</div>'+
+          '<div class="country">'+esc(ch.country||'')+'</div>'+
         '</div>'+
       '</div>';
     });
@@ -2149,7 +2164,7 @@ function openPlayer(id){
   document.getElementById('playerTitle').textContent=ch.name;
   document.getElementById('playerName').textContent=ch.name;
   document.getElementById('playerGroup').textContent=
-    (ch.country==='AM'?'Армения':'Россия')+' · '+cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'LIVE');
+    ((COUNTRY_META[ch.country]&&COUNTRY_META[ch.country].name)||ch.country||'')+' · '+cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'LIVE');
   document.getElementById('playerError').textContent='';
   updatePlayerFavoriteUi();
   updatePlayerRemaining();

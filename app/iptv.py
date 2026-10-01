@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 import aiohttp
 from aiohttp import web
 
+COUNTRY_CODES = {"AM", "RU", "GE", "UA", "BY", "KZ", "UZ", "AZ", "KG", "MD", "TJ", "TR"}
 SOURCE_URLS = [
     ("HQ", "https://dearbulut.github.io/iptv/playlists/best.m3u"),
     ("AM", "https://iptv-org.github.io/iptv/countries/am.m3u"),
@@ -23,8 +24,18 @@ SOURCE_URLS = [
     ("RU", "https://raw.githubusercontent.com/substanc1/iptv-russia/main/streams/ru.m3u"),
     ("RU", "https://ngrch.github.io/iptv/ru.m3u"),
     ("RU", "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_russia.m3u8"),
+    ("GE", "https://iptv-org.github.io/iptv/countries/ge.m3u"),
+    ("UA", "https://iptv-org.github.io/iptv/countries/ua.m3u"),
+    ("BY", "https://iptv-org.github.io/iptv/countries/by.m3u"),
+    ("KZ", "https://iptv-org.github.io/iptv/countries/kz.m3u"),
+    ("UZ", "https://iptv-org.github.io/iptv/countries/uz.m3u"),
+    ("AZ", "https://iptv-org.github.io/iptv/countries/az.m3u"),
+    ("KG", "https://iptv-org.github.io/iptv/countries/kg.m3u"),
+    ("MD", "https://iptv-org.github.io/iptv/countries/md.m3u"),
+    ("TJ", "https://iptv-org.github.io/iptv/countries/tj.m3u"),
+    ("TR", "https://iptv-org.github.io/iptv/countries/tr.m3u"),
 ]
-MAX_STREAMS = 1000
+MAX_STREAMS = 1500
 REFRESH_SECONDS = max(300, int(os.getenv("IPTV_REFRESH_SECONDS", "300")))
 PROBE_CONCURRENCY = 40
 QUARANTINE_SECONDS = 60 * 60
@@ -219,7 +230,7 @@ def _parse_hq_m3u(text: str, source: str) -> list[dict]:
         if line.startswith("#EXTINF"):
             attrs = _attrs(line)
             country = str(attrs.get("tvg-country") or "").strip().upper()
-            if country not in {"AM", "RU"}:
+            if country not in COUNTRY_CODES:
                 pending = None
                 continue
             score = int(attrs.get("nexus-score") or 0)
@@ -447,8 +458,9 @@ async def refresh_channels(force: bool = False):
                         candidates.extend(_parse_hq_m3u(text, url))
                     else:
                         candidates.extend(_parse_m3u(text, country, url))
+                country_order = {code: i for i, code in enumerate(("AM","RU","GE","UA","BY","KZ","UZ","AZ","KG","MD","TJ","TR"))}
                 candidates.sort(key=lambda x: (
-                    0 if x.get("country") == "AM" else 1,
+                    country_order.get(str(x.get("country") or "").upper(), 99),
                     0 if str(x.get("quality") or "").upper() in {"4K", "FHD"} else 1,
                 ))
                 # First fill the probe budget with one stream per channel so large
