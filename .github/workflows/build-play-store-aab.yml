@@ -45,19 +45,29 @@ jobs:
           ! grep -q 'android.permission.CAMERA' "$M"
           ! grep -q 'android.permission.RECORD_AUDIO' "$M"
 
-      - name: Prepare branding and signing
+      - name: Prepare branding and Play signing
+        env:
+          PLAY_UPLOAD_KEYSTORE_B64: ${{ secrets.PLAY_UPLOAD_KEYSTORE_B64 }}
+          PLAY_UPLOAD_STORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_STORE_PASSWORD }}
+          PLAY_UPLOAD_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
         shell: bash
         run: |
           set -euo pipefail
           cp web/abaj_tv_logo.jpg android/app/src/main/res/drawable/abaj_tv_logo.jpg
-          base64 -d android/facetalk-upload-key.jks.b64 > android/facetalk-upload-key.jks
-          test -s android/facetalk-upload-key.jks
-          keytool -list -keystore android/facetalk-upload-key.jks -storepass FaceTalk2026 -alias facetalk >/dev/null
+          test -n "$PLAY_UPLOAD_KEYSTORE_B64"
+          test -n "$PLAY_UPLOAD_STORE_PASSWORD"
+          test -n "$PLAY_UPLOAD_KEY_ALIAS"
+          printf '%s' "$PLAY_UPLOAD_KEYSTORE_B64" | base64 -d > android/abajtv-play-upload-key.jks
+          test -s android/abajtv-play-upload-key.jks
+          keytool -list -keystore android/abajtv-play-upload-key.jks -storepass "$PLAY_UPLOAD_STORE_PASSWORD" -alias "$PLAY_UPLOAD_KEY_ALIAS" >/dev/null
 
       - name: Build signed Play Store AAB
         working-directory: android
         env:
           FACETALK_WEB_APP_URL: ${{ vars.FACETALK_WEB_APP_URL }}
+          PLAY_UPLOAD_STORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_STORE_PASSWORD }}
+          PLAY_UPLOAD_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
+          PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
@@ -69,7 +79,11 @@ jobs:
             -PAPP_ID="ai.abaj.tv" \
             -PWEB_APP_URL="$WEB_APP_URL" \
             -PAPP_VERSION_NAME="$VERSION_NAME" \
-            -PAPP_VERSION_CODE="$VERSION_CODE"
+            -PAPP_VERSION_CODE="$VERSION_CODE" \
+            -PSIGNING_STORE_FILE="abajtv-play-upload-key.jks" \
+            -PSIGNING_STORE_PASSWORD="$PLAY_UPLOAD_STORE_PASSWORD" \
+            -PSIGNING_KEY_ALIAS="$PLAY_UPLOAD_KEY_ALIAS" \
+            -PSIGNING_KEY_PASSWORD="$PLAY_UPLOAD_KEY_PASSWORD"
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
 

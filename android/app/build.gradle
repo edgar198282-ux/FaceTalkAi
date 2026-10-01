@@ -7,6 +7,10 @@ def vCode = providers.gradleProperty('APP_VERSION_CODE').orElse('1').get().toInt
 def vName = providers.gradleProperty('APP_VERSION_NAME').orElse('1.0.0').get()
 def playStoreBuild = providers.gradleProperty('PLAY_STORE_BUILD').orElse('false').get().toBoolean()
 def appId = providers.gradleProperty('APP_ID').orElse(playStoreBuild ? 'ai.abaj.tv' : 'ai.facetalk.app').get()
+def signingStoreFile = providers.gradleProperty('SIGNING_STORE_FILE').orElse('facetalk-upload-key.jks').get()
+def signingStorePassword = providers.gradleProperty('SIGNING_STORE_PASSWORD').orElse('FaceTalk2026').get()
+def signingKeyAlias = providers.gradleProperty('SIGNING_KEY_ALIAS').orElse('facetalk').get()
+def signingKeyPassword = providers.gradleProperty('SIGNING_KEY_PASSWORD').orElse(signingStorePassword).get()
 
 android {
     namespace 'ai.facetalk.app'
@@ -24,10 +28,10 @@ android {
 
     signingConfigs {
         release {
-            storeFile rootProject.file('facetalk-upload-key.jks')
-            storePassword 'FaceTalk2026'
-            keyAlias 'facetalk'
-            keyPassword 'FaceTalk2026'
+            storeFile rootProject.file(signingStoreFile)
+            storePassword signingStorePassword
+            keyAlias signingKeyAlias
+            keyPassword signingKeyPassword
             enableV1Signing true
             enableV2Signing true
             enableV3Signing true
