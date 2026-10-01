@@ -387,6 +387,57 @@ async def payment_received_handler(q: CallbackQuery):
     except Exception as exc:
         logging.warning('Payment user notify failed: %r', exc)
 
+@dp.message(F.reply_to_message & F.text)
+async def support_reply_handler(m: Message):
+    await _track_incoming(m)
+    if not m.from_user or not m.reply_to_message or not m.text:
+        return
+    sender_id = int(m.from_user.id)
+    replied_id = int(m.reply_to_message.message_id)
+
+    # Admin replies to a support message that came from the Mini App.
+    if ADMIN_ID and sender_id == int(ADMIN_ID):
+        raw_uid = await get_setting(f'support_admin_msg:{replied_id}', '')
+        try:
+            uid = int(raw_uid or 0)
+        except Exception:
+            uid = 0
+        if uid > 0:
+            try:
+                sent = await bot.send_message(uid, '💬 Администратор Abaj TV:\n\n' + m.text)
+                await set_setting(f'support_user_msg:{int(sent.message_id)}', str(uid))
+                await _answer(m, '✅ Ответ отправлен пользователю.')
+            except Exception as exc:
+                logging.warning('Support reply to user failed: %r', exc)
+                await _answer(m, '⚠️ Не удалось отправить ответ пользователю.')
+            return
+
+    # User replies in Telegram to the administrator's previous answer.
+    raw_uid = await get_setting(f'support_user_msg:{replied_id}', '')
+    try:
+        mapped_uid = int(raw_uid or 0)
+    except Exception:
+        mapped_uid = 0
+    if mapped_uid == sender_id and ADMIN_ID:
+        try:
+            name = str(m.from_user.full_name or sender_id)
+            username = ('@' + m.from_user.username) if m.from_user.username else ''
+            sent = await bot.send_message(
+                ADMIN_ID,
+                '💬 Abaj TV · ответ пользователя\n'
+                f'Пользователь: {name} {username}\n'
+                f'Telegram ID: {sender_id}\n\n'
+                f'{m.text}\n\n'
+                '↩️ Ответьте на это сообщение — ответ уйдёт пользователю.'
+            )
+            await set_setting(f'support_admin_msg:{int(sent.message_id)}', str(sender_id))
+            await _answer(m, '✅ Сообщение отправлено администратору.')
+        except Exception as exc:
+            logging.warning('Support reply to admin failed: %r', exc)
+            await _answer(m, '⚠️ Не удалось отправить сообщение администратору.')
+        return
+
+
 @dp.message(F.text == '🌐 Հայերեն / Русский / English')
 async def change_language(m: Message):
     await _track_incoming(m)

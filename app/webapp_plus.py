@@ -788,6 +788,38 @@ async def api_iptv_edem_payment_request(request):
     return web.json_response({'ok':True,'payment':payment})
 
 
+async def api_support_message(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    if not ADMIN_ID:
+        return web.json_response({'ok':False,'error':'admin_unavailable'}, status=503)
+    body = await request.json()
+    text = str(body.get('text') or '').strip()
+    if not text:
+        return web.json_response({'ok':False,'error':'empty'}, status=400)
+    if len(text) > 1500:
+        text = text[:1500]
+    uid = int(user['id'])
+    name = str(user.get('first_name') or user.get('username') or uid)
+    username = ('@' + str(user.get('username'))) if user.get('username') else ''
+    try:
+        sent = await request.app['bot'].send_message(
+            ADMIN_ID,
+            '💬 Abaj TV · сообщение администратору\n'
+            f'Пользователь: {name} {username}\n'
+            f'Telegram ID: {uid}\n\n'
+            f'{text}\n\n'
+            '↩️ Ответьте на это сообщение — ответ уйдёт пользователю.'
+        )
+        await set_setting(f'support_admin_msg:{int(sent.message_id)}', str(uid))
+        await set_setting(f'support_last_user:{uid}', str(int(sent.message_id)))
+    except Exception as e:
+        print('support admin notify failed', repr(e))
+        return web.json_response({'ok':False,'error':'send_failed'}, status=502)
+    return web.json_response({'ok':True})
+
+
 async def api_admin_iptv_edem_payment(request):
     user = await _user_from_request(request)
     if not user or not _is_admin_user(user):
@@ -1257,6 +1289,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
+    app.router.add_post('/api/support/message', api_support_message)
     app.router.add_get('/api/admin/iptv/edem', api_admin_iptv_edem_list); app.router.add_post('/api/admin/iptv/edem/assign', api_admin_iptv_edem_assign); app.router.add_post('/api/admin/iptv/edem/limit', api_admin_iptv_edem_limit); app.router.add_post('/api/admin/iptv/edem/subscription', api_admin_iptv_edem_subscription); app.router.add_post('/api/admin/iptv/edem/payment', api_admin_iptv_edem_payment); app.router.add_get('/api/admin/access/users', api_admin_access_users); app.router.add_post('/api/admin/access/set', api_admin_access_set)
     app.router.add_get('/api/me', api_me); app.router.add_get('/api/admin/stats', api_admin_stats); app.router.add_get('/api/admin/keys', api_admin_keys); app.router.add_post('/api/admin/keys', api_admin_keys)
     app.router.add_get('/api/admin/gpu-health', api_admin_gpu_health); app.router.add_post('/api/admin/video-limit', api_admin_video_limit)

@@ -294,6 +294,16 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   </main>
 </div>
 
+<div class="settingsModal" id="supportAdminModal" onclick="if(event.target===this)closeSupportAdmin()">
+  <div class="settingsCard" style="border-radius:22px">
+    <div class="settingsTitle" id="supportAdminTitle">Написать администратору</div>
+    <textarea id="supportAdminText" maxlength="1500" placeholder="Напишите сообщение…" style="width:100%;min-height:130px;resize:vertical;border:1px solid #aad7f2;border-radius:12px;padding:12px;font-size:16px;background:#fff"></textarea>
+    <button class="settingsAction" id="supportAdminSend" onclick="sendSupportAdmin()">Отправить</button>
+    <button class="settingsClose" id="supportAdminClose" onclick="closeSupportAdmin()">Закрыть</button>
+    <div id="supportAdminStatus" class="deviceMeta" style="margin-top:8px"></div>
+  </div>
+</div>
+
 <div class="settingsModal" id="tvSettingsModal" onclick="if(event.target===this)closeTvSettings()">
   <div class="settingsCard">
     <div class="settingsTitle" id="settingsTitle">⚙ Настройки</div>
@@ -311,6 +321,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
     <button class="settingsAction" id="tvAutoStartBtn" onclick="toggleTvAutoStartSetting()">Автостарт последнего канала</button>
     <button class="settingsAction" id="tvHideBadBtn" onclick="toggleTvHideBadSetting()">Скрывать нестабильные каналы</button>
     <button class="settingsAction" id="tvAdultBtn" onclick="toggleAdultSetting()">🔞 18+ каналы: выкл</button>
+    <button class="settingsAction" id="supportAdminBtn" onclick="openSupportAdmin()">💬 Написать администратору</button>
     <div class="deviceManager" id="deviceManager">
       <div class="deviceManagerHead"><b id="deviceManagerTitle">Мои устройства</b><span id="deviceManagerCount">0 / 3</span></div>
       <div class="deviceRows" id="deviceRows"><div class="deviceMeta">Загрузка…</div></div>
@@ -756,6 +767,7 @@ function applyAppLanguage(){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
   const search=document.getElementById('search'); if(search)search.placeholder=t.search;
   const map={settingsTitle:t.settings,settingsStatusLabel:t.status,settingsUntilLabel:t.until,settingsLangLabel:t.language,settingsQualityLabel:t.quality,settingsAdminBtn:t.admin,settingsCloseBtn:t.close};
+  const supportBtn=document.getElementById('supportAdminBtn'); if(supportBtn)supportBtn.textContent=appLang==='hy'?'💬 Գրել ադմինիստրատորին':(appLang==='en'?'💬 Message administrator':'💬 Написать администратору');
   Object.entries(map).forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.textContent=v});
   const sourceLabels={all:t.all,free:t.free,edem:t.edem};
   document.querySelectorAll('#sourceChips [data-source]').forEach(b=>{const k=b.dataset.source;if(sourceLabels[k])b.textContent=sourceLabels[k]});
@@ -1175,6 +1187,44 @@ function resetThemeHue(){
   localStorage.setItem('abaj_tv_theme_hue','204');
   applyThemeHue();
   paintTvSettings();
+}
+function openSupportAdmin(){
+  closeTvSettings();
+  const modal=document.getElementById('supportAdminModal');
+  const title=document.getElementById('supportAdminTitle');
+  const send=document.getElementById('supportAdminSend');
+  const close=document.getElementById('supportAdminClose');
+  const input=document.getElementById('supportAdminText');
+  const status=document.getElementById('supportAdminStatus');
+  if(title)title.textContent=appLang==='hy'?'Գրել ադմինիստրատորին':(appLang==='en'?'Message administrator':'Написать администратору');
+  if(send)send.textContent=appLang==='hy'?'Ուղարկել':(appLang==='en'?'Send':'Отправить');
+  if(close)close.textContent=appLang==='hy'?'Փակել':(appLang==='en'?'Close':'Закрыть');
+  if(input)input.placeholder=appLang==='hy'?'Գրեք հաղորդագրություն…':(appLang==='en'?'Write a message…':'Напишите сообщение…');
+  if(status)status.textContent='';
+  if(modal)modal.classList.add('open');
+  setTimeout(()=>input&&input.focus(),100);
+}
+function closeSupportAdmin(){
+  const modal=document.getElementById('supportAdminModal');
+  if(modal)modal.classList.remove('open');
+}
+async function sendSupportAdmin(){
+  const input=document.getElementById('supportAdminText');
+  const status=document.getElementById('supportAdminStatus');
+  const btn=document.getElementById('supportAdminSend');
+  const text=String(input?.value||'').trim();
+  if(!text){if(status)status.textContent=appLang==='hy'?'Գրեք հաղորդագրություն':(appLang==='en'?'Write a message':'Напишите сообщение');return}
+  if(btn)btn.disabled=true;
+  if(status)status.textContent=appLang==='hy'?'Ուղարկվում է…':(appLang==='en'?'Sending…':'Отправляется…');
+  try{
+    const r=await fetch('/api/support/message',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({text})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||'send_failed');
+    if(input)input.value='';
+    if(status)status.textContent=appLang==='hy'?'✅ Ուղարկված է ադմինիստրատորին։ Պատասխանը կգա Telegram բոտում։':(appLang==='en'?'✅ Sent to the administrator. The reply will arrive in the Telegram bot.':'✅ Отправлено администратору. Ответ придёт в Telegram-боте.');
+  }catch(e){
+    if(status)status.textContent=appLang==='hy'?'Չհաջողվեց ուղարկել':(appLang==='en'?'Failed to send':'Не удалось отправить');
+  }finally{if(btn)btn.disabled=false}
 }
 function openTvSettings(){
   paintTvSettings();
