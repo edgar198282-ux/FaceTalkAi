@@ -693,8 +693,13 @@ function applyAppLanguage(){
   Object.entries(map).forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.textContent=v});
   const sourceLabels={all:t.all,free:t.free,edem:t.edem};
   document.querySelectorAll('#sourceChips [data-source]').forEach(b=>{const k=b.dataset.source;if(sourceLabels[k])b.textContent=sourceLabels[k]});
-  const filterLabels={all:t.all,AM:t.armenia,RU:t.russia,HD:'HD','4K':'4K',fav:t.favorites,recent:t.recent};
-  document.querySelectorAll('[data-filter]').forEach(b=>{const k=b.dataset.filter;if(filterLabels[k])b.textContent=filterLabels[k]});
+  const filterLabels={all:t.all,HD:'HD','4K':'4K',fav:t.favorites,recent:t.recent};
+  document.querySelectorAll('[data-filter]').forEach(b=>{
+    const k=b.dataset.filter;
+    if(k==='AM'){b.textContent='🇦🇲';return;}
+    if(k==='RU'){b.textContent='🇷🇺';return;}
+    if(filterLabels[k])b.textContent=filterLabels[k];
+  });
   const group=document.getElementById('group'); if(group&&group.options.length)group.options[0].textContent=t.all;
   ['hy','ru','en'].forEach(x=>document.getElementById('lang'+x[0].toUpperCase()+x.slice(1)+'Btn')?.classList.toggle('active',x===appLang));
   if(channels.length)buildQuickCats([...new Set(channels.map(x=>x.group||'Other'))]);
