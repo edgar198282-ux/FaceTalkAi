@@ -33,7 +33,7 @@ async def publish():
         raise RuntimeError("IPTV_MAIN_URL/MINIAPP_URL and IPTV_WORKER_TOKEN are required")
     await asyncio.gather(
         iptv.refresh_channels(force=True),
-        iptv.refresh_epg(force=True),
+        iptv.refresh_epg(force=False),
     )
     payload = {"state": iptv.public_state(), "health": iptv._stream_health}
     timeout = aiohttp.ClientTimeout(total=60)
