@@ -8,6 +8,7 @@ import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from urllib.parse import quote, urljoin, urlparse
+from urllib.request import Request, urlopen
 
 import aiohttp
 from aiohttp import web
@@ -290,6 +291,16 @@ def _epg_for_channel(item: dict) -> tuple[dict | None, dict | None]:
     return current, nxt
 
 
+def _fetch_text_sync(url: str) -> str:
+    try:
+        req = Request(url, headers={"User-Agent": "AbajTV/1.0"})
+        with urlopen(req, timeout=45) as r:
+            raw = r.read()
+        return raw.decode("utf-8", "ignore")
+    except Exception:
+        return ""
+
+
 async def _fetch_text(session: aiohttp.ClientSession, url: str) -> str:
     try:
         async with session.get(url, timeout=aiohttp.ClientTimeout(total=20)) as r:
@@ -297,7 +308,7 @@ async def _fetch_text(session: aiohttp.ClientSession, url: str) -> str:
                 return ""
             return await r.text(errors="ignore")
     except Exception:
-        return ""
+        return await asyncio.to_thread(_fetch_text_sync, url)
 
 
 async def _probe(session: aiohttp.ClientSession, item: dict, sem: asyncio.Semaphore) -> dict:
