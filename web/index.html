@@ -246,15 +246,14 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 
 <div class="settingsModal" id="settingsModal" onclick="if(event.target===this)closeSettings()">
   <div class="settingsCard">
-    <div class="settingsTitle">⚙ Настройки</div>
-    <div class="settingsLabel">Язык приложения</div>
-    <div class="settingsLang">
-      <button data-settings-lang="ru" onclick="setSettingsLanguage('ru')">Русский</button>
-      <button data-settings-lang="hy" onclick="setSettingsLanguage('hy')">Հայերեն</button>
-      <button data-settings-lang="en" onclick="setSettingsLanguage('en')">English</button>
+    <div class="settingsTitle">⚙ Настройки Edem TV</div>
+    <div class="settingsLabel">Назначить Edem TV пользователю</div>
+    <div class="adminForm" style="grid-template-columns:1fr">
+      <input id="edemUid" inputmode="numeric" placeholder="Telegram ID пользователя">
+      <input id="edemUrl" placeholder="M3U ссылка Edem TV">
+      <input id="edemExpiry" type="date" title="Срок доступа">
+      <button onclick="assignEdem()">Назначить</button>
     </div>
-    <button class="settingsAction" onclick="checkAppUpdate()">🔄 Проверить обновление</button>
-    <button class="settingsAction" onclick="downloadLatestApk()">📲 Скачать Abaj TV APK</button>
     <button class="settingsClose" onclick="closeSettings()">Закрыть</button>
   </div>
 </div>
@@ -268,12 +267,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
         <button class="adminClose" onclick="closeAdmin()">Закрыть</button>
       </div>
     </div>
-    <div class="adminForm">
-      <input id="edemUid" inputmode="numeric" placeholder="Telegram ID пользователя">
-      <input id="edemUrl" placeholder="M3U ссылка Edem">
-      <input id="edemExpiry" type="date" title="Срок доступа">
-      <button onclick="assignEdem()">Назначить</button>
-    </div>
+
     <div class="adminRows" id="adminRows"><div class="adminEmpty">Загрузка…</div></div>
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Привязанные телевизоры</div>
     <div class="adminRows" id="adminTvRows"><div class="adminEmpty">Загрузка…</div></div>
@@ -621,36 +615,11 @@ async function checkAdmin(){
     if(d.is_admin)document.getElementById('adminBtn').style.display='';
   }catch(e){}
 }
-function currentSettingsLanguage(){
-  const v=(localStorage.getItem('facetalk_lang')||document.documentElement.lang||'ru').toLowerCase();
-  return v.startsWith('hy')?'hy':v.startsWith('en')?'en':'ru';
-}
-function paintSettingsLanguage(){
-  const lang=currentSettingsLanguage();
-  document.querySelectorAll('[data-settings-lang]').forEach(b=>b.classList.toggle('active',b.dataset.settingsLang===lang));
-}
 function openSettings(){
-  paintSettingsLanguage();
   document.getElementById('settingsModal').classList.add('open');
+  setTimeout(()=>document.getElementById('edemUid')?.focus(),60);
 }
 function closeSettings(){document.getElementById('settingsModal').classList.remove('open')}
-function setSettingsLanguage(lang){
-  if(!['ru','hy','en'].includes(lang))return;
-  localStorage.setItem('facetalk_lang',lang);
-  document.documentElement.lang=lang;
-  paintSettingsLanguage();
-}
-function checkAppUpdate(){
-  if(/FaceTalkAI-Android|AbajTV|; wv\)/i.test(navigator.userAgent)){
-    location.href='facetalk://check-update';
-    return;
-  }
-  loadOtaInfo();
-  alert('Проверка обновления выполнена');
-}
-function downloadLatestApk(){
-  location.href='/downloads/AbajTV-latest.apk';
-}
 
 function openAdmin(){
   document.getElementById('adminPanel').classList.add('open');
