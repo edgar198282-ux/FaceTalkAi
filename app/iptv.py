@@ -25,7 +25,7 @@ SOURCE_URLS = [
     ("RU", "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_russia.m3u8"),
 ]
 MAX_STREAMS = 1000
-REFRESH_SECONDS = 900
+REFRESH_SECONDS = max(300, int(os.getenv("IPTV_REFRESH_SECONDS", "300")))
 PROBE_CONCURRENCY = 40
 DATA_ROOT = os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or os.path.join(os.getcwd(), "data")
 HEALTH_PATH = os.path.join(DATA_ROOT, "iptv_health.json")
