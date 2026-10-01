@@ -201,7 +201,11 @@ jobs:
             exit 1
           fi
           WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
-          APK="android/app/build/outputs/apk/release/app-release.apk"
+          # Stable OTA must always publish the standard phone APK. The build output
+          # below is overwritten later by the TV-compat build, so use the preserved
+          # standard artifact from /tmp instead of app-release.apk.
+          APK="/tmp/AbajTV-standard.apk"
+          test -s "$APK"
           for attempt in $(seq 1 36); do
             HTTP_CODE=$(curl -sS -o /tmp/facetalk-ota.json -w "%{http_code}" --connect-timeout 10 --max-time 180 -X POST "${WEB_APP_URL%/}/api/app-upload" -H "Content-Type: application/vnd.android.package-archive" -H "X-FaceTalk-Deploy-Token: $APK_DEPLOY_TOKEN" -H "X-FaceTalk-App-Version: ${{ steps.version.outputs.name }}" -H "X-FaceTalk-App-Version-Code: ${{ steps.version.outputs.code }}" -H "X-AbajTV-Channel: $RELEASE_CHANNEL" --data-binary "@$APK" || true)
             cat /tmp/facetalk-ota.json 2>/dev/null || true
