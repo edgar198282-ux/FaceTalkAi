@@ -150,13 +150,23 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
   .playerView{left:50%;transform:translateX(-50%);max-width:1400px}
 }
 @media(max-width:1000px){
-  .tvMode .list{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .tvMode:not(.nativeTv) .list{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 @media(max-width:700px){
-  .tvMode .list{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .tvMode .videoWrap{padding-right:0}
-  .tvMode .channelRail{display:none}
+  .tvMode:not(.nativeTv) .list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tvMode:not(.nativeTv) .videoWrap{padding-right:0}
+  .tvMode:not(.nativeTv) .channelRail{display:none}
 }
+.nativeTv .list{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important}
+.nativeTv .channel{min-height:146px!important}
+.nativeTv .channel .logoWrap{height:72px!important}
+.nativeTv .channel .logo{max-height:47px!important}
+.nativeTv .channel .info{padding:6px 8px!important}
+.nativeTv .channel .name{font-size:15px!important}
+.nativeTv .channel .now{font-size:11px!important}
+.nativeTv .channel .next{font-size:10px!important}
+.nativeTv .channel .side{padding:0 7px 6px!important}
+
 .adminPanel{position:fixed;inset:0;background:rgba(3,27,62,.72);z-index:220;display:none;align-items:flex-end;justify-content:center;padding:12px}.adminPanel.open{display:flex}.adminCard{width:min(760px,100%);max-height:88vh;overflow:auto;background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}.adminHead{display:flex;align-items:center;justify-content:space-between;gap:10px}.adminTitle{font-size:22px;font-weight:800;color:#0d4d86}.adminClose{border:0;background:#d9efff;color:#0b5f9e;border-radius:12px;padding:10px 13px;font-weight:800}.adminForm{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin:14px 0}.adminForm input{height:44px;border:1px solid #aad7f2;border-radius:11px;padding:0 11px;background:white}.adminForm button{border:0;border-radius:11px;background:#087fe1;color:white;padding:0 14px;font-weight:800}.adminRows{display:grid;gap:8px}.adminRow{background:white;border:1px solid #cde7f7;border-radius:14px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.adminMeta{font-size:12px;color:#55758c;margin-top:4px}.limitBox{display:flex;gap:6px;align-items:center}.limitBox input{width:58px;height:36px;border:1px solid #b9dff5;border-radius:9px;padding:0 8px}.limitBox button{height:36px;border:0;border-radius:9px;background:#168de8;color:white;padding:0 10px}.adminEmpty{padding:18px;text-align:center;color:#66869a}@media(max-width:650px){.adminForm{grid-template-columns:1fr}.adminRow{grid-template-columns:1fr}.limitBox{justify-content:flex-start}}
 .settingsModal{position:fixed;inset:0;z-index:520;display:none;align-items:flex-end;justify-content:center;background:rgba(3,27,62,.72);padding:12px}.settingsModal.open{display:flex}.settingsCard{width:min(560px,100%);background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}.settingsTitle{font-size:22px;font-weight:900;color:#0d4d86;margin-bottom:14px}.settingsLabel{font-size:13px;color:#55758c;margin:10px 0 7px}.settingsLang{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.settingsLang button,.settingsAction{border:0;border-radius:12px;padding:12px 10px;background:#e2f2ff;color:#0b5f9e;font-weight:800}.settingsLang button.active{background:#087fe1;color:#fff}.settingsAction{width:100%;margin-top:10px;background:#087fe1;color:#fff}.settingsClose{width:100%;margin-top:9px;border:0;border-radius:12px;padding:11px;background:#d9efff;color:#0b5f9e;font-weight:800}
 .payBar{display:none;margin:10px 0 0;background:rgba(255,255,255,.94);border:1px solid #cbe7f8;border-radius:14px;padding:10px 12px;color:#174b6d;font-size:13px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.payBar.show{display:flex}.payBar b{font-size:14px}.payBar button{border:0;border-radius:10px;background:#1489e7;color:white;padding:9px 13px;font-weight:800}.payBar.pending{border-color:#f1d995;background:#fffaf0}.payBar.pending button{background:#c28a13}
