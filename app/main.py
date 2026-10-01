@@ -280,14 +280,15 @@ async def language_handler(q: CallbackQuery):
     title,body=TEXTS[lang]
     sent = await q.message.answer(f'{title}\n\n{body}')
     await _track_message(sent.chat.id, sent.message_id)
-    payment = await q.message.answer(
-        PAYMENT_TEXT[lang],
-        parse_mode='HTML',
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text=PAY_BUTTON[lang], callback_data='payment:paid')
-        ]])
-    )
-    await _track_message(payment.chat.id, payment.message_id)
+    if not ADMIN_ID or int(q.from_user.id) != int(ADMIN_ID):
+        payment = await q.message.answer(
+            PAYMENT_TEXT[lang],
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text=PAY_BUTTON[lang], callback_data='payment:paid')
+            ]])
+        )
+        await _track_message(payment.chat.id, payment.message_id)
     menu = await q.message.answer(
         {'hy':'Ընտրեք գործողությունը ստորև։','ru':'Выберите действие внизу.','en':'Choose an action below.'}[lang],
         reply_markup=miniapp_keyboard(q.from_user.id, lang)
@@ -298,6 +299,10 @@ async def language_handler(q: CallbackQuery):
 async def payment_paid_handler(q: CallbackQuery):
     uid = int(q.from_user.id)
     lang = await get_user_language(uid) or _telegram_lang(q.from_user)
+    if ADMIN_ID and uid == int(ADMIN_ID):
+        await set_setting(f'edem_payment:{uid}', json.dumps({'status':'admin','last_paid_at':0,'plan_days':0,'last_amount':0}, separators=(',', ':')))
+        await q.answer({'hy':'Ադմինին վճարում պետք չէ','ru':'Администратору оплата не требуется','en':'Admin does not need payment'}[lang], show_alert=True)
+        return
     payment = {
         'status':'pending',
         'requested_at':int(time.time()),

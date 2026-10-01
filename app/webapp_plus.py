@@ -723,6 +723,9 @@ async def api_iptv_edem_payment_request(request):
     if not user:
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     uid = int(user['id'])
+    if ADMIN_ID and uid == int(ADMIN_ID):
+        await set_setting(f'edem_payment:{uid}', json.dumps({'status':'admin','last_paid_at':0,'plan_days':0,'last_amount':0}, separators=(',', ':')))
+        return web.json_response({'ok':True,'admin':True,'payment_required':False})
     body = await request.json()
     try:
         plan_days = max(365, min(3650, int(body.get('plan_days') or 365)))
