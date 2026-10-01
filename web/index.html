@@ -226,11 +226,8 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
       </div>
       <div class="icons">
         <button id="listBtn" class="iconBtn active" onclick="setLayout('list')" title="Список">☷</button>
-        <button id="gridBtn" class="iconBtn" onclick="setLayout('grid')" title="Плитка">▦</button>
-        <button id="tvBtn" class="iconBtn" onclick="toggleTvMode()" title="TV режим">📺</button>
         <button class="iconBtn" onclick="refreshChannels()" title="Обновить">↻</button>
-        <button id="tvSettingsBtn" class="iconBtn" onclick="openTvSettings()" title="Настройки TV" style="display:none">⚙</button>
-        <button id="adminBtn" class="iconBtn" onclick="openAdmin()" title="Edem Admin" style="display:none">🛠</button>
+        <button id="tvSettingsBtn" class="iconBtn" onclick="openTvSettings()" title="Настройки">⚙</button>
       </div>
     </div>
     <div class="toolbar">
@@ -253,10 +250,6 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
     </div>
     <div class="quickCats" id="quickCats"></div>
     <div class="status" id="status">Загрузка каналов…</div>
-    <div class="payBar" id="payBar">
-      <div><b id="payTitle">Edem подписка</b><div id="payText">Статус подписки</div></div>
-      <button id="payBtn" onclick="requestEdemPayment()">Оплатил</button>
-    </div>
   </header>
 
   <main class="content" id="content">
@@ -266,16 +259,27 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 
 <div class="settingsModal" id="tvSettingsModal" onclick="if(event.target===this)closeTvSettings()">
   <div class="settingsCard">
-    <div class="settingsTitle">⚙ Настройки Abaj TV</div>
+    <div class="settingsTitle" id="settingsTitle">⚙ Настройки</div>
+    <div class="adminRow" style="display:block;margin-bottom:10px;background:#eaf6ff">
+      <div style="display:flex;justify-content:space-between;gap:12px"><b id="settingsStatusLabel">Статус</b><b id="settingsStatusValue" style="color:#16865b">—</b></div>
+      <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px"><span id="settingsUntilLabel">Доступ до</span><b id="settingsUntilValue">—</b></div>
+    </div>
+    <div class="settingsLabel" id="settingsLangLabel">Язык</div>
+    <div class="settingsLang">
+      <button id="langHyBtn" onclick="setAppLanguage('hy')">🇦🇲 Հայերեն</button>
+      <button id="langRuBtn" onclick="setAppLanguage('ru')">🇷🇺 Русский</button>
+      <button id="langEnBtn" onclick="setAppLanguage('en')">🇬🇧 English</button>
+    </div>
     <button class="settingsAction" id="tvAutoStartBtn" onclick="toggleTvAutoStartSetting()">Автостарт последнего канала</button>
     <button class="settingsAction" id="tvHideBadBtn" onclick="toggleTvHideBadSetting()">Скрывать нестабильные каналы</button>
-    <div class="settingsLabel">Качество по умолчанию</div>
+    <div class="settingsLabel" id="settingsQualityLabel">Качество по умолчанию</div>
     <select id="tvQualityPref" class="settingsAction" onchange="setTvPreferredQuality(this.value)" style="appearance:auto">
       <option value="auto">Auto</option>
       <option value="720">720p</option>
       <option value="1080">1080p</option>
     </select>
-    <button class="settingsClose" onclick="closeTvSettings()">Закрыть</button>
+    <button class="settingsAction" id="settingsAdminBtn" onclick="closeTvSettings();openAdmin()" style="display:none;background:#0b5f9e">🛠 Админ-панель</button>
+    <button class="settingsClose" id="settingsCloseBtn" onclick="closeTvSettings()">Закрыть</button>
   </div>
 </div>
 
@@ -636,59 +640,50 @@ function applyUiMode(){
   document.body.classList.toggle('nativeTv',nativeTv);
   document.getElementById('app').classList.toggle('gridMode',layout==='grid'&&!tvMode);
   document.getElementById('app').classList.toggle('tvMode',tvMode);
-  document.getElementById('listBtn').classList.toggle('active',layout==='list');
-  document.getElementById('gridBtn').classList.toggle('active',layout==='grid');
-  document.getElementById('tvBtn').classList.toggle('active',tvMode);
-  const tvSettingsBtn=document.getElementById('tvSettingsBtn');
-  if(tvSettingsBtn)tvSettingsBtn.style.display=nativeTv?'':'none';
+  const listBtn=document.getElementById('listBtn');
+  if(listBtn)listBtn.classList.toggle('active',layout==='list');
 }
 
+let appLang=localStorage.getItem('abaj_tv_lang')||'ru';
+const UI_TEXT={
+  ru:{settings:'⚙ Настройки',status:'Статус',active:'Активен',inactive:'Не активен',pending:'Ожидает подтверждения',until:'Доступ до',unlimited:'Без срока',language:'Язык',auto:'Автостарт последнего канала',hide:'Скрывать нестабильные каналы',quality:'Качество по умолчанию',admin:'🛠 Админ-панель',close:'Закрыть',sub:'Армения + Россия',search:'Поиск канала'},
+  hy:{settings:'⚙ Կարգավորումներ',status:'Կարգավիճակ',active:'Ակտիվ է',inactive:'Ակտիվ չէ',pending:'Սպասում է հաստատման',until:'Մուտքը մինչև',unlimited:'Անժամկետ',language:'Լեզու',auto:'Վերջին ալիքի ավտոմեկնարկ',hide:'Թաքցնել անկայուն ալիքները',quality:'Լռելյայն որակ',admin:'🛠 Ադմին վահանակ',close:'Փակել',sub:'Հայաստան + Ռուսաստան',search:'Ալիքի որոնում'},
+  en:{settings:'⚙ Settings',status:'Status',active:'Active',inactive:'Inactive',pending:'Pending approval',until:'Access until',unlimited:'Unlimited',language:'Language',auto:'Autostart last channel',hide:'Hide unstable channels',quality:'Default quality',admin:'🛠 Admin panel',close:'Close',sub:'Armenia + Russia',search:'Search channel'}
+};
+function setAppLanguage(lang){
+  appLang=['hy','ru','en'].includes(lang)?lang:'ru';
+  localStorage.setItem('abaj_tv_lang',appLang);
+  applyAppLanguage();
+  paintTvSettings();
+  loadEdemStatus();
+}
+function applyAppLanguage(){
+  const t=UI_TEXT[appLang]||UI_TEXT.ru;
+  const sub=document.querySelector('.sub'); if(sub)sub.textContent=t.sub;
+  const search=document.getElementById('search'); if(search)search.placeholder=t.search;
+  const map={settingsTitle:t.settings,settingsStatusLabel:t.status,settingsUntilLabel:t.until,settingsLangLabel:t.language,settingsQualityLabel:t.quality,settingsAdminBtn:t.admin,settingsCloseBtn:t.close};
+  Object.entries(map).forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.textContent=v});
+  ['hy','ru','en'].forEach(x=>document.getElementById('lang'+x[0].toUpperCase()+x.slice(1)+'Btn')?.classList.toggle('active',x===appLang));
+}
 async function loadEdemStatus(){
   try{
     const r=await fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return;
     edemStatus=await r.json();
-    const bar=document.getElementById('payBar');
-    bar.classList.add('show');
-    const title=document.getElementById('payTitle');
-    const text=document.getElementById('payText');
-    const btn=document.getElementById('payBtn');
+    const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const payment=edemStatus.payment||{};
-    if(payment.status==='pending'){
-      bar.classList.add('pending');
-      title.textContent='Оплата отправлена на проверку';
-      text.textContent='12 USDT · 12 месяцев. Ожидайте подтверждения администратора.';
-      btn.textContent='Ожидает подтверждения';
-      btn.disabled=true;
-      return;
+    const status=document.getElementById('settingsStatusValue');
+    const until=document.getElementById('settingsUntilValue');
+    if(status){
+      status.textContent=payment.status==='pending'?t.pending:(edemStatus.active?t.active:t.inactive);
+      status.style.color=edemStatus.active?'#16865b':(payment.status==='pending'?'#c28a13':'#d84b5b');
     }
-    bar.classList.remove('pending');
-    btn.disabled=false;
-    btn.textContent='Оплатил';
-    if(edemStatus.active){
-      title.textContent='Abaj TV активен';
-      text.textContent=edemStatus.days_left==null?'Доступ администратора':'Осталось: '+edemStatus.days_left+' дн.';
-    }else{
-      title.textContent='700+ каналов · 1 USDT/месяц';
-      text.textContent='Минимум 12 месяцев = 12 USDT · TRC20: TG9ZpZAax6uSoWi62CZMKuqE3N9yTD8rJ2';
+    if(until){
+      if(edemStatus.active&&edemStatus.days_left==null)until.textContent=t.unlimited;
+      else if(edemStatus.active&&edemStatus.expires_at)until.textContent=new Date(edemStatus.expires_at*1000).toLocaleDateString(appLang==='hy'?'hy-AM':appLang==='en'?'en-US':'ru-RU');
+      else until.textContent='—';
     }
   }catch(e){}
-}
-async function requestEdemPayment(){
-  if(!edemStatus)return;
-  const btn=document.getElementById('payBtn');
-  btn.disabled=true;
-  try{
-    const r=await fetch('/api/iptv/edem/payment-request',{
-      method:'POST',
-      headers:{'Content-Type':'application/json',...authHeaders()},
-      body:JSON.stringify({plan_days:365,amount:12})
-    });
-    if(r.ok){
-      await loadEdemStatus();
-      if(document.getElementById('adminPanel').classList.contains('open'))loadAdminEdem();
-    }else btn.disabled=false;
-  }catch(e){btn.disabled=false}
 }
 
 async function checkAdmin(){
@@ -696,7 +691,8 @@ async function checkAdmin(){
     const r=await fetch('/api/me',{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return;
     const d=await r.json();
-    if(d.is_admin)document.getElementById('adminBtn').style.display='';
+    const btn=document.getElementById('settingsAdminBtn');
+    if(btn)btn.style.display=d.is_admin?'':'none';
   }catch(e){}
 }
 function openSettings(){
@@ -980,19 +976,22 @@ function toggleTvMode(){
   render();
 }
 function tvSettingsOpen(){
-  return nativeTv&&document.getElementById('tvSettingsModal')?.classList.contains('open');
+  return document.getElementById('tvSettingsModal')?.classList.contains('open');
 }
 function paintTvSettings(){
+  const t=UI_TEXT[appLang]||UI_TEXT.ru;
   const auto=document.getElementById('tvAutoStartBtn');
   const bad=document.getElementById('tvHideBadBtn');
   const q=document.getElementById('tvQualityPref');
-  if(auto)auto.textContent=(tvAutoStartLast?'✓ ':'✕ ')+'Автостарт последнего канала';
-  if(bad)bad.textContent=(tvHideUnreliable?'✓ ':'✕ ')+'Скрывать нестабильные каналы';
+  if(auto)auto.textContent=(tvAutoStartLast?'✓ ':'✕ ')+t.auto;
+  if(bad)bad.textContent=(tvHideUnreliable?'✓ ':'✕ ')+t.hide;
   if(q)q.value=tvPreferredQuality;
+  applyAppLanguage();
 }
 function openTvSettings(){
-  if(!nativeTv)return;
   paintTvSettings();
+  loadEdemStatus();
+  checkAdmin();
   const modal=document.getElementById('tvSettingsModal');
   if(modal)modal.classList.add('open');
 }
@@ -2386,8 +2385,8 @@ document.addEventListener('keydown',e=>{
 });
 
 document.getElementById('app').classList.toggle('tvMode',tvMode);
-document.getElementById('tvBtn').classList.toggle('active',tvMode);
 applyUiMode();
+applyAppLanguage();
 checkAdmin();
 loadEdemStatus();
 load();
