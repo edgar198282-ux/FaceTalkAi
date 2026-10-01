@@ -45,6 +45,7 @@ DATA_ROOT = os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or os.path.join(os.getcwd(), 
 HEALTH_PATH = os.path.join(DATA_ROOT, "iptv_health.json")
 SNAPSHOT_PATH = os.path.join(DATA_ROOT, "iptv_snapshot.json")
 HISTORY_PATH = os.path.join(DATA_ROOT, "iptv_scan_history.json")
+AD_HISTORY_PATH = os.path.join(DATA_ROOT, "iptv_ad_history.json")
 os.makedirs(DATA_ROOT, exist_ok=True)
 
 def _load_json(path: str, default):
@@ -127,6 +128,31 @@ _proxy_secret = (os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("FACETALK_BOT_TOKE
 _worker_control = {"refresh_requested_at": 0, "last_worker_snapshot": 0}
 
 _ad_probe_cache = {}
+_ad_last_state = {}
+
+def _record_ad_transition(item: dict, active: bool, marker: str):
+    cid = str(item.get("id") or "")
+    if not cid:
+        return
+    previous = bool(_ad_last_state.get(cid, False))
+    if previous == bool(active):
+        return
+    _ad_last_state[cid] = bool(active)
+    try:
+        history = _load_json(AD_HISTORY_PATH, [])
+        if not isinstance(history, list):
+            history = []
+        history.append({
+            "ts": int(time.time()),
+            "channel_id": cid,
+            "name": str(item.get("name") or "")[:160],
+            "country": str(item.get("country") or "")[:8],
+            "active": bool(active),
+            "marker": str(marker or "")[:40],
+        })
+        _save_json(AD_HISTORY_PATH, history[-500:])
+    except Exception:
+        pass
 
 def _detect_hls_ad_break(text: str) -> tuple[bool, str]:
     if not text or "#EXTM3U" not in text[:4096]:
@@ -191,6 +217,7 @@ async def _free_channel_ad_state(item: dict) -> dict:
                     text = await fetch_manifest(media_url)
             active, marker = _detect_hls_ad_break(text)
             result.update({"active": bool(active), "marker": marker})
+            _record_ad_transition(item, bool(active), marker)
     except Exception as exc:
         result["error"] = str(exc)[:120]
     _ad_probe_cache[cid] = result
@@ -944,10 +971,20 @@ async def api_diagnostics(request):
     history = _load_json(HISTORY_PATH, [])
     if not isinstance(history, list):
         history = []
+    ad_history = _load_json(AD_HISTORY_PATH, [])
+    if not isinstance(ad_history, list):
+        ad_history = []
+    ad_starts = [x for x in ad_history if isinstance(x, dict) and bool(x.get("active"))]
     return web.json_response({
         "ok": True,
         "stats": state.get("stats") or {},
         "scan_history": history[-48:],
+        "ad_detection": {
+            "events": ad_history[-100:],
+            "starts_total": len(ad_starts),
+            "channels_seen": len({str(x.get("channel_id") or "") for x in ad_starts if x.get("channel_id")}),
+            "last_event": ad_history[-1] if ad_history else None,
+        },
         "last_refresh": state.get("last_refresh"),
         "running": state.get("running"),
         "problem_channels": problem,
