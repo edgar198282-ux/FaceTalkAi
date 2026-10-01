@@ -362,8 +362,10 @@ async def refresh_epg(force: bool = False):
             texts = await asyncio.gather(*[_fetch_text(session, url) for _, url in EPG_URLS])
         all_programmes = {}
         all_names = {}
-        for (_country, _url), text in zip(EPG_URLS, texts):
-            programmes, names = _parse_epg_xml(text)
+        parsed_feeds = await asyncio.gather(
+            *[asyncio.to_thread(_parse_epg_xml, text) for text in texts]
+        )
+        for programmes, names in parsed_feeds:
             for cid, rows in programmes.items():
                 all_programmes.setdefault(cid, []).extend(rows)
             all_names.update(names)
