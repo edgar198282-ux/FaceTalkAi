@@ -1868,6 +1868,59 @@ function tvNumberInput(digit){
   },1300);
 }
 
+function tvNativeRemote(action){
+  if(!nativeTv)return;
+  if(tvGuideOpen()){
+    if(action==='up')moveTvGuide(-1);
+    else if(action==='down')moveTvGuide(1);
+    else if(action==='ok')openTvGuideFocused();
+    return;
+  }
+  if(tvSettingsOpen()){
+    const modal=document.getElementById('tvSettingsModal');
+    const els=modal?[...modal.querySelectorAll('button,select')]:[];
+    if(!els.length)return;
+    let i=els.indexOf(document.activeElement);
+    if(i<0)i=0;
+    if(action==='up'||action==='left')i=(i-1+els.length)%els.length;
+    else if(action==='down'||action==='right')i=(i+1)%els.length;
+    else if(action==='ok'){if(document.activeElement&&typeof document.activeElement.click==='function')document.activeElement.click();return}
+    try{els[i].focus({preventScroll:true})}catch(_){try{els[i].focus()}catch(__){}}
+    return;
+  }
+  const player=document.getElementById('playerView');
+  if(player&&player.classList.contains('open')){
+    if(action==='up'){if(!tvRailOpen())toggleTvRail(true);moveTvRail(-1);return}
+    if(action==='down'){if(!tvRailOpen())toggleTvRail(true);moveTvRail(1);return}
+    if(action==='left'){if(tvRailOpen()){toggleTvRail(false);return}playPrev();return}
+    if(action==='right'){if(tvRailOpen())return;playNext();return}
+    if(action==='ok'){if(tvRailOpen())openTvRailFocused();else tvTogglePlayerUi();return}
+    return;
+  }
+  if(!tvHeaderCollapsed){
+    if(action==='left'){moveTvTopFocus(-1);return}
+    if(action==='right'){moveTvTopFocus(1);return}
+    if(action==='down'){
+      const cards=[...document.querySelectorAll('.channel')];
+      if(!cards.length)return;
+      setTvHeaderCollapsed(true,false);
+      setTvFocus(Math.max(0,Math.min(focusIndex,cards.length-1)),true);
+      return;
+    }
+    if(action==='ok'){
+      const el=document.activeElement;
+      if(el&&typeof el.click==='function')el.click();
+      return;
+    }
+    return;
+  }
+  if(action==='left')moveFocusDirection('left');
+  else if(action==='right')moveFocusDirection('right');
+  else if(action==='up')moveFocusDirection('up');
+  else if(action==='down')moveFocusDirection('down');
+  else if(action==='ok')openFocused();
+}
+
 document.addEventListener('focusin',e=>{
   if(!nativeTv||!tvMode)return;
   const card=e.target&&e.target.closest?e.target.closest('.channel'):null;
