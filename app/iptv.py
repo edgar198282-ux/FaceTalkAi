@@ -130,6 +130,7 @@ _worker_control = {"refresh_requested_at": 0, "last_worker_snapshot": 0}
 _ad_probe_cache = {}
 _ad_last_state = {}
 _ad_scan_stats = {"probes": 0, "errors": 0, "last_probe": 0, "last_channel_id": ""}
+_compact_response_cache = {"key": None, "body": b"", "expires_at": 0.0}
 
 def _record_ad_transition(item: dict, active: bool, marker: str):
     cid = str(item.get("id") or "")
@@ -1121,7 +1122,26 @@ async def api_channels(request):
         else:
             await refresh_channels()
     compact = request.query.get("compact") == "1"
-    return web.json_response(public_state(compact=compact), headers={"Cache-Control": "no-store"})
+    if compact:
+        now = time.monotonic()
+        cache_key = (
+            int(_state.get("last_refresh") or 0),
+            int(_state.get("epg_last_refresh") or 0),
+            str(_state.get("error") or ""),
+            str(_state.get("epg_error") or ""),
+        )
+        if _compact_response_cache["key"] == cache_key and now < float(_compact_response_cache["expires_at"] or 0) and _compact_response_cache["body"]:
+            return web.Response(
+                body=_compact_response_cache["body"],
+                content_type="application/json",
+                charset="utf-8",
+                headers={"Cache-Control": "no-store"},
+            )
+        payload = public_state(compact=True)
+        body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        _compact_response_cache.update({"key": cache_key, "body": body, "expires_at": now + 5.0})
+        return web.Response(body=body, content_type="application/json", charset="utf-8", headers={"Cache-Control": "no-store"})
+    return web.json_response(public_state(compact=False), headers={"Cache-Control": "no-store"})
 
 
 async def api_refresh(request):
