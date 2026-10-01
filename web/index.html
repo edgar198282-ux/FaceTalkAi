@@ -66,6 +66,9 @@ button{cursor:pointer}
 .chip.flagOnly{min-width:58px;width:58px;height:42px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:25px;line-height:1;border-radius:21px}
 .chip.adultChip{display:none;background:#7b1d2a;color:#fff;border-color:#d85d70;font-weight:900}
 .chip.adultChip.visible{display:inline-flex}
+.chip.favOnly{min-width:58px;width:58px;height:42px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:28px;line-height:1;color:#e32636;font-weight:900}
+.chip.favOnly::before{content:'❤';display:block;transform:scale(1.08)}
+.chip.favOnly.active{color:#fff;background:#e32636;border-color:#ff8e98}
 .settingsAction.adultOn{background:#7b1d2a!important;color:#fff!important;border-color:#b84255!important}
 .chip.active,.cat.active{background:#087fe1;color:#fff;border-color:#6ed0ff;box-shadow:0 4px 12px rgba(0,86,166,.28)}
 .status{display:none!important}
@@ -275,11 +278,11 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
       <button class="chip flagOnly" data-filter="MD" onclick="setModeFilter(this,'MD')" title="Молдова" aria-label="Молдова">🇲🇩</button>
     </div>
     <div class="modeChips" id="modeChips">
+      <button class="chip favOnly" data-filter="fav" onclick="setModeFilter(this,'fav')" title="Избранное" aria-label="Избранное"></button>
       <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
       <button class="chip" data-filter="HD" onclick="setModeFilter(this,'HD')">HD</button>
       <button class="chip" data-filter="4K" onclick="setModeFilter(this,'4K')">4K</button>
       <button id="adultChip" class="chip adultChip" data-filter="adult" onclick="setModeFilter(this,'adult')">18+</button>
-      <button class="chip" data-filter="fav" onclick="setModeFilter(this,'fav')">♡ FAVORITES</button>
       <button class="chip" data-filter="recent" onclick="setModeFilter(this,'recent')">↺ RECENT</button>
     </div>
     <div class="quickCats" id="quickCats"></div>
@@ -756,6 +759,7 @@ function applyAppLanguage(){
   document.querySelectorAll('[data-filter]').forEach(b=>{
     const k=b.dataset.filter;
     if(COUNTRY_META[k]){b.textContent=COUNTRY_META[k].flag;return;}
+    if(k==='fav'&&b.classList.contains('favOnly')){b.textContent='';return;}
     if(filterLabels[k])b.textContent=filterLabels[k];
   });
   const adultChip=document.getElementById('adultChip');
