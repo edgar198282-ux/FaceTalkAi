@@ -162,18 +162,31 @@ def _detect_hls_ad_break(text: str) -> tuple[bool, str]:
     active = False
     marker = ""
     for raw in text.splitlines():
-        line = raw.strip().upper()
-        if not line:
+        line = raw.strip()
+        upper = line.upper()
+        if not upper:
             continue
-        if line.startswith("#EXT-X-CUE-OUT") or "SCTE35-OUT" in line:
+        if upper.startswith("#EXT-X-CUE-OUT") or "SCTE35-OUT" in upper:
             active = True
             marker = "cue-out"
-            if line.startswith("#EXT-X-DATERANGE") and ("END-DATE=" in line or "SCTE35-IN" in line):
-                active = False
-                marker = "cue-in"
-        elif line.startswith("#EXT-X-CUE-IN") or "SCTE35-IN" in line:
+            continue
+        if upper.startswith("#EXT-X-CUE-IN") or "SCTE35-IN" in upper:
             active = False
             marker = "cue-in"
+            continue
+        if upper.startswith("#EXT-X-DATERANGE"):
+            attrs = {k.upper(): v for k, v in re.findall(r'([A-Z0-9-]+)="?([^",]+)"?', upper)}
+            klass = str(attrs.get("CLASS") or "")
+            has_scte_out = "SCTE35-OUT" in upper or "SCTE35-CMD" in upper
+            has_scte_in = "SCTE35-IN" in upper
+            ad_class = any(token in klass for token in ("AD", "SCTE", "INTERSTITIAL", "CUE"))
+            ended = "END-DATE=" in upper or "END-ON-NEXT=YES" in upper
+            if has_scte_in or (ad_class and ended and not has_scte_out):
+                active = False
+                marker = "daterange-in"
+            elif has_scte_out or ad_class:
+                active = True
+                marker = "daterange-out"
     return active, marker
 
 async def _free_channel_ad_state(item: dict) -> dict:
