@@ -420,6 +420,10 @@ async def refresh_channels(force: bool = False):
                     for x in online_rows[1:] if x.get("url") != primary.get("url")
                 ]
                 primary["backup_count"] = len(primary["backups"])
+                health = _stream_health.get(str(primary.get("url") or "")) or {}
+                samples = int(health.get("successes") or 0) + int(health.get("failures") or 0)
+                primary["health_samples"] = samples
+                primary["unreliable"] = bool(samples >= 6 and float(primary.get("uptime_pct") or 0.0) < 40.0)
                 primary["candidate_count"] = len(rows)
                 primary["duplicate_count"] = max(0, len(rows) - 1)
                 primary["sources"] = sorted({str(x.get("source") or "") for x in rows if x.get("source")})
@@ -456,7 +460,8 @@ def public_state(compact: bool = False):
     rows = []
     compact_keys = {
         "id", "name", "group", "country", "logo", "status", "tvg_id",
-        "latency_ms", "backup_count", "epg_now", "epg_next"
+        "latency_ms", "backup_count", "epg_now", "epg_next",
+        "uptime_pct", "health_score", "health_samples", "unreliable"
     }
     for source in _state["channels"].values():
         row = dict(source)
