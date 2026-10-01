@@ -41,6 +41,14 @@ jobs:
           base64 -d android/facetalk-upload-key.jks.b64 > android/facetalk-upload-key.jks
           test -s android/facetalk-upload-key.jks
 
+      - name: Resolve TV version
+        id: version
+        shell: bash
+        run: |
+          CODE="$(date +%s)"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "name=tv-compat-$CODE" >> "$GITHUB_OUTPUT"
+
       - name: Build Android TV compatibility APK
         working-directory: android
         shell: bash
@@ -49,8 +57,8 @@ jobs:
           gradle :app:assembleRelease \
             -PWEB_APP_URL="https://facetalkai-production.up.railway.app" \
             -PAPP_ID="ai.abaj.tv" \
-            -PAPP_VERSION_NAME="tv-compat-${{ github.run_number }}" \
-            -PAPP_VERSION_CODE="${{ github.run_number }}"
+            -PAPP_VERSION_NAME="${{ steps.version.outputs.name }}" \
+            -PAPP_VERSION_CODE="${{ steps.version.outputs.code }}"
 
       - name: Verify Android TV APK
         shell: bash
