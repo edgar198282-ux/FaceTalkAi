@@ -201,6 +201,7 @@ async def api_iptv_state(request):
     if not user:
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     uid = int(user['id'])
+    device_id = str(request.headers.get('X-Abaj-Device-Id') or 'default').strip()[:120] or 'default'
     raw = await get_setting(f'iptv_state:{uid}', '{}')
     try:
         data = json.loads(raw or '{}')
@@ -208,13 +209,18 @@ async def api_iptv_state(request):
             data = {}
     except Exception:
         data = {}
+    ui_map = data.get('ui') if isinstance(data.get('ui'), dict) else {}
+    ui = ui_map.get(device_id) if isinstance(ui_map.get(device_id), dict) else {}
+    if not ui:
+        ui = {'layout': str(data.get('layout') or ''), 'tv_mode': bool(data.get('tv_mode'))}
     return web.json_response({
         'ok': True,
+        'user_id': uid,
         'favorites': list(dict.fromkeys(data.get('favorites') or []))[:500],
         'recent': list(dict.fromkeys(data.get('recent') or []))[:30],
         'last_channel': str(data.get('last_channel') or ''),
-        'layout': str(data.get('layout') or ''),
-        'tv_mode': bool(data.get('tv_mode')),
+        'layout': str(ui.get('layout') or ''),
+        'tv_mode': bool(ui.get('tv_mode')),
         'updated_at': int(data.get('updated_at') or 0),
     }, headers={'Cache-Control':'no-store'})
 
@@ -224,19 +230,36 @@ async def api_iptv_state_save(request):
     if not user:
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     uid = int(user['id'])
+    device_id = str(request.headers.get('X-Abaj-Device-Id') or 'default').strip()[:120] or 'default'
     body = await request.json()
     favorites = [str(x) for x in (body.get('favorites') or []) if str(x).strip()][:500]
     recent = [str(x) for x in (body.get('recent') or []) if str(x).strip()][:30]
+    raw = await get_setting(f'iptv_state:{uid}', '{}')
+    try:
+        previous = json.loads(raw or '{}')
+        if not isinstance(previous, dict):
+            previous = {}
+    except Exception:
+        previous = {}
+    ui_map = previous.get('ui') if isinstance(previous.get('ui'), dict) else {}
+    ui_map[device_id] = {
+        'layout': 'grid' if body.get('layout') == 'grid' else 'list',
+        'tv_mode': bool(body.get('tv_mode')),
+    }
     state = {
         'favorites': list(dict.fromkeys(favorites)),
         'recent': list(dict.fromkeys(recent)),
         'last_channel': str(body.get('last_channel') or '')[:80],
-        'layout': 'grid' if body.get('layout') == 'grid' else 'list',
-        'tv_mode': bool(body.get('tv_mode')),
+        'ui': ui_map,
         'updated_at': int(time.time()),
     }
     await set_setting(f'iptv_state:{uid}', json.dumps(state, ensure_ascii=False, separators=(',', ':')))
-    return web.json_response({'ok':True, **state}, headers={'Cache-Control':'no-store'})
+    return web.json_response({
+        'ok': True, 'user_id': uid,
+        'layout': ui_map[device_id]['layout'],
+        'tv_mode': ui_map[device_id]['tv_mode'],
+        **state,
+    }, headers={'Cache-Control':'no-store'})
 
 
 def _edem_prune_sessions(uid: int, ttl: int = 120):

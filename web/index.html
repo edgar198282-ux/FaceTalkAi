@@ -375,6 +375,8 @@ const favs=new Set(JSON.parse(localStorage.getItem('iptv_favorites')||'[]'));
 let recent=JSON.parse(localStorage.getItem('iptv_recent')||'[]');
 let syncTimer=null;
 let syncReady=false;
+let syncUpdatedAt=0;
+let syncPullBusy=false;
 let edemStatus=null;
 const deviceId=localStorage.getItem('abaj_device_id')||(
   (crypto&&crypto.randomUUID)?crypto.randomUUID():('abaj-'+Date.now()+'-'+Math.random().toString(36).slice(2))
@@ -536,11 +538,15 @@ async function ensureTvPairing(){
   }
 }
 
-async function loadSyncedState(){
+async function loadSyncedState(force=false){
+  if(syncPullBusy)return;
+  syncPullBusy=true;
   try{
     const r=await fetch('/api/iptv/state',{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return;
     const d=await r.json();
+    const serverUpdated=Number(d.updated_at||0);
+    if(!force&&syncReady&&serverUpdated&&serverUpdated<=syncUpdatedAt)return;
     if(Array.isArray(d.favorites)){
       favs.clear();
       d.favorites.forEach(x=>favs.add(x));
@@ -555,17 +561,18 @@ async function loadSyncedState(){
       localStorage.setItem('iptv_last_channel',lastChannelId);
     }
     if(d.layout==='list'||d.layout==='grid'){
-      layout=d.layout;
+      layout=nativeTv?'grid':d.layout;
       localStorage.setItem('iptv_layout',layout);
     }
     if(typeof d.tv_mode==='boolean'){
-      tvMode=d.tv_mode;
+      tvMode=nativeTv?true:d.tv_mode;
       localStorage.setItem('iptv_tv_mode',tvMode?'1':'0');
     }
+    syncUpdatedAt=Math.max(syncUpdatedAt,serverUpdated);
     syncReady=true;
     applyUiMode();
     render();
-  }catch(e){}
+  }catch(e){}finally{syncPullBusy=false}
 }
 
 function scheduleStateSync(){
@@ -573,7 +580,7 @@ function scheduleStateSync(){
   if(syncTimer)clearTimeout(syncTimer);
   syncTimer=setTimeout(async()=>{
     try{
-      await fetch('/api/iptv/state',{
+      const r=await fetch('/api/iptv/state',{
         method:'POST',
         headers:{'Content-Type':'application/json',...authHeaders()},
         body:JSON.stringify({
@@ -584,8 +591,12 @@ function scheduleStateSync(){
           tv_mode:tvMode
         })
       });
+      if(r.ok){
+        const d=await r.json();
+        syncUpdatedAt=Math.max(syncUpdatedAt,Number(d.updated_at||0));
+      }
     }catch(e){}
-  },350);
+  },250);
 }
 
 function applyUiMode(){
@@ -2217,7 +2228,7 @@ checkAdmin();
 loadEdemStatus();
 restoreCachedChannels();
 load();
-loadSyncedState();
+loadSyncedState(true);
 ensureTvPairing();
 if(nativeTv){
   tvAuthRefreshTimer=setInterval(()=>refreshTvAuth(false),5*60*1000);
@@ -2227,6 +2238,7 @@ window.addEventListener('online',handleOnline);
 document.addEventListener('visibilitychange',handleVisibilityChange);
 if(!navigator.onLine)handleOffline();
 setInterval(()=>{load();loadEdemStatus()},60000);
+setInterval(()=>{if(!document.hidden)loadSyncedState(false)},4000);
 </script>
 </body>
 </html>
