@@ -726,6 +726,12 @@ async function loadSyncedState(force=false){
     syncReady=true;
     applyUiMode();
     render();
+    if(nativeTv&&lastChannelId&&!current&&document.visibilityState==='visible'){
+      const last=channels.find(x=>x.id===lastChannelId);
+      if(last&&!document.getElementById('tvPair').classList.contains('open')){
+        scheduleLastChannelAutoStart(last);
+      }
+    }
   }catch(e){}finally{syncPullBusy=false}
 }
 
@@ -1842,7 +1848,7 @@ async function load(){
       const last=channels.find(x=>x.id===lastChannelId);
       if(last){
         document.getElementById('status').textContent+=' · '+t.last+': '+last.name;
-        if(nativeTv&&!tvAutoResumeDone&&!document.getElementById('tvPair').classList.contains('open')){
+        if(nativeTv&&syncReady&&!tvAutoResumeDone&&!document.getElementById('tvPair').classList.contains('open')){
           scheduleLastChannelAutoStart(last);
         }
       }
