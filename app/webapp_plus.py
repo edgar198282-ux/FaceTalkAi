@@ -1276,12 +1276,18 @@ async def api_app_auth_complete(request):
     }))
 
 async def api_healthz(request):
-    return web.json_response({
-        "ok": True,
+    channels_loaded = bool(iptv._state.get("channels"))
+    payload = {
+        "ok": channels_loaded,
         "service": "abaj-tv",
-        "channels_loaded": bool(iptv._state.get("channels")),
+        "channels_loaded": channels_loaded,
         "last_refresh": int(iptv._state.get("last_refresh") or 0),
-    }, headers={"Cache-Control":"no-store"})
+    }
+    return web.json_response(
+        payload,
+        status=200 if channels_loaded else 503,
+        headers={"Cache-Control":"no-store"},
+    )
 
 
 async def start_webapp(bot):
