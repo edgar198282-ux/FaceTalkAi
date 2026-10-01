@@ -320,8 +320,8 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
 let channels=[];
-let modeFilter='all';
-let activeCategory='';
+let modeFilter=localStorage.getItem('abaj_tv_filter')||'all';
+let activeCategory=localStorage.getItem('abaj_tv_category')||'';
 const launchParams=new URLSearchParams(location.search);
 const nativeTv=launchParams.get('tv')==='1'||launchParams.get('source')==='android_tv';
 const tvDeviceName=(launchParams.get('device_name')||'Android TV').slice(0,120);
@@ -333,7 +333,7 @@ let hls=null;
 let current=null;
 let currentIndex=-1;
 let filteredNow=[];
-let focusIndex=0;
+let focusIndex=Math.max(0,Number(localStorage.getItem('abaj_tv_focus_index')||0));
 let streamRetries=0;
 let reconnectTimer=null;
 let lastChannelId=localStorage.getItem('iptv_last_channel')||'';
@@ -948,7 +948,9 @@ function tvSetModeFilter(v){
   document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.toggle('active',x.dataset.filter===v));
   document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',x.dataset.cat===''));
   focusIndex=0;
+  persistTvBrowseState();
   render();
+  focusFirstChannelAfterFilter();
   const labels={all:'Все каналы',fav:'Избранное',recent:'Недавние',AM:'Армения',RU:'Россия'};
   showTvShortcut(labels[v]||'Каналы');
 }
@@ -962,10 +964,24 @@ function focusFirstChannelAfterFilter(){
     first.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'});
   }));
 }
+function persistTvBrowseState(){
+  if(!nativeTv)return;
+  localStorage.setItem('abaj_tv_filter',modeFilter||'all');
+  localStorage.setItem('abaj_tv_category',activeCategory||'');
+  localStorage.setItem('abaj_tv_focus_index',String(Math.max(0,focusIndex||0)));
+}
+function applyTvBrowseUi(){
+  if(!nativeTv)return;
+  document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.toggle('active',x.dataset.filter===modeFilter));
+  document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',x.dataset.cat===activeCategory));
+}
 function setModeFilter(btn,v){
   modeFilter=v;
+  activeCategory='';
   document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.toggle('active',x===btn));
+  document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',x.dataset.cat===''));
   focusIndex=0;
+  persistTvBrowseState();
   render();
   focusFirstChannelAfterFilter();
 }
@@ -983,6 +999,7 @@ function setCategory(v){
   if(v&&[...sel.options].some(o=>o.value===v))sel.value=v;
   else sel.value='';
   focusIndex=0;
+  persistTvBrowseState();
   render();
   focusFirstChannelAfterFilter();
 }
@@ -1034,6 +1051,7 @@ function restoreCachedChannels(){
     const sel=document.getElementById('group');
     sel.innerHTML='<option value="">ALL</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
     buildQuickCats(groups);
+    applyTvBrowseUi();
     document.getElementById('status').textContent='Каналы загружены · обновляю…';
     render();
     return true;
@@ -1066,6 +1084,7 @@ async function load(){
     sel.innerHTML='<option value="">ALL</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
     if(groups.includes(old))sel.value=old;
     buildQuickCats(groups);
+    applyTvBrowseUi();
     document.getElementById('status').textContent=
       'Online: '+channels.length+
       ' · Offline в проверке: '+((d.stats||{}).offline||0)+
@@ -1182,6 +1201,7 @@ function setTvFocus(index,scroll=true){
   const cards=[...document.querySelectorAll('.channel')];
   if(!cards.length)return;
   focusIndex=Math.max(0,Math.min(cards.length-1,index));
+  if(nativeTv)localStorage.setItem('abaj_tv_focus_index',String(focusIndex));
   cards.forEach((x,i)=>x.classList.toggle('focused',i===focusIndex));
   const el=cards[focusIndex];
   try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(_){}}
