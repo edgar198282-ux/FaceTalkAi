@@ -1102,8 +1102,7 @@ function bindTvFocus(){
   const cards=[...document.querySelectorAll('.channel')];
   if(!cards.length)return;
   focusIndex=Math.max(0,Math.min(focusIndex,cards.length-1));
-  cards.forEach((x,i)=>x.classList.toggle('focused',i===focusIndex));
-  cards[focusIndex].focus({preventScroll:true});
+  setTvFocus(focusIndex,false);
 }
 function tvGridColumns(){
   const list=document.getElementById('list');
@@ -1113,20 +1112,43 @@ function tvGridColumns(){
     return Math.max(1,cols||4);
   }catch(e){return 4}
 }
+function setTvFocus(index,scroll=true){
+  const cards=[...document.querySelectorAll('.channel')];
+  if(!cards.length)return;
+  focusIndex=Math.max(0,Math.min(cards.length-1,index));
+  cards.forEach((x,i)=>x.classList.toggle('focused',i===focusIndex));
+  const el=cards[focusIndex];
+  try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(_){}}
+  if(scroll)el.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'});
+}
 function moveFocus(delta){
   const cards=[...document.querySelectorAll('.channel')];
   if(!cards.length)return;
-  focusIndex=Math.max(0,Math.min(cards.length-1,focusIndex+delta));
-  cards.forEach((x,i)=>x.classList.toggle('focused',i===focusIndex));
-  cards[focusIndex].focus({preventScroll:true});
-  cards[focusIndex].scrollIntoView({block:'nearest',behavior:'smooth'});
+  setTvFocus(focusIndex+delta);
 }
 function moveFocusDirection(direction){
-  const cols=tvGridColumns();
-  if(direction==='left')moveFocus(-1);
-  else if(direction==='right')moveFocus(1);
-  else if(direction==='up')moveFocus(-cols);
-  else if(direction==='down')moveFocus(cols);
+  const cards=[...document.querySelectorAll('.channel')];
+  if(!cards.length)return;
+  const currentEl=cards[Math.max(0,Math.min(focusIndex,cards.length-1))];
+  if(!currentEl){setTvFocus(0);return}
+  const a=currentEl.getBoundingClientRect();
+  const ax=a.left+a.width/2, ay=a.top+a.height/2;
+  let best=-1, bestScore=Infinity;
+  cards.forEach((el,i)=>{
+    if(i===focusIndex)return;
+    const r=el.getBoundingClientRect();
+    const x=r.left+r.width/2, y=r.top+r.height/2;
+    const dx=x-ax, dy=y-ay;
+    let valid=false, primary=0, secondary=0;
+    if(direction==='left'&&dx<-8){valid=true;primary=-dx;secondary=Math.abs(dy)}
+    else if(direction==='right'&&dx>8){valid=true;primary=dx;secondary=Math.abs(dy)}
+    else if(direction==='up'&&dy<-8){valid=true;primary=-dy;secondary=Math.abs(dx)}
+    else if(direction==='down'&&dy>8){valid=true;primary=dy;secondary=Math.abs(dx)}
+    if(!valid)return;
+    const score=primary+secondary*2.4;
+    if(score<bestScore){bestScore=score;best=i}
+  });
+  if(best>=0)setTvFocus(best);
 }
 function openFocused(){
   const cards=[...document.querySelectorAll('.channel')];
@@ -1479,9 +1501,15 @@ function closePlayer(){
   if(hls){hls.destroy();hls=null}
   const v=document.getElementById('video');
   v.pause();v.removeAttribute('src');v.load();
+  const closingId=current&&current.id;
   document.getElementById('playerView').classList.remove('open');
   toggleTvRail(false);
   current=null;currentIndex=-1;
+  if(nativeTv&&closingId){
+    const cards=[...document.querySelectorAll('.channel')];
+    const idx=cards.findIndex(x=>x.dataset.id===closingId);
+    if(idx>=0)setTimeout(()=>setTvFocus(idx),40);
+  }
 }
 function tvToggleFavoriteCurrent(){
   if(!current)return;
@@ -1546,16 +1574,28 @@ document.addEventListener('keydown',e=>{
       if(tvRailOpen()){toggleTvRail(false);return}
       closePlayer();return
     }
-    if(nativeTv&&e.key==='ArrowRight'){e.preventDefault();toggleTvRail(true);return}
-    if(nativeTv&&e.key==='ArrowLeft'&&tvRailOpen()){e.preventDefault();toggleTvRail(false);return}
     if(e.key==='ArrowDown'){
       e.preventDefault();
-      if(nativeTv&&tvRailOpen())moveTvRail(1);else playNext();
+      if(nativeTv&&!tvRailOpen())toggleTvRail(true);
+      if(nativeTv)moveTvRail(1);
       return
     }
     if(e.key==='ArrowUp'){
       e.preventDefault();
-      if(nativeTv&&tvRailOpen())moveTvRail(-1);else playPrev();
+      if(nativeTv&&!tvRailOpen())toggleTvRail(true);
+      if(nativeTv)moveTvRail(-1);
+      return
+    }
+    if(e.key==='ArrowLeft'){
+      e.preventDefault();
+      if(nativeTv&&tvRailOpen()){toggleTvRail(false);return}
+      playPrev();
+      return
+    }
+    if(e.key==='ArrowRight'){
+      e.preventDefault();
+      if(nativeTv&&tvRailOpen())return;
+      playNext();
       return
     }
     if(e.key==='Enter'){
