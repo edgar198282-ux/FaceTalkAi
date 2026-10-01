@@ -10,6 +10,5 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowLayoutInDisplayCutoutMode">never</item>
         <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
-        <item name="android:windowBackground">@drawable/abaj_tv_splash</item>
     </style>
 </resources>

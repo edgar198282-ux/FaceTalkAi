@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
-    android:src="@drawable/abaj_tv_logo_exact"
-    android:gravity="fill" />
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#0B2B7A" android:pathData="M16,4 L92,4 C99,4 104,9 104,16 L104,92 C104,99 99,104 92,104 L16,104 C9,104 4,99 4,92 L4,16 C4,9 9,4 16,4 Z"/>
+    <path android:fillColor="#04163E" android:pathData="M18,22 L90,22 C97,22 102,27 102,34 L102,74 C102,81 97,86 90,86 L18,86 C11,86 6,81 6,74 L6,34 C6,27 11,22 18,22 Z"/>
+    <path android:strokeColor="#83EFFF" android:strokeWidth="4" android:fillColor="@android:color/transparent" android:pathData="M18,22 L90,22 C97,22 102,27 102,34 L102,74 C102,81 97,86 90,86 L18,86 C11,86 6,81 6,74 L6,34 C6,27 11,22 18,22 Z"/>
+    <path android:strokeColor="#19BFFF" android:strokeWidth="10" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="@android:color/transparent" android:pathData="M31,73 L53,31 L77,73"/>
+    <path android:fillColor="#D4FBFF" android:pathData="M49,45 L49,70 L72,57 Z"/>
+</vector>
