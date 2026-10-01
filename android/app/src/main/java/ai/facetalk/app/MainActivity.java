@@ -241,7 +241,7 @@ public class MainActivity extends Activity {
                 return true;
             }
             if(code==KeyEvent.KEYCODE_MENU){
-                webView.evaluateJavascript("if(typeof toggleTvRail==='function')toggleTvRail()",null);
+                webView.evaluateJavascript("(function(){var p=document.getElementById('playerView');if(p&&p.classList.contains('open')){if(typeof toggleTvRail==='function')toggleTvRail()}else if(typeof openTvSettings==='function'){openTvSettings()}})()",null);
                 return true;
             }
             if(code==KeyEvent.KEYCODE_PROG_RED){
