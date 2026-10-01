@@ -271,9 +271,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
       <button class="chip flagOnly" data-filter="BY" onclick="setModeFilter(this,'BY')" title="Беларусь" aria-label="Беларусь">🇧🇾</button>
       <button class="chip flagOnly" data-filter="KZ" onclick="setModeFilter(this,'KZ')" title="Казахстан" aria-label="Казахстан">🇰🇿</button>
       <button class="chip flagOnly" data-filter="UZ" onclick="setModeFilter(this,'UZ')" title="Узбекистан" aria-label="Узбекистан">🇺🇿</button>
-      <button class="chip flagOnly" data-filter="KG" onclick="setModeFilter(this,'KG')" title="Кыргызстан" aria-label="Кыргызстан">🇰🇬</button>
       <button class="chip flagOnly" data-filter="MD" onclick="setModeFilter(this,'MD')" title="Молдова" aria-label="Молдова">🇲🇩</button>
-      <button class="chip flagOnly" data-filter="TJ" onclick="setModeFilter(this,'TJ')" title="Таджикистан" aria-label="Таджикистан">🇹🇯</button>
     </div>
     <div class="modeChips" id="modeChips">
       <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
@@ -426,7 +424,7 @@ try{localStorage.removeItem('abaj_tv_source_filter')}catch(e){}
 const COUNTRY_META={
   AM:{flag:'🇦🇲',name:'Армения'},RU:{flag:'🇷🇺',name:'Россия'},GE:{flag:'🇬🇪',name:'Грузия'},UA:{flag:'🇺🇦',name:'Украина'},
   BY:{flag:'🇧🇾',name:'Беларусь'},KZ:{flag:'🇰🇿',name:'Казахстан'},UZ:{flag:'🇺🇿',name:'Узбекистан'},
-  KG:{flag:'🇰🇬',name:'Кыргызстан'},MD:{flag:'🇲🇩',name:'Молдова'},TJ:{flag:'🇹🇯',name:'Таджикистан'}
+  MD:{flag:'🇲🇩',name:'Молдова'}
 };
 const COUNTRY_FILTERS=new Set(Object.keys(COUNTRY_META));
 let adultEnabled=localStorage.getItem('abaj_tv_adult_enabled')==='1';
