@@ -409,6 +409,13 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   <div class="videoWrap" onclick="handlePlayerSurfaceClick(event)">
     <div class="playerBrand"><div class="playerHourglass">⌛</div></div>
     <video id="video" controls playsinline webkit-playsinline></video>
+    <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:linear-gradient(145deg,#07131f,#0d2740 55%,#103a5f);align-items:center;justify-content:center;text-align:center;color:white;padding:24px;box-sizing:border-box;pointer-events:none">
+      <div>
+        <div style="font-size:clamp(28px,5vw,54px);font-weight:1000;letter-spacing:.5px">Abaj TV</div>
+        <div style="font-size:clamp(16px,2.5vw,24px);font-weight:800;margin-top:10px">Рекламная пауза</div>
+        <div style="font-size:clamp(13px,2vw,18px);opacity:.8;margin-top:8px">Более 3000 каналов · до 3 устройств</div>
+      </div>
+    </div>
     <div id="playerChannelHud" class="playerChannelHud">
       <img id="playerChannelHudLogo" class="playerChannelHudLogo" alt="">
       <div id="playerChannelHudFallback" class="playerChannelHudFallback" style="display:none">TV</div>
@@ -533,6 +540,10 @@ let mobileHeaderRaf=0;
 let tvHeaderBackAt=0;
 let networkRetryTimer=null;
 let tvWasPlayingBeforePause=false;
+let freeAdTimer=null;
+let freeAdActive=false;
+let freeAdMuteBefore=false;
+let freeAdRequestBusy=false;
 let tvWatchdogTimer=null;
 let tvWatchdogLastTime=-1;
 let tvWatchdogStalls=0;
@@ -2405,6 +2416,50 @@ function showTvInfo(){
   if(current)showTvZap(current);
 }
 
+function setFreeAdOverlay(active){
+  const overlay=document.getElementById('freeAdOverlay');
+  const v=document.getElementById('video');
+  active=!!active;
+  if(active===freeAdActive){
+    if(overlay)overlay.style.display=active?'flex':'none';
+    return;
+  }
+  freeAdActive=active;
+  if(active){
+    freeAdMuteBefore=!!(v&&v.muted);
+    if(v)v.muted=true;
+    if(overlay)overlay.style.display='flex';
+  }else{
+    if(overlay)overlay.style.display='none';
+    if(v)v.muted=freeAdMuteBefore;
+  }
+}
+function stopFreeAdWatch(){
+  if(freeAdTimer){clearInterval(freeAdTimer);freeAdTimer=null}
+  freeAdRequestBusy=false;
+  setFreeAdOverlay(false);
+}
+async function checkFreeAdState(){
+  if(freeAdRequestBusy||!current||current.personal)return;
+  freeAdRequestBusy=true;
+  const id=current.id;
+  try{
+    const r=await fetch('/api/iptv/ad-state?id='+encodeURIComponent(id)+'&t='+Date.now(),{cache:'no-store'});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(!current||current.id!==id||current.personal)return;
+    setFreeAdOverlay(!!d.active);
+  }catch(e){}finally{
+    freeAdRequestBusy=false;
+  }
+}
+function startFreeAdWatch(ch){
+  stopFreeAdWatch();
+  if(!ch||ch.personal)return;
+  checkFreeAdState();
+  freeAdTimer=setInterval(checkFreeAdState,3000);
+}
+
 function openPlayer(id){
   const ch=channels.find(x=>x.id===id);
   if(!ch)return;
@@ -2444,6 +2499,7 @@ function openPlayer(id){
   showTvZap(ch);
   if(!nativeTv&&window.innerWidth>window.innerHeight)setAppFullscreen(true);
   startStream(ch);
+  startFreeAdWatch(ch);
   renderRail();
   if(nativeTv){
     if(tvChannelHeartbeatTimer)clearTimeout(tvChannelHeartbeatTimer);
@@ -2788,6 +2844,7 @@ function openTvRailFocused(){
   if(ch){toggleTvRail(false);openPlayer(ch.id)}
 }
 function closePlayer(){
+  stopFreeAdWatch();
   clearFirstFrameTimer();
   if(streamWarmTimer){clearTimeout(streamWarmTimer);streamWarmTimer=null}
   if(streamWarmController){try{streamWarmController.abort()}catch(e){} streamWarmController=null}
