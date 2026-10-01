@@ -63,6 +63,9 @@ button{cursor:pointer}
   padding:8px 14px;white-space:nowrap
 }
 .chip.flagOnly{min-width:58px;width:58px;height:42px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:25px;line-height:1;border-radius:21px}
+.chip.adultChip{display:none;background:#7b1d2a;color:#fff;border-color:#d85d70;font-weight:900}
+.chip.adultChip.visible{display:inline-flex}
+.settingsAction.adultOn{background:#7b1d2a!important;color:#fff!important;border-color:#b84255!important}
 .chip.active,.cat.active{background:#087fe1;color:#fff;border-color:#6ed0ff;box-shadow:0 4px 12px rgba(0,86,166,.28)}
 .status{display:none!important}
 .content{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
@@ -276,6 +279,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
       <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
       <button class="chip" data-filter="HD" onclick="setModeFilter(this,'HD')">HD</button>
       <button class="chip" data-filter="4K" onclick="setModeFilter(this,'4K')">4K</button>
+      <button id="adultChip" class="chip adultChip" data-filter="adult" onclick="setModeFilter(this,'adult')">18+</button>
       <button class="chip" data-filter="fav" onclick="setModeFilter(this,'fav')">♡ FAVORITES</button>
       <button class="chip" data-filter="recent" onclick="setModeFilter(this,'recent')">↺ RECENT</button>
     </div>
@@ -303,6 +307,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
     </div>
     <button class="settingsAction" id="tvAutoStartBtn" onclick="toggleTvAutoStartSetting()">Автостарт последнего канала</button>
     <button class="settingsAction" id="tvHideBadBtn" onclick="toggleTvHideBadSetting()">Скрывать нестабильные каналы</button>
+    <button class="settingsAction" id="tvAdultBtn" onclick="toggleAdultSetting()">🔞 18+ каналы: выкл</button>
     <div class="settingsLabel" id="settingsQualityLabel">Качество по умолчанию</div>
     <select id="tvQualityPref" class="settingsAction" onchange="setTvPreferredQuality(this.value)" style="appearance:auto">
       <option value="auto">Auto</option>
@@ -424,8 +429,10 @@ const COUNTRY_META={
   KG:{flag:'🇰🇬',name:'Кыргызстан'},MD:{flag:'🇲🇩',name:'Молдова'},TJ:{flag:'🇹🇯',name:'Таджикистан'}
 };
 const COUNTRY_FILTERS=new Set(Object.keys(COUNTRY_META));
+let adultEnabled=localStorage.getItem('abaj_tv_adult_enabled')==='1';
 let modeFilter=localStorage.getItem('abaj_tv_filter')||'all';
-if(modeFilter!=='all'&&!COUNTRY_FILTERS.has(modeFilter)&&!['HD','4K','fav','recent'].includes(modeFilter))modeFilter='all';
+if(modeFilter!=='all'&&!COUNTRY_FILTERS.has(modeFilter)&&!['HD','4K','adult','fav','recent'].includes(modeFilter))modeFilter='all';
+if(modeFilter==='adult'&&!adultEnabled)modeFilter='all';
 let activeCategory=localStorage.getItem('abaj_tv_category')||'';
 const launchParams=new URLSearchParams(location.search);
 const nativeTv=launchParams.get('tv')==='1'||launchParams.get('source')==='android_tv';
@@ -731,15 +738,17 @@ function applyAppLanguage(){
   Object.entries(map).forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.textContent=v});
   const sourceLabels={all:t.all,free:t.free,edem:t.edem};
   document.querySelectorAll('#sourceChips [data-source]').forEach(b=>{const k=b.dataset.source;if(sourceLabels[k])b.textContent=sourceLabels[k]});
-  const filterLabels={all:t.all,HD:'HD','4K':'4K',fav:t.favorites,recent:t.recent};
+  const filterLabels={all:t.all,HD:'HD','4K':'4K',adult:'18+',fav:t.favorites,recent:t.recent};
   document.querySelectorAll('[data-filter]').forEach(b=>{
     const k=b.dataset.filter;
     if(COUNTRY_META[k]){b.textContent=COUNTRY_META[k].flag;return;}
     if(filterLabels[k])b.textContent=filterLabels[k];
   });
+  const adultChip=document.getElementById('adultChip');
+  if(adultChip)adultChip.classList.toggle('visible',adultEnabled);
   const group=document.getElementById('group'); if(group&&group.options.length)group.options[0].textContent=t.all;
   ['hy','ru','en'].forEach(x=>document.getElementById('lang'+x[0].toUpperCase()+x.slice(1)+'Btn')?.classList.toggle('active',x===appLang));
-  if(channels.length)buildQuickCats([...new Set(channels.map(x=>x.group||'Other'))]);
+  if(channels.length)buildQuickCats(visibleChannelGroups());
 }
 async function loadEdemStatus(){
   try{
@@ -1061,9 +1070,17 @@ function paintTvSettings(){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
   const auto=document.getElementById('tvAutoStartBtn');
   const bad=document.getElementById('tvHideBadBtn');
+  const adult=document.getElementById('tvAdultBtn');
+  const adultChip=document.getElementById('adultChip');
   const q=document.getElementById('tvQualityPref');
   if(auto)auto.textContent=(tvAutoStartLast?'✓ ':'✕ ')+t.auto;
   if(bad)bad.textContent=(tvHideUnreliable?'✓ ':'✕ ')+t.hide;
+  if(adult){
+    const label=appLang==='hy'?'18+ ալիքներ':(appLang==='en'?'18+ channels':'18+ каналы');
+    adult.textContent=(adultEnabled?'✓ ':'✕ ')+'🔞 '+label+': '+(adultEnabled?(appLang==='en'?'on':(appLang==='hy'?'միացված':'вкл')):(appLang==='en'?'off':(appLang==='hy'?'անջատված':'выкл')));
+    adult.classList.toggle('adultOn',adultEnabled);
+  }
+  if(adultChip)adultChip.classList.toggle('visible',adultEnabled);
   if(q)q.value=tvPreferredQuality;
   applyAppLanguage();
 }
@@ -1088,6 +1105,52 @@ function toggleTvHideBadSetting(){
   localStorage.setItem('abaj_tv_hide_unreliable',tvHideUnreliable?'1':'0');
   paintTvSettings();
   load();
+}
+function isAdultChannel(ch){
+  if(!ch)return false;
+  const raw=(' '+String(ch.group||'')+' '+String(ch.name||'')+' '+String(ch.tvg_id||'')+' ').toLowerCase();
+  return /(^|[^a-z0-9])(18\+|xxx|adult|erotic|erotica|porn|porno|playboy|penthouse|hustler|dorcel|brazzers|redlight)([^a-z0-9]|$)/i.test(raw);
+}
+function visibleChannelGroups(){
+  const rows=adultEnabled?channels:channels.filter(x=>!isAdultChannel(x));
+  return [...new Set(rows.map(x=>x.group||'Other'))].sort((a,b)=>a.localeCompare(b,'ru'));
+}
+function refreshGroupFilters(){
+  const groups=visibleChannelGroups();
+  const t=UI_TEXT[appLang]||UI_TEXT.ru;
+  const sel=document.getElementById('group');
+  if(sel){
+    const old=sel.value;
+    sel.innerHTML='<option value="">'+esc(t.all)+'</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
+    sel.value=groups.includes(old)?old:'';
+  }
+  buildQuickCats(groups);
+}
+function toggleAdultSetting(){
+  if(adultEnabled){
+    if(current&&isAdultChannel(current))closePlayer();
+    adultEnabled=false;
+    activeCategory='';
+    localStorage.setItem('abaj_tv_adult_enabled','0');
+    localStorage.setItem('abaj_tv_category','');
+    if(modeFilter==='adult')modeFilter='all';
+    localStorage.setItem('abaj_tv_filter',modeFilter);
+    refreshGroupFilters();
+    paintTvSettings();
+    render();
+    return;
+  }
+  const pin=window.prompt(appLang==='hy'?'Մուտքագրեք 18+ PIN կոդը':(appLang==='en'?'Enter 18+ PIN':'Введите пароль 18+'));
+  if(pin===null)return;
+  if(String(pin).trim()!=='2828'){
+    alert(appLang==='hy'?'Սխալ PIN կոդ':(appLang==='en'?'Wrong PIN':'Неверный пароль'));
+    return;
+  }
+  adultEnabled=true;
+  localStorage.setItem('abaj_tv_adult_enabled','1');
+  refreshGroupFilters();
+  paintTvSettings();
+  render();
 }
 function setTvPreferredQuality(value){
   tvPreferredQuality=['720','1080'].includes(String(value))?String(value):'auto';
@@ -1272,6 +1335,7 @@ function setSourceFilter(btn,v){
   focusFirstChannelAfterFilter();
 }
 function setModeFilter(btn,v){
+  if(v==='adult'&&!adultEnabled)return;
   modeFilter=v;
   const isCountry=COUNTRY_FILTERS.has(v);
   if(!isCountry)activeCategory='';
@@ -1507,7 +1571,7 @@ function restoreCachedChannels(){
     if(!cached||!Array.isArray(cached.channels)||!cached.channels.length)return false;
     if(Date.now()-Number(cached.ts||0)>12*60*60*1000)return false;
     channels=cached.channels.filter(x=>!tvHideUnreliable||!x.unreliable||x.personal);
-    const groups=[...new Set(channels.map(x=>x.group||'Other'))].sort((a,b)=>a.localeCompare(b,'ru'));
+    const groups=visibleChannelGroups();
     const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const sel=document.getElementById('group');
     sel.innerHTML='<option value="">'+esc(t.all)+'</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
@@ -1551,7 +1615,7 @@ async function load(){
       if(!dedup.has(key))dedup.set(key,ch);
     }
     channels=[...dedup.values()];
-    const groups=[...new Set(channels.map(x=>x.group||'Other'))].sort((a,b)=>a.localeCompare(b,'ru'));
+    const groups=visibleChannelGroups();
     const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const sel=document.getElementById('group');
     const old=sel.value;
@@ -1601,11 +1665,13 @@ function getFiltered(){
   const q=(document.getElementById('search').value||'').trim().toLowerCase();
   const g=document.getElementById('group').value||'';
   let rows=channels.slice();
+  if(!adultEnabled)rows=rows.filter(x=>!isAdultChannel(x));
   if(sourceFilter==='free')rows=rows.filter(x=>!x.personal);
   else if(sourceFilter==='edem')rows=rows.filter(x=>!!x.personal);
   if(COUNTRY_FILTERS.has(modeFilter))rows=rows.filter(x=>x.country===modeFilter);
   if(modeFilter==='HD')rows=rows.filter(x=>channelQuality(x)==='HD');
   if(modeFilter==='4K')rows=rows.filter(x=>channelQuality(x)==='4K');
+  if(modeFilter==='adult')rows=adultEnabled?rows.filter(x=>isAdultChannel(x)):[];
   if(modeFilter==='fav')rows=rows.filter(x=>favs.has(x.id));
   if(modeFilter==='recent'){
     const pos=new Map(recent.map((id,i)=>[id,i]));
@@ -1707,7 +1773,7 @@ function render(){
           '<div class="progress"><span style="width:'+epgProgress(ch.epg_now)+'%"></span></div>'+
           '<div class="times"><span>'+(ch.epg_now?fmtClock(ch.epg_now.start):'LIVE')+'</span><span>'+(ch.epg_now?fmtClock(ch.epg_now.stop):Math.max(1,Math.round((ch.latency_ms||0)/1000))+'s')+'</span></div>'+
           (ch.epg_next?'<div class="next">'+esc(t.next)+': '+esc(ch.epg_next.title)+'</div>':'')+
-          '<div class="badge">'+(ch.personal?'★ EDEM':((COUNTRY_META[ch.country]&&COUNTRY_META[ch.country].flag)||esc(ch.country||'')))+'</div>'+
+          '<div class="badge">'+(isAdultChannel(ch)?'🔞 18+':(ch.personal?'★ EDEM':((COUNTRY_META[ch.country]&&COUNTRY_META[ch.country].flag)||esc(ch.country||''))))+'</div>'+
         '</div>'+
         '<div class="side">'+
           (nativeTv
