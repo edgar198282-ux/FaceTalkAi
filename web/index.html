@@ -234,6 +234,8 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
       <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
       <button class="chip" data-filter="AM" onclick="setModeFilter(this,'AM')">🇦🇲 ARMENIA</button>
       <button class="chip" data-filter="RU" onclick="setModeFilter(this,'RU')">🇷🇺 RUSSIA</button>
+      <button class="chip" data-filter="HD" onclick="setModeFilter(this,'HD')">HD</button>
+      <button class="chip" data-filter="4K" onclick="setModeFilter(this,'4K')">4K</button>
       <button class="chip" data-filter="fav" onclick="setModeFilter(this,'fav')">♡ FAVORITES</button>
       <button class="chip" data-filter="recent" onclick="setModeFilter(this,'recent')">↺ RECENT</button>
     </div>
@@ -1149,12 +1151,23 @@ function normalizeCat(group){
   if(g.includes('general'))return 'General';
   return group||'Other';
 }
+function channelQuality(ch){
+  const raw=[
+    ch&&ch.quality,ch&&ch.resolution,ch&&ch.video_quality,ch&&ch.height,
+    ch&&ch.name,ch&&ch.group
+  ].filter(v=>v!==undefined&&v!==null).join(' ').toLowerCase();
+  const height=Number(ch&&ch.height||0);
+  if(height>=2000||/(^|[^a-z0-9])(4k|uhd|2160p?|3840x2160)([^a-z0-9]|$)/i.test(raw))return '4K';
+  if(height>=720||/(^|[^a-z0-9])(fhd|full[ ._-]?hd|1080p?|1920x1080|720p?|1280x720|hd)([^a-z0-9]|$)/i.test(raw))return 'HD';
+  return 'SD';
+}
 
 const CHANNEL_CACHE_KEY='abajtv_channels_cache_v3';
 function cacheChannels(){
   try{
     const slim=channels.map(x=>({
       id:x.id,name:x.name,group:x.group,country:x.country,logo:x.logo,status:x.status,tvg_id:x.tvg_id,
+      quality:x.quality,resolution:x.resolution,video_quality:x.video_quality,height:x.height,
       latency_ms:x.latency_ms,backup_count:x.backup_count,uptime_pct:x.uptime_pct,health_score:x.health_score,health_samples:x.health_samples,unreliable:!!x.unreliable,epg_now:x.epg_now,epg_next:x.epg_next,
       personal:!!x.personal,provider:x.provider
     }));
@@ -1248,6 +1261,8 @@ function getFiltered(){
   if(sourceFilter==='free')rows=rows.filter(x=>!x.personal);
   else if(sourceFilter==='edem')rows=rows.filter(x=>!!x.personal);
   if(modeFilter==='AM'||modeFilter==='RU')rows=rows.filter(x=>x.country===modeFilter);
+  if(modeFilter==='HD')rows=rows.filter(x=>channelQuality(x)==='HD');
+  if(modeFilter==='4K')rows=rows.filter(x=>channelQuality(x)==='4K');
   if(modeFilter==='fav')rows=rows.filter(x=>favs.has(x.id));
   if(modeFilter==='recent'){
     const pos=new Map(recent.map((id,i)=>[id,i]));
