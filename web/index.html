@@ -1864,6 +1864,21 @@ function tvNumberInput(digit){
   },1300);
 }
 
+document.addEventListener('focusin',e=>{
+  if(!nativeTv||!tvMode)return;
+  const card=e.target&&e.target.closest?e.target.closest('.channel'):null;
+  if(!card)return;
+  const cards=[...document.querySelectorAll('.channel')];
+  const idx=cards.indexOf(card);
+  if(idx>=0){
+    focusIndex=idx;
+    cards.forEach((x,i)=>x.classList.toggle('focused',i===idx));
+    if(!tvHeaderCollapsed)setTvHeaderCollapsed(true,false);
+    const content=document.getElementById('content');
+    if(content&&content.scrollTop<2)content.scrollTop=0;
+  }
+});
+
 document.addEventListener('keydown',e=>{
   if(nativeTv&&tvLastAutoTimer)cancelLastChannelAutoStart(true);
   if(tvSettingsOpen()){
@@ -1921,8 +1936,15 @@ document.addEventListener('keydown',e=>{
     if(e.key==='ArrowLeft'){e.preventDefault();moveTvTopFocus(-1);return}
     if(e.key==='ArrowDown'){
       e.preventDefault();
+      const cards=[...document.querySelectorAll('.channel')];
+      if(!cards.length)return;
       setTvHeaderCollapsed(true,false);
-      setTvFocus(Math.max(0,focusIndex),true);
+      const idx=Math.max(0,Math.min(focusIndex,cards.length-1));
+      focusIndex=idx;
+      cards.forEach((x,i)=>x.classList.toggle('focused',i===idx));
+      const el=cards[idx];
+      try{el.focus({preventScroll:true})}catch(_){try{el.focus()}catch(__){}}
+      el.scrollIntoView({block:'start',inline:'nearest',behavior:'auto'});
       return;
     }
     if(e.key==='Enter'&&document.activeElement&&typeof document.activeElement.click==='function'){
