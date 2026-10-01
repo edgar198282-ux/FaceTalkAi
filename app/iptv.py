@@ -938,8 +938,12 @@ async def api_worker_snapshot(request):
             _save_json(HISTORY_PATH, history)
     except Exception:
         pass
-    _state["epg_last_refresh"] = int(state.get("epg_last_refresh") or 0)
-    _state["epg_error"] = str(state.get("epg_error") or "")[:300]
+    incoming_epg_refresh = int(state.get("epg_last_refresh") or 0)
+    if incoming_epg_refresh > 0:
+        _state["epg_last_refresh"] = incoming_epg_refresh
+    incoming_epg_error = str(state.get("epg_error") or "")[:300]
+    if incoming_epg_error:
+        _state["epg_error"] = incoming_epg_error
     _state["error"] = str(state.get("error") or "")[:300]
     _worker_control["last_worker_snapshot"] = int(time.time())
     return web.json_response({"ok": True, "channels": len(channels), "last_refresh": _state["last_refresh"], "epg_last_refresh": _state["epg_last_refresh"]})
