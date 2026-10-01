@@ -3065,17 +3065,17 @@ document.addEventListener('keydown',e=>{
     return;
   }
   if(tvSearchOpen()){
-    if(e.key==='Escape'){e.preventDefault();closeTvSearch(false);return}
+    if(e.key==='Escape'||e.key==='Backspace'){e.preventDefault();closeTvSearch(false);return}
     if(e.key==='Enter'){e.preventDefault();closeTvSearch(true);return}
+    return;
+  }
+  if(nativeTv&&(e.key==='Escape'||e.key==='Backspace')){
+    e.preventDefault();
+    handleTvBack();
     return;
   }
   const playerOpen=document.getElementById('playerView').classList.contains('open');
   if(playerOpen){
-    if(e.key==='Escape'||e.key==='Backspace'){
-      e.preventDefault();
-      if(tvRailOpen()){toggleTvRail(false);return}
-      closePlayer();return
-    }
     if(nativeTv&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
       e.preventDefault();
       if(e.key==='ArrowLeft'){queueTvChannelStep(-1);return}
