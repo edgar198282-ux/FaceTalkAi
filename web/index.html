@@ -1397,20 +1397,11 @@ function restoreCachedChannels(){
 }
 async function load(){
   try{
-    const accessR=await fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'});
-    if(!accessR.ok)throw new Error('access '+accessR.status);
-    edemStatus=await accessR.json();
-    if(!edemStatus.active){
-      channels=[];
-      current=null;
-      try{localStorage.removeItem(CHANNEL_CACHE_KEY)}catch(e){}
-      const sel=document.getElementById('group');
-      if(sel)sel.innerHTML='<option value="">ALL</option>';
-      buildQuickCats([]);
-      document.getElementById('status').textContent='Каналы откроются после подтверждения оплаты';
-      render();
-      await loadEdemStatus();
-      return;
+    try{
+      const accessR=await fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'});
+      edemStatus=accessR.ok?await accessR.json():{active:false,configured:false};
+    }catch(e){
+      edemStatus={active:false,configured:false};
     }
     restoreCachedChannels();
     const mainPromise=fetch('/api/iptv/channels?compact=1',{cache:'no-store'}).then(async r=>{
