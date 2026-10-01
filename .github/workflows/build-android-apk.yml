@@ -95,7 +95,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APK="android/app/build/outputs/apk/release/app-release.apk"
+          APK="/tmp/AbajTV-standard.apk"
           test -s "$APK"
           SIZE=$(stat -c%s "$APK")
           echo "REAL APK SIZE: $SIZE bytes"
@@ -110,16 +110,49 @@ jobs:
           "$AAPT" dump badging "$APK" | tee /tmp/facetalk-badging.txt
           grep -q "package: name='ai.facetalk.app'" /tmp/facetalk-badging.txt
           grep -q "launchable-activity: name='ai.facetalk.app.MainActivity'" /tmp/facetalk-badging.txt
-          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/abajtv-signature.txt
+          grep -q "Verified using v1 scheme (JAR signing): true" /tmp/abajtv-signature.txt
+          cp "$APK" /tmp/AbajTV-standard.apk
+
+      - name: Build Android TV compatibility APK
+        working-directory: android
+        env:
+          FACETALK_WEB_APP_URL: ${{ vars.FACETALK_WEB_APP_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
+          gradle :app:assembleRelease \
+            -PWEB_APP_URL="$WEB_APP_URL" \
+            -PAPP_ID="ai.abaj.tv" \
+            -PAPP_VERSION_NAME="${{ steps.version.outputs.name }}" \
+            -PAPP_VERSION_CODE="${{ steps.version.outputs.code }}"
+
+      - name: Verify Android TV compatibility APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$AAPT" dump badging "$APK" | tee /tmp/abajtv-tv-badging.txt
+          grep -q "package: name='ai.abaj.tv'" /tmp/abajtv-tv-badging.txt
+          grep -q "sdkVersion:'21'" /tmp/abajtv-tv-badging.txt
+          grep -q "leanback-launchable-activity: name='ai.facetalk.app.MainActivity'" /tmp/abajtv-tv-badging.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee /tmp/abajtv-tv-signature.txt
+          grep -q "Verified using v1 scheme (JAR signing): true" /tmp/abajtv-tv-signature.txt
+          grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" /tmp/abajtv-tv-signature.txt
 
       - name: Package APK
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp android/app/build/outputs/apk/release/app-release.apk "dist/AbajTV-${{ steps.version.outputs.name }}.apk"
-          cp android/app/build/outputs/apk/release/app-release.apk "dist/AbajTV-latest.apk"
-          sha256sum dist/AbajTV-${{ steps.version.outputs.name }}.apk dist/AbajTV-latest.apk > dist/SHA256SUMS.txt
+          cp /tmp/AbajTV-standard.apk "dist/AbajTV-${{ steps.version.outputs.name }}.apk"
+          cp /tmp/AbajTV-standard.apk "dist/AbajTV-latest.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/AbajTV-TV-compat.apk"
+          sha256sum dist/AbajTV-${{ steps.version.outputs.name }}.apk dist/AbajTV-latest.apk dist/AbajTV-TV-compat.apk > dist/SHA256SUMS.txt
           ls -lh dist/*.apk
 
       - name: Upload Actions artifact
@@ -129,6 +162,7 @@ jobs:
           path: |
             dist/AbajTV-${{ steps.version.outputs.name }}.apk
             dist/AbajTV-latest.apk
+            dist/AbajTV-TV-compat.apk
             dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
@@ -146,6 +180,7 @@ jobs:
           gh release create "$TAG" \
             "dist/AbajTV-${{ steps.version.outputs.name }}.apk#AbajTV-${{ steps.version.outputs.name }}.apk" \
             "dist/AbajTV-latest.apk#AbajTV-latest.apk" \
+            "dist/AbajTV-TV-compat.apk#AbajTV-TV-compat.apk" \
             "dist/SHA256SUMS.txt#SHA256SUMS.txt" \
             --target "${{ github.sha }}" \
             --title "Abaj TV Android ${{ steps.version.outputs.name }}" \
