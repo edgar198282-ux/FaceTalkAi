@@ -101,9 +101,13 @@ def _record_health(row: dict):
     _stream_health[url] = h
 
 EPG_URLS = [
-    ("AM", "https://iptv-epg.org/files/epg-am.xml"),
-    ("RU", "https://iptv-epg.org/files/epg-ru.xml"),
+    # EPG.ONE currently provides a live multi-country XMLTV feed that includes
+    # Armenia, Belarus, Georgia, Kazakhstan, Moldova, Russia, Ukraine and more.
+    ("CIS", "https://epg.one/epg2.xml"),
 ]
+IPTV_ORG_STREAMS_API = "https://iptv-org.github.io/api/streams.json"
+IPTV_ORG_CHANNELS_API = "https://iptv-org.github.io/api/channels.json"
+IPTV_ORG_LOGOS_API = "https://iptv-org.github.io/api/logos.json"
 EPG_REFRESH_SECONDS = 3 * 60 * 60
 
 _state = {
@@ -403,6 +407,73 @@ async def _fetch_text(session: aiohttp.ClientSession, url: str) -> str:
         return await asyncio.to_thread(_fetch_text_sync, url)
 
 
+async def _discover_iptv_org_api(session: aiohttp.ClientSession) -> list[dict]:
+    """Discover current public streams from iptv-org and normalize them into our candidate format."""
+    try:
+        async def get_json(url):
+            try:
+                text = await _fetch_text(session, url)
+                data = json.loads(text) if text else []
+                return data if isinstance(data, list) else []
+            except Exception:
+                return []
+        streams, channels_meta, logos = await asyncio.gather(
+            get_json(IPTV_ORG_STREAMS_API), get_json(IPTV_ORG_CHANNELS_API), get_json(IPTV_ORG_LOGOS_API)
+        )
+        meta = {str(x.get('id') or ''): x for x in channels_meta if isinstance(x, dict) and x.get('id')}
+        logo_map = {}
+        for x in logos:
+            if not isinstance(x, dict) or not x.get('channel') or not x.get('url'):
+                continue
+            cid = str(x.get('channel'))
+            if cid not in logo_map or bool(x.get('in_use')):
+                logo_map[cid] = str(x.get('url'))
+        out = []
+        for s in streams:
+            if not isinstance(s, dict):
+                continue
+            channel_id = str(s.get('channel') or '').strip()
+            url = str(s.get('url') or '').strip()
+            if not channel_id or not url:
+                continue
+            m = meta.get(channel_id) or {}
+            country = str(m.get('country') or '').upper()
+            if country not in COUNTRY_CODES:
+                continue
+            labels = {str(x).lower() for x in (s.get('labels') or [])}
+            if 'not 24/7' in labels:
+                continue
+            q = str(s.get('quality') or '').lower()
+            height = 0
+            qm = re.search(r'(\d{3,4})p', q)
+            if qm:
+                height = int(qm.group(1))
+            quality = '4K' if height >= 2000 else ('FHD' if height >= 1000 else ('HD' if height >= 700 else ''))
+            categories = [str(x) for x in (m.get('categories') or []) if x]
+            adult = bool(m.get('is_nsfw'))
+            group = 'Adult' if adult else (categories[0].title() if categories else 'General')
+            item = {
+                'name': str(m.get('name') or s.get('title') or channel_id),
+                'group': group,
+                'tvg_id': channel_id,
+                'logo': logo_map.get(channel_id, ''),
+                'country': country,
+                'source': 'iptv-org-api',
+                'url': url,
+                'adult': adult,
+                'quality': quality,
+                'height': height,
+            }
+            key_src = _channel_key(item)
+            if not key_src or _looks_junk(item):
+                continue
+            item['id'] = hashlib.sha1(key_src.encode('utf-8')).hexdigest()[:16]
+            out.append(item)
+        return out
+    except Exception:
+        return []
+
+
 async def _probe(session: aiohttp.ClientSession, item: dict, sem: asyncio.Semaphore) -> dict:
     started = None
     ok = False
@@ -451,7 +522,10 @@ async def refresh_channels(force: bool = False):
             connector = aiohttp.TCPConnector(limit=32, ssl=False)
             headers = {"User-Agent": "IPTV-Player/1.0"}
             async with aiohttp.ClientSession(connector=connector, headers=headers) as session:
-                fetched = await asyncio.gather(*[_fetch_text(session, url) for _, url in SOURCE_URLS])
+                fetched, discovered_api = await asyncio.gather(
+                    asyncio.gather(*[_fetch_text(session, url) for _, url in SOURCE_URLS]),
+                    _discover_iptv_org_api(session),
+                )
                 candidates = []
                 for (country, url), text in zip(SOURCE_URLS, fetched):
                     if "#EXTM3U" not in text[:4096]:
@@ -460,6 +534,7 @@ async def refresh_channels(force: bool = False):
                         candidates.extend(_parse_hq_m3u(text, url))
                     else:
                         candidates.extend(_parse_m3u(text, country, url))
+                candidates.extend(discovered_api)
                 country_order = {code: i for i, code in enumerate(("AM","RU","GE","UA","BY","KZ","UZ","MD"))}
                 for item in candidates:
                     item['adult'] = _is_adult_channel(item)
@@ -583,6 +658,7 @@ async def refresh_channels(force: bool = False):
                 "with_logo": sum(1 for x in channels.values() if bool(x.get("logo"))),
                 "with_epg": sum(1 for x in channels.values() if bool(x.get("epg_now"))),
                 "scan_interval_seconds": 1800,
+                "discovered_api_streams": len(discovered_api),
             }
             try:
                 _save_json(HEALTH_PATH, _stream_health)
