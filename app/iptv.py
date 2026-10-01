@@ -1276,11 +1276,13 @@ async def api_ad_visual_observe(request):
         brightness_var = max(0.0, min(1.0, float(body.get("brightness_var") or 0)))
         samples = max(0, min(60, int(body.get("samples") or 0)))
         observer_error = str(body.get("observer_error") or "").strip()[:160]
+        observer_state = str(body.get("observer_state") or "").strip()[:40]
     except Exception:
         return web.json_response({"ok": False, "error": "bad values"}, status=400)
 
     _burned_ad_last_report[cid] = now
-    _burned_ad_stats["samples"] = int(_burned_ad_stats.get("samples") or 0) + 1
+    if samples > 0:
+        _burned_ad_stats["samples"] = int(_burned_ad_stats.get("samples") or 0) + 1
     _burned_ad_stats["last_score"] = score
     _burned_ad_stats["last_channel_id"] = cid
     _burned_ad_stats["last_seen"] = int(now)
@@ -1297,6 +1299,7 @@ async def api_ad_visual_observe(request):
         "brightness_var": round(brightness_var, 3),
         "samples": samples,
         "observer_error": observer_error,
+        "observer_state": observer_state,
         "seen_at": int(now),
     }
     if len(channels) > 80:
