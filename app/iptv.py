@@ -101,6 +101,7 @@ _state = {
 }
 _lock = asyncio.Lock()
 _proxy_secret = (os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("FACETALK_BOT_TOKEN") or "iptv-player").encode()
+_worker_control = {"refresh_requested_at": 0, "last_worker_snapshot": 0}
 
 
 def _attrs(line: str) -> dict[str, str]:
@@ -550,6 +551,21 @@ async def api_diagnostics(request):
     }, headers={"Cache-Control": "no-store"})
 
 
+async def api_worker_command(request):
+    supplied = (request.headers.get("X-IPTV-Worker-Token") or "").strip()
+    expected = (os.getenv("IPTV_WORKER_TOKEN") or os.getenv("FACETALK_APK_DEPLOY_TOKEN") or os.getenv("INTERNAL_API_SECRET") or "").strip()
+    if not expected or not supplied or not hmac.compare_digest(supplied, expected):
+        return web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    requested = int(_worker_control.get("refresh_requested_at") or 0)
+    last_snapshot = int(_worker_control.get("last_worker_snapshot") or 0)
+    return web.json_response({
+        "ok": True,
+        "refresh": bool(requested and requested > last_snapshot),
+        "refresh_requested_at": requested,
+        "last_worker_snapshot": last_snapshot,
+    }, headers={"Cache-Control": "no-store"})
+
+
 async def api_worker_bootstrap(request):
     supplied = (request.headers.get("X-IPTV-Worker-Token") or "").strip()
     expected = (os.getenv("IPTV_WORKER_TOKEN") or os.getenv("FACETALK_APK_DEPLOY_TOKEN") or os.getenv("INTERNAL_API_SECRET") or "").strip()
@@ -590,6 +606,7 @@ async def api_worker_snapshot(request):
     _state["epg_last_refresh"] = int(state.get("epg_last_refresh") or 0)
     _state["epg_error"] = str(state.get("epg_error") or "")[:300]
     _state["error"] = str(state.get("error") or "")[:300]
+    _worker_control["last_worker_snapshot"] = int(time.time())
     return web.json_response({"ok": True, "channels": len(channels), "last_refresh": _state["last_refresh"], "epg_last_refresh": _state["epg_last_refresh"]})
 
 
@@ -600,6 +617,10 @@ async def api_channels(request):
 
 
 async def api_refresh(request):
+    worker_mode = str(os.getenv("IPTV_BACKGROUND_ENABLED", "1")).strip().lower() in {"0", "false", "no", "off"}
+    if worker_mode:
+        _worker_control["refresh_requested_at"] = int(time.time())
+        return web.json_response({"ok": True, "queued": True, "worker": True})
     if _state["running"]:
         return web.json_response({"ok": True, "running": True})
     asyncio.create_task(refresh_channels(force=True))
@@ -719,6 +740,7 @@ async def stop_background(app):
 
 def install(app: web.Application):
     app.router.add_get("/api/iptv/channels", api_channels)
+    app.router.add_get("/api/iptv/worker-command", api_worker_command)
     app.router.add_get("/api/iptv/worker-bootstrap", api_worker_bootstrap)
     app.router.add_post("/api/iptv/worker-snapshot", api_worker_snapshot)
     app.router.add_get("/api/iptv/diagnostics", api_diagnostics)

@@ -746,9 +746,11 @@ async function loadIptvDiagnostics(){
 }
 async function forceIptvRefresh(){
   try{
-    await fetch('/api/iptv/refresh',{method:'POST',headers:authHeaders(),cache:'no-store'});
-    const box=document.getElementById('iptvDiagRows'); if(box)box.innerHTML='<div class="adminEmpty">Перепроверка запущена…</div>';
-    setTimeout(loadIptvDiagnostics,4500);
+    const r=await fetch('/api/iptv/refresh',{method:'POST',headers:authHeaders(),cache:'no-store'});
+    const d=await r.json();
+    const box=document.getElementById('iptvDiagRows');
+    if(box)box.innerHTML='<div class="adminEmpty">'+(d.worker?'Команда отправлена IPTV worker. Идёт полная перепроверка…':'Перепроверка запущена…')+'</div>';
+    setTimeout(loadIptvDiagnostics,d.worker?60000:4500);
   }catch(e){}
 }
 

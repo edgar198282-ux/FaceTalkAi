@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 import aiohttp
 
 from app import iptv
@@ -28,6 +29,24 @@ async def restore_health():
                 print(f"Restored IPTV health: {len(iptv._stream_health)} streams", flush=True)
 
 
+async def refresh_requested():
+    if not MAIN_URL or not TOKEN:
+        return False
+    timeout = aiohttp.ClientTimeout(total=15)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(
+                MAIN_URL + "/api/iptv/worker-command",
+                headers={"X-IPTV-Worker-Token": TOKEN},
+            ) as response:
+                if response.status != 200:
+                    return False
+                data = await response.json()
+                return bool(isinstance(data, dict) and data.get("refresh"))
+    except Exception:
+        return False
+
+
 async def publish():
     if not MAIN_URL or not TOKEN:
         raise RuntimeError("IPTV_MAIN_URL/MINIAPP_URL and IPTV_WORKER_TOKEN are required")
@@ -54,12 +73,18 @@ async def main():
         await restore_health()
     except Exception as exc:
         print(f"IPTV health restore error: {exc!r}", flush=True)
+    last_publish = 0.0
     while True:
-        try:
-            await publish()
-        except Exception as exc:
-            print(f"IPTV worker error: {exc!r}", flush=True)
-        await asyncio.sleep(interval)
+        should_publish = not last_publish or (time.time() - last_publish >= interval)
+        if not should_publish:
+            should_publish = await refresh_requested()
+        if should_publish:
+            try:
+                await publish()
+                last_publish = time.time()
+            except Exception as exc:
+                print(f"IPTV worker error: {exc!r}", flush=True)
+        await asyncio.sleep(30)
 
 if __name__ == "__main__":
     asyncio.run(main())
