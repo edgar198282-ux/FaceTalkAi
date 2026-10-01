@@ -2088,7 +2088,7 @@ function startTvWatchdog(ch){
   },4000);
 }
 
-function startStream(ch,preferBackup=false){
+function startStream(ch,preferBackup=false,forceProxy=false){
   stopTvWatchdog();
   clearFirstFrameTimer();
   const attemptToken=++streamAttemptToken;
@@ -2101,7 +2101,7 @@ function startStream(ch,preferBackup=false){
   v.pause();v.removeAttribute('src');v.load();
   const basePath=ch.personal?'/api/iptv/edem/play':'/api/iptv/play';
   const auth=ch.personal?authHeaders():{};
-  const src=basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+'&t='+Date.now();
+  const src=basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now();
   resetQualityMenu();
 
   if(window.Hls&&Hls.isSupported()){
@@ -2175,10 +2175,16 @@ function startStream(ch,preferBackup=false){
     hls.on(Hls.Events.ERROR,(event,data)=>{
       if(!data||!data.fatal)return;
 
+      if(data.type===Hls.ErrorTypes.NETWORK_ERROR && !forceProxy && !ch.personal){
+        clearFirstFrameTimer();
+        err.textContent='Проверяю совместимый поток…';
+        startStream(ch,preferBackup,true);
+        return;
+      }
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR && nativeTv&&Number(ch.backup_count||0)>0){
         clearFirstFrameTimer();
         err.textContent='Переключаю резерв…';
-        startStream(ch,true);
+        startStream(ch,true,forceProxy);
         return;
       }
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR && streamRetries<3){

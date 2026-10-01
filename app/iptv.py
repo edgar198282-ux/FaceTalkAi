@@ -845,7 +845,7 @@ async def api_play(request):
         item["last_failover"] = int(time.time())
         item["failed_url"] = old_primary or ""
 
-    if winner["kind"] == "redirect":
+    if winner["kind"] == "redirect" or request.query.get("proxy") != "1":
         raise web.HTTPTemporaryRedirect(winner["final_url"])
 
     text_body = winner["body"].decode("utf-8", "ignore")
