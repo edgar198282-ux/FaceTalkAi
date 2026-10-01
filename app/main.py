@@ -147,6 +147,36 @@ async def send_language_picker(m: Message):
         logging.warning("Abaj TV start photo failed, fallback to text: %r", exc)
     await m.answer(caption, reply_markup=keyboard)
 
+async def _confirm_tv_pair_code(m: Message, code: str, lang: str) -> bool:
+    code = str(code or '').strip()
+    if len(code) != 6 or not code.isdigit() or not m.from_user:
+        return False
+    raw = await get_setting(f'tv_pair:{code}', '')
+    try:
+        data = json.loads(raw or '{}')
+    except Exception:
+        data = {}
+    now = int(time.time())
+    if raw and int(data.get('expires_at') or 0) >= now and not int(data.get('user_id') or 0):
+        data['user_id'] = int(m.from_user.id)
+        data['paired_at'] = now
+        await set_setting(f'tv_pair:{code}', json.dumps(data, separators=(',',':')))
+        await m.answer(
+            {'hy':'✅ Հեռուստացույցը միացված է Abaj TV-ին։',
+             'ru':'✅ Телевизор подключён к вашему Abaj TV.',
+             'en':'✅ TV connected to your Abaj TV account.'}.get(lang,'✅ Телевизор подключён к вашему Abaj TV.')
+        )
+        logging.info("Abaj TV TV pairing confirmed: code=%s user_id=%s device_id=%s", code, m.from_user.id, data.get('device_id'))
+        return True
+    await m.answer(
+        {'hy':'Կոդը ժամկետանց է կամ անվավեր։ Ստացեք նոր կոդ հեռուստացույցում։',
+         'ru':'Код истёк или недействителен. Получите новый код на телевизоре.',
+         'en':'The code expired or is invalid. Get a new code on the TV.'}.get(lang,'Код истёк или недействителен.')
+    )
+    logging.warning("Abaj TV TV pairing rejected: code=%s user_id=%s", code, m.from_user.id)
+    return True
+
+
 @dp.message(CommandStart())
 async def start_handler(m: Message):
     lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
@@ -168,27 +198,7 @@ async def start_handler(m: Message):
 
     if payload.startswith('tv_'):
         code = payload[3:].strip()
-        if len(code) == 6 and code.isdigit():
-            raw = await get_setting(f'tv_pair:{code}', '')
-            try:
-                data = json.loads(raw or '{}')
-            except Exception:
-                data = {}
-            if raw and int(data.get('expires_at') or 0) >= int(time.time()) and not int(data.get('user_id') or 0):
-                data['user_id'] = int(m.from_user.id)
-                data['paired_at'] = int(time.time())
-                await set_setting(f'tv_pair:{code}', json.dumps(data, separators=(',',':')))
-                await m.answer(
-                    {'hy':'✅ Հեռուստացույցը միացված է Abaj TV-ին։',
-                     'ru':'✅ Телевизор подключён к вашему Abaj TV.',
-                     'en':'✅ TV connected to your Abaj TV account.'}.get(lang,'✅ Телевизор подключён к вашему Abaj TV.')
-                )
-                return
-            await m.answer(
-                {'hy':'Կոդը ժամկետանց է կամ անվավեր։ Ստացեք նոր կոդ հեռուստացույցում։',
-                 'ru':'Код истёк или недействителен. Получите новый код на телевизоре.',
-                 'en':'The code expired or is invalid. Get a new code on the TV.'}.get(lang,'Код истёк или недействителен.')
-            )
+        if await _confirm_tv_pair_code(m, code, lang):
             return
 
     try:
@@ -199,6 +209,98 @@ async def start_handler(m: Message):
             '📺 Abaj TV',
             reply_markup=start_keyboard(m.from_user.id if m.from_user else None, lang)
         )
+
+@dp.message(F.text.regexp(r'^\\s*\\d{6}\\s*
+@dp.callback_query(F.data.startswith('lang:'))
+async def language_handler(q: CallbackQuery):
+    lang=q.data.split(':',1)[1]
+    if lang not in {'hy','ru','en'}: lang='ru'
+    await set_user_language(q.from_user.id, lang)
+    await q.answer()
+    title,body=TEXTS[lang]
+    await q.message.answer(
+        f'{title}\n\n{body}',
+        reply_markup=start_keyboard(q.from_user.id, lang)
+    )
+
+@dp.message(F.text == '🌐 Հայերեն / Русский / English')
+async def change_language(m: Message):
+    await send_language_picker(m)
+
+@dp.message(F.text)
+async def text_handler(m: Message):
+    lang=await get_user_language(m.from_user.id if m.from_user else 0) or 'ru'
+    msg={'hy':'Բացեք Abaj TV Mini App-ը 👇','ru':'Откройте Abaj TV Mini App 👇','en':'Open Abaj TV Mini App 👇'}[lang]
+    await m.answer(msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
+
+@dp.message()
+async def other_handler(m: Message):
+    lang=await get_user_language(m.from_user.id if m.from_user else 0) or 'ru'
+    msg={'hy':'Abaj TV ալիքները բացվում են Mini App-ում 👇','ru':'Каналы Abaj TV открываются внутри Mini App 👇','en':'Abaj TV channels open inside the Mini App 👇'}[lang]
+    await m.answer(msg, reply_markup=miniapp_keyboard(m.from_user.id if m.from_user else None,lang))
+
+async def main():
+    global bot
+    logging.info('Abaj TV build: %s', BUILD_VERSION)
+    logging.info('Abaj TV persistent data: %s', DATA_DIR)
+    logging.info('Abaj TV SQLite DB: %s', DB_PATH)
+
+    if not TELEGRAM_BOT_TOKEN:
+        raw = {
+            'FACETALK_BOT_TOKEN': os.getenv('FACETALK_BOT_TOKEN', ''),
+            'TELEGRAM_BOT_TOKEN': os.getenv('TELEGRAM_BOT_TOKEN', ''),
+            'BOT_TOKEN': os.getenv('BOT_TOKEN', ''),
+        }
+        diag = ', '.join(
+            f"{k}:present={bool(v)},len={len(v.strip())},colon={':' in v}" for k,v in raw.items()
+        )
+        raise RuntimeError(
+            'NO VALID TELEGRAM BOT TOKEN. Railway variables were read but none has the Telegram format '
+            'digits:secret. Safe diagnostics: ' + diag + '. In Railway paste ONLY the BotFather token value, '
+            'not the variable name, @username, URL, or quotes.'
+        )
+
+    logging.info('Using Telegram token from Railway variable %s', TELEGRAM_BOT_TOKEN_SOURCE)
+    try:
+        bot = Bot(TELEGRAM_BOT_TOKEN)
+    except Exception as exc:
+        raise RuntimeError(
+            f'Telegram token from {TELEGRAM_BOT_TOKEN_SOURCE or "unknown variable"} is malformed. '
+            'Paste only the BotFather token in digits:secret format.'
+        ) from exc
+
+    try:
+        await bot.set_my_name(name="Abaj TV")
+        await bot.set_my_short_description(short_description="Армянские и российские IPTV каналы")
+        await bot.set_my_description(description="Abaj TV — армянские и российские телеканалы, поиск, избранное и TV режим.")
+    except Exception as exc:
+        logging.warning("Telegram bot profile rename skipped: %r", exc)
+
+    me = await bot.get_me()
+    actual_username = (me.username or '').lstrip('@')
+    logging.info('Abaj TV Telegram bot authenticated as @%s (id=%s)', actual_username, me.id)
+    if EXPECTED_BOT_USERNAME and actual_username.lower() != EXPECTED_BOT_USERNAME.lower():
+        raise RuntimeError(
+            f'WRONG TELEGRAM BOT TOKEN: expected @{EXPECTED_BOT_USERNAME}, '
+            f'but Railway token belongs to @{actual_username}. '
+            'Set FACETALK_BOT_TOKEN to the BotFather token for the FaceTalk bot.'
+        )
+
+    migrated = migrate_legacy_db()
+    if migrated:
+        logging.info('Legacy FaceTalk DB migrated into persistent Volume')
+    await init_db()
+    await start_webapp(bot)
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+))
+async def tv_pair_code_handler(m: Message):
+    if not m.from_user or not m.text:
+        return
+    lang = await get_user_language(m.from_user.id) or _telegram_lang(m.from_user)
+    await _confirm_tv_pair_code(m, m.text.strip(), lang)
 
 @dp.callback_query(F.data.startswith('lang:'))
 async def language_handler(q: CallbackQuery):
