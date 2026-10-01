@@ -370,8 +370,20 @@ def _epg_for_channel(item: dict) -> tuple[dict | None, dict | None]:
         base_cid = cid.split("@", 1)[0].strip()
         rows = _state["epg"].get(base_cid) if base_cid else None
     if not rows:
-        mapped = _state["epg_names"].get(_normalize_name(item.get("name") or ""))
-        rows = _state["epg"].get(mapped) if mapped else None
+        aliases = [item.get("name") or ""] + list(item.get("epg_aliases") or [])
+        for alias in aliases:
+            normalized = _normalize_name(alias)
+            if not normalized:
+                continue
+            mapped = _state["epg_names"].get(normalized)
+            if not mapped:
+                # Common provider prefixes/suffixes differ between playlists and XMLTV.
+                short = re.sub(r"^(?:am|ru|ua|by|kz|uz|md|ge)\s+", "", normalized).strip()
+                mapped = _state["epg_names"].get(short) if short and short != normalized else None
+            if mapped:
+                rows = _state["epg"].get(mapped)
+                if rows:
+                    break
     if not rows:
         return None, None
     now = int(time.time())
@@ -452,8 +464,14 @@ async def _discover_iptv_org_api(session: aiohttp.ClientSession) -> list[dict]:
             categories = [str(x) for x in (m.get('categories') or []) if x]
             adult = bool(m.get('is_nsfw'))
             group = 'Adult' if adult else (categories[0].title() if categories else 'General')
+            aliases = []
+            for alias in [m.get('name'), *(m.get('alt_names') or []), m.get('network')]:
+                alias = str(alias or '').strip()
+                if alias and alias not in aliases:
+                    aliases.append(alias)
             item = {
                 'name': str(m.get('name') or s.get('title') or channel_id),
+                'epg_aliases': aliases[:12],
                 'group': group,
                 'tvg_id': channel_id,
                 'logo': logo_map.get(channel_id, ''),
@@ -552,7 +570,7 @@ async def refresh_channels(force: bool = False):
                 enriched_logos = 0
                 country_order = {code: i for i, code in enumerate(("AM","RU","GE","UA","BY","KZ","UZ","MD"))}
                 for item in candidates:
-                    item['adult'] = _is_adult_channel(item)
+                    item['adult'] = bool(item.get('adult')) or _is_adult_channel(item)
                     if not str(item.get('logo') or '').strip():
                         tvg_id = str(item.get('tvg_id') or '').strip().lower()
                         logo = logo_by_id.get(tvg_id) if tvg_id else None
