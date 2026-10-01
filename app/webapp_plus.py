@@ -232,8 +232,6 @@ async def api_iptv_state_save(request):
     uid = int(user['id'])
     device_id = str(request.headers.get('X-Abaj-Device-Id') or 'default').strip()[:120] or 'default'
     body = await request.json()
-    favorites = [str(x) for x in (body.get('favorites') or []) if str(x).strip()][:500]
-    recent = [str(x) for x in (body.get('recent') or []) if str(x).strip()][:30]
     raw = await get_setting(f'iptv_state:{uid}', '{}')
     try:
         previous = json.loads(raw or '{}')
@@ -242,22 +240,33 @@ async def api_iptv_state_save(request):
     except Exception:
         previous = {}
     ui_map = previous.get('ui') if isinstance(previous.get('ui'), dict) else {}
-    ui_map[device_id] = {
-        'layout': 'grid' if body.get('layout') == 'grid' else 'list',
-        'tv_mode': bool(body.get('tv_mode')),
-    }
+    if 'layout' in body or 'tv_mode' in body:
+        ui_map[device_id] = {
+            'layout': 'grid' if body.get('layout') == 'grid' else 'list',
+            'tv_mode': bool(body.get('tv_mode')),
+        }
+    favorites = previous.get('favorites') if isinstance(previous.get('favorites'), list) else []
+    recent = previous.get('recent') if isinstance(previous.get('recent'), list) else []
+    last_channel = str(previous.get('last_channel') or '')[:80]
+    if 'favorites' in body:
+        favorites = [str(x) for x in (body.get('favorites') or []) if str(x).strip()][:500]
+    if 'recent' in body:
+        recent = [str(x) for x in (body.get('recent') or []) if str(x).strip()][:30]
+    if 'last_channel' in body:
+        last_channel = str(body.get('last_channel') or '')[:80]
     state = {
         'favorites': list(dict.fromkeys(favorites)),
         'recent': list(dict.fromkeys(recent)),
-        'last_channel': str(body.get('last_channel') or '')[:80],
+        'last_channel': last_channel,
         'ui': ui_map,
-        'updated_at': int(time.time()),
+        'updated_at': int(time.time() * 1000),
     }
     await set_setting(f'iptv_state:{uid}', json.dumps(state, ensure_ascii=False, separators=(',', ':')))
+    current_ui = ui_map.get(device_id) if isinstance(ui_map.get(device_id), dict) else {}
     return web.json_response({
         'ok': True, 'user_id': uid,
-        'layout': ui_map[device_id]['layout'],
-        'tv_mode': ui_map[device_id]['tv_mode'],
+        'layout': str(current_ui.get('layout') or ''),
+        'tv_mode': bool(current_ui.get('tv_mode')),
         **state,
     }, headers={'Cache-Control':'no-store'})
 

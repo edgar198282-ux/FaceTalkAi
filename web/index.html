@@ -377,6 +377,10 @@ let syncTimer=null;
 let syncReady=false;
 let syncUpdatedAt=0;
 let syncPullBusy=false;
+let syncDirtyFavorites=false;
+let syncDirtyRecent=false;
+let syncDirtyLast=false;
+let syncDirtyUi=false;
 let edemStatus=null;
 const deviceId=localStorage.getItem('abaj_device_id')||(
   (crypto&&crypto.randomUUID)?crypto.randomUUID():('abaj-'+Date.now()+'-'+Math.random().toString(36).slice(2))
@@ -547,24 +551,24 @@ async function loadSyncedState(force=false){
     const d=await r.json();
     const serverUpdated=Number(d.updated_at||0);
     if(!force&&syncReady&&serverUpdated&&serverUpdated<=syncUpdatedAt)return;
-    if(Array.isArray(d.favorites)){
+    if(Array.isArray(d.favorites)&&!syncDirtyFavorites){
       favs.clear();
       d.favorites.forEach(x=>favs.add(x));
       localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));
     }
-    if(Array.isArray(d.recent)){
+    if(Array.isArray(d.recent)&&!syncDirtyRecent){
       recent=d.recent.slice(0,30);
       localStorage.setItem('iptv_recent',JSON.stringify(recent));
     }
-    if(d.last_channel){
+    if(d.last_channel&&!syncDirtyLast){
       lastChannelId=d.last_channel;
       localStorage.setItem('iptv_last_channel',lastChannelId);
     }
-    if(d.layout==='list'||d.layout==='grid'){
+    if((d.layout==='list'||d.layout==='grid')&&!syncDirtyUi){
       layout=nativeTv?'grid':d.layout;
       localStorage.setItem('iptv_layout',layout);
     }
-    if(typeof d.tv_mode==='boolean'){
+    if(typeof d.tv_mode==='boolean'&&!syncDirtyUi){
       tvMode=nativeTv?true:d.tv_mode;
       localStorage.setItem('iptv_tv_mode',tvMode?'1':'0');
     }
@@ -579,24 +583,28 @@ function scheduleStateSync(){
   if(!syncReady)return;
   if(syncTimer)clearTimeout(syncTimer);
   syncTimer=setTimeout(async()=>{
+    const body={};
+    if(syncDirtyFavorites)body.favorites=[...favs];
+    if(syncDirtyRecent)body.recent=recent.slice(0,30);
+    if(syncDirtyLast)body.last_channel=lastChannelId||'';
+    if(syncDirtyUi){body.layout=layout;body.tv_mode=tvMode}
+    if(!Object.keys(body).length)return;
     try{
       const r=await fetch('/api/iptv/state',{
         method:'POST',
         headers:{'Content-Type':'application/json',...authHeaders()},
-        body:JSON.stringify({
-          favorites:[...favs],
-          recent:recent.slice(0,30),
-          last_channel:lastChannelId||'',
-          layout,
-          tv_mode:tvMode
-        })
+        body:JSON.stringify(body)
       });
       if(r.ok){
         const d=await r.json();
         syncUpdatedAt=Math.max(syncUpdatedAt,Number(d.updated_at||0));
+        if('favorites' in body)syncDirtyFavorites=false;
+        if('recent' in body)syncDirtyRecent=false;
+        if('last_channel' in body)syncDirtyLast=false;
+        if('layout' in body||'tv_mode' in body)syncDirtyUi=false;
       }
     }catch(e){}
-  },250);
+  },200);
 }
 
 function applyUiMode(){
@@ -878,13 +886,14 @@ function esc(s){
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[m]));
 }
-function saveFavs(){localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));scheduleStateSync()}
-function saveRecent(){localStorage.setItem('iptv_recent',JSON.stringify(recent.slice(0,30)));scheduleStateSync()}
+function saveFavs(){localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));syncDirtyFavorites=true;scheduleStateSync()}
+function saveRecent(){localStorage.setItem('iptv_recent',JSON.stringify(recent.slice(0,30)));syncDirtyRecent=true;scheduleStateSync()}
 
 function setLayout(v){
   layout=v;
   localStorage.setItem('iptv_layout',v);
   applyUiMode();
+  syncDirtyUi=true;
   scheduleStateSync();
   render();
 }
@@ -893,6 +902,7 @@ function toggleTvMode(){
   tvMode=!tvMode;
   localStorage.setItem('iptv_tv_mode',tvMode?'1':'0');
   applyUiMode();
+  syncDirtyUi=true;
   scheduleStateSync();
   focusIndex=0;
   render();
@@ -1470,6 +1480,19 @@ function moveFocusDirection(direction){
   if(!currentEl){setTvFocus(0);return}
   const a=currentEl.getBoundingClientRect();
   const ax=a.left+a.width/2, ay=a.top+a.height/2;
+  if(nativeTv&&direction==='up'&&tvHeaderCollapsed&&focusIndex<tvGridColumns()){
+    const x=ax;
+    setTvHeaderCollapsed(false,false);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      const rows=tvTopRows();
+      if(!rows.length)return;
+      const bottomRow=rows[rows.length-1];
+      focusTvTopElement(nearestTopByX(bottomRow,x)||bottomRow[0]);
+      const content=document.getElementById('content');
+      if(content)content.scrollTop=0;
+    }));
+    return;
+  }
   let best=-1, bestScore=Infinity;
   cards.forEach((el,i)=>{
     if(i===focusIndex)return;
@@ -1699,6 +1722,7 @@ function openPlayer(id){
   current=ch;
   lastChannelId=ch.id;
   localStorage.setItem('iptv_last_channel',ch.id);
+  syncDirtyLast=true;
   scheduleStateSync();
   streamRetries=0;
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
