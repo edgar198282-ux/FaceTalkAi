@@ -37,7 +37,7 @@ SOURCE_URLS = [
     ("UZ", "https://iptv-org.github.io/iptv/countries/uz.m3u"),
     ("MD", "https://iptv-org.github.io/iptv/countries/md.m3u"),
 ]
-MAX_STREAMS = 1500
+MAX_STREAMS = max(1500, int(os.getenv("IPTV_MAX_STREAMS", "3500")))
 REFRESH_SECONDS = max(900, int(os.getenv("IPTV_REFRESH_SECONDS", "1800")))
 PROBE_CONCURRENCY = 40
 QUARANTINE_SECONDS = 60 * 60
@@ -645,6 +645,7 @@ async def refresh_channels(force: bool = False):
                 "offline": len(channels) - online,
                 "source_count": len(SOURCE_URLS),
                 "candidate_streams": len(checked),
+                "max_streams": MAX_STREAMS,
                 "duplicates_removed": max(0, len(checked) - len(channels)),
                 "with_backups": sum(1 for x in channels.values() if int(x.get("backup_count") or 0) > 0),
                 "health_records": len(_stream_health),
