@@ -263,6 +263,24 @@ def _normalize_name(name: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def _epg_name_variants(value: str) -> list[str]:
+    normalized = _normalize_name(value)
+    if not normalized:
+        return []
+    out = [normalized]
+    short = re.sub(r"^(?:am|ru|ua|by|kz|uz|md|ge)\s+", "", normalized).strip()
+    if short and short not in out:
+        out.append(short)
+    # Providers often disagree only on spacing around digits/words:
+    # "Россия 24" vs "Россия24", "5 Канал" vs "5канал".
+    # Use this compact form only for reasonably distinctive names.
+    for base in list(out):
+        compact = re.sub(r"\s+", "", base)
+        if len(compact) >= 5 and compact not in out:
+            out.append(compact)
+    return out
+
+
 def _channel_key(item: dict) -> str:
     tvg_id = str(item.get("tvg_id") or "").strip().lower()
     if tvg_id:
@@ -444,13 +462,8 @@ def _parse_epg_xml(text: str) -> tuple[dict, dict]:
         if base_cid and base_cid != cid:
             aliases.append(base_cid)
         for display in aliases:
-            normalized = _normalize_name(display)
-            if not normalized:
-                continue
-            names.setdefault(normalized, cid)
-            short = re.sub(r"^(?:am|ru|ua|by|kz|uz|md|ge)\s+", "", normalized).strip()
-            if short and short != normalized:
-                names.setdefault(short, cid)
+            for variant in _epg_name_variants(display):
+                names.setdefault(variant, cid)
 
     now = int(time.time())
     min_ts = now - 4 * 60 * 60
@@ -513,18 +526,14 @@ def _epg_for_channel(item: dict) -> tuple[dict | None, dict | None]:
     if not rows:
         aliases = [item.get("name") or ""] + list(item.get("epg_aliases") or [])
         for alias in aliases:
-            normalized = _normalize_name(alias)
-            if not normalized:
-                continue
-            mapped = _state["epg_names"].get(normalized)
-            if not mapped:
-                # Common provider prefixes/suffixes differ between playlists and XMLTV.
-                short = re.sub(r"^(?:am|ru|ua|by|kz|uz|md|ge)\s+", "", normalized).strip()
-                mapped = _state["epg_names"].get(short) if short and short != normalized else None
-            if mapped:
-                rows = _state["epg"].get(mapped)
-                if rows:
-                    break
+            for variant in _epg_name_variants(alias):
+                mapped = _state["epg_names"].get(variant)
+                if mapped:
+                    rows = _state["epg"].get(mapped)
+                    if rows:
+                        break
+            if rows:
+                break
     if not rows:
         return None, None
     now = int(time.time())
