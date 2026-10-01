@@ -298,22 +298,40 @@ public class MainActivity extends Activity {
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event){
-        if(isTv&&event.getAction()==KeyEvent.ACTION_DOWN&&webView!=null){
+        if(isTv&&webView!=null){
             int code=event.getKeyCode();
-            if(code==KeyEvent.KEYCODE_BACK){
-                onBackPressed();
-                return true;
+            if(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER){
+                if(event.getAction()==KeyEvent.ACTION_DOWN){
+                    if(event.getRepeatCount()==0){
+                        webView.evaluateJavascript(
+                            "(function(){var p=document.getElementById('playerView');if(p&&p.classList.contains('open')){if(typeof tvNativeRemote==='function')tvNativeRemote('ok')}else if(typeof beginTvChannelOk==='function'){beginTvChannelOk()}else if(typeof tvNativeRemote==='function'){tvNativeRemote('ok')}})()",
+                            null
+                        );
+                    }
+                    return true;
+                }
+                if(event.getAction()==KeyEvent.ACTION_UP){
+                    webView.evaluateJavascript(
+                        "(function(){var p=document.getElementById('playerView');if(!(p&&p.classList.contains('open'))&&typeof endTvChannelOk==='function')endTvChannelOk()})()",
+                        null
+                    );
+                    return true;
+                }
             }
-            if(code==KeyEvent.KEYCODE_DPAD_UP||code==KeyEvent.KEYCODE_DPAD_DOWN||code==KeyEvent.KEYCODE_DPAD_LEFT||code==KeyEvent.KEYCODE_DPAD_RIGHT||code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER){
-                String action="";
-                if(code==KeyEvent.KEYCODE_DPAD_UP)action="up";
-                else if(code==KeyEvent.KEYCODE_DPAD_DOWN)action="down";
-                else if(code==KeyEvent.KEYCODE_DPAD_LEFT)action="left";
-                else if(code==KeyEvent.KEYCODE_DPAD_RIGHT)action="right";
-                else action="ok";
-                webView.evaluateJavascript("if(typeof tvNativeRemote==='function')tvNativeRemote('"+action+"')",null);
-                return true;
-            }
+            if(event.getAction()==KeyEvent.ACTION_DOWN){
+                if(code==KeyEvent.KEYCODE_BACK){
+                    onBackPressed();
+                    return true;
+                }
+                if(code==KeyEvent.KEYCODE_DPAD_UP||code==KeyEvent.KEYCODE_DPAD_DOWN||code==KeyEvent.KEYCODE_DPAD_LEFT||code==KeyEvent.KEYCODE_DPAD_RIGHT){
+                    String action="";
+                    if(code==KeyEvent.KEYCODE_DPAD_UP)action="up";
+                    else if(code==KeyEvent.KEYCODE_DPAD_DOWN)action="down";
+                    else if(code==KeyEvent.KEYCODE_DPAD_LEFT)action="left";
+                    else action="right";
+                    webView.evaluateJavascript("if(typeof tvNativeRemote==='function')tvNativeRemote('"+action+"')",null);
+                    return true;
+                }
             if(code>=KeyEvent.KEYCODE_0&&code<=KeyEvent.KEYCODE_9){
                 int digit=code-KeyEvent.KEYCODE_0;
                 webView.evaluateJavascript("if(typeof tvTuneDigit==='function')tvTuneDigit('"+digit+"')",null);
@@ -366,6 +384,7 @@ public class MainActivity extends Activity {
             if(code==KeyEvent.KEYCODE_INFO){
                 webView.evaluateJavascript("if(typeof tvTogglePlayerUi==='function')tvTogglePlayerUi()",null);
                 return true;
+            }
             }
         }
         return super.dispatchKeyEvent(event);
