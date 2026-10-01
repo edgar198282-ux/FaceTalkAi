@@ -163,7 +163,15 @@ async def _free_channel_ad_state(item: dict) -> dict:
         timeout = aiohttp.ClientTimeout(total=5, connect=2.5, sock_read=3)
         headers = {"User-Agent": "AbajTV/1.0"}
         async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
-            text = await _fetch_text(session, url)
+            async def fetch_manifest(target: str) -> str:
+                try:
+                    async with session.get(target, allow_redirects=True) as response:
+                        if response.status >= 400:
+                            return ""
+                        return await response.text(errors="ignore")
+                except Exception:
+                    return ""
+            text = await fetch_manifest(url)
             if "#EXTM3U" not in text[:4096]:
                 _ad_probe_cache[cid] = result
                 return result
@@ -180,7 +188,7 @@ async def _free_channel_ad_state(item: dict) -> dict:
                         media_url = urljoin(url, line)
                         break
                 if media_url:
-                    text = await _fetch_text(session, media_url)
+                    text = await fetch_manifest(media_url)
             active, marker = _detect_hls_ad_break(text)
             result.update({"active": bool(active), "marker": marker})
     except Exception as exc:
