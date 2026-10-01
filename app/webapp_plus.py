@@ -72,6 +72,10 @@ async def index(request):
     path = os.path.join(WEB_DIR, 'index.html')
     return web.FileResponse(path, headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0','Pragma':'no-cache'})
 
+async def privacy_policy(request):
+    path = os.path.join(WEB_DIR, 'privacy.html')
+    return web.FileResponse(path, headers={'Cache-Control':'public, max-age=3600'})
+
 async def api_app_release(request):
     channel = request.query.get('channel') or request.headers.get('X-AbajTV-Channel') or 'stable'
     apk_path, _, public_path, channel = _apk_target(channel)
@@ -1111,6 +1115,8 @@ async def api_app_auth_complete(request):
 async def start_webapp(bot):
     app = web.Application(client_max_size=100*1024*1024, middlewares=[api_error_middleware]); app['bot']=bot
     app.router.add_get('/', index)
+    app.router.add_get('/privacy', privacy_policy)
+    app.router.add_get('/privacy-policy', privacy_policy)
     iptv.install(app)
     app.router.add_get('/api/app-release', api_app_release); app.router.add_get('/api/app-download', api_app_download); app.router.add_get(PUBLIC_APK_PATH, api_app_download); app.router.add_get(PUBLIC_APK_BETA_PATH, api_app_download); app.router.add_get('/downloads/FaceTalkAI-latest.apk', api_app_download); app.router.add_post('/api/app-upload', api_app_upload)
     app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload); app.router.add_post('/api/admin/app-rollback', api_admin_app_rollback); app.router.add_post('/api/admin/app-promote-beta', api_admin_app_promote_beta)

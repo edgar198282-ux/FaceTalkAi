@@ -1,0 +1,23 @@
+Title:
+Abaj TV
+
+Short description:
+TV on Android TV with search, favorites and fast channel switching.
+
+Full description:
+Abaj TV is an Android TV app for convenient viewing of available TV channels.
+
+Features:
+• TV-friendly remote-control interface;
+• channel search;
+• categories and filters;
+• favorites;
+• recently viewed channels;
+• fast channel switching;
+• quality selection when multiple stream variants are available;
+• Russian, Armenian and English interface;
+• TV linking through Telegram.
+
+Channel availability depends on the connected account and available sources. The app does not guarantee availability of any specific channel or stream quality.
+
+Abaj TV is designed for compatible Android TV devices.
