@@ -115,7 +115,7 @@ body.playerFullscreenActive{overflow:hidden!important;background:#000!important}
 .playerGestureHint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5000;display:none;pointer-events:none;background:rgba(0,0,0,.76);color:#fff;border-radius:16px;padding:12px 18px;font-size:18px;font-weight:800;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .playerGestureHint.show{display:block}
 .playerView.appFullscreen .playerGestureHint,.playerView:fullscreen .playerGestureHint,.playerView:-webkit-full-screen .playerGestureHint{position:fixed!important;left:50%!important;top:50%!important;z-index:2147483647!important}
-.playerChannelHud{position:absolute;left:14px;top:14px;z-index:9;display:none;align-items:center;gap:10px;max-width:min(82vw,430px);padding:8px 11px;border-radius:14px;background:rgba(0,0,0,.58);backdrop-filter:blur(8px);color:#fff;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.28)}
+.playerChannelHud{position:absolute;left:14px;top:14px;z-index:140;display:none;align-items:center;gap:10px;max-width:min(82vw,430px);padding:8px 11px;border-radius:14px;background:rgba(0,0,0,.68);backdrop-filter:blur(8px);color:#fff;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.28)}
 .playerChannelHud.show{display:flex}
 .playerChannelHudLogo{width:46px;height:46px;min-width:46px;border-radius:10px;object-fit:contain;background:rgba(255,255,255,.92);padding:3px;box-sizing:border-box}
 .playerChannelHudFallback{width:46px;height:46px;min-width:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.92);color:#60727f;font-weight:900;font-size:14px}
@@ -1720,8 +1720,18 @@ function updatePlayerChannelHud(){
     progress.style.width=epgProgress(p)+'%';
     hud.classList.add('show');
   }else{
-    time.textContent='LIVE';
-    progress.style.width='0%';
+    const v=document.getElementById('video');
+    if(v&&Number.isFinite(v.duration)&&v.duration>0){
+      const elapsed=Math.max(0,Number(v.currentTime)||0);
+      const left=Math.max(0,v.duration-elapsed);
+      const passedLabel=appLang==='hy'?'Անցել է':(appLang==='en'?'Elapsed':'Прошло');
+      const leftLabel=appLang==='hy'?'Մնացել է':(appLang==='en'?'Left':'Осталось');
+      time.textContent=passedLabel+' '+fmtDurationCompact(elapsed)+' · '+leftLabel+' '+fmtDurationCompact(left);
+      progress.style.width=Math.max(0,Math.min(100,(elapsed/v.duration)*100))+'%';
+    }else{
+      time.textContent=appLang==='hy'?'LIVE · EPG չկա':(appLang==='en'?'LIVE · no EPG':'LIVE · нет EPG');
+      progress.style.width='0%';
+    }
     hud.classList.add('show');
   }
 }
@@ -2246,6 +2256,7 @@ function openPlayer(id){
   updatePlayerChannelHud();
   const playerView=document.getElementById('playerView');
   playerView.classList.add('open');
+  updatePlayerChannelHud();
   if(nativeTv){
     playerView.classList.add('tvFullscreen');
     document.body.classList.add('playerClean');

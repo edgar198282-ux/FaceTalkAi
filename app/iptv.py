@@ -576,7 +576,7 @@ def public_state(compact: bool = False):
         "id", "name", "group", "country", "logo", "status", "tvg_id",
         "quality", "height",
         "latency_ms", "backup_count", "epg_now", "epg_next",
-        "uptime_pct", "health_score", "health_samples", "unreliable"
+        "uptime_pct", "health_score", "health_samples", "unreliable", "adult"
     }
     for source in _state["channels"].values():
         row = dict(source)
