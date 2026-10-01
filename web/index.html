@@ -47,13 +47,13 @@ button{cursor:pointer}
   font-size:18px;color:#fff;display:inline-flex;align-items:center;justify-content:center
 }
 .iconBtn:active,.iconBtn.active{background:rgba(255,255,255,.22);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
-.toolbar{display:grid;grid-template-columns:1fr auto;gap:8px;padding-top:10px}
+.toolbar{display:grid;grid-template-columns:minmax(0,1fr) 82px;gap:8px;padding-top:10px;align-items:center}
 .search,.select{
-  height:46px;border:1px solid rgba(255,255,255,.62);border-radius:12px;background:rgba(255,255,255,.90);
+  height:46px;border:1px solid rgba(255,255,255,.62);border-radius:14px;background:rgba(255,255,255,.92);
   padding:0 14px;font-size:17px;outline:none;color:#34444d
 }
 .search:focus,.select:focus{border-color:#73c9f4;box-shadow:0 0 0 3px rgba(0,166,255,.12)}
-.select{min-width:142px}
+.select{width:82px;min-width:82px;padding:0 30px 0 14px;font-weight:700;text-align:center;text-align-last:center;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,#2b6b93 50%),linear-gradient(135deg,#2b6b93 50%,transparent 50%),linear-gradient(180deg,rgba(255,255,255,.98),rgba(231,246,255,.96));background-position:calc(100% - 16px) 20px,calc(100% - 11px) 20px,0 0;background-size:5px 5px,5px 5px,100% 100%;background-repeat:no-repeat;box-shadow:0 3px 10px rgba(0,78,145,.14)}
 .chips,.quickCats{
   display:flex;gap:8px;overflow:auto;padding:10px 0 0;scrollbar-width:none
 }
@@ -62,6 +62,7 @@ button{cursor:pointer}
   border:1px solid #c9dde8;border-radius:20px;background:rgba(255,255,255,.86);color:#1f5377;
   padding:8px 14px;white-space:nowrap
 }
+.chip.flagOnly{min-width:58px;width:58px;height:42px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:25px;line-height:1;border-radius:21px}
 .chip.active,.cat.active{background:#087fe1;color:#fff;border-color:#6ed0ff;box-shadow:0 4px 12px rgba(0,86,166,.28)}
 .status{font-size:12px;color:#eff9ff;padding-top:8px;text-shadow:0 1px 2px rgba(0,60,110,.35)}
 .content{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
@@ -249,8 +250,8 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
     </div>
     <div class="chips">
       <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
-      <button class="chip" data-filter="AM" onclick="setModeFilter(this,'AM')">🇦🇲 ARMENIA</button>
-      <button class="chip" data-filter="RU" onclick="setModeFilter(this,'RU')">🇷🇺 RUSSIA</button>
+      <button class="chip flagOnly" data-filter="AM" onclick="setModeFilter(this,'AM')" title="Армения" aria-label="Армения">🇦🇲</button>
+      <button class="chip flagOnly" data-filter="RU" onclick="setModeFilter(this,'RU')" title="Россия" aria-label="Россия">🇷🇺</button>
       <button class="chip" data-filter="HD" onclick="setModeFilter(this,'HD')">HD</button>
       <button class="chip" data-filter="4K" onclick="setModeFilter(this,'4K')">4K</button>
       <button class="chip" data-filter="fav" onclick="setModeFilter(this,'fav')">♡ FAVORITES</button>
