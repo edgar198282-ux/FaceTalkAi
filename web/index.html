@@ -1584,10 +1584,14 @@ function startStream(ch,preferBackup=false){
     hls=new Hls({
       enableWorker:true,
       lowLatencyMode:false,
-      maxBufferLength:30,
-      manifestLoadingTimeOut:12000,
-      levelLoadingTimeOut:12000,
-      fragLoadingTimeOut:15000
+      startFragPrefetch:true,
+      maxBufferLength:nativeTv?8:20,
+      maxMaxBufferLength:nativeTv?16:30,
+      backBufferLength:nativeTv?4:10,
+      manifestLoadingTimeOut:nativeTv?6000:10000,
+      levelLoadingTimeOut:nativeTv?6000:10000,
+      fragLoadingTimeOut:nativeTv?9000:14000,
+      capLevelToPlayerSize:true
     });
     if(ch.personal){
       fetch(src,{headers:auth,cache:'no-store'})
