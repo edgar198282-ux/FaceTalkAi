@@ -651,66 +651,115 @@ async def api_play(request):
     for url in [original_primary, *(item.get("backups") or [])]:
         if url and url not in urls:
             urls.append(url)
-    if request.query.get("failover") == "1" and len(urls) > 1:
-        urls = urls[1:] + urls[:1]
 
-    timeout = aiohttp.ClientTimeout(total=8, connect=3, sock_read=4)
-    last_error = ""
-    async with aiohttp.ClientSession(headers={"User-Agent": "IPTV-Player/1.0"}) as session:
-        for idx, url in enumerate(urls):
+    prefer_backup = request.query.get("failover") == "1" and len(urls) > 1
+    primary_candidates = urls[1:] if prefer_backup else urls[:3]
+    fallback_candidates = [original_primary] if prefer_backup and original_primary else []
+
+    timeout = aiohttp.ClientTimeout(total=6, connect=2.5, sock_read=3.5)
+
+    async def race_candidates(session, candidates):
+        async def probe_candidate(url):
+            started = time.perf_counter()
+            response = None
             try:
-                async with session.get(url, timeout=timeout, allow_redirects=True) as r:
-                    ctype = (r.headers.get("content-type") or "").lower()
-                    final_url = str(r.url)
-                    if r.status >= 400:
-                        last_error = f"HTTP {r.status}"
-                        continue
+                response = await session.get(url, timeout=timeout, allow_redirects=True)
+                ctype = (response.headers.get("content-type") or "").lower()
+                final_url = str(response.url)
+                if response.status >= 400:
+                    return {"ok": False, "error": f"HTTP {response.status}", "url": url}
 
-                    is_hls = "mpegurl" in ctype or urlparse(final_url).path.lower().endswith(".m3u8")
-                    if is_hls:
-                        body = await r.read()
-                        if b"#EXTM3U" not in body[:4096] and "mpegurl" not in ctype:
-                            last_error = "invalid HLS manifest"
-                            continue
+                is_hls = "mpegurl" in ctype or urlparse(final_url).path.lower().endswith(".m3u8")
+                if is_hls:
+                    body = await response.read()
+                    if b"#EXTM3U" not in body[:4096] and "mpegurl" not in ctype:
+                        return {"ok": False, "error": "invalid HLS manifest", "url": url}
+                    return {
+                        "ok": True,
+                        "kind": "hls",
+                        "url": url,
+                        "final_url": final_url,
+                        "body": body,
+                        "latency_ms": int((time.perf_counter() - started) * 1000),
+                    }
 
-                        if url != original_primary:
-                            old_primary = original_primary
-                            item["url"] = url
-                            item["backups"] = [x for x in urls if x != url]
-                            item["backup_count"] = len(item["backups"])
-                            item["last_failover"] = int(time.time())
-                            item["failed_url"] = old_primary or ""
-
-                        text = body.decode("utf-8", "ignore")
-                        return web.Response(
-                            text=_rewrite_hls(text, final_url),
-                            content_type="application/vnd.apple.mpegurl",
-                            headers={
-                                "Cache-Control": "no-store",
-                                "X-IPTV-Source": "backup" if url != original_primary else "primary",
-                                "X-IPTV-Backups": str(len(item.get("backups") or [])),
-                            },
-                        )
-
-                    if ctype.startswith(("video/", "audio/")) or "octet-stream" in ctype:
-                        if url != original_primary:
-                            old_primary = original_primary
-                            item["url"] = url
-                            item["backups"] = [x for x in urls if x != url]
-                            item["backup_count"] = len(item["backups"])
-                            item["last_failover"] = int(time.time())
-                            item["failed_url"] = old_primary or ""
-                        raise web.HTTPTemporaryRedirect(url)
-
-                    last_error = f"unsupported content-type {ctype}"
-            except web.HTTPException:
-                raise
+                if ctype.startswith(("video/", "audio/")) or "octet-stream" in ctype:
+                    return {
+                        "ok": True,
+                        "kind": "redirect",
+                        "url": url,
+                        "final_url": final_url,
+                        "latency_ms": int((time.perf_counter() - started) * 1000),
+                    }
+                return {"ok": False, "error": f"unsupported content-type {ctype}", "url": url}
             except Exception as exc:
-                last_error = str(exc)[:160]
-                continue
+                return {"ok": False, "error": str(exc)[:160], "url": url}
+            finally:
+                if response is not None:
+                    response.release()
 
-    raise web.HTTPBadGateway(text="All channel streams failed: " + last_error)
+        tasks = [asyncio.create_task(probe_candidate(url)) for url in candidates if url]
+        if not tasks:
+            return None, "no candidates"
+        last_error = ""
+        winner = None
+        try:
+            for future in asyncio.as_completed(tasks):
+                result = await future
+                if result and result.get("ok"):
+                    winner = result
+                    break
+                if result:
+                    last_error = str(result.get("error") or last_error)
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+        return winner, last_error
 
+    headers = {"User-Agent": "IPTV-Player/1.0"}
+    async with aiohttp.ClientSession(headers=headers) as session:
+        winner, last_error = await race_candidates(session, primary_candidates)
+        if winner is None and fallback_candidates:
+            winner, fallback_error = await race_candidates(session, fallback_candidates)
+            if fallback_error:
+                last_error = fallback_error
+
+    if winner is None:
+        raise web.HTTPBadGateway(text="All channel streams failed: " + (last_error or "no response"))
+
+    selected_url = winner["url"]
+    latency_ms = int(winner.get("latency_ms") or 0)
+    health = dict(_stream_health.get(selected_url) or {})
+    old_runtime = int(health.get("runtime_startup_ms") or latency_ms or 0)
+    if latency_ms:
+        health["runtime_startup_ms"] = latency_ms if not old_runtime else int(old_runtime * 0.7 + latency_ms * 0.3)
+    health["last_runtime_ok"] = int(time.time())
+    _stream_health[selected_url] = health
+
+    if selected_url != original_primary:
+        old_primary = original_primary
+        item["url"] = selected_url
+        item["backups"] = [x for x in urls if x != selected_url]
+        item["backup_count"] = len(item["backups"])
+        item["last_failover"] = int(time.time())
+        item["failed_url"] = old_primary or ""
+
+    if winner["kind"] == "redirect":
+        raise web.HTTPTemporaryRedirect(winner["final_url"])
+
+    text_body = winner["body"].decode("utf-8", "ignore")
+    return web.Response(
+        text=_rewrite_hls(text_body, winner["final_url"]),
+        content_type="application/vnd.apple.mpegurl",
+        headers={
+            "Cache-Control": "no-store",
+            "X-IPTV-Source": "backup" if selected_url != original_primary else "primary",
+            "X-IPTV-Backups": str(len(item.get("backups") or [])),
+            "X-IPTV-Startup-Ms": str(latency_ms),
+        },
+    )
 
 async def api_proxy(request):
     url = request.query.get("u", "")
