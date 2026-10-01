@@ -126,6 +126,68 @@ _lock = asyncio.Lock()
 _proxy_secret = (os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("FACETALK_BOT_TOKEN") or "iptv-player").encode()
 _worker_control = {"refresh_requested_at": 0, "last_worker_snapshot": 0}
 
+_ad_probe_cache = {}
+
+def _detect_hls_ad_break(text: str) -> tuple[bool, str]:
+    if not text or "#EXTM3U" not in text[:4096]:
+        return False, ""
+    active = False
+    marker = ""
+    for raw in text.splitlines():
+        line = raw.strip().upper()
+        if not line:
+            continue
+        if line.startswith("#EXT-X-CUE-OUT") or "SCTE35-OUT" in line:
+            active = True
+            marker = "cue-out"
+            if line.startswith("#EXT-X-DATERANGE") and ("END-DATE=" in line or "SCTE35-IN" in line):
+                active = False
+                marker = "cue-in"
+        elif line.startswith("#EXT-X-CUE-IN") or "SCTE35-IN" in line:
+            active = False
+            marker = "cue-in"
+    return active, marker
+
+async def _free_channel_ad_state(item: dict) -> dict:
+    cid = str(item.get("id") or "")
+    now = time.time()
+    cached = _ad_probe_cache.get(cid) or {}
+    if now - float(cached.get("checked_at") or 0) < 2.5:
+        return cached
+    result = {"active": False, "marker": "", "checked_at": now}
+    url = str(item.get("url") or "")
+    if not url.startswith(("http://", "https://")):
+        _ad_probe_cache[cid] = result
+        return result
+    try:
+        timeout = aiohttp.ClientTimeout(total=5, connect=2.5, sock_read=3)
+        headers = {"User-Agent": "AbajTV/1.0"}
+        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+            text = await _fetch_text(session, url)
+            if "#EXTM3U" not in text[:4096]:
+                _ad_probe_cache[cid] = result
+                return result
+            # If this is a master playlist, inspect the first media variant.
+            if "#EXT-X-STREAM-INF" in text:
+                media_url = ""
+                expect_uri = False
+                for raw in text.splitlines():
+                    line = raw.strip()
+                    if line.startswith("#EXT-X-STREAM-INF"):
+                        expect_uri = True
+                        continue
+                    if expect_uri and line and not line.startswith("#"):
+                        media_url = urljoin(url, line)
+                        break
+                if media_url:
+                    text = await _fetch_text(session, media_url)
+            active, marker = _detect_hls_ad_break(text)
+            result.update({"active": bool(active), "marker": marker})
+    except Exception as exc:
+        result["error"] = str(exc)[:120]
+    _ad_probe_cache[cid] = result
+    return result
+
 
 def _restore_saved_snapshot():
     saved = _load_json(SNAPSHOT_PATH, {})
@@ -1005,6 +1067,20 @@ async def api_refresh(request):
     return web.json_response({"ok": True, "running": True})
 
 
+async def api_ad_state(request):
+    cid = str(request.query.get("id") or "").strip()
+    item = _state["channels"].get(cid)
+    if not item:
+        return web.json_response({"ok": False, "active": False, "error": "unknown channel"}, status=404)
+    data = await _free_channel_ad_state(item)
+    return web.json_response({
+        "ok": True,
+        "active": bool(data.get("active")),
+        "marker": str(data.get("marker") or ""),
+        "checked_at": float(data.get("checked_at") or 0),
+    }, headers={"Cache-Control": "no-store"})
+
+
 async def api_play(request):
     cid = request.query.get("id", "")
     item = _state["channels"].get(cid)
@@ -1214,6 +1290,7 @@ def install(app: web.Application):
     app.router.add_get("/api/iptv/diagnostics", api_diagnostics)
     app.router.add_post("/api/iptv/refresh", api_refresh)
     app.router.add_get("/api/iptv/play", api_play)
+    app.router.add_get("/api/iptv/ad-state", api_ad_state)
     app.router.add_get("/api/iptv/proxy", api_proxy)
     app.on_startup.append(start_background)
     app.on_cleanup.append(stop_background)
