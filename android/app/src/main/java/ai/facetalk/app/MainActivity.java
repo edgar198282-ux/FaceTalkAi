@@ -211,6 +211,10 @@ public class MainActivity extends Activity {
     @Override public boolean dispatchKeyEvent(KeyEvent event){
         if(isTv&&event.getAction()==KeyEvent.ACTION_DOWN&&webView!=null){
             int code=event.getKeyCode();
+            if(code==KeyEvent.KEYCODE_BACK){
+                onBackPressed();
+                return true;
+            }
             if(code>=KeyEvent.KEYCODE_0&&code<=KeyEvent.KEYCODE_9){
                 int digit=code-KeyEvent.KEYCODE_0;
                 webView.evaluateJavascript("if(typeof tvTuneDigit==='function')tvTuneDigit('"+digit+"')",null);
