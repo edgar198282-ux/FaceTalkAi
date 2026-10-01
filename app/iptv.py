@@ -715,10 +715,10 @@ async def api_play(request):
             urls.append(url)
 
     prefer_backup = request.query.get("failover") == "1" and len(urls) > 1
-    primary_candidates = urls[1:3] if prefer_backup else urls[:2]
+    primary_candidates = urls[1:] if prefer_backup else urls[:3]
     fallback_candidates = [original_primary] if prefer_backup and original_primary else []
 
-    timeout = aiohttp.ClientTimeout(total=3.5, connect=1.5, sock_read=2.2)
+    timeout = aiohttp.ClientTimeout(total=6, connect=2.5, sock_read=3.5)
 
     async def race_candidates(session, candidates):
         async def probe_candidate(url):
@@ -828,7 +828,7 @@ async def api_proxy(request):
     sig = request.query.get("s", "")
     if not url.startswith(("http://", "https://")) or not hmac.compare_digest(sig, _token(url)):
         raise web.HTTPForbidden(text="Invalid stream token")
-    timeout = aiohttp.ClientTimeout(total=None, connect=2, sock_read=6)
+    timeout = aiohttp.ClientTimeout(total=None, connect=3, sock_read=10)
     session = aiohttp.ClientSession(headers={"User-Agent": "IPTV-Player/1.0"})
     try:
         r = await session.get(url, timeout=timeout, allow_redirects=True)
