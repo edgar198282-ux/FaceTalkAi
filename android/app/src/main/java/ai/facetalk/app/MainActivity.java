@@ -215,6 +215,16 @@ public class MainActivity extends Activity {
                 onBackPressed();
                 return true;
             }
+            if(code==KeyEvent.KEYCODE_DPAD_UP||code==KeyEvent.KEYCODE_DPAD_DOWN||code==KeyEvent.KEYCODE_DPAD_LEFT||code==KeyEvent.KEYCODE_DPAD_RIGHT||code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER){
+                String action="";
+                if(code==KeyEvent.KEYCODE_DPAD_UP)action="up";
+                else if(code==KeyEvent.KEYCODE_DPAD_DOWN)action="down";
+                else if(code==KeyEvent.KEYCODE_DPAD_LEFT)action="left";
+                else if(code==KeyEvent.KEYCODE_DPAD_RIGHT)action="right";
+                else action="ok";
+                webView.evaluateJavascript("if(typeof tvNativeRemote==='function')tvNativeRemote('"+action+"')",null);
+                return true;
+            }
             if(code>=KeyEvent.KEYCODE_0&&code<=KeyEvent.KEYCODE_9){
                 int digit=code-KeyEvent.KEYCODE_0;
                 webView.evaluateJavascript("if(typeof tvTuneDigit==='function')tvTuneDigit('"+digit+"')",null);
@@ -222,10 +232,6 @@ public class MainActivity extends Activity {
             }
             if(code==KeyEvent.KEYCODE_LAST_CHANNEL){
                 webView.evaluateJavascript("if(typeof playPreviousChannel==='function')playPreviousChannel()",null);
-                return true;
-            }
-            if((code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER)&&event.getRepeatCount()>0){
-                webView.evaluateJavascript("if(typeof showTvInfo==='function')showTvInfo()",null);
                 return true;
             }
             if(code==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||code==KeyEvent.KEYCODE_SPACE){
