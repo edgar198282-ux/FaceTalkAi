@@ -243,11 +243,6 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
       <input id="search" class="search" placeholder="Поиск канала" oninput="render()">
       <select id="group" class="select" onchange="setGroup(this.value)"><option value="">ALL</option></select>
     </div>
-    <div class="chips" id="sourceChips">
-      <button class="chip active" data-source="all" onclick="setSourceFilter(this,'all')">ALL</button>
-      <button class="chip" data-source="free" onclick="setSourceFilter(this,'free')">FREE</button>
-      <button class="chip" data-source="edem" onclick="setSourceFilter(this,'edem')">EDEM</button>
-    </div>
     <div class="chips">
       <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
       <button class="chip" data-filter="AM" onclick="setModeFilter(this,'AM')">🇦🇲 ARMENIA</button>
@@ -379,7 +374,8 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
 let channels=[];
-let sourceFilter=localStorage.getItem('abaj_tv_source_filter')||'all';
+let sourceFilter='all';
+try{localStorage.removeItem('abaj_tv_source_filter')}catch(e){}
 let modeFilter=localStorage.getItem('abaj_tv_filter')||'all';
 let activeCategory=localStorage.getItem('abaj_tv_category')||'';
 const launchParams=new URLSearchParams(location.search);
@@ -1334,11 +1330,12 @@ function restoreCachedChannels(){
     if(Date.now()-Number(cached.ts||0)>12*60*60*1000)return false;
     channels=cached.channels.filter(x=>!tvHideUnreliable||!x.unreliable||x.personal);
     const groups=[...new Set(channels.map(x=>x.group||'Other'))].sort((a,b)=>a.localeCompare(b,'ru'));
+    const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const sel=document.getElementById('group');
-    sel.innerHTML='<option value="">ALL</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
+    sel.innerHTML='<option value="">'+esc(t.all)+'</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
     buildQuickCats(groups);
     applyTvBrowseUi();
-    document.getElementById('status').textContent='Каналы загружены · обновляю…';
+    document.getElementById('status').textContent=t.loading;
     render();
     return true;
   }catch(e){return false}
@@ -1360,6 +1357,7 @@ async function load(){
       await loadEdemStatus();
       return;
     }
+    restoreCachedChannels();
     const mainPromise=fetch('/api/iptv/channels?compact=1',{cache:'no-store'}).then(async r=>{
       if(!r.ok)throw new Error('channels '+r.status);
       return await r.json();
@@ -1368,7 +1366,11 @@ async function load(){
       if(!r.ok)return {channels:[]};
       return await r.json();
     }).catch(()=>({channels:[]}));
-    const [d,ed]=await Promise.all([mainPromise,edemPromise]);
+    const d=await mainPromise;
+    const ed=await Promise.race([
+      edemPromise,
+      new Promise(resolve=>setTimeout(()=>resolve({channels:[]}),500))
+    ]);
     let base=(d.channels||[]).filter(x=>x.status==='ONLINE'&&(!tvHideUnreliable||!x.unreliable));
     if(Array.isArray(ed.channels)&&ed.channels.length){
       base=base.concat(ed.channels.map(x=>({...x,personal:true,provider:'Edem'})));
@@ -1406,7 +1408,7 @@ async function load(){
       }
     }
   }catch(e){
-    document.getElementById('status').textContent=(UI_TEXT[appLang]||UI_TEXT.ru).loadError;
+    if(!channels.length)document.getElementById('status').textContent=(UI_TEXT[appLang]||UI_TEXT.ru).loadError;
   }
 }
 function buildQuickCats(groups){
@@ -2427,7 +2429,6 @@ document.getElementById('app').classList.toggle('tvMode',tvMode);
 applyUiMode();
 applyAppLanguage();
 checkAdmin();
-loadEdemStatus();
 load();
 loadSyncedState(true);
 ensureTvPairing();
@@ -2438,7 +2439,7 @@ window.addEventListener('offline',handleOffline);
 window.addEventListener('online',handleOnline);
 document.addEventListener('visibilitychange',handleVisibilityChange);
 if(!navigator.onLine)handleOffline();
-setInterval(()=>{load();loadEdemStatus()},60000);
+setInterval(()=>{load()},60000);
 setInterval(()=>{if(!document.hidden)loadSyncedState(false)},4000);
 </script>
 </body>
