@@ -52,9 +52,11 @@ def _health_score(url: str) -> float:
     h = _stream_health.get(url) or {}
     total = int(h.get("successes") or 0) + int(h.get("failures") or 0)
     uptime = (int(h.get("successes") or 0) / total) if total else 0.5
-    latency = max(1, int(h.get("avg_latency_ms") or 2500))
+    probe_latency = max(1, int(h.get("avg_latency_ms") or 2500))
+    runtime_latency = max(1, int(h.get("runtime_startup_ms") or probe_latency))
+    latency = int(probe_latency * 0.45 + runtime_latency * 0.55)
     consecutive = int(h.get("consecutive_failures") or 0)
-    return round(uptime * 1000.0 - min(latency, 10000) / 25.0 - consecutive * 90.0, 3)
+    return round(uptime * 1000.0 - min(latency, 10000) / 22.0 - consecutive * 90.0, 3)
 
 def _record_health(row: dict):
     url = str(row.get("url") or "")
@@ -352,6 +354,7 @@ async def _probe(session: aiohttp.ClientSession, item: dict, sem: asyncio.Semaph
     row["health_score"] = float(h.get("score") or _health_score(str(row.get("url") or "")))
     row["consecutive_failures"] = int(h.get("consecutive_failures") or 0)
     row["last_ok"] = int(h.get("last_ok") or 0)
+    row["runtime_startup_ms"] = int(h.get("runtime_startup_ms") or 0)
     return row
 
 
@@ -393,6 +396,7 @@ async def refresh_channels(force: bool = False):
                     x.get("status") != "ONLINE",
                     -float(x.get("health_score") or _health_score(str(x.get("url") or ""))),
                     int(x.get("consecutive_failures") or 0),
+                    int(x.get("runtime_startup_ms") or 999999),
                     int(x.get("latency_ms") or 999999),
                     0 if str(x.get("logo") or "").startswith("http") else 1,
                 ))
