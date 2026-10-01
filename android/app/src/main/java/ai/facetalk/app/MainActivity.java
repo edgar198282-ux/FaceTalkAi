@@ -140,10 +140,6 @@ public class MainActivity extends Activity {
                 return;
             }
             showTelegramLinkScreen();
-            if(!telegramLaunchAttempted){
-                telegramLaunchAttempted=true;
-                openExternal(Uri.parse(baseUrl()+"/api/app-auth/telegram-start"));
-            }
             return;
         }
         loadAbajTv(init);
