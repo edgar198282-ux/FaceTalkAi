@@ -210,7 +210,13 @@ async def start_handler(m: Message):
             reply_markup=start_keyboard(m.from_user.id if m.from_user else None, lang)
         )
 
-@dp.message(F.text.regexp(r'^\\s*\\d{6}\\s*
+@dp.message(F.text.regexp(r'^\s*\d{6}\s*$'))
+async def tv_pair_code_handler(m: Message):
+    if not m.from_user or not m.text:
+        return
+    lang = await get_user_language(m.from_user.id) or _telegram_lang(m.from_user)
+    await _confirm_tv_pair_code(m, m.text.strip(), lang)
+
 @dp.callback_query(F.data.startswith('lang:'))
 async def language_handler(q: CallbackQuery):
     lang=q.data.split(':',1)[1]
