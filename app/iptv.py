@@ -748,6 +748,16 @@ def public_state(compact: bool = False):
     stats["epg_channels"] = len(_state["epg"]) if _state["epg"] else int(stats.get("epg_channels") or 0)
     stats["with_epg"] = sum(1 for x in rows if bool(x.get("epg_now")))
     stats["with_logo"] = sum(1 for x in rows if bool(x.get("logo")))
+    coverage_by_country = {}
+    for x in rows:
+        code = str(x.get("country") or "??").upper()
+        c = coverage_by_country.setdefault(code, {"total":0,"online":0,"epg":0,"logo":0,"backup":0})
+        c["total"] += 1
+        if x.get("status") == "ONLINE": c["online"] += 1
+        if x.get("epg_now"): c["epg"] += 1
+        if x.get("logo"): c["logo"] += 1
+        if int(x.get("backup_count") or 0) > 0: c["backup"] += 1
+    stats["coverage_by_country"] = coverage_by_country
     return {
         "ok": not bool(_state["error"]),
         "running": _state["running"],
