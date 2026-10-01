@@ -47,6 +47,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.UUID;
 
 public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST=4101, MEDIA_PERMISSION_REQUEST=4102;
@@ -139,23 +140,20 @@ public class MainActivity extends Activity {
     }
 
     private String baseUrl(){String b=BuildConfig.WEB_APP_URL==null?"":BuildConfig.WEB_APP_URL.trim(); if(!b.startsWith("http://")&&!b.startsWith("https://")&&!b.isEmpty())b="https://"+b; while(b.endsWith("/"))b=b.substring(0,b.length()-1); return b;}
+    private String ensureAuthNonce(){String n=prefs.getString("app_auth_nonce","");if(n==null||n.trim().isEmpty()){n=UUID.randomUUID().toString().replace("-","");prefs.edit().putString("app_auth_nonce",n).apply();}return n;}
+    private boolean hasSignedAuth(){return !prefs.getString("ft_uid","").isEmpty()&&!prefs.getString("ft_ts","").isEmpty()&&!prefs.getString("ft_sig","").isEmpty();}
     private void loadOrAuthorize(){
         String init=prefs.getString("telegram_init_data","");
-        if(init==null||init.trim().isEmpty()){
-            if(isTv){
-                loadAbajTv("");
-                return;
-            }
+        if((init==null||init.trim().isEmpty())&&!hasSignedAuth()){
+            if(isTv){loadAbajTv("");return;}
+            String nonce=ensureAuthNonce();
             showTelegramLinkScreen();
-            if(!telegramLaunchAttempted){
-                telegramLaunchAttempted=true;
-                openExternal(Uri.parse(baseUrl()+"/api/app-auth/telegram-start"));
-            }
+            if(!telegramLaunchAttempted){telegramLaunchAttempted=true;openExternal(Uri.parse(baseUrl()+"/api/app-auth/telegram-start?nonce="+Uri.encode(nonce)));}
             return;
         }
-        loadAbajTv(init);
+        loadAbajTv(init==null?"":init);
     }
-    private void showTelegramLinkScreen(){String updateButton=BuildConfig.PLAY_STORE_BUILD?"":"<button class='s' onclick=\"location.href='facetalk://check-update'\">Проверить обновление</button>";String h="<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><style>body{margin:0;background:linear-gradient(180deg,#061f59,#009cff);color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:24px;box-sizing:border-box}.b{max-width:380px;background:rgba(3,20,64,.78);border:1px solid rgba(255,255,255,.18);border-radius:24px;padding:28px;box-shadow:0 15px 45px rgba(0,0,0,.35)}p{color:#d6edff;line-height:1.5}button{width:100%;margin-top:14px;border:0;border-radius:15px;padding:15px;background:#00a6ff;color:white;font-weight:800;font-size:16px}.s{background:#123b78}</style></head><body><div class='b'><h2>Abaj TV</h2><p>Привяжите приложение к Telegram. После этого откроется ваш профиль Abaj TV.</p><button onclick=\"location.href='"+baseUrl()+"/api/app-auth/telegram-start'\">Привязать через Telegram</button>"+updateButton+"</div></body></html>"; webView.loadDataWithBaseURL("https://abajtv.local/",h,"text/html","UTF-8",null);}
+    private void showTelegramLinkScreen(){String nonce=ensureAuthNonce();String updateButton=BuildConfig.PLAY_STORE_BUILD?"":"<button class='s' onclick=\"location.href='facetalk://check-update'\">Проверить обновление</button>";String h="<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><style>body{margin:0;background:linear-gradient(180deg,#061f59,#009cff);color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:24px;box-sizing:border-box}.b{max-width:380px;background:rgba(3,20,64,.78);border:1px solid rgba(255,255,255,.18);border-radius:24px;padding:28px;box-shadow:0 15px 45px rgba(0,0,0,.35)}p{color:#d6edff;line-height:1.5}button{width:100%;margin-top:14px;border:0;border-radius:15px;padding:15px;background:#00a6ff;color:white;font-weight:800;font-size:16px}.s{background:#123b78}</style></head><body><div class='b'><h2>Abaj TV</h2><p>Привяжите приложение к Telegram. После подтверждения просто вернитесь сюда.</p><button onclick=\"location.href='"+baseUrl()+"/api/app-auth/telegram-start?nonce="+Uri.encode(nonce)+"'\">Привязать через Telegram</button>"+updateButton+"</div></body></html>"; webView.loadDataWithBaseURL("https://abajtv.local/",h,"text/html","UTF-8",null);}
     private void loadAbajTv(String init){
         String b=baseUrl();
         if(b.isEmpty()){showTelegramLinkScreen();return;}
@@ -173,7 +171,28 @@ public class MainActivity extends Activity {
         webView.requestFocus();
     }
     private void consumeAuthIntent(Intent i){if(i!=null)consumeAuthUri(i.getData());}
-    private void consumeAuthUri(Uri u){if(u==null||!"facetalk".equalsIgnoreCase(u.getScheme())||!"auth".equalsIgnoreCase(u.getHost()))return; String init=u.getQueryParameter("init_data"); String uid=u.getQueryParameter("ft_uid"); String ts=u.getQueryParameter("ft_ts"); String sig=u.getQueryParameter("ft_sig"); if((init==null||init.trim().isEmpty())&&(uid==null||uid.trim().isEmpty()))return; android.content.SharedPreferences.Editor ed=prefs.edit(); if(init!=null&&!init.trim().isEmpty())ed.putString("telegram_init_data",init); if(uid!=null&&!uid.trim().isEmpty())ed.putString("ft_uid",uid); if(ts!=null&&!ts.trim().isEmpty())ed.putString("ft_ts",ts); if(sig!=null&&!sig.trim().isEmpty())ed.putString("ft_sig",sig); ed.apply(); telegramLaunchAttempted=true;Toast.makeText(this,"Telegram подключён",Toast.LENGTH_SHORT).show();}
+    private void saveSignedAuth(String uid,String ts,String sig){if(uid==null||ts==null||sig==null||uid.isEmpty()||ts.isEmpty()||sig.isEmpty())return;prefs.edit().putString("ft_uid",uid).putString("ft_ts",ts).putString("ft_sig",sig).remove("app_auth_nonce").apply();}
+    private void checkPendingAppAuth(){
+        if(isTv||hasSignedAuth())return;
+        String nonce=prefs.getString("app_auth_nonce","");
+        if(nonce==null||nonce.isEmpty())return;
+        new Thread(()->{
+            HttpURLConnection c=null;
+            try{
+                c=(HttpURLConnection)new URL(baseUrl()+"/api/app-auth/status?nonce="+Uri.encode(nonce)).openConnection();
+                c.setConnectTimeout(8000);c.setReadTimeout(8000);c.setUseCaches(false);
+                if(c.getResponseCode()!=200)return;
+                BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream()));StringBuilder sb=new StringBuilder();String line;while((line=br.readLine())!=null)sb.append(line);br.close();
+                JSONObject j=new JSONObject(sb.toString());
+                if(!j.optBoolean("paired",false))return;
+                String uid=j.optString("ft_uid","");String ts=j.optString("ft_ts","");String sig=j.optString("ft_sig","");
+                if(uid.isEmpty()||ts.isEmpty()||sig.isEmpty())return;
+                saveSignedAuth(uid,ts,sig);
+                runOnUiThread(()->{Toast.makeText(this,"Telegram подключён",Toast.LENGTH_SHORT).show();loadAbajTv("");});
+            }catch(Exception ignored){}finally{if(c!=null)c.disconnect();}
+        },"abajtv-auth-check").start();
+    }
+    private void consumeAuthUri(Uri u){if(u==null||!"facetalk".equalsIgnoreCase(u.getScheme())||!"auth".equalsIgnoreCase(u.getHost()))return; String init=u.getQueryParameter("init_data"); String uid=u.getQueryParameter("ft_uid"); String ts=u.getQueryParameter("ft_ts"); String sig=u.getQueryParameter("ft_sig"); if((init==null||init.trim().isEmpty())&&(uid==null||uid.trim().isEmpty()))return; android.content.SharedPreferences.Editor ed=prefs.edit(); if(init!=null&&!init.trim().isEmpty())ed.putString("telegram_init_data",init); ed.apply(); saveSignedAuth(uid,ts,sig); telegramLaunchAttempted=true;Toast.makeText(this,"Telegram подключён",Toast.LENGTH_SHORT).show();}
     @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);consumeAuthIntent(intent);loadOrAuthorize();}
 
     private void checkForAppUpdate(boolean force,boolean showResult){String b=baseUrl(); if(b.isEmpty()||updateCheckRunning||updateDownloadRunning)return; long n=System.currentTimeMillis(); if(!force&&n-lastUpdateCheckAt<60000L)return; lastUpdateCheckAt=n;updateCheckRunning=true; new Thread(()->{HttpURLConnection c=null;try{URL u=new URL(b+"/api/app-release?ts="+System.currentTimeMillis());c=(HttpURLConnection)u.openConnection();c.setConnectTimeout(10000);c.setReadTimeout(10000);c.setUseCaches(false);c.setRequestProperty("Cache-Control","no-cache");int http=c.getResponseCode();if(http!=200)throw new IllegalStateException("HTTP "+http);BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream()));StringBuilder sb=new StringBuilder();String line;while((line=br.readLine())!=null)sb.append(line);br.close();JSONObject j=new JSONObject(sb.toString());boolean available=j.optBoolean("available",false);int latest=j.optInt("version_code",0);String download=j.optString("download_url",""); if(!available||latest<=0||download.isEmpty()){if(showResult)runOnUiThread(()->Toast.makeText(this,"Новая APK ещё не опубликована на сервер обновлений",Toast.LENGTH_LONG).show());return;} if(latest<=BuildConfig.VERSION_CODE){if(showResult)runOnUiThread(()->Toast.makeText(this,"Установлена последняя версия",Toast.LENGTH_LONG).show());return;} final String url=download.startsWith("http")?download:b+download;runOnUiThread(()->{if(!isFinishing()&&!updateDownloadRunning){Toast.makeText(this,"Найдено обновление Abaj TV. Загружаю…",Toast.LENGTH_LONG).show();downloadAndInstallApk(url);}});}catch(Exception e){if(showResult)runOnUiThread(()->Toast.makeText(this,"Сервер обновлений недоступен",Toast.LENGTH_LONG).show());}finally{updateCheckRunning=false;if(c!=null)c.disconnect();}},"abajtv-update-check").start();}
@@ -235,6 +254,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume(){
         super.onResume();
         enterTvImmersive();
+        if(!isTv)checkPendingAppAuth();
         if(isTv&&webView!=null){
             webView.evaluateJavascript("if(typeof resumeTvPlayback==='function')resumeTvPlayback();if(typeof load==='function'&&!document.getElementById('playerView')?.classList.contains('open'))load();if(typeof refreshTvAuth==='function')refreshTvAuth(true)",null);
         }

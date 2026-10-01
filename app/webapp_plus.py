@@ -1111,7 +1111,28 @@ async def api_app_auth_start(request):
     me = await request.app['bot'].get_me()
     username = (me.username or '').lstrip('@')
     if not username: raise web.HTTPServiceUnavailable(text='Telegram bot username unavailable')
-    raise web.HTTPFound(f'https://t.me/{quote(username)}?start=app_login')
+    nonce = ''.join(ch for ch in (request.query.get('nonce') or '') if ch.isalnum() or ch in ('-','_'))[:96]
+    payload = f'app_login_{nonce}' if nonce else 'app_login'
+    raise web.HTTPFound(f'https://t.me/{quote(username)}?start={quote(payload)}')
+
+async def api_app_auth_status(request):
+    nonce = ''.join(ch for ch in (request.query.get('nonce') or '') if ch.isalnum() or ch in ('-','_'))[:96]
+    if not nonce:
+        return web.json_response({'ok':False,'paired':False}, status=400)
+    raw = await get_setting(f'app_login_nonce:{nonce}')
+    if not raw:
+        return web.json_response({'ok':True,'paired':False})
+    try:
+        data = json.loads(raw)
+        uid = int(data.get('user_id') or 0)
+        created = int(data.get('created_at') or 0)
+    except Exception:
+        return web.json_response({'ok':True,'paired':False})
+    if uid <= 0 or created <= 0 or int(time.time()) - created > 900:
+        return web.json_response({'ok':True,'paired':False})
+    ts = int(time.time())
+    sig = hmac.new(TELEGRAM_BOT_TOKEN.encode(), f'{uid}:{ts}'.encode(), hashlib.sha256).hexdigest()
+    return web.json_response({'ok':True,'paired':True,'ft_uid':str(uid),'ft_ts':str(ts),'ft_sig':sig})
 
 async def api_app_auth_complete(request):
     init_data = (request.query.get('init_data') or '').strip()
@@ -1135,7 +1156,7 @@ async def start_webapp(bot):
     iptv.install(app)
     app.router.add_get('/api/app-release', api_app_release); app.router.add_get('/api/app-download', api_app_download); app.router.add_get(PUBLIC_APK_PATH, api_app_download); app.router.add_get(PUBLIC_APK_BETA_PATH, api_app_download); app.router.add_get('/downloads/FaceTalkAI-latest.apk', api_app_download); app.router.add_post('/api/app-upload', api_app_upload)
     app.router.add_get('/api/admin/app-release', api_app_release); app.router.add_get('/api/admin/app-download', api_app_download); app.router.add_post('/api/admin/app-upload', api_app_upload); app.router.add_post('/api/admin/app-rollback', api_admin_app_rollback); app.router.add_post('/api/admin/app-promote-beta', api_admin_app_promote_beta)
-    app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
+    app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/status', api_app_auth_status); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/open', api_tv_pair_open); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)

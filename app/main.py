@@ -228,7 +228,16 @@ async def start_handler(m: Message):
         parts = m.text.split(maxsplit=1)
         payload = parts[1].strip() if len(parts) > 1 else ''
 
-    if payload == 'app_login' and MINIAPP_URL:
+    if payload.startswith('app_login') and MINIAPP_URL:
+        if payload.startswith('app_login_'):
+            nonce = payload[len('app_login_'):].strip()[:96]
+            if nonce and m.from_user:
+                await set_setting(f'app_login_nonce:{nonce}', json.dumps({
+                    'user_id': int(m.from_user.id),
+                    'created_at': int(time.time()),
+                }, separators=(',', ':')))
+                await _answer(m, '✅ Abaj TV подключён. Вернитесь в приложение.')
+                return
         init_data = _telegram_init_data_for_user(m.from_user)
         complete = MINIAPP_URL.rstrip('/') + '/api/app-auth/complete?' + urlencode({'init_data': init_data})
         await _answer(
