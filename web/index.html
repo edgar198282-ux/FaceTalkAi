@@ -2553,6 +2553,24 @@ function sampleBurnedAdFrame(ch){
     )));
     reportBurnedAdObservation(ch,score,cutRate,avgDiff,brightnessVar,burnedAdSamples.length);
   }catch(e){
+    const name=(e&&e.name)?String(e.name):'frame_error';
+    const msg=(e&&e.message)?String(e.message).slice(0,120):'';
+    try{
+      fetch('/api/iptv/ad-visual-observe',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          channel_id:ch&&ch.id?ch.id:'',
+          score:0,
+          cut_rate:0,
+          avg_diff:0,
+          brightness_var:0,
+          samples:0,
+          observer_error:(name+': '+msg).slice(0,160)
+        }),
+        keepalive:true
+      });
+    }catch(_){}
     stopBurnedAdObserver();
   }
 }
