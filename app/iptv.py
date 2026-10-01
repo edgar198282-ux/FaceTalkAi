@@ -129,6 +129,7 @@ _worker_control = {"refresh_requested_at": 0, "last_worker_snapshot": 0}
 
 _ad_probe_cache = {}
 _ad_last_state = {}
+_ad_scan_stats = {"probes": 0, "errors": 0, "last_probe": 0, "last_channel_id": ""}
 
 def _record_ad_transition(item: dict, active: bool, marker: str):
     cid = str(item.get("id") or "")
@@ -177,6 +178,9 @@ def _detect_hls_ad_break(text: str) -> tuple[bool, str]:
 async def _free_channel_ad_state(item: dict) -> dict:
     cid = str(item.get("id") or "")
     now = time.time()
+    _ad_scan_stats["probes"] = int(_ad_scan_stats.get("probes") or 0) + 1
+    _ad_scan_stats["last_probe"] = int(now)
+    _ad_scan_stats["last_channel_id"] = cid
     cached = _ad_probe_cache.get(cid) or {}
     if now - float(cached.get("checked_at") or 0) < 2.5:
         return cached
@@ -219,6 +223,7 @@ async def _free_channel_ad_state(item: dict) -> dict:
             result.update({"active": bool(active), "marker": marker})
             _record_ad_transition(item, bool(active), marker)
     except Exception as exc:
+        _ad_scan_stats["errors"] = int(_ad_scan_stats.get("errors") or 0) + 1
         result["error"] = str(exc)[:120]
     _ad_probe_cache[cid] = result
     return result
@@ -984,6 +989,7 @@ async def api_diagnostics(request):
             "starts_total": len(ad_starts),
             "channels_seen": len({str(x.get("channel_id") or "") for x in ad_starts if x.get("channel_id")}),
             "last_event": ad_history[-1] if ad_history else None,
+            "scanner": dict(_ad_scan_stats),
         },
         "last_refresh": state.get("last_refresh"),
         "running": state.get("running"),
