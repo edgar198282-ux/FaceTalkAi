@@ -1808,7 +1808,7 @@ function clearFirstFrameTimer(){
 function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
-  const waitMs=Number(ch.backup_count||0)>0?3500:6000;
+  const waitMs=Number(ch.backup_count||0)>0?1800:3000;
   firstFrameTimer=setTimeout(()=>{
     firstFrameTimer=null;
     if(token!==streamAttemptToken||!current||current.id!==ch.id)return;
@@ -1866,12 +1866,14 @@ function startStream(ch,preferBackup=false){
       enableWorker:true,
       lowLatencyMode:false,
       startFragPrefetch:true,
-      maxBufferLength:nativeTv?8:20,
-      maxMaxBufferLength:nativeTv?16:30,
-      backBufferLength:nativeTv?4:10,
-      manifestLoadingTimeOut:nativeTv?6000:10000,
-      levelLoadingTimeOut:nativeTv?6000:10000,
-      fragLoadingTimeOut:nativeTv?9000:14000,
+      maxBufferLength:nativeTv?4:12,
+      maxMaxBufferLength:nativeTv?8:20,
+      backBufferLength:nativeTv?2:6,
+      maxBufferHole:0.4,
+      highBufferWatchdogPeriod:1,
+      manifestLoadingTimeOut:nativeTv?3500:7000,
+      levelLoadingTimeOut:nativeTv?3500:7000,
+      fragLoadingTimeOut:nativeTv?6000:10000,
       capLevelToPlayerSize:true
     });
     if(ch.personal){
@@ -1968,11 +1970,11 @@ function scheduleReconnect(ch,preferBackup=false){
     return;
   }
   streamRetries++;
-  err.textContent='Автопереподключение через 2 сек…';
+  err.textContent='Быстрое переподключение…';
   reconnectTimer=setTimeout(()=>{
     reconnectTimer=null;
     if(current&&current.id===ch.id)startStream(ch,preferBackup);
-  },2000);
+  },700);
 }
 
 function resetQualityMenu(){
