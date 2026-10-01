@@ -5,13 +5,14 @@ plugins {
 def webUrl = providers.gradleProperty('WEB_APP_URL').orElse('https://facetalkai-production.up.railway.app').get()
 def vCode = providers.gradleProperty('APP_VERSION_CODE').orElse('1').get().toInteger()
 def vName = providers.gradleProperty('APP_VERSION_NAME').orElse('1.0.0').get()
+def appId = providers.gradleProperty('APP_ID').orElse('ai.facetalk.app').get()
 
 android {
     namespace 'ai.facetalk.app'
     compileSdk 35
 
     defaultConfig {
-        applicationId 'ai.facetalk.app'
+        applicationId appId
         minSdk 21
         targetSdk 35
         versionCode vCode
