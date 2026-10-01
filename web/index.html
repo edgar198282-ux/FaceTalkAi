@@ -438,6 +438,9 @@ let tvLastAutoInterval=null;
 let tvLastAutoCancelled=false;
 let tvZapStepTimer=null;
 let tvZapStepOffset=0;
+const streamWarmCache=new Map();
+let streamWarmTimer=null;
+let streamWarmController=null;
 let tvHideUnreliable=localStorage.getItem('abaj_tv_hide_unreliable')!=='0';
 let tvAutoStartLast=localStorage.getItem('abaj_tv_autostart_last')!=='0';
 let tvPreferredQuality=localStorage.getItem('abaj_tv_quality')||'auto';
@@ -1988,9 +1991,59 @@ function armFirstFrameTimer(ch,preferBackup,token){
     scheduleReconnect(ch,true);
   },waitMs);
 }
+function streamWarmKey(ch,preferBackup=false){
+  return (ch&&ch.personal?'edem:':'free:')+String(ch&&ch.id||'')+(preferBackup?':b':'');
+}
+function getWarmedManifest(ch,preferBackup=false){
+  const key=streamWarmKey(ch,preferBackup);
+  const item=streamWarmCache.get(key);
+  if(!item)return '';
+  if(Date.now()-Number(item.ts||0)>30000){streamWarmCache.delete(key);return ''}
+  return String(item.text||'');
+}
+async function prefetchStreamManifest(ch,signal){
+  if(!nativeTv||!ch||!ch.id)return;
+  const key=streamWarmKey(ch,false);
+  const cached=streamWarmCache.get(key);
+  if(cached&&Date.now()-Number(cached.ts||0)<30000)return;
+  const basePath=ch.personal?'/api/iptv/edem/play':'/api/iptv/play';
+  const src=basePath+'?id='+encodeURIComponent(ch.id)+'&prefetch=1&t='+Date.now();
+  try{
+    const r=await fetch(src,{headers:ch.personal?authHeaders():{},cache:'no-store',redirect:'manual',signal});
+    if(!r.ok)return;
+    const ctype=String(r.headers.get('content-type')||'').toLowerCase();
+    if(ctype&&!ctype.includes('mpegurl')&&!ctype.includes('text'))return;
+    const text=await r.text();
+    if(!text.trimStart().startsWith('#EXTM3U')||text.length>1024*1024)return;
+    streamWarmCache.set(key,{text,ts:Date.now()});
+    if(streamWarmCache.size>6){
+      const oldest=[...streamWarmCache.entries()].sort((a,b)=>Number(a[1].ts||0)-Number(b[1].ts||0))[0];
+      if(oldest)streamWarmCache.delete(oldest[0]);
+    }
+  }catch(e){}
+}
+function scheduleAdjacentPrefetch(ch){
+  if(!nativeTv||!ch)return;
+  if(streamWarmTimer){clearTimeout(streamWarmTimer);streamWarmTimer=null}
+  if(streamWarmController){try{streamWarmController.abort()}catch(e){} streamWarmController=null}
+  streamWarmTimer=setTimeout(()=>{
+    streamWarmTimer=null;
+    if(!current||current.id!==ch.id)return;
+    const rows=filteredNow.length?filteredNow:channels;
+    const i=rows.findIndex(x=>x.id===ch.id);
+    if(i<0||rows.length<2)return;
+    const next=rows[(i+1)%rows.length];
+    const prev=rows[(i-1+rows.length)%rows.length];
+    streamWarmController=new AbortController();
+    const signal=streamWarmController.signal;
+    Promise.allSettled([next,prev].filter((x,j,a)=>x&&a.findIndex(y=>y.id===x.id)===j).map(x=>prefetchStreamManifest(x,signal)));
+  },700);
+}
+
 function startTvWatchdog(ch){
   if(!nativeTv)return;
   stopTvWatchdog();
+  scheduleAdjacentPrefetch(ch);
   const v=document.getElementById('video');
   tvWatchdogTimer=setInterval(()=>{
     if(!current||current.id!==ch.id||document.hidden||!navigator.onLine)return;
@@ -2051,8 +2104,16 @@ function startStream(ch,preferBackup=false){
         })
         .catch(()=>scheduleReconnect(ch));
     }else{
-      hls.loadSource(src);
-      hls.attachMedia(v);
+      const warmed=getWarmedManifest(ch,preferBackup);
+      if(warmed){
+        const blobUrl=URL.createObjectURL(new Blob([warmed],{type:'application/vnd.apple.mpegurl'}));
+        hls.loadSource(blobUrl);
+        hls.attachMedia(v);
+        setTimeout(()=>URL.revokeObjectURL(blobUrl),60000);
+      }else{
+        hls.loadSource(src);
+        hls.attachMedia(v);
+      }
     }
 
     armFirstFrameTimer(ch,preferBackup,attemptToken);
@@ -2235,6 +2296,8 @@ function openTvRailFocused(){
 }
 function closePlayer(){
   clearFirstFrameTimer();
+  if(streamWarmTimer){clearTimeout(streamWarmTimer);streamWarmTimer=null}
+  if(streamWarmController){try{streamWarmController.abort()}catch(e){} streamWarmController=null}
   streamAttemptToken++;
   if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
   document.body.classList.remove('playerClean');
@@ -2282,7 +2345,7 @@ function queueTvChannelStep(delta){
     tvZapStepTimer=null;
     tvZapStepOffset=0;
     if(ch)openPlayer(ch.id);
-  },220);
+  },120);
 }
 function playNext(){
   if(nativeTv){queueTvChannelStep(1);return}
