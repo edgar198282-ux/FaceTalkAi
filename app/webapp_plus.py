@@ -1275,9 +1275,19 @@ async def api_app_auth_complete(request):
         'ft_sig': sig,
     }))
 
+async def api_healthz(request):
+    return web.json_response({
+        "ok": True,
+        "service": "abaj-tv",
+        "channels_loaded": bool(iptv._state.get("channels")),
+        "last_refresh": int(iptv._state.get("last_refresh") or 0),
+    }, headers={"Cache-Control":"no-store"})
+
+
 async def start_webapp(bot):
     app = web.Application(client_max_size=100*1024*1024, middlewares=[api_error_middleware]); app['bot']=bot
     app.router.add_get('/', index)
+    app.router.add_get('/healthz', api_healthz)
     app.router.add_get('/privacy', privacy_policy)
     app.router.add_get('/privacy-policy', privacy_policy)
     iptv.install(app)
