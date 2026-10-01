@@ -426,6 +426,10 @@ async def refresh_channels(force: bool = False):
                         candidates.extend(_parse_hq_m3u(text, url))
                     else:
                         candidates.extend(_parse_m3u(text, country, url))
+                candidates.sort(key=lambda x: (
+                    0 if x.get("country") == "AM" else 1,
+                    0 if str(x.get("quality") or "").upper() in {"4K", "FHD"} else 1,
+                ))
                 seen_urls = set()
                 unique = []
                 for item in candidates:

@@ -1121,6 +1121,15 @@ function setSourceFilter(btn,v){
 function setModeFilter(btn,v){
   modeFilter=v;
   activeCategory='';
+  if(v==='AM'||v==='RU'){
+    sourceFilter='all';
+    localStorage.setItem('abaj_tv_source_filter','all');
+    document.querySelectorAll('#sourceChips .chip').forEach(x=>x.classList.toggle('active',x.dataset.source==='all'));
+    const group=document.getElementById('group');
+    if(group)group.value='';
+    const search=document.getElementById('search');
+    if(search)search.value='';
+  }
   document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.toggle('active',x===btn));
   document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',x.dataset.cat===''));
   focusIndex=0;
