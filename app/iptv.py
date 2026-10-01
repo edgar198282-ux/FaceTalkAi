@@ -76,13 +76,14 @@ def _record_health(row: dict):
         h["avg_latency_ms"] = int(old * 0.8 + latency * 0.2)
     total = h["successes"] + h["failures"]
     h["uptime_pct"] = round((h["successes"] * 100.0 / total), 2) if total else 0.0
-    h["score"] = _health_score(url)
     h["updated_at"] = now
+    _stream_health[url] = h
+    h["score"] = _health_score(url)
     _stream_health[url] = h
 
 EPG_URLS = [
-    ("AM", "https://iptv-org.github.io/epg/guides/am/tv.mail.ru.epg.xml"),
-    ("RU", "https://iptv-org.github.io/epg/guides/ru/tv.yandex.ru.epg.xml"),
+    ("AM", "https://iptv-epg.org/files/epg-am.xml"),
+    ("RU", "https://iptv-epg.org/files/epg-ru.xml"),
 ]
 EPG_REFRESH_SECONDS = 3 * 60 * 60
 
@@ -138,6 +139,17 @@ def _looks_junk(item: dict) -> bool:
     return False
 
 
+def _extinf_name(line: str, fallback: str = "Channel") -> str:
+    quoted = False
+    for i, ch in enumerate(line):
+        if ch == '"':
+            quoted = not quoted
+        elif ch == "," and not quoted:
+            name = line[i + 1:].strip()
+            return name or fallback
+    return fallback
+
+
 def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
     out = []
     pending = None
@@ -147,7 +159,7 @@ def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
             continue
         if line.startswith("#EXTINF"):
             attrs = _attrs(line)
-            name = line.split(",", 1)[1].strip() if "," in line else attrs.get("tvg-name", "Channel")
+            name = _extinf_name(line, attrs.get("tvg-name", "Channel"))
             pending = {
                 "name": name or "Channel",
                 "group": attrs.get("group-title", "") or "Other",
@@ -289,12 +301,13 @@ async def _fetch_text(session: aiohttp.ClientSession, url: str) -> str:
 
 
 async def _probe(session: aiohttp.ClientSession, item: dict, sem: asyncio.Semaphore) -> dict:
-    started = time.perf_counter()
+    started = None
     ok = False
     code = 0
     error = ""
     try:
         async with sem:
+            started = time.perf_counter()
             timeout = aiohttp.ClientTimeout(total=8, connect=4, sock_read=4)
             headers = {"Range": "bytes=0-2047", "User-Agent": "IPTV-Player/1.0"}
             async with session.get(item["url"], headers=headers, timeout=timeout, allow_redirects=True) as r:
@@ -311,7 +324,7 @@ async def _probe(session: aiohttp.ClientSession, item: dict, sem: asyncio.Semaph
     row.update({
         "status": "ONLINE" if ok else "OFFLINE",
         "status_code": code,
-        "latency_ms": int((time.perf_counter() - started) * 1000),
+        "latency_ms": int((time.perf_counter() - (started or time.perf_counter())) * 1000),
         "error": error,
     })
     _record_health(row)
