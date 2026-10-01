@@ -3011,15 +3011,13 @@ function tvNativeRemote(action){
       return;
     }
     const controlsHidden=document.body.classList.contains('playerClean');
+    if(action==='left'){queueTvChannelStep(-1);return}
+    if(action==='right'){queueTvChannelStep(1);return}
     if(controlsHidden){
-      if(action==='left'){queueTvChannelStep(-1);return}
-      if(action==='right'){queueTvChannelStep(1);return}
       if(action==='ok'){showTvPlayerUi(true);focusPlayerControl(0);return}
       if(action==='up'||action==='down'){showTvPlayerUi(true);focusPlayerControl(0);return}
     }
     if(action==='up'||action==='down'){showTvPlayerUi(true);focusPlayerControl(action==='down'?1:-1);return}
-    if(action==='left'){showTvPlayerUi(true);focusPlayerControl(-1);return}
-    if(action==='right'){showTvPlayerUi(true);focusPlayerControl(1);return}
     if(action==='ok'){
       showTvPlayerUi(true);
       if(!activatePlayerControl())focusPlayerControl(0);
@@ -3082,16 +3080,14 @@ document.addEventListener('keydown',e=>{
     }
     if(nativeTv&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
       e.preventDefault();
+      if(e.key==='ArrowLeft'){queueTvChannelStep(-1);return}
+      if(e.key==='ArrowRight'){queueTvChannelStep(1);return}
       const controlsHidden=document.body.classList.contains('playerClean');
       if(controlsHidden){
-        if(e.key==='ArrowLeft'){queueTvChannelStep(-1);return}
-        if(e.key==='ArrowRight'){queueTvChannelStep(1);return}
         showTvPlayerUi(true);focusPlayerControl(0);return
       }
       showTvPlayerUi(true);
-      if(e.key==='ArrowLeft')focusPlayerControl(-1);
-      else if(e.key==='ArrowRight')focusPlayerControl(1);
-      else if(e.key==='ArrowUp')focusPlayerControl(-1);
+      if(e.key==='ArrowUp')focusPlayerControl(-1);
       else focusPlayerControl(1);
       return
     }
