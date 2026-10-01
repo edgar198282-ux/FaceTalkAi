@@ -577,9 +577,12 @@ async def refresh_channels(force: bool = False):
                     tvg_id = str(x.get('tvg_id') or '').strip().lower()
                     if tvg_id and tvg_id not in logo_by_id:
                         logo_by_id[tvg_id] = logo
-                    nkey = (str(x.get('country') or '').upper(), _normalize_name(x.get('name') or ''))
-                    if nkey[1] and nkey not in logo_by_name:
-                        logo_by_name[nkey] = logo
+                    aliases = [x.get('name') or ''] + list(x.get('epg_aliases') or [])
+                    for alias in aliases:
+                        normalized = _normalize_name(alias)
+                        nkey = (str(x.get('country') or '').upper(), normalized)
+                        if normalized and nkey not in logo_by_name:
+                            logo_by_name[nkey] = logo
                 enriched_logos = 0
                 country_order = {code: i for i, code in enumerate(("AM","RU","GE","UA","BY","KZ","UZ","MD"))}
                 for item in candidates:
@@ -640,6 +643,13 @@ async def refresh_channels(force: bool = False):
                     0 if str(x.get("logo") or "").startswith("http") else 1,
                 ))
                 primary = dict(rows[0])
+                # If the fastest/best stream has no logo but another stream for
+                # the same channel does, keep the best stream and inherit the logo.
+                if not str(primary.get("logo") or "").strip():
+                    inherited_logo = next((str(x.get("logo") or "").strip() for x in rows if str(x.get("logo") or "").strip()), "")
+                    if inherited_logo:
+                        primary["logo"] = inherited_logo
+                        enriched_logos += 1
 
                 online_rows = []
                 seen_streams = set()
