@@ -167,7 +167,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 .tvZap{position:fixed;left:34px;bottom:34px;z-index:430;display:none;min-width:420px;max-width:68vw;background:rgba(3,14,28,.9);color:white;border-radius:18px;padding:16px 20px;box-shadow:0 12px 38px rgba(0,0,0,.4)}.tvZap.show{display:block}.tvZapTop{display:flex;align-items:center;gap:14px}.tvZapNo{font-size:34px;font-weight:900;color:#ffd400}.tvZapName{font-size:25px;font-weight:900}.tvZapNow{font-size:17px;margin-top:8px;color:#fff}.tvZapNext{font-size:14px;margin-top:5px;color:#a9c8da}.tvZapFav{font-size:24px;margin-left:auto}.playerClean .tvZap{display:none!important}
 .netBanner{position:fixed;left:50%;top:24px;transform:translateX(-50%);z-index:500;display:none;background:rgba(137,28,28,.94);color:#fff;border-radius:14px;padding:11px 18px;font-size:16px;font-weight:800;box-shadow:0 10px 28px rgba(0,0,0,.28)}.netBanner.show{display:block}.netBanner.ok{background:rgba(18,130,76,.94)}
 .tvShortcut{position:fixed;left:34px;top:28px;z-index:440;display:none;background:rgba(3,14,28,.92);color:#fff;border-radius:14px;padding:10px 16px;font-size:17px;font-weight:800}.tvShortcut.show{display:block}
-.tvGuide{position:fixed;inset:0;z-index:460;display:none;background:rgba(1,10,22,.96);color:#fff;padding:28px}.tvGuide.open{display:block}.tvGuideHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.tvGuideTitle{font-size:30px;font-weight:900}.tvGuideHint{font-size:15px;color:#9ec7df}.tvGuideList{height:calc(100vh - 92px);overflow:auto;display:grid;gap:7px}.tvGuideRow{display:grid;grid-template-columns:70px 220px 1fr 1fr;gap:14px;align-items:center;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.06);font-size:17px}.tvGuideRow.focused{background:#168de8;box-shadow:0 0 0 3px #ffd400 inset}.tvGuideNo{font-size:22px;font-weight:900;color:#ffd400}.tvGuideName{font-weight:900}.tvGuideNow,.tvGuideNext{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tvGuideNext{color:#a9c8da}
+.tvGuide{position:fixed;inset:0;z-index:460;display:none;background:rgba(1,10,22,.96);color:#fff;padding:28px}.tvGuide.open{display:block}.tvGuideHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.tvGuideTitle{font-size:30px;font-weight:900}.tvGuideHint{font-size:15px;color:#9ec7df}.tvGuideList{height:calc(100vh - 92px);overflow:auto;display:grid;gap:7px}.tvGuideRow{display:grid;grid-template-columns:70px 220px minmax(300px,1.25fr) minmax(260px,1fr);gap:14px;align-items:center;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.06);font-size:17px}.tvGuideRow.focused{background:#168de8;box-shadow:0 0 0 3px #ffd400 inset}.tvGuideNo{font-size:22px;font-weight:900;color:#ffd400}.tvGuideName{font-weight:900}.tvGuideNow,.tvGuideNext{min-width:0}.tvGuideProgramTitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800}.tvGuideTime{font-size:13px;color:#9ec7df;margin-top:4px}.tvGuideProgress{height:4px;background:rgba(255,255,255,.16);border-radius:999px;overflow:hidden;margin-top:6px}.tvGuideProgress span{display:block;height:100%;background:#ffd400}.tvGuideNext{color:#a9c8da}.tvGuideRow.focused .tvGuideTime,.tvGuideRow.focused .tvGuideNext{color:#fff}
 .tvSearch{position:fixed;inset:0;z-index:470;display:none;align-items:flex-start;justify-content:center;background:rgba(1,10,22,.94);padding-top:72px}.tvSearch.open{display:flex}.tvSearchCard{width:min(900px,90vw);background:#fff;border-radius:24px;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,.4)}.tvSearchTitle{font-size:28px;font-weight:900;color:#0d4d86;margin-bottom:14px}.tvSearchInput{width:100%;font-size:30px;padding:16px 18px;border:3px solid #168de8;border-radius:16px;outline:none}.tvSearchHint{font-size:16px;color:#5b7488;margin-top:10px}
 </style>
 </head>
@@ -365,6 +365,9 @@ let tvRailIndex=0;
 let tvAutoResumeDone=false;
 let tvZapTimer=null;
 let tvPlayerUiTimer=null;
+let tvLastAutoTimer=null;
+let tvLastAutoInterval=null;
+let tvLastAutoCancelled=false;
 let networkRetryTimer=null;
 let tvWasPlayingBeforePause=false;
 let tvWatchdogTimer=null;
@@ -882,13 +885,16 @@ function renderTvGuide(){
   tvGuideIndex=Math.max(0,Math.min(tvGuideIndex,Math.max(0,rows.length-1)));
   const box=document.getElementById('tvGuideList');
   box.innerHTML=rows.slice(0,160).map((ch,i)=>{
-    const now=(ch.epg_now&&ch.epg_now.title)||ch.group||'LIVE';
-    const next=ch.epg_next?ch.epg_next.title:'';
+    const nowTitle=cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'LIVE');
+    const nextTitle=ch.epg_next?cleanTvLabel(ch.epg_next.title,''):'';
+    const nowTime=ch.epg_now?(fmtClock(ch.epg_now.start)+'–'+fmtClock(ch.epg_now.stop)):'Сейчас';
+    const nextTime=ch.epg_next?(fmtClock(ch.epg_next.start)+'–'+fmtClock(ch.epg_next.stop)):'';
+    const progress=epgProgress(ch.epg_now);
     return '<div class="tvGuideRow '+(i===tvGuideIndex?'focused':'')+'" data-guide-index="'+i+'">'+
       '<div class="tvGuideNo">'+(i+1)+'</div>'+
       '<div class="tvGuideName">'+esc(ch.name)+'</div>'+
-      '<div class="tvGuideNow">'+esc(now)+'</div>'+
-      '<div class="tvGuideNext">'+(next?('Далее: '+esc(next)):'')+'</div>'+
+      '<div class="tvGuideNow"><div class="tvGuideProgramTitle">'+esc(nowTitle)+'</div><div class="tvGuideTime">'+esc(nowTime)+'</div><div class="tvGuideProgress"><span style="width:'+progress+'%"></span></div></div>'+
+      '<div class="tvGuideNext"><div class="tvGuideProgramTitle">'+(nextTitle?esc(nextTitle):'—')+'</div><div class="tvGuideTime">'+esc(nextTime)+'</div></div>'+
     '</div>';
   }).join('');
   const el=box.querySelector('.tvGuideRow.focused');
@@ -939,6 +945,28 @@ function showTvPlayerUi(autoHide=true){
       if(p&&p.classList.contains('open')&&!tvRailOpen())document.body.classList.add('playerClean');
     },4000);
   }
+}
+function cancelLastChannelAutoStart(showMessage=false){
+  if(tvLastAutoTimer){clearTimeout(tvLastAutoTimer);tvLastAutoTimer=null}
+  if(tvLastAutoInterval){clearInterval(tvLastAutoInterval);tvLastAutoInterval=null}
+  if(!tvLastAutoCancelled&&showMessage)showTvShortcut('Автозапуск отменён');
+  tvLastAutoCancelled=true;
+}
+function scheduleLastChannelAutoStart(ch){
+  if(!nativeTv||!ch||tvAutoResumeDone||tvLastAutoCancelled||current)return;
+  tvAutoResumeDone=true;
+  let left=3;
+  const paint=()=>showTvShortcut('Последний канал: '+ch.name+' · '+left+'с · любая кнопка отменит');
+  paint();
+  tvLastAutoInterval=setInterval(()=>{
+    left--;
+    if(left>0)paint();
+  },1000);
+  tvLastAutoTimer=setTimeout(()=>{
+    if(tvLastAutoInterval){clearInterval(tvLastAutoInterval);tvLastAutoInterval=null}
+    tvLastAutoTimer=null;
+    if(!tvLastAutoCancelled&&!current)openPlayer(ch.id);
+  },3000);
 }
 function tvSetModeFilter(v){
   if(!nativeTv)return;
@@ -1096,8 +1124,7 @@ async function load(){
       if(last){
         document.getElementById('status').textContent+=' · Последний: '+last.name;
         if(nativeTv&&!tvAutoResumeDone&&!document.getElementById('tvPair').classList.contains('open')){
-          tvAutoResumeDone=true;
-          setTimeout(()=>{if(!current)openPlayer(last.id)},500);
+          scheduleLastChannelAutoStart(last);
         }
       }
     }
@@ -1664,6 +1691,7 @@ function tvNumberInput(digit){
 }
 
 document.addEventListener('keydown',e=>{
+  if(nativeTv&&tvLastAutoTimer)cancelLastChannelAutoStart(true);
   if(tvSearchOpen()){
     if(e.key==='Escape'){e.preventDefault();closeTvSearch(false);return}
     if(e.key==='Enter'){e.preventDefault();closeTvSearch(true);return}
