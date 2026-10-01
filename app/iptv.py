@@ -137,6 +137,8 @@ _burned_ad_stats = {
     "last_score": 0,
     "last_channel_id": "",
     "last_seen": 0,
+    "last_free_play": 0,
+    "last_free_play_channel_id": "",
 }
 _burned_ad_last_report = {}
 _compact_response_cache = {"key": None, "body": b"", "expires_at": 0.0}
@@ -1069,6 +1071,12 @@ async def api_diagnostics(request):
                 "last_score": int(_burned_ad_stats.get("last_score") or 0),
                 "last_channel_id": str(_burned_ad_stats.get("last_channel_id") or ""),
                 "last_seen": int(_burned_ad_stats.get("last_seen") or 0),
+                "last_free_play": int(_burned_ad_stats.get("last_free_play") or 0),
+                "last_free_play_channel_id": str(_burned_ad_stats.get("last_free_play_channel_id") or ""),
+                "observer_expected": bool(
+                    int(_burned_ad_stats.get("last_free_play") or 0)
+                    and int(_burned_ad_stats.get("last_free_play") or 0) > int(_burned_ad_stats.get("last_seen") or 0)
+                ),
                 "channels": sorted(
                     list((_burned_ad_stats.get("channels") or {}).values()),
                     key=lambda x: int((x or {}).get("score") or 0),
@@ -1304,6 +1312,9 @@ async def api_play(request):
     item = _state["channels"].get(cid)
     if not item or item.get("status") != "ONLINE":
         raise web.HTTPNotFound(text="Channel unavailable")
+
+    _burned_ad_stats["last_free_play"] = int(time.time())
+    _burned_ad_stats["last_free_play_channel_id"] = str(cid or "")
 
     urls = []
     original_primary = item.get("url") or ""
