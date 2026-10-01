@@ -175,3 +175,33 @@ jobs:
           done
           echo "::error::Abaj TV APK was built but OTA publication failed"
           exit 1
+
+
+      - name: Verify Railway OTA publication
+        shell: bash
+        env:
+          FACETALK_WEB_APP_URL: ${{ vars.FACETALK_WEB_APP_URL }}
+        run: |
+          set -euo pipefail
+          WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
+          EXPECTED_CODE="${{ steps.version.outputs.code }}"
+          CHANNEL="$RELEASE_CHANNEL"
+          for attempt in $(seq 1 18); do
+            if python - "$WEB_APP_URL" "$CHANNEL" "$EXPECTED_CODE" <<'PY'
+          import json,sys,urllib.request
+          base,channel,expected=sys.argv[1],sys.argv[2],int(sys.argv[3])
+          with urllib.request.urlopen(base.rstrip('/') + '/api/app-release?channel=' + channel, timeout=20) as r:
+              data=json.load(r)
+          ok=bool(data.get('available')) and int(data.get('version_code') or 0)==expected and int(data.get('size_bytes') or 0)>=300000
+          print(json.dumps(data,ensure_ascii=False))
+          raise SystemExit(0 if ok else 1)
+          PY
+            then
+              echo "Verified OTA $CHANNEL version code $EXPECTED_CODE"
+              exit 0
+            fi
+            echo "OTA verify attempt $attempt/18 did not match yet"
+            sleep 5
+          done
+          echo "::error::Railway OTA verification failed for channel $CHANNEL code $EXPECTED_CODE"
+          exit 1
