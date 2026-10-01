@@ -370,6 +370,9 @@ let tvLastAutoInterval=null;
 let tvLastAutoCancelled=false;
 let tvZapStepTimer=null;
 let tvZapStepOffset=0;
+let tvHideUnreliable=localStorage.getItem('abaj_tv_hide_unreliable')!=='0';
+let tvAutoStartLast=localStorage.getItem('abaj_tv_autostart_last')!=='0';
+let tvPreferredQuality=localStorage.getItem('abaj_tv_quality')||'auto';
 let networkRetryTimer=null;
 let tvWasPlayingBeforePause=false;
 let tvWatchdogTimer=null;
@@ -945,7 +948,7 @@ function showTvPlayerUi(autoHide=true){
     tvPlayerUiTimer=setTimeout(()=>{
       const p=document.getElementById('playerView');
       if(p&&p.classList.contains('open')&&!tvRailOpen())document.body.classList.add('playerClean');
-    },4000);
+    },2500);
   }
 }
 function cancelLastChannelAutoStart(showMessage=false){
@@ -955,7 +958,7 @@ function cancelLastChannelAutoStart(showMessage=false){
   tvLastAutoCancelled=true;
 }
 function scheduleLastChannelAutoStart(ch){
-  if(!nativeTv||!ch||tvAutoResumeDone||tvLastAutoCancelled||current)return;
+  if(!nativeTv||!tvAutoStartLast||!ch||tvAutoResumeDone||tvLastAutoCancelled||current)return;
   tvAutoResumeDone=true;
   let left=3;
   const paint=()=>showTvShortcut('Последний канал: '+ch.name+' · '+left+'с · любая кнопка отменит');
@@ -1065,7 +1068,7 @@ function cacheChannels(){
   try{
     const slim=channels.map(x=>({
       id:x.id,name:x.name,group:x.group,country:x.country,logo:x.logo,status:x.status,tvg_id:x.tvg_id,
-      latency_ms:x.latency_ms,backup_count:x.backup_count,epg_now:x.epg_now,epg_next:x.epg_next,
+      latency_ms:x.latency_ms,backup_count:x.backup_count,uptime_pct:x.uptime_pct,health_score:x.health_score,health_samples:x.health_samples,unreliable:!!x.unreliable,epg_now:x.epg_now,epg_next:x.epg_next,
       personal:!!x.personal,provider:x.provider
     }));
     localStorage.setItem(CHANNEL_CACHE_KEY,JSON.stringify({ts:Date.now(),channels:slim}));
@@ -1098,7 +1101,7 @@ async function load(){
       return await r.json();
     }).catch(()=>({channels:[]}));
     const [d,ed]=await Promise.all([mainPromise,edemPromise]);
-    let base=(d.channels||[]).filter(x=>x.status==='ONLINE');
+    let base=(d.channels||[]).filter(x=>x.status==='ONLINE'&&(!tvHideUnreliable||!x.unreliable));
     if(Array.isArray(ed.channels)&&ed.channels.length){
       base=base.concat(ed.channels.map(x=>({...x,personal:true,provider:'Edem'})));
     }
@@ -1428,11 +1431,11 @@ function startTvWatchdog(ch){
       tvWatchdogStalls=0;
     }
     tvWatchdogLastTime=t;
-    if(tvWatchdogStalls>=3){
+    if(tvWatchdogStalls>=2){
       tvWatchdogStalls=0;
       const err=document.getElementById('playerError');
-      if(err)err.textContent='Поток завис. Переподключаю…';
-      startStream(ch,true);
+      if(err)err.textContent=ch.backup_count?'Поток завис. Переключаю резерв…':'Поток завис. Переподключаю…';
+      startStream(ch,!!ch.backup_count);
     }
   },4000);
 }
@@ -1476,6 +1479,17 @@ function startStream(ch,preferBackup=false){
     hls.on(Hls.Events.MANIFEST_PARSED,()=>{
       streamRetries=0;
       updateQualityMenu();
+      if(tvPreferredQuality!=='auto'){
+        const target=parseInt(tvPreferredQuality,10);
+        if(Number.isFinite(target)&&hls&&Array.isArray(hls.levels)){
+          let best=-1,bestDiff=1e9;
+          hls.levels.forEach((lvl,i)=>{
+            const h=Number(lvl.height||0); if(!h)return;
+            const diff=Math.abs(h-target); if(diff<bestDiff){bestDiff=diff;best=i}
+          });
+          if(best>=0)hls.currentLevel=best;
+        }
+      }
       v.play().then(()=>startTvWatchdog(ch)).catch(()=>{});
     });
 
@@ -1484,6 +1498,11 @@ function startStream(ch,preferBackup=false){
     hls.on(Hls.Events.ERROR,(event,data)=>{
       if(!data||!data.fatal)return;
 
+      if(data.type===Hls.ErrorTypes.NETWORK_ERROR && nativeTv&&Number(ch.backup_count||0)>0){
+        err.textContent='Переключаю резерв…';
+        startStream(ch,true);
+        return;
+      }
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR && streamRetries<3){
         streamRetries++;
         err.textContent='Переподключение… '+streamRetries+'/3';
