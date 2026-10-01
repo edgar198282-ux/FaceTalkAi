@@ -452,13 +452,19 @@ async def refresh_channels(force: bool = False):
             _state["running"] = False
 
 
-def public_state():
+def public_state(compact: bool = False):
     rows = []
+    compact_keys = {
+        "id", "name", "group", "country", "logo", "status", "tvg_id",
+        "latency_ms", "backup_count", "epg_now", "epg_next"
+    }
     for source in _state["channels"].values():
         row = dict(source)
         current, nxt = _epg_for_channel(row)
         row["epg_now"] = current if current is not None else row.get("epg_now")
         row["epg_next"] = nxt if nxt is not None else row.get("epg_next")
+        if compact:
+            row = {k: row.get(k) for k in compact_keys if k in row}
         rows.append(row)
     rows.sort(key=lambda x: (x["status"] != "ONLINE", x.get("country", ""), x.get("group", ""), x.get("name", "")))
     stats = dict(_state["stats"])
@@ -613,7 +619,8 @@ async def api_worker_snapshot(request):
 async def api_channels(request):
     if not _state["channels"]:
         await refresh_channels()
-    return web.json_response(public_state(), headers={"Cache-Control": "no-store"})
+    compact = request.query.get("compact") == "1"
+    return web.json_response(public_state(compact=compact), headers={"Cache-Control": "no-store"})
 
 
 async def api_refresh(request):
