@@ -79,12 +79,13 @@ button{cursor:pointer}
   letter-spacing:.45px;font-weight:600
 }
 .channel{
-  background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.74);border-radius:16px;margin-bottom:10px;
+  background:rgba(255,255,255,.97);border:1px solid rgba(255,255,255,.82);border-radius:18px;margin-bottom:10px;
   display:grid;grid-template-columns:76px 1fr auto;min-height:88px;overflow:hidden;
-  box-shadow:0 7px 18px rgba(0,74,130,.16)
+  box-shadow:0 6px 16px rgba(0,74,130,.13);transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease
 }
-.channel:active{transform:scale(.996)}
-.logoWrap{background:linear-gradient(180deg,#edf9ff,#d8f0ff);display:flex;align-items:center;justify-content:center;padding:8px}
+.channel:active{transform:scale(.992)}
+.channel:hover{border-color:rgba(8,127,225,.22);box-shadow:0 8px 20px rgba(0,74,130,.16)}
+.logoWrap{background:linear-gradient(180deg,#f4fbff,#e3f4ff);display:flex;align-items:center;justify-content:center;padding:8px}
 .logo{max-width:100%;max-height:60px;object-fit:contain}
 .logoFallback{font-weight:800;color:#7c8f99;font-size:12px}
 .info{padding:10px 8px;min-width:0}
