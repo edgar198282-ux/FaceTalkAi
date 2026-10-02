@@ -2120,8 +2120,12 @@ function tvTopRows(){
     visible('#quickCats .cat')
   ].filter(row=>row.length);
 }
+function clearTvChannelFocusVisual(){
+  document.querySelectorAll('.channel.focused').forEach(x=>x.classList.remove('focused'));
+}
 function focusTvTopElement(el){
   if(!el)return;
+  clearTvChannelFocusVisual();
   try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(_){}}
   try{el.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'})}catch(_){}
 }
@@ -3248,6 +3252,7 @@ function tvNativeRemote(action){
     return;
   }
   if(!tvHeaderCollapsed){
+    clearTvChannelFocusVisual();
     if(action==='left'||action==='right'||action==='up'||action==='down'){
       moveTvTopSpatial(action);
       return;
@@ -3332,6 +3337,7 @@ document.addEventListener('keydown',e=>{
   }
   if(!tvMode)return;
   if(nativeTv&&!tvHeaderCollapsed&&!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.channel'))){
+    clearTvChannelFocusVisual();
     if(e.key==='ArrowRight'){e.preventDefault();moveTvTopSpatial('right');return}
     if(e.key==='ArrowLeft'){e.preventDefault();moveTvTopSpatial('left');return}
     if(e.key==='ArrowUp'){e.preventDefault();moveTvTopSpatial('up');return}
