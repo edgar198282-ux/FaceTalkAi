@@ -176,9 +176,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   border-radius:999px;padding:4px 9px;color:#53707e;font-size:12px;margin-top:7px
 }
 .qualityBadge{display:none;position:absolute;right:8px;top:8px;z-index:4;min-width:34px;height:22px;padding:0 7px;border-radius:7px;align-items:center;justify-content:center;background:rgba(5,70,126,.88);color:#fff;font-size:10px;font-weight:900;letter-spacing:.35px;box-shadow:0 3px 9px rgba(0,45,92,.22)}
-.liveBadge{display:none;position:absolute;left:8px;bottom:8px;z-index:4;height:21px;padding:0 7px;border-radius:7px;align-items:center;gap:4px;background:rgba(8,18,28,.76);color:#fff;font-size:9px;font-weight:900;letter-spacing:.35px;box-shadow:0 3px 9px rgba(0,0,0,.18)}
-.liveBadge::before{content:'';width:6px;height:6px;border-radius:50%;background:#ff3b4f;box-shadow:0 0 0 2px rgba(255,59,79,.14)}
-.gridMode .qualityBadge,.tvMode .qualityBadge,.gridMode .liveBadge,.tvMode .liveBadge{display:flex}
+.gridMode .qualityBadge,.tvMode .qualityBadge{display:flex}
 @media(min-width:800px){
   .app{max-width:1400px;margin:auto;border-left:1px solid #cfe4ef;border-right:1px solid #cfe4ef}
   .gridMode .list{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -2148,11 +2146,9 @@ function render(){
         :'<div class="logoFallback">TV</div>';
       const channelNo=(channelNumberMap.get(ch.id)||1);
       const qualityLabel=channelQualityLabel(ch);
-      const liveNow=String(ch.status||'').toUpperCase()==='ONLINE';
       out+='<div class="channel" tabindex="'+(tvMode?'0':'-1')+'" data-id="'+esc(ch.id)+'" data-channel-no="'+channelNo+'" onclick="openPlayer(\''+ch.id+'\')">'+
         '<div class="channelNumber">'+channelNo+'</div>'+
         (qualityLabel?'<div class="qualityBadge">'+qualityLabel+'</div>':'')+
-        (liveNow?'<div class="liveBadge">LIVE</div>':'')+
         '<div class="logoWrap">'+logo+'</div>'+
         '<div class="info">'+
           '<div class="name">'+esc(ch.name)+'</div>'+
