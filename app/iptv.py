@@ -1460,6 +1460,8 @@ async def api_ad_state(request):
     item = _state["channels"].get(cid)
     if not item:
         return web.json_response({"ok": False, "active": False, "error": "unknown channel"}, status=404)
+    _burned_ad_stats["last_free_play"] = int(time.time())
+    _burned_ad_stats["last_free_play_channel_id"] = cid
     ott = dict(_ottclub_ad_state.get(cid) or {})
     return web.json_response({
         "ok": True,
