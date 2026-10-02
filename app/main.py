@@ -170,6 +170,19 @@ def miniapp_keyboard(user_id: int | None = None, lang: str = 'ru'):
         is_persistent=True,
     )
 
+async def _ensure_latest_menu(m: Message, lang: str):
+    if not m.from_user:
+        return
+    key = f'menu_version:{int(m.from_user.id)}'
+    if await get_setting(key, '') == 'qr-v1':
+        return
+    await _answer(
+        m,
+        {'hy':'Թարմացված մենյու 👇','ru':'Обновлённое меню 👇','en':'Updated menu 👇'}.get(lang, 'Обновлённое меню 👇'),
+        reply_markup=miniapp_keyboard(m.from_user.id, lang),
+    )
+    await set_setting(key, 'qr-v1')
+
 def language_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text='🇦🇲 Հայերեն', callback_data='lang:hy')],
@@ -499,6 +512,7 @@ async def change_language(m: Message):
 async def download_apk(m: Message):
     await _track_incoming(m)
     lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
+    await _ensure_latest_menu(m, lang)
     apk_url = _apk_download_url()
     if not apk_url:
         return
@@ -517,6 +531,7 @@ async def download_apk(m: Message):
 async def download_tv_apk(m: Message):
     await _track_incoming(m)
     lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
+    await _ensure_latest_menu(m, lang)
     tv_apk_url = _tv_apk_download_url()
     qr_photo, start_link = await _tv_apk_qr_photo()
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
