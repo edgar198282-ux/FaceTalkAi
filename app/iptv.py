@@ -1544,15 +1544,21 @@ async def api_ad_state(request):
     _burned_ad_stats["last_free_play_channel_id"] = cid
     ott = dict(_ottclub_ad_state.get(cid) or {})
     cin = dict(_cinerama_placeholder_state.get(cid) or {})
-    active = bool(ott.get("active") or cin.get("active"))
-    reason = "cinerama_placeholder" if bool(cin.get("active")) else ("ottclub" if bool(ott.get("active")) else "")
+    try:
+        host = (urlparse(str(item.get("url") or "")).hostname or "").lower()
+    except Exception:
+        host = ""
+    cinerama_host = host == "cinerama.uz" or host.endswith(".cinerama.uz")
+    active = bool(ott.get("active") or cin.get("active") or cinerama_host)
+    reason = "cinerama_host" if cinerama_host else ("cinerama_placeholder" if bool(cin.get("active")) else ("ottclub" if bool(ott.get("active")) else ""))
     return web.json_response({
         "ok": True,
         "active": active,
         "reason": reason,
         "ottclub_active": bool(ott.get("active")),
         "ottclub_hits": int(ott.get("hits") or 0),
-        "cinerama_active": bool(cin.get("active")),
+        "cinerama_active": bool(cin.get("active") or cinerama_host),
+        "cinerama_host": bool(cinerama_host),
         "cinerama_hits": int(cin.get("hits") or 0),
         "checked_at": float(max(ott.get("last_probe") or 0, cin.get("last_probe") or 0)),
     }, headers={"Cache-Control": "no-store"})
