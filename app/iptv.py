@@ -76,6 +76,16 @@ def _health_score(url: str) -> float:
     consecutive = int(h.get("consecutive_failures") or 0)
     return round(uptime * 1000.0 - min(latency, 10000) / 22.0 - consecutive * 90.0, 3)
 
+def _is_wink_placeholder_stream(item: dict) -> bool:
+    """Reject known Wink/Nginex territorial placeholder streams before probing."""
+    url = str(item.get("url") or "").strip()
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except Exception:
+        host = ""
+    return bool(host == "ngenix.net" or host.endswith(".ngenix.net"))
+
+
 def _hide_unusable_catalog_channel(item: dict) -> bool:
     """Hide channels that are known duplicates/restricted placeholders, not useful live TV."""
     name = str(item.get("name") or "").strip()
@@ -1321,7 +1331,13 @@ async def refresh_channels(force: bool = False):
                         if logo:
                             item['logo'] = logo
                             enriched_logos += 1
-                candidates = [x for x in candidates if not _hide_unusable_catalog_channel(x)]
+                unusable_filtered = sum(1 for x in candidates if _hide_unusable_catalog_channel(x))
+                wink_streams_filtered = sum(1 for x in candidates if _is_wink_placeholder_stream(x))
+                candidates = [
+                    x for x in candidates
+                    if not _hide_unusable_catalog_channel(x)
+                    and not _is_wink_placeholder_stream(x)
+                ]
 
                 candidates.sort(key=lambda x: (
                     country_order.get(str(x.get("country") or "").upper(), 99),
@@ -1466,6 +1482,8 @@ async def refresh_channels(force: bool = False):
                 "ru_logo_catalog_matches": ru_logo_catalog_matches,
                 "ru_logo_id_catalog_entries": len(ru_logo_id_by_id),
                 "ru_logo_id_catalog_matches": ru_logo_id_catalog_matches,
+                "unusable_catalog_filtered": unusable_filtered,
+                "wink_streams_filtered": wink_streams_filtered,
             }
             try:
                 _save_json(HEALTH_PATH, _stream_health)
