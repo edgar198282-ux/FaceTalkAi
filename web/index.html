@@ -544,6 +544,7 @@ let tvHeaderBackAt=0;
 let networkRetryTimer=null;
 let tvWasPlayingBeforePause=false;
 let freeAdTimer=null;
+let freeViewingTimer=null;
 let freeAdActive=false;
 let freeAdMuteBefore=false;
 let freeAdRequestBusy=false;
@@ -2473,6 +2474,7 @@ function stopBurnedAdObserver(){
 }
 function stopFreeAdWatch(){
   if(freeAdTimer){clearInterval(freeAdTimer);freeAdTimer=null}
+  if(freeViewingTimer){clearInterval(freeViewingTimer);freeViewingTimer=null}
   stopBurnedAdObserver();
   freeAdRequestBusy=false;
   setFreeAdOverlay(false);
@@ -2613,6 +2615,9 @@ function startFreeAdWatch(ch){
   stopFreeAdWatch();
   if(!ch||ch.personal)return;
   notifyFreeViewing(ch);
+  freeViewingTimer=setInterval(()=>{
+    if(current&&current.id===ch.id&&!current.personal)notifyFreeViewing(ch);
+  },30000);
   checkFreeAdState();
   freeAdTimer=setInterval(checkFreeAdState,3000);
   startBurnedAdObserver(ch);
