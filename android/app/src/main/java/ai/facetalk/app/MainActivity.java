@@ -141,7 +141,7 @@ public class MainActivity extends Activity {
         });
         if(!BuildConfig.PLAY_STORE_BUILD)registerApkDownloadReceiver();
         loadOrAuthorize();
-        if(!BuildConfig.PLAY_STORE_BUILD&&!isTv){
+        if(!BuildConfig.PLAY_STORE_BUILD){
             updateHandler.postDelayed(()->checkForAppUpdate(true,false),2500L);
             updateHandler.postDelayed(periodicUpdateCheck,30L*60L*1000L);
         }
@@ -280,7 +280,7 @@ public class MainActivity extends Activity {
         }
         if(!BuildConfig.PLAY_STORE_BUILD&&pendingApkUri!=null&&(Build.VERSION.SDK_INT<Build.VERSION_CODES.O||getPackageManager().canRequestPackageInstalls())){
             Uri u=pendingApkUri;pendingApkUri=null;openPackageInstaller(u);
-        }else if(!BuildConfig.PLAY_STORE_BUILD&&!isTv)checkForAppUpdate(true,false);
+        }else if(!BuildConfig.PLAY_STORE_BUILD)checkForAppUpdate(true,false);
     }
 
     @Override public void onWindowFocusChanged(boolean hasFocus){
