@@ -146,6 +146,17 @@ IPTV_ORG_CHANNELS_API = "https://iptv-org.github.io/api/channels.json"
 IPTV_ORG_LOGOS_API = "https://iptv-org.github.io/api/logos.json"
 RU_LOGO_CATALOG_URL = "https://raw.githubusercontent.com/naggdd/iptv/main/ru.m3u"
 RU_LOGO_ID_CATALOG_URL = "https://raw.githubusercontent.com/swoldier-rus/IP_TV/main/sw.m3u"
+FREE_TV_LOGO_CATALOG_URLS = {
+    "AM": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_armenia.m3u8",
+    "RU": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_russia.m3u8",
+    "GE": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_georgia.m3u8",
+    "UA": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_ukraine.m3u8",
+    "BY": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_belarus.m3u8",
+    "KZ": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_kazakhstan.m3u8",
+    "MD": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_moldova.m3u8",
+}
+TV_LOGO_MANIFEST_URL = "https://raw.githubusercontent.com/dj1p/tvlogos/main/logos-manifest.json"
+TV_LOGO_MANIFEST_BASE = "https://raw.githubusercontent.com/dj1p/tvlogos/main"
 EPG_REFRESH_SECONDS = 3 * 60 * 60
 
 _state = {
@@ -1048,7 +1059,8 @@ def _logo_name_variants(value: str) -> list[str]:
     # Remove only provider metadata/copy suffixes; keep the channel name itself.
     cleaned = re.sub(r"\[[^\]]*(?:not\s*24/?7|geo[- ]?blocked|offline|backup)[^\]]*\]", " ", raw, flags=re.I)
     cleaned = re.sub(r"\((?:\d{3,4}p|\d{3,4}i|hd|fhd|uhd|sd)\)", " ", cleaned, flags=re.I)
-    cleaned = re.sub(r"\s*\((?:2|3|4|5)\)\s*$", " ", cleaned, flags=re.I)
+    cleaned = re.sub(r"\s*\((?:\d+)\)\s*$", " ", cleaned, flags=re.I)
+    cleaned = re.sub(r"\s*\|.*$", " ", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     if cleaned and cleaned != raw:
         raw_variants.append(cleaned)
@@ -1124,6 +1136,42 @@ def _parse_logo_catalog_m3u(text: str) -> dict[str, str]:
         for normalized in _logo_name_variants(name):
             if normalized and normalized not in out:
                 out[normalized] = logo
+    return out
+
+
+def _tvlogo_slug(value: str) -> str:
+    s = str(value or "").strip().lower().replace("ё", "е")
+    s = re.sub(r"\s*\([^)]*\)\s*$", "", s)
+    s = re.sub(r"\s*\|.*$", "", s)
+    translit = str.maketrans({
+        "а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ж":"zh","з":"z","и":"i","й":"y",
+        "к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u",
+        "ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"sch","ъ":"","ы":"y","ь":"","э":"e","ю":"yu","я":"ya",
+    })
+    s = s.translate(translit).replace("+", " plus ")
+    s = re.sub(r"\b(?:tv|hd|fhd|uhd|live)\b", " ", s, flags=re.I)
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+
+
+def _parse_tvlogo_manifest(text: str) -> dict[str, dict[str, str]]:
+    out = {"RU": {}, "UA": {}}
+    try:
+        data = json.loads(text) if text else {}
+    except Exception:
+        return out
+    country_map = {"russia": "RU", "ukraine": "UA"}
+    for row in data.get("logos") or []:
+        if not isinstance(row, dict):
+            continue
+        code = country_map.get(str(row.get("country") or "").lower())
+        path = str(row.get("path") or "").strip()
+        name = str(row.get("name") or "").strip()
+        if not code or not path or not name:
+            continue
+        base = re.sub(r"-(?:ru|ua)\.png$", "", name, flags=re.I)
+        base = re.sub(r"-(?:hd|fhd|uhd)$", "", base, flags=re.I)
+        if base:
+            out[code].setdefault(base, TV_LOGO_MANIFEST_BASE + path)
     return out
 
 
@@ -1248,11 +1296,13 @@ async def refresh_channels(force: bool = False):
             connector = aiohttp.TCPConnector(limit=32, ssl=False)
             headers = {"User-Agent": "IPTV-Player/1.0"}
             async with aiohttp.ClientSession(connector=connector, headers=headers) as session:
-                fetched, discovered_api, ru_logo_catalog_text, ru_logo_id_catalog_text = await asyncio.gather(
+                fetched, discovered_api, ru_logo_catalog_text, ru_logo_id_catalog_text, free_tv_logo_texts, tvlogo_manifest_text = await asyncio.gather(
                     asyncio.gather(*[_fetch_text(session, url) for _, url in SOURCE_URLS]),
                     _discover_iptv_org_api(session),
                     _fetch_text(session, RU_LOGO_CATALOG_URL),
                     _fetch_text(session, RU_LOGO_ID_CATALOG_URL),
+                    asyncio.gather(*[_fetch_text(session, url) for url in FREE_TV_LOGO_CATALOG_URLS.values()]),
+                    _fetch_text(session, TV_LOGO_MANIFEST_URL),
                 )
                 candidates = []
                 for (country, url), text in zip(SOURCE_URLS, fetched):
@@ -1286,8 +1336,15 @@ async def refresh_channels(force: bool = False):
                 enriched_logos = 0
                 ru_logo_catalog = _parse_logo_catalog_m3u(ru_logo_catalog_text)
                 ru_logo_id_by_id, ru_logo_id_by_name = _parse_logo_id_catalog_m3u(ru_logo_id_catalog_text)
+                free_tv_logo_catalogs = {}
+                for country, text in zip(FREE_TV_LOGO_CATALOG_URLS.keys(), free_tv_logo_texts):
+                    by_id, by_name = _parse_logo_id_catalog_m3u(text)
+                    free_tv_logo_catalogs[country] = {"by_id": by_id, "by_name": by_name}
+                tvlogo_manifest = _parse_tvlogo_manifest(tvlogo_manifest_text)
                 ru_logo_catalog_matches = 0
                 ru_logo_id_catalog_matches = 0
+                free_tv_logo_matches = 0
+                tvlogo_manifest_matches = 0
                 country_order = {code: i for i, code in enumerate(("AM","RU","GE","UA","BY","KZ","UZ","MD"))}
                 for item in candidates:
                     item['adult'] = bool(item.get('adult')) or _is_adult_channel(item)
@@ -1300,6 +1357,34 @@ async def refresh_channels(force: bool = False):
                                 logo = logo_by_id.get(base_tvg_id)
                         if not logo:
                             logo = logo_by_name.get((str(item.get('country') or '').upper(), _normalize_name(item.get('name') or '')))
+                        if not logo:
+                            country = str(item.get('country') or '').upper()
+                            catalog = free_tv_logo_catalogs.get(country) or {}
+                            by_id = catalog.get('by_id') or {}
+                            by_name = catalog.get('by_name') or {}
+                            base_tvg_id = tvg_id.split("@", 1)[0].strip() if tvg_id else ""
+                            logo = by_id.get(tvg_id) if tvg_id else None
+                            if not logo and base_tvg_id:
+                                logo = by_id.get(base_tvg_id)
+                            if not logo:
+                                matches = {
+                                    by_name.get(v)
+                                    for v in _logo_name_variants(item.get('name') or '')
+                                    if by_name.get(v)
+                                }
+                                matches.discard(None)
+                                if len(matches) == 1:
+                                    logo = next(iter(matches))
+                            if logo:
+                                free_tv_logo_matches += 1
+                        if not logo:
+                            country = str(item.get('country') or '').upper()
+                            manifest_country = tvlogo_manifest.get(country) or {}
+                            slug = _tvlogo_slug(item.get('name') or '')
+                            if slug:
+                                logo = manifest_country.get(slug)
+                            if logo:
+                                tvlogo_manifest_matches += 1
                         if not logo and str(item.get('country') or '').upper() == 'RU':
                             sw_id = tvg_id.split("@", 1)[0].strip() if tvg_id else ""
                             logo = ru_logo_id_by_id.get(tvg_id) if tvg_id else None
@@ -1482,6 +1567,9 @@ async def refresh_channels(force: bool = False):
                 "ru_logo_catalog_matches": ru_logo_catalog_matches,
                 "ru_logo_id_catalog_entries": len(ru_logo_id_by_id),
                 "ru_logo_id_catalog_matches": ru_logo_id_catalog_matches,
+                "free_tv_logo_catalogs": len(free_tv_logo_catalogs),
+                "free_tv_logo_matches": free_tv_logo_matches,
+                "tvlogo_manifest_matches": tvlogo_manifest_matches,
                 "unusable_catalog_filtered": unusable_filtered,
                 "wink_streams_filtered": wink_streams_filtered,
             }

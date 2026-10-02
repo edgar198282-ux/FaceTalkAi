@@ -1837,24 +1837,6 @@ function localizedCategoryLabel(group){
   const labels={General:t.general,News:t.news,Sports:t.sports,Movies:t.movies,Kids:t.kids,Music:t.music};
   return labels[key]||group||'';
 }
-function fallbackChannelLogo(name){
-  const raw=String(name||'TV').trim();
-  const clean=raw.replace(/\s*\([^)]*\)\s*$/,'').replace(/\s*\|.*$/,'').trim()||'TV';
-  const words=clean.split(/\s+/).filter(Boolean);
-  let mark='';
-  if(words.length>=2)mark=(words[0][0]||'')+(words[1][0]||'');
-  else mark=clean.slice(0,2);
-  mark=mark.toUpperCase();
-  const hue=[...clean].reduce((n,ch)=>(n*31+ch.charCodeAt(0))%360,210);
-  const safe=mark.replace(/[&<>"']/g,'');
-  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="160" height="96" viewBox="0 0 160 96">'+
-    '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl('+hue+' 74% 52%)"/><stop offset="1" stop-color="hsl('+((hue+38)%360)+' 72% 34%)"/></linearGradient></defs>'+
-    '<rect width="160" height="96" rx="18" fill="url(#g)"/>'+
-    '<circle cx="80" cy="48" r="34" fill="rgba(0,0,0,.16)"/>'+
-    '<text x="80" y="57" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" font-weight="800" fill="white">'+safe+'</text>'+
-    '</svg>';
-  return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg);
-}
 function channelQuality(ch){
   const raw=[
     ch&&ch.quality,ch&&ch.resolution,ch&&ch.video_quality,ch&&ch.height,
@@ -2031,13 +2013,13 @@ function updatePlayerChannelHud(){
   if(!hud||!logo||!fallback||!name||!time||!progress)return;
   if(!current){hud.classList.remove('show');return}
   name.textContent=current.name||'Канал';
-  const hudLogo=current.logo||fallbackChannelLogo(current.name);
-  logo.style.display='block'; fallback.style.display='none';
-  logo.onerror=()=>{
-    const fb=fallbackChannelLogo(current.name);
-    if(logo.getAttribute('src')!==fb)logo.setAttribute('src',fb);
-  };
-  if(logo.getAttribute('src')!==hudLogo)logo.setAttribute('src',hudLogo);
+  if(current.logo){
+    logo.style.display='block'; fallback.style.display='none';
+    logo.onerror=()=>{logo.style.display='none';fallback.style.display='flex'};
+    if(logo.getAttribute('src')!==current.logo)logo.setAttribute('src',current.logo);
+  }else{
+    logo.style.display='none'; fallback.style.display='flex';
+  }
   const p=current.epg_now||{};
   const now=Date.now()/1000;
   if(p.start&&p.stop&&Number(p.stop)>Number(p.start)){
@@ -2098,9 +2080,9 @@ function render(){
   Object.keys(grouped).sort((a,b)=>a.localeCompare(b,'ru')).forEach(group=>{
     if(!tvMode&&layout!=='grid')out+='<div class="groupTitle">'+esc(localizedCategoryLabel(group))+'</div>';
     grouped[group].forEach(ch=>{
-      const fallbackLogo=fallbackChannelLogo(ch.name);
-      const logoSrc=ch.logo||fallbackLogo;
-      const logo='<img class="logo" loading="lazy" decoding="async" src="'+esc(logoSrc)+'" data-fallback="'+esc(fallbackLogo)+'" onerror="if(this.src!==this.dataset.fallback)this.src=this.dataset.fallback">';
+      const logo=ch.logo
+        ?'<img class="logo" loading="lazy" decoding="async" src="'+esc(ch.logo)+'" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"><div class="logoFallback" style="display:none">TV</div>'
+        :'<div class="logoFallback">TV</div>';
       const channelNo=(channelNumberMap.get(ch.id)||1);
       out+='<div class="channel" tabindex="'+(tvMode?'0':'-1')+'" data-id="'+esc(ch.id)+'" data-channel-no="'+channelNo+'" onclick="openPlayer(\''+ch.id+'\')">'+
         '<div class="channelNumber">'+channelNo+'</div>'+
