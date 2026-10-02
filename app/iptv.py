@@ -325,9 +325,23 @@ async def _ocr_ottclub_frame(frame: bytes, width: int, height: int) -> str:
 def _ottclub_text_hit(text: str) -> bool:
     raw = str(text or "").upper()
     compact = re.sub(r"[^A-Z0-9]+", "", raw)
-    if "OTTCLUB" in compact:
-        return True
-    return bool(re.search(r"\bOTT\s*[-_. ]?\s*CLUB\b", raw))
+    # Tesseract may confuse O/0, I/1 and B/8 on TV graphics.
+    normalized = (
+        compact
+        .replace("0", "O")
+        .replace("1", "I")
+        .replace("8", "B")
+    )
+    candidates = (compact, normalized)
+    for value in candidates:
+        if "OTTCLUB" in value:
+            return True
+        # Allow one common OCR miss while keeping the match specific to OTTCLUB.
+        if re.search(r"OTTCL[UVI]B", value):
+            return True
+        if re.search(r"OTTC[L1I]UB", value):
+            return True
+    return bool(re.search(r"\b[O0]TT\s*[-_. ]?\s*CL[UVI]B\b", raw))
 
 
 async def _server_burned_ad_probe(item: dict) -> dict:
