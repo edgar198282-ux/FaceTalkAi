@@ -32,11 +32,12 @@ button,input,select{font:inherit}
 button{cursor:pointer}
 .app{height:100dvh;display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(180deg,hsl(var(--theme-hue) 82% 66%) 0%,hsl(var(--theme-hue) 78% 56%) 42%,hsl(var(--theme-hue) 70% 49%) 100%)}
 .top{
-  background:linear-gradient(180deg,hsl(var(--theme-hue) 82% 43% / .95),hsl(var(--theme-hue) 78% 56% / .92));
-  padding:12px 14px 10px;
-  border-bottom:1px solid rgba(255,255,255,.32);
+  background:linear-gradient(180deg,hsl(var(--theme-hue) 82% 38% / .86),hsl(var(--theme-hue) 78% 54% / .78));
+  padding:11px 13px 9px;
+  border-bottom:1px solid rgba(255,255,255,.22);
   position:sticky;top:0;z-index:20;
-  backdrop-filter:blur(14px)
+  backdrop-filter:blur(18px) saturate(1.08);
+  box-shadow:0 8px 24px rgba(0,48,110,.10)
 }
 .titleRow{display:flex;align-items:center;justify-content:space-between;gap:10px}.brandWrap{display:flex;align-items:center;gap:9px;min-width:0}.brandLogo{width:52px;height:52px;border-radius:15px;object-fit:contain;background:#083f9b;padding:3px;border:2px solid rgba(255,255,255,.70);box-shadow:0 5px 18px rgba(0,55,130,.34)}
 .titleBlock{min-width:0}
