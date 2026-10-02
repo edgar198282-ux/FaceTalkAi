@@ -1175,8 +1175,8 @@ def _parse_tvlogo_manifest(text: str) -> dict[str, dict[str, str]]:
     return out
 
 
-async def _discover_iptv_org_api(session: aiohttp.ClientSession) -> list[dict]:
-    """Discover current public streams from iptv-org and normalize them into our candidate format."""
+async def _discover_iptv_org_api(session: aiohttp.ClientSession) -> tuple[list[dict], dict]:
+    """Discover current public streams and the full iptv-org logo catalogue."""
     try:
         async def get_json(url):
             try:
@@ -1196,6 +1196,20 @@ async def _discover_iptv_org_api(session: aiohttp.ClientSession) -> list[dict]:
             cid = str(x.get('channel'))
             if cid not in logo_map or bool(x.get('in_use')):
                 logo_map[cid] = str(x.get('url'))
+        full_logo_catalog = {"by_id": {}, "by_country": {}, "global": {}}
+        for cid, m in meta.items():
+            logo = logo_map.get(cid)
+            if not logo:
+                continue
+            full_logo_catalog["by_id"][cid.lower()] = logo
+            country = str(m.get('country') or '').upper()
+            aliases = [m.get('name'), *(m.get('alt_names') or []), m.get('network')]
+            for alias in aliases:
+                for variant in _logo_name_variants(alias or ''):
+                    if country:
+                        full_logo_catalog["by_country"].setdefault((country, variant), set()).add(logo)
+                    full_logo_catalog["global"].setdefault(variant, set()).add(logo)
+
         out = []
         for s in streams:
             if not isinstance(s, dict):
@@ -1243,9 +1257,9 @@ async def _discover_iptv_org_api(session: aiohttp.ClientSession) -> list[dict]:
                 continue
             item['id'] = hashlib.sha1(key_src.encode('utf-8')).hexdigest()[:16]
             out.append(item)
-        return out
+        return out, full_logo_catalog
     except Exception:
-        return []
+        return [], {"by_id": {}, "by_country": {}, "global": {}}
 
 
 async def _probe(session: aiohttp.ClientSession, item: dict, sem: asyncio.Semaphore) -> dict:
@@ -1296,7 +1310,7 @@ async def refresh_channels(force: bool = False):
             connector = aiohttp.TCPConnector(limit=32, ssl=False)
             headers = {"User-Agent": "IPTV-Player/1.0"}
             async with aiohttp.ClientSession(connector=connector, headers=headers) as session:
-                fetched, discovered_api, ru_logo_catalog_text, ru_logo_id_catalog_text, free_tv_logo_texts, tvlogo_manifest_text = await asyncio.gather(
+                fetched, discovered_payload, ru_logo_catalog_text, ru_logo_id_catalog_text, free_tv_logo_texts, tvlogo_manifest_text = await asyncio.gather(
                     asyncio.gather(*[_fetch_text(session, url) for _, url in SOURCE_URLS]),
                     _discover_iptv_org_api(session),
                     _fetch_text(session, RU_LOGO_CATALOG_URL),
@@ -1304,6 +1318,7 @@ async def refresh_channels(force: bool = False):
                     asyncio.gather(*[_fetch_text(session, url) for url in FREE_TV_LOGO_CATALOG_URLS.values()]),
                     _fetch_text(session, TV_LOGO_MANIFEST_URL),
                 )
+                discovered_api, iptv_org_logo_catalog = discovered_payload
                 candidates = []
                 for (country, url), text in zip(SOURCE_URLS, fetched):
                     if "#EXTM3U" not in text[:4096]:
@@ -1317,6 +1332,7 @@ async def refresh_channels(force: bool = False):
                 # Prefer exact tvg-id, then normalized channel name within the same country.
                 logo_by_id = {}
                 logo_by_name = {}
+                logo_by_global_name = {}
                 for x in discovered_api:
                     logo = str(x.get('logo') or '').strip()
                     if not logo:
@@ -1329,10 +1345,12 @@ async def refresh_channels(force: bool = False):
                         logo_by_id[base_tvg_id] = logo
                     aliases = [x.get('name') or ''] + list(x.get('epg_aliases') or [])
                     for alias in aliases:
-                        normalized = _normalize_name(alias)
-                        nkey = (str(x.get('country') or '').upper(), normalized)
-                        if normalized and nkey not in logo_by_name:
-                            logo_by_name[nkey] = logo
+                        for normalized in _logo_name_variants(alias):
+                            nkey = (str(x.get('country') or '').upper(), normalized)
+                            if normalized and nkey not in logo_by_name:
+                                logo_by_name[nkey] = logo
+                            if normalized:
+                                logo_by_global_name.setdefault(normalized, set()).add(logo)
                 enriched_logos = 0
                 ru_logo_catalog = _parse_logo_catalog_m3u(ru_logo_catalog_text)
                 ru_logo_id_by_id, ru_logo_id_by_name = _parse_logo_id_catalog_m3u(ru_logo_id_catalog_text)
@@ -1350,13 +1368,42 @@ async def refresh_channels(force: bool = False):
                     item['adult'] = bool(item.get('adult')) or _is_adult_channel(item)
                     if not str(item.get('logo') or '').strip():
                         tvg_id = str(item.get('tvg_id') or '').strip().lower()
-                        logo = logo_by_id.get(tvg_id) if tvg_id else None
+                        full_by_id = iptv_org_logo_catalog.get("by_id") or {}
+                        logo = (logo_by_id.get(tvg_id) or full_by_id.get(tvg_id)) if tvg_id else None
                         if not logo and tvg_id:
                             base_tvg_id = tvg_id.split("@", 1)[0].strip()
                             if base_tvg_id:
-                                logo = logo_by_id.get(base_tvg_id)
+                                logo = logo_by_id.get(base_tvg_id) or full_by_id.get(base_tvg_id)
                         if not logo:
-                            logo = logo_by_name.get((str(item.get('country') or '').upper(), _normalize_name(item.get('name') or '')))
+                            country = str(item.get('country') or '').upper()
+                            country_matches = {
+                                logo_by_name.get((country, v))
+                                for v in _logo_name_variants(item.get('name') or '')
+                                if logo_by_name.get((country, v))
+                            }
+                            country_matches.discard(None)
+                            if len(country_matches) == 1:
+                                logo = next(iter(country_matches))
+                        if not logo:
+                            full_by_country = iptv_org_logo_catalog.get("by_country") or {}
+                            full_country_matches = set()
+                            for v in _logo_name_variants(item.get('name') or ''):
+                                full_country_matches.update(full_by_country.get((country, v)) or set())
+                            if len(full_country_matches) == 1:
+                                logo = next(iter(full_country_matches))
+                        if not logo:
+                            global_matches = set()
+                            for v in _logo_name_variants(item.get('name') or ''):
+                                global_matches.update(logo_by_global_name.get(v) or set())
+                            if len(global_matches) == 1:
+                                logo = next(iter(global_matches))
+                        if not logo:
+                            full_global = iptv_org_logo_catalog.get("global") or {}
+                            full_global_matches = set()
+                            for v in _logo_name_variants(item.get('name') or ''):
+                                full_global_matches.update(full_global.get(v) or set())
+                            if len(full_global_matches) == 1:
+                                logo = next(iter(full_global_matches))
                         if not logo:
                             country = str(item.get('country') or '').upper()
                             catalog = free_tv_logo_catalogs.get(country) or {}
