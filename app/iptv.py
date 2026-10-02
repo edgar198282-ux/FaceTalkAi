@@ -1483,6 +1483,17 @@ async def api_diagnostics(request):
         for x in rows
         if x.get("status") != "ONLINE" or int(x.get("backup_count") or 0) == 0
     ][:300]
+    missing_logo_samples = [
+        {
+            "id": x.get("id"),
+            "name": x.get("name"),
+            "country": x.get("country"),
+            "tvg_id": x.get("tvg_id"),
+            "group": x.get("group"),
+            "epg_aliases": list(x.get("epg_aliases") or [])[:6],
+        }
+        for x in rows if not str(x.get("logo") or "").strip()
+    ][:180]
     recent_failovers = sorted(
         [x for x in rows if int(x.get("last_failover") or 0) > 0],
         key=lambda x: int(x.get("last_failover") or 0),
@@ -1498,6 +1509,7 @@ async def api_diagnostics(request):
     return web.json_response({
         "ok": True,
         "stats": state.get("stats") or {},
+        "missing_logo_samples": missing_logo_samples,
         "scan_history": history[-48:],
         "ad_detection": {
             "events": ad_history[-100:],
