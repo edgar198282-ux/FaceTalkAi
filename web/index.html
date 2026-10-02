@@ -176,6 +176,8 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   border-radius:999px;padding:4px 9px;color:#53707e;font-size:12px;margin-top:7px
 }
 .qualityBadge{display:none;position:absolute;right:8px;top:8px;z-index:4;min-width:34px;height:22px;padding:0 7px;border-radius:7px;align-items:center;justify-content:center;background:rgba(5,70,126,.88);color:#fff;font-size:10px;font-weight:900;letter-spacing:.35px;box-shadow:0 3px 9px rgba(0,45,92,.22)}
+.freeAdPrice{margin-top:12px;font-size:clamp(20px,3vw,34px);font-weight:900;letter-spacing:.3px;color:#ffd76a;text-shadow:0 0 7px rgba(255,215,106,.7),0 0 18px rgba(255,178,32,.38),0 2px 0 rgba(115,70,0,.45);animation:freeAdPriceBlink 1.25s ease-in-out infinite}
+@keyframes freeAdPriceBlink{0%,100%{opacity:.78;transform:scale(.985);filter:brightness(.95)}50%{opacity:1;transform:scale(1.035);filter:brightness(1.2)}}
 .gridMode .qualityBadge,.tvMode .qualityBadge{display:flex}
 @media(min-width:800px){
   .app{max-width:1400px;margin:auto;border-left:1px solid #cfe4ef;border-right:1px solid #cfe4ef}
@@ -437,7 +439,8 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
         <img src="/static/abaj_tv_logo.svg" alt="ABAJ TV" style="width:min(28vw,220px);height:min(28vw,220px);max-width:58%;max-height:26vh;object-fit:contain;filter:drop-shadow(0 12px 28px rgba(0,0,0,.35))" onerror="this.onerror=null;this.src='/static/abaj_tv_logo.jpg'">
         <div style="font-size:clamp(17px,2.4vw,27px);font-weight:900;margin-top:14px">Рекламная пауза</div>
         <div style="font-size:clamp(13px,1.8vw,18px);opacity:.82;margin-top:7px">Более 3000 каналов · до 3 устройств</div>
-        <img src="/static/abaj_tv_share_qr.png" alt="QR Abaj TV" style="width:min(28vw,220px);height:min(28vw,220px);max-width:58%;max-height:26vh;object-fit:contain;background:#fff;border-radius:12px;padding:6px;box-sizing:border-box;margin-top:16px;filter:drop-shadow(0 8px 20px rgba(0,0,0,.28))">
+        <div class="freeAdPrice">Всего 1 доллар</div>
+        <img src="/static/abaj_tv_share_qr.png" alt="QR Abaj TV" style="width:min(28vw,220px);height:min(28vw,220px);max-width:58%;max-height:26vh;object-fit:contain;background:#fff;border-radius:12px;padding:6px;box-sizing:border-box;margin-top:12px;filter:drop-shadow(0 8px 20px rgba(0,0,0,.28))">
         <div style="font-size:clamp(14px,1.8vw,20px);font-weight:900;letter-spacing:.2px;opacity:.96;margin-top:12px">Telegram: @FaceTalkID_bot</div>
       </div>
     </div>
