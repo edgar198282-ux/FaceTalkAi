@@ -159,11 +159,13 @@ def miniapp_keyboard(user_id: int | None = None, lang: str = 'ru'):
         return None
     labels={'hy':'📺 Բացել Abaj TV','ru':'📺 Открыть Abaj TV','en':'📺 Open Abaj TV'}
     apk_labels={'hy':'📱 Ներբեռնել APK','ru':'📱 Скачать APK','en':'📱 Download APK'}
-    tv_apk_labels={'hy':'📺 Ներբեռնել APK TV-ի համար','ru':'📺 Скачать APK для TV','en':'📺 Download APK for TV'}
+    tv_apk_labels={'hy':'🖥️ Ներբեռնել TV APK','ru':'🖥️ Скачать TV APK','en':'🖥️ Download TV APK'}
+    qr_labels={'hy':'📷 QR TV-ի համար','ru':'📷 QR для TV','en':'📷 QR for TV'}
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=labels.get(lang, labels['ru']), web_app=WebAppInfo(url=_miniapp_url_for_user(user_id)))],
                   [KeyboardButton(text=apk_labels.get(lang, apk_labels['ru']))],
-                  [KeyboardButton(text=tv_apk_labels.get(lang, tv_apk_labels['ru']))]],
+                  [KeyboardButton(text=tv_apk_labels.get(lang, tv_apk_labels['ru']))],
+                  [KeyboardButton(text=qr_labels.get(lang, qr_labels['ru']))]],
         resize_keyboard=True,
         is_persistent=True,
     )
@@ -511,7 +513,7 @@ async def download_apk(m: Message):
         ]]),
     )
 
-@dp.message(F.text.in_({'📺 Ներբեռնել APK TV-ի համար','📺 Скачать APK для TV','📺 Download APK for TV'}))
+@dp.message(F.text.in_({'📺 Ներբեռնել APK TV-ի համար','📺 Скачать APK для TV','📺 Download APK for TV','🖥️ Ներբեռնել TV APK','🖥️ Скачать TV APK','🖥️ Download TV APK'}))
 async def download_tv_apk(m: Message):
     await _track_incoming(m)
     lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
@@ -537,6 +539,27 @@ async def download_tv_apk(m: Message):
         await _track_message(sent.chat.id, sent.message_id)
     else:
         await _answer(m, caption, reply_markup=keyboard)
+
+@dp.message(F.text.in_({'📷 QR TV-ի համար','📷 QR для TV','📷 QR for TV'}))
+async def show_tv_qr(m: Message):
+    await _track_incoming(m)
+    lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
+    qr_photo, start_link = await _tv_apk_qr_photo()
+    if not qr_photo:
+        return await _answer(m, 'QR временно недоступен.')
+    caption = {
+        'hy':'📷 Սկանավորեք QR կոդը՝ Abaj TV բոտը անմիջապես բացելու համար։',
+        'ru':'📷 Сканируйте QR-код — сразу откроется бот Abaj TV.',
+        'en':'📷 Scan the QR code to open the Abaj TV bot directly.',
+    }.get(lang, '📷 Сканируйте QR-код — сразу откроется бот Abaj TV.')
+    markup = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text={'hy':'🤖 Բացել բոտը','ru':'🤖 Открыть бота','en':'🤖 Open bot'}.get(lang, '🤖 Открыть бота'),
+            url=start_link,
+        )
+    ]]) if start_link else None
+    sent = await bot.send_photo(chat_id=m.chat.id, photo=qr_photo, caption=caption, reply_markup=markup)
+    await _track_message(sent.chat.id, sent.message_id)
 
 @dp.message(F.text)
 async def text_handler(m: Message):
