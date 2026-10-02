@@ -995,6 +995,32 @@ async def _fetch_text(session: aiohttp.ClientSession, url: str) -> str:
         return await asyncio.to_thread(_fetch_text_sync, url)
 
 
+def _logo_name_variants(value: str) -> list[str]:
+    base = _normalize_name(value)
+    if not base:
+        return []
+    variants = [base]
+
+    # Safe cosmetic variants only: resolution/copy markers are already removed
+    # by _normalize_name; here we normalize common Russian channel labels.
+    compact = re.sub(r"\b(?:телеканал|канал)\b", " ", base, flags=re.I)
+    compact = re.sub(r"\s+", " ", compact).strip()
+    if compact and compact not in variants:
+        variants.append(compact)
+
+    # "ТК 21" / "ТВ 21" are often listed simply as "ТВ21".
+    tk_tv = re.sub(r"\bтк\b", "тв", compact, flags=re.I)
+    tk_tv = re.sub(r"\s+", "", tk_tv)
+    if tk_tv and tk_tv not in variants:
+        variants.append(tk_tv)
+
+    joined = re.sub(r"\s+", "", compact)
+    if len(joined) >= 4 and joined not in variants:
+        variants.append(joined)
+
+    return variants
+
+
 def _parse_logo_catalog_m3u(text: str) -> dict[str, str]:
     """Return normalized channel-name -> logo URL from an M3U used only as a logo catalogue."""
     out = {}
@@ -1011,9 +1037,9 @@ def _parse_logo_catalog_m3u(text: str) -> dict[str, str]:
         if not logo.startswith(("http://", "https://")):
             continue
         name = line.split(",", 1)[1].strip() if "," in line else ""
-        normalized = _normalize_name(name)
-        if normalized and normalized not in out:
-            out[normalized] = logo
+        for normalized in _logo_name_variants(name):
+            if normalized and normalized not in out:
+                out[normalized] = logo
     return out
 
 
@@ -1181,8 +1207,16 @@ async def refresh_channels(force: bool = False):
                         if not logo:
                             logo = logo_by_name.get((str(item.get('country') or '').upper(), _normalize_name(item.get('name') or '')))
                         if not logo and str(item.get('country') or '').upper() == 'RU':
-                            logo = ru_logo_catalog.get(_normalize_name(item.get('name') or ''))
-                            if logo:
+                            matched = {
+                                ru_logo_catalog.get(v)
+                                for v in _logo_name_variants(item.get('name') or '')
+                                if ru_logo_catalog.get(v)
+                            }
+                            matched.discard(None)
+                            # Use the fallback only when all matching variants point
+                            # to exactly one logo. This avoids wrong logos on aliases.
+                            if len(matched) == 1:
+                                logo = next(iter(matched))
                                 ru_logo_catalog_matches += 1
                         if logo:
                             item['logo'] = logo
