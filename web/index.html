@@ -526,6 +526,19 @@ let syncDirtyRecent=false;
 let syncDirtyLast=false;
 let syncDirtyUi=false;
 let edemStatus=null;
+const FREE_PREVIEW_CHANNELS=[
+  'кинопоказ','карусель','мир','стс kids','тнт','звезда','домашний international','кинохит'
+];
+function hasFullChannelAccess(){return !!(edemStatus&&edemStatus.active)}
+function isFreePreviewChannel(ch){
+  const name=String(ch&&ch.name||'').toLowerCase().replace(/\s*\(\d+\)\s*$/,'').trim();
+  return FREE_PREVIEW_CHANNELS.some(x=>name===x||name.startsWith(x+' ')||name.includes(x));
+}
+function applyChannelAccessGate(rows){
+  const list=Array.isArray(rows)?rows:[];
+  if(hasFullChannelAccess())return list;
+  return list.filter(ch=>!ch.personal&&isFreePreviewChannel(ch));
+}
 const deviceId=localStorage.getItem('abaj_device_id')||(
   (crypto&&crypto.randomUUID)?crypto.randomUUID():('abaj-'+Date.now()+'-'+Math.random().toString(36).slice(2))
 );
@@ -1865,7 +1878,7 @@ function restoreCachedChannels(){
     const cached=JSON.parse(localStorage.getItem(CHANNEL_CACHE_KEY)||'null');
     if(!cached||!Array.isArray(cached.channels)||!cached.channels.length)return false;
     if(Date.now()-Number(cached.ts||0)>12*60*60*1000)return false;
-    channels=cached.channels.filter(x=>!tvHideUnreliable||!x.unreliable||x.personal);
+    channels=applyChannelAccessGate(cached.channels.filter(x=>!tvHideUnreliable||!x.unreliable||x.personal));
     const groups=visibleChannelGroups();
     const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const sel=document.getElementById('group');
@@ -1909,7 +1922,7 @@ async function load(){
       const key=(providerKey+'|'+(ch.tvg_id||'')+'|'+(ch.country||'')+'|'+(ch.name||'')).toLowerCase();
       if(!dedup.has(key))dedup.set(key,ch);
     }
-    channels=[...dedup.values()];
+    channels=applyChannelAccessGate([...dedup.values()]);
     const groups=visibleChannelGroups();
     const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const sel=document.getElementById('group');
