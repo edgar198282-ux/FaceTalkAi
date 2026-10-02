@@ -132,7 +132,7 @@ body.playerFullscreenActive{overflow:hidden!important;background:#000!important}
 .playerChannelHudBar{height:4px;background:rgba(255,255,255,.24);border-radius:4px;overflow:hidden;margin-top:5px}
 .playerChannelHudBar span{display:block;height:100%;width:0;background:#38bdf8;border-radius:4px}
 .playerView.appFullscreen .playerChannelHud,.playerView:fullscreen .playerChannelHud,.playerView:-webkit-full-screen .playerChannelHud{position:fixed!important;left:18px!important;top:18px!important;z-index:2147483646!important}
-.playerBrand{position:fixed;inset:0;z-index:120;pointer-events:none;background:#031a4a;opacity:1;transition:opacity .12s ease;display:flex;align-items:center;justify-content:center}.playerHourglass{font-size:68px;line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35));animation:hourglassPulse 1s ease-in-out infinite}@keyframes hourglassPulse{0%,100%{transform:scale(1);opacity:.72}50%{transform:scale(1.08);opacity:1}}
+.playerBrand{position:fixed;inset:0;z-index:120;pointer-events:none;background:#031a4a;opacity:1;transition:opacity .12s ease;display:flex;align-items:center;justify-content:center}.playerLoadingLogo{width:min(22vw,132px);height:min(22vw,132px);object-fit:contain;border-radius:24px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.34));animation:abajLogoPulse 1.15s ease-in-out infinite}@keyframes abajLogoPulse{0%,100%{transform:scale(.96);opacity:.72}50%{transform:scale(1.035);opacity:1}}
 .videoWrap.playing .playerBrand{opacity:0}
 video{width:100%;height:100%;object-fit:contain;background:transparent;position:relative;z-index:1}
 .playerBottom{padding:9px 10px 12px;background:#0a0a0a;border-top:1px solid #222}
@@ -428,7 +428,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
     <button id="playerFavBtn" class="iconBtn" style="color:white" onclick="togglePlayerFavorite()">♡</button>
   </div>
   <div class="videoWrap" onclick="handlePlayerSurfaceClick(event)">
-    <div class="playerBrand"><div class="playerHourglass">⌛</div></div>
+    <div class="playerBrand"><img class="playerLoadingLogo" src="/static/abaj_tv_logo.svg" alt="ABAJ TV" onerror="this.onerror=null;this.src='/static/abaj_tv_logo.jpg'"></div>
     <video id="video" controls playsinline webkit-playsinline></video>
     <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:linear-gradient(145deg,#07131f,#0d2740 55%,#103a5f);align-items:center;justify-content:center;text-align:center;color:white;padding:18px;box-sizing:border-box;pointer-events:none">
       <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;gap:0">
