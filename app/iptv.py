@@ -145,6 +145,16 @@ _burned_ad_stats = {
     "server_last_score": 0,
 }
 _burned_ad_last_report = {}
+_ottclub_ad_state = {}
+_ottclub_stats = {
+    "probes": 0,
+    "errors": 0,
+    "detections": 0,
+    "last_probe": 0,
+    "last_channel_id": "",
+    "last_hits": 0,
+    "last_text": "",
+}
 _compact_response_cache = {"key": None, "body": b"", "expires_at": 0.0}
 
 def _record_ad_transition(item: dict, active: bool, marker: str):
@@ -289,19 +299,55 @@ async def _free_channel_ad_state(item: dict) -> dict:
     return result
 
 
+async def _ocr_ottclub_frame(frame: bytes, width: int, height: int) -> str:
+    if not frame:
+        return ""
+    pgm = f"P5\n{width} {height}\n255\n".encode("ascii") + frame
+    proc = None
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "tesseract", "stdin", "stdout", "--psm", "11", "-l", "eng",
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(input=pgm), timeout=4)
+        return stdout.decode("utf-8", "ignore")[:1200]
+    except Exception:
+        if proc and proc.returncode is None:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        return ""
+
+
+def _ottclub_text_hit(text: str) -> bool:
+    raw = str(text or "").upper()
+    compact = re.sub(r"[^A-Z0-9]+", "", raw)
+    if "OTTCLUB" in compact:
+        return True
+    return bool(re.search(r"\bOTT\s*[-_. ]?\s*CLUB\b", raw))
+
+
 async def _server_burned_ad_probe(item: dict) -> dict:
     cid = str(item.get("id") or "")
     url = str(item.get("url") or "")
-    result = {"ok": False, "score": 0, "samples": 0, "error": ""}
+    result = {
+        "ok": False, "score": 0, "samples": 0, "error": "",
+        "ottclub_hits": 0, "ottclub_detected": False, "ocr_text": "",
+    }
     if not cid or not url.startswith(("http://", "https://")):
         result["error"] = "bad channel"
         return result
-    frame_size = 32 * 18
+
+    width, height = 640, 360
+    frame_size = width * height
     cmd = [
         "ffmpeg", "-hide_banner", "-loglevel", "error",
         "-i", url,
-        "-vf", "fps=1/3,scale=32:18,format=gray",
-        "-frames:v", "6",
+        "-vf", f"fps=1,scale={width}:{height},format=gray",
+        "-frames:v", "3",
         "-f", "rawvideo", "pipe:1",
     ]
     proc = None
@@ -311,21 +357,24 @@ async def _server_burned_ad_probe(item: dict) -> dict:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=22)
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=14)
         frames = [
             stdout[i:i + frame_size]
             for i in range(0, len(stdout) - frame_size + 1, frame_size)
-        ][:6]
-        if len(frames) < 3:
+        ][:3]
+        if len(frames) < 2:
             result["error"] = ("too_few_frames " + str(len(frames)) + " " + stderr.decode("utf-8", "ignore")[:80]).strip()
             return result
 
+        sample_step = 80
         diffs = []
         brightness = []
-        for frame in frames:
-            brightness.append(sum(frame) / (len(frame) * 255.0))
-        for a, b in zip(frames, frames[1:]):
-            diffs.append(sum(abs(x - y) for x, y in zip(a, b)) / (frame_size * 255.0))
+        sampled_frames = [frame[::sample_step] for frame in frames]
+        for frame in sampled_frames:
+            brightness.append(sum(frame) / (max(1, len(frame)) * 255.0))
+        for a, b in zip(sampled_frames, sampled_frames[1:]):
+            pairs = min(len(a), len(b))
+            diffs.append(sum(abs(a[i] - b[i]) for i in range(pairs)) / (max(1, pairs) * 255.0))
         avg_diff = sum(diffs) / max(1, len(diffs))
         cut_rate = sum(1 for x in diffs if x >= 0.18) / max(1, len(diffs))
         mean_br = sum(brightness) / len(brightness)
@@ -335,6 +384,14 @@ async def _server_burned_ad_probe(item: dict) -> dict:
             + min(1.0, avg_diff / 0.22) * 25.0
             + min(1.0, brightness_var / 0.16) * 10.0
         )))
+
+        texts = await asyncio.gather(*(_ocr_ottclub_frame(frame, width, height) for frame in frames))
+        hits = sum(1 for text in texts if _ottclub_text_hit(text))
+        compact_text = " | ".join(
+            re.sub(r"\s+", " ", str(text or "")).strip()[:180]
+            for text in texts if str(text or "").strip()
+        )[:500]
+
         result.update({
             "ok": True,
             "score": int(score),
@@ -342,6 +399,9 @@ async def _server_burned_ad_probe(item: dict) -> dict:
             "cut_rate": round(cut_rate, 3),
             "avg_diff": round(avg_diff, 3),
             "brightness_var": round(brightness_var, 3),
+            "ottclub_hits": int(hits),
+            "ottclub_detected": bool(hits >= 2),
+            "ocr_text": compact_text,
         })
         return result
     except asyncio.TimeoutError:
@@ -363,10 +423,37 @@ def _store_server_burned_probe(item: dict, probe: dict):
     cid = str(item.get("id") or "")
     _burned_ad_stats["server_probes"] = int(_burned_ad_stats.get("server_probes") or 0) + 1
     _burned_ad_stats["server_last_probe"] = now
+    _ottclub_stats["probes"] = int(_ottclub_stats.get("probes") or 0) + 1
+    _ottclub_stats["last_probe"] = now
+    _ottclub_stats["last_channel_id"] = cid
+    _ottclub_stats["last_hits"] = int(probe.get("ottclub_hits") or 0)
+    _ottclub_stats["last_text"] = str(probe.get("ocr_text") or "")[:500]
+
     if not probe.get("ok"):
         _burned_ad_stats["server_probe_errors"] = int(_burned_ad_stats.get("server_probe_errors") or 0) + 1
+        _ottclub_stats["errors"] = int(_ottclub_stats.get("errors") or 0) + 1
     else:
         _burned_ad_stats["server_last_score"] = int(probe.get("score") or 0)
+
+    state = dict(_ottclub_ad_state.get(cid) or {})
+    detected = bool(probe.get("ok") and probe.get("ottclub_detected"))
+    if detected:
+        state["positive_streak"] = int(state.get("positive_streak") or 0) + 1
+        state["negative_streak"] = 0
+        if not bool(state.get("active")):
+            _ottclub_stats["detections"] = int(_ottclub_stats.get("detections") or 0) + 1
+        state["active"] = True
+        state["last_match"] = now
+    elif probe.get("ok"):
+        state["positive_streak"] = 0
+        state["negative_streak"] = int(state.get("negative_streak") or 0) + 1
+        if int(state["negative_streak"]) >= 2:
+            state["active"] = False
+    state["last_probe"] = now
+    state["hits"] = int(probe.get("ottclub_hits") or 0)
+    state["ocr_text"] = str(probe.get("ocr_text") or "")[:500]
+    state["error"] = str(probe.get("error") or "")[:120]
+    _ottclub_ad_state[cid] = state
 
     channels = _burned_ad_stats.setdefault("channels", {})
     current = dict(channels.get(cid) or {})
@@ -380,10 +467,14 @@ def _store_server_burned_probe(item: dict, probe: dict):
         "server_brightness_var": float(probe.get("brightness_var") or 0),
         "server_error": str(probe.get("error") or "")[:120],
         "server_seen_at": now,
+        "ottclub_hits": int(probe.get("ottclub_hits") or 0),
+        "ottclub_detected": bool(detected),
+        "ottclub_active": bool(state.get("active")),
+        "ottclub_positive_streak": int(state.get("positive_streak") or 0),
+        "ottclub_negative_streak": int(state.get("negative_streak") or 0),
         "seen_at": max(int(current.get("seen_at") or 0), now),
     })
     channels[cid] = current
-
 
 def _restore_saved_snapshot():
     saved = _load_json(SNAPSHOT_PATH, {})
@@ -1188,6 +1279,20 @@ async def api_diagnostics(request):
                 )[:20],
                 "mode": "observe_only",
             },
+            "ottclub_detector": {
+                "probes": int(_ottclub_stats.get("probes") or 0),
+                "errors": int(_ottclub_stats.get("errors") or 0),
+                "detections": int(_ottclub_stats.get("detections") or 0),
+                "last_probe": int(_ottclub_stats.get("last_probe") or 0),
+                "last_channel_id": str(_ottclub_stats.get("last_channel_id") or ""),
+                "last_hits": int(_ottclub_stats.get("last_hits") or 0),
+                "last_text": str(_ottclub_stats.get("last_text") or "")[:500],
+                "active_channels": [
+                    cid for cid, value in _ottclub_ad_state.items()
+                    if bool((value or {}).get("active"))
+                ][:20],
+                "mode": "replace_only_ottclub",
+            },
             "marker_detection_supported": bool((_ad_scan_stats.get("tag_counts") or {})),
         },
         "last_refresh": state.get("last_refresh"),
@@ -1356,9 +1461,15 @@ async def api_ad_state(request):
     if not item:
         return web.json_response({"ok": False, "active": False, "error": "unknown channel"}, status=404)
     data = await _free_channel_ad_state(item)
+    ott = dict(_ottclub_ad_state.get(cid) or {})
     return web.json_response({
         "ok": True,
-        "active": bool(data.get("active")),
+        # Replacement is intentionally OTTCLUB-only. Generic HLS markers remain
+        # diagnostic information but never trigger the replacement overlay.
+        "active": bool(ott.get("active")),
+        "ottclub_active": bool(ott.get("active")),
+        "ottclub_hits": int(ott.get("hits") or 0),
+        "ottclub_last_match": int(ott.get("last_match") or 0),
         "marker": str(data.get("marker") or ""),
         "checked_at": float(data.get("checked_at") or 0),
     }, headers={"Cache-Control": "no-store"})
@@ -1604,13 +1715,15 @@ async def start_background(app):
     worker_mode = str(os.getenv("IPTV_BACKGROUND_ENABLED", "1")).strip().lower() in {"0", "false", "no", "off"}
 
     async def ad_watch_loop():
-        await asyncio.sleep(15)
+        await asyncio.sleep(10)
         cursor = 0
-        server_probe_last = 0.0
+        hls_scan_last = 0.0
         while True:
             try:
+                now = time.time()
                 rows = [x for x in _state["channels"].values() if x.get("status") == "ONLINE"]
-                if rows:
+                if rows and now - hls_scan_last >= 30:
+                    hls_scan_last = now
                     batch = []
                     for _ in range(min(12, len(rows))):
                         batch.append(rows[cursor % len(rows)])
@@ -1623,25 +1736,27 @@ async def start_background(app):
                             except Exception:
                                 pass
                     await asyncio.gather(*(probe_one(item) for item in batch))
+            except Exception:
+                pass
+            await asyncio.sleep(10)
+    app["iptv_ad_watch_task"] = asyncio.create_task(ad_watch_loop())
 
+    async def ottclub_watch_loop():
+        await asyncio.sleep(12)
+        while True:
+            try:
                 now = time.time()
                 last_play = int(_burned_ad_stats.get("last_free_play") or 0)
                 last_cid = str(_burned_ad_stats.get("last_free_play_channel_id") or "")
-                if (
-                    last_cid
-                    and last_play
-                    and now - last_play <= 180
-                    and now - server_probe_last >= 60
-                ):
+                if last_cid and last_play and now - last_play <= 180:
                     item = _state["channels"].get(last_cid)
                     if item and item.get("status") == "ONLINE":
-                        server_probe_last = now
                         probe = await _server_burned_ad_probe(item)
                         _store_server_burned_probe(item, probe)
             except Exception:
                 pass
-            await asyncio.sleep(30)
-    app["iptv_ad_watch_task"] = asyncio.create_task(ad_watch_loop())
+            await asyncio.sleep(7)
+    app["iptv_ottclub_watch_task"] = asyncio.create_task(ottclub_watch_loop())
 
     # EPG must live in the main web process because public channel responses are
     # enriched there. Keep this lightweight task active even when channel scans
@@ -1666,7 +1781,7 @@ async def start_background(app):
 
 
 async def stop_background(app):
-    for key in ("iptv_task", "iptv_epg_task", "iptv_ad_watch_task"):
+    for key in ("iptv_task", "iptv_epg_task", "iptv_ad_watch_task", "iptv_ottclub_watch_task"):
         task = app.get(key)
         if task:
             task.cancel()
