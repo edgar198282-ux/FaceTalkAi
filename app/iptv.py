@@ -135,6 +135,7 @@ IPTV_ORG_STREAMS_API = "https://iptv-org.github.io/api/streams.json"
 IPTV_ORG_CHANNELS_API = "https://iptv-org.github.io/api/channels.json"
 IPTV_ORG_LOGOS_API = "https://iptv-org.github.io/api/logos.json"
 RU_LOGO_CATALOG_URL = "https://raw.githubusercontent.com/naggdd/iptv/main/ru.m3u"
+RU_LOGO_ID_CATALOG_URL = "https://raw.githubusercontent.com/swoldier-rus/IP_TV/main/sw.m3u"
 EPG_REFRESH_SECONDS = 3 * 60 * 60
 
 _state = {
@@ -1068,6 +1069,32 @@ def _logo_name_variants(value: str) -> list[str]:
     return variants
 
 
+def _parse_logo_id_catalog_m3u(text: str) -> tuple[dict[str, str], dict[str, str]]:
+    by_id = {}
+    by_name = {}
+    if not text or "#EXTM3U" not in text[:4096]:
+        return by_id, by_name
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line.startswith("#EXTINF"):
+            continue
+        m_logo = re.search(r'tvg-logo="([^"]+)"', line, flags=re.I)
+        if not m_logo:
+            continue
+        logo = str(m_logo.group(1) or "").strip()
+        if not logo.startswith(("http://", "https://")):
+            continue
+        m_id = re.search(r'tvg-id="([^"]+)"', line, flags=re.I)
+        if m_id:
+            tvg_id = str(m_id.group(1) or "").strip().lower()
+            if tvg_id:
+                by_id.setdefault(tvg_id, logo)
+        name = line.split(",", 1)[1].strip() if "," in line else ""
+        for variant in _logo_name_variants(name):
+            by_name.setdefault(variant, logo)
+    return by_id, by_name
+
+
 def _parse_logo_catalog_m3u(text: str) -> dict[str, str]:
     """Return normalized channel-name -> logo URL from an M3U used only as a logo catalogue."""
     out = {}
@@ -1211,10 +1238,11 @@ async def refresh_channels(force: bool = False):
             connector = aiohttp.TCPConnector(limit=32, ssl=False)
             headers = {"User-Agent": "IPTV-Player/1.0"}
             async with aiohttp.ClientSession(connector=connector, headers=headers) as session:
-                fetched, discovered_api, ru_logo_catalog_text = await asyncio.gather(
+                fetched, discovered_api, ru_logo_catalog_text, ru_logo_id_catalog_text = await asyncio.gather(
                     asyncio.gather(*[_fetch_text(session, url) for _, url in SOURCE_URLS]),
                     _discover_iptv_org_api(session),
                     _fetch_text(session, RU_LOGO_CATALOG_URL),
+                    _fetch_text(session, RU_LOGO_ID_CATALOG_URL),
                 )
                 candidates = []
                 for (country, url), text in zip(SOURCE_URLS, fetched):
@@ -1247,7 +1275,9 @@ async def refresh_channels(force: bool = False):
                             logo_by_name[nkey] = logo
                 enriched_logos = 0
                 ru_logo_catalog = _parse_logo_catalog_m3u(ru_logo_catalog_text)
+                ru_logo_id_by_id, ru_logo_id_by_name = _parse_logo_id_catalog_m3u(ru_logo_id_catalog_text)
                 ru_logo_catalog_matches = 0
+                ru_logo_id_catalog_matches = 0
                 country_order = {code: i for i, code in enumerate(("AM","RU","GE","UA","BY","KZ","UZ","MD"))}
                 for item in candidates:
                     item['adult'] = bool(item.get('adult')) or _is_adult_channel(item)
@@ -1260,6 +1290,22 @@ async def refresh_channels(force: bool = False):
                                 logo = logo_by_id.get(base_tvg_id)
                         if not logo:
                             logo = logo_by_name.get((str(item.get('country') or '').upper(), _normalize_name(item.get('name') or '')))
+                        if not logo and str(item.get('country') or '').upper() == 'RU':
+                            sw_id = tvg_id.split("@", 1)[0].strip() if tvg_id else ""
+                            logo = ru_logo_id_by_id.get(tvg_id) if tvg_id else None
+                            if not logo and sw_id:
+                                logo = ru_logo_id_by_id.get(sw_id)
+                            if not logo:
+                                sw_matches = {
+                                    ru_logo_id_by_name.get(v)
+                                    for v in _logo_name_variants(item.get('name') or '')
+                                    if ru_logo_id_by_name.get(v)
+                                }
+                                sw_matches.discard(None)
+                                if len(sw_matches) == 1:
+                                    logo = next(iter(sw_matches))
+                            if logo:
+                                ru_logo_id_catalog_matches += 1
                         if not logo and str(item.get('country') or '').upper() == 'RU':
                             matched = {
                                 ru_logo_catalog.get(v)
@@ -1418,6 +1464,8 @@ async def refresh_channels(force: bool = False):
                 "logos_enriched": enriched_logos,
                 "ru_logo_catalog_entries": len(ru_logo_catalog),
                 "ru_logo_catalog_matches": ru_logo_catalog_matches,
+                "ru_logo_id_catalog_entries": len(ru_logo_id_by_id),
+                "ru_logo_id_catalog_matches": ru_logo_id_catalog_matches,
             }
             try:
                 _save_json(HEALTH_PATH, _stream_health)
