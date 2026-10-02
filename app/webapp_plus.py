@@ -1112,6 +1112,14 @@ async def api_tv_device_auth(request):
         data['channel_switches'] = int(data.get('channel_switches') or 0) + 1
     data['current_channel_id'] = current_channel_id
     data['current_channel_name'] = current_channel_name
+    if current_channel_id:
+        try:
+            free_item = iptv._state.get('channels', {}).get(current_channel_id)
+            if free_item and free_item.get('status') == 'ONLINE':
+                iptv._burned_ad_stats['last_free_play'] = now
+                iptv._burned_ad_stats['last_free_play_channel_id'] = current_channel_id
+        except Exception:
+            pass
     await set_setting(f'tv_device:{device_id}', json.dumps(data, separators=(',',':')))
     ts = now
     return web.json_response({
