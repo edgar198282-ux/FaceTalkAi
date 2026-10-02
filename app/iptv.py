@@ -103,9 +103,12 @@ def _record_health(row: dict):
     _stream_health[url] = h
 
 EPG_URLS = [
-    # EPG.ONE currently provides a live multi-country XMLTV feed that includes
-    # Armenia, Belarus, Georgia, Kazakhstan, Moldova, Russia, Ukraine and more.
+    # Primary CIS guide.
     ("CIS", "https://epg.one/epg2.xml"),
+    # Extra current XMLTV sources. RU adds much broader Russian coverage;
+    # Lite contributes additional popular channels from multiple countries.
+    ("EPGPW_RU", "https://epg.pw/xmltv/epg_RU.xml"),
+    ("EPGPW_LITE", "https://epg.pw/xmltv/epg_lite.xml"),
 ]
 IPTV_ORG_STREAMS_API = "https://iptv-org.github.io/api/streams.json"
 IPTV_ORG_CHANNELS_API = "https://iptv-org.github.io/api/channels.json"
@@ -120,6 +123,8 @@ _state = {
     "error": "",
     "epg": {},
     "epg_names": {},
+    "epg_logos": {},
+    "epg_logo_names": {},
     "epg_last_refresh": 0,
     "epg_error": "",
 }
@@ -750,15 +755,17 @@ def _parse_xmltv_time(value: str) -> int:
         return 0
 
 
-def _parse_epg_xml(text: str) -> tuple[dict, dict]:
+def _parse_epg_xml(text: str) -> tuple[dict, dict, dict, dict]:
     programmes = {}
     names = {}
+    logos = {}
+    logo_names = {}
     if not text or "<tv" not in text[:5000]:
-        return programmes, names
+        return programmes, names, logos, logo_names
     try:
         root = ET.fromstring(text)
     except Exception:
-        return programmes, names
+        return programmes, names, logos, logo_names
 
     for ch in root.findall("channel"):
         cid = str(ch.attrib.get("id") or "").strip()
@@ -783,6 +790,14 @@ def _parse_epg_xml(text: str) -> tuple[dict, dict]:
             for variant in _epg_name_variants(display):
                 names.setdefault(variant, cid)
 
+        icon = ch.find("icon")
+        icon_src = str(icon.attrib.get("src") or "").strip() if icon is not None else ""
+        if icon_src.startswith(("http://", "https://")):
+            logos.setdefault(cid, icon_src)
+            for display in aliases:
+                for variant in _epg_name_variants(display):
+                    logo_names.setdefault(variant, icon_src)
+
     now = int(time.time())
     min_ts = now - 4 * 60 * 60
     max_ts = now + 36 * 60 * 60
@@ -805,7 +820,7 @@ def _parse_epg_xml(text: str) -> tuple[dict, dict]:
 
     for rows in programmes.values():
         rows.sort(key=lambda x: x["start"])
-    return programmes, names
+    return programmes, names, logos, logo_names
 
 
 async def refresh_epg(force: bool = False):
@@ -818,21 +833,50 @@ async def refresh_epg(force: bool = False):
             texts = await asyncio.gather(*[_fetch_text(session, url) for _, url in EPG_URLS])
         all_programmes = {}
         all_names = {}
+        all_logos = {}
+        all_logo_names = {}
         parsed_feeds = await asyncio.gather(
             *[asyncio.to_thread(_parse_epg_xml, text) for text in texts]
         )
-        for programmes, names in parsed_feeds:
+        for programmes, names, logos, logo_names in parsed_feeds:
             for cid, rows in programmes.items():
                 all_programmes.setdefault(cid, []).extend(rows)
-            all_names.update(names)
+            for key, value in names.items():
+                all_names.setdefault(key, value)
+            for key, value in logos.items():
+                all_logos.setdefault(key, value)
+            for key, value in logo_names.items():
+                all_logo_names.setdefault(key, value)
         for rows in all_programmes.values():
             rows.sort(key=lambda x: x["start"])
         _state["epg"] = all_programmes
         _state["epg_names"] = all_names
+        _state["epg_logos"] = all_logos
+        _state["epg_logo_names"] = all_logo_names
         _state["epg_last_refresh"] = int(time.time())
         _state["epg_error"] = ""
     except Exception as exc:
         _state["epg_error"] = repr(exc)[:300]
+
+
+def _epg_logo_for_channel(item: dict) -> str:
+    cid = str(item.get("tvg_id") or "").strip()
+    if cid:
+        logo = str((_state.get("epg_logos") or {}).get(cid) or "").strip()
+        if logo:
+            return logo
+        base_cid = cid.split("@", 1)[0].strip()
+        logo = str((_state.get("epg_logos") or {}).get(base_cid) or "").strip()
+        if logo:
+            return logo
+    aliases = [item.get("name") or ""] + list(item.get("epg_aliases") or [])
+    logo_names = _state.get("epg_logo_names") or {}
+    for alias in aliases:
+        for variant in _epg_name_variants(alias):
+            logo = str(logo_names.get(variant) or "").strip()
+            if logo:
+                return logo
+    return ""
 
 
 def _epg_for_channel(item: dict) -> tuple[dict | None, dict | None]:
@@ -1214,6 +1258,10 @@ def public_state(compact: bool = False):
         current, nxt = _epg_for_channel(row)
         row["epg_now"] = current if current is not None else row.get("epg_now")
         row["epg_next"] = nxt if nxt is not None else row.get("epg_next")
+        if not str(row.get("logo") or "").strip():
+            epg_logo = _epg_logo_for_channel(row)
+            if epg_logo:
+                row["logo"] = epg_logo
         if compact:
             row = {k: row.get(k) for k in compact_keys if k in row}
             for epg_key in ("epg_now", "epg_next"):
@@ -1228,6 +1276,8 @@ def public_state(compact: bool = False):
     rows.sort(key=lambda x: (x["status"] != "ONLINE", x.get("country", ""), x.get("group", ""), x.get("name", "")))
     stats = dict(_state["stats"])
     stats["epg_channels"] = len(_state["epg"]) if _state["epg"] else int(stats.get("epg_channels") or 0)
+    stats["epg_logo_channels"] = len(_state.get("epg_logos") or {})
+    stats["epg_source_count"] = len(EPG_URLS)
     stats["with_epg"] = sum(1 for x in rows if bool(x.get("epg_now")))
     stats["with_logo"] = sum(1 for x in rows if bool(x.get("logo")))
     coverage_by_country = {}
