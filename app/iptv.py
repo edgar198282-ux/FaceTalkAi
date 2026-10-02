@@ -76,6 +76,27 @@ def _health_score(url: str) -> float:
     consecutive = int(h.get("consecutive_failures") or 0)
     return round(uptime * 1000.0 - min(latency, 10000) / 22.0 - consecutive * 90.0, 3)
 
+def _hide_unusable_catalog_channel(item: dict) -> bool:
+    """Hide channels that are known duplicates/restricted placeholders, not useful live TV."""
+    name = str(item.get("name") or "").strip()
+    source = str(item.get("source") or "").lower()
+    group = str(item.get("group") or "").lower()
+
+    # Explicit upstream warnings: these routinely resolve at HTTP level but do
+    # not provide a usable continuous live channel.
+    if re.search(r"\[(?:[^\]]*geo[- ]?blocked|[^\]]*not\s*24/?7)[^\]]*\]", name, flags=re.I):
+        return True
+
+    # Regional time-shift copies from the ngrch Russian playlist are mostly
+    # Wink/Nginex rebroadcasts. Outside their territory many display a Wink
+    # restriction slate while still looking ONLINE to an HTTP probe.
+    if "ngrch.github.io/iptv/ru.m3u" in source and "регион" in group:
+        if re.search(r"\(\s*[+-]\s*\d{1,2}\s*\)\s*$", name):
+            return True
+
+    return False
+
+
 def _record_health(row: dict):
     url = str(row.get("url") or "")
     if not url:
@@ -1254,6 +1275,8 @@ async def refresh_channels(force: bool = False):
                         if logo:
                             item['logo'] = logo
                             enriched_logos += 1
+                candidates = [x for x in candidates if not _hide_unusable_catalog_channel(x)]
+
                 candidates.sort(key=lambda x: (
                     country_order.get(str(x.get("country") or "").upper(), 99),
                     0 if str(x.get("quality") or "").upper() in {"4K", "FHD"} else 1,
