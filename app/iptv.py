@@ -146,6 +146,15 @@ _burned_ad_stats = {
 }
 _burned_ad_last_report = {}
 _ottclub_ad_state = {}
+_cinerama_placeholder_state = {}
+_cinerama_stats = {
+    "probes": 0,
+    "detections": 0,
+    "active_channels": 0,
+    "last_channel_id": "",
+    "last_hits": 0,
+    "last_probe": 0,
+}
 _ottclub_stats = {
     "probes": 0,
     "errors": 0,
@@ -322,6 +331,17 @@ async def _ocr_ottclub_frame(frame: bytes, width: int, height: int) -> str:
         return ""
 
 
+def _cinerama_text_hit(text: str) -> bool:
+    raw = str(text or "").upper()
+    compact = re.sub(r"[^A-Z0-9]+", "", raw)
+    normalized = compact.replace("1", "I").replace("0", "O")
+    return (
+        "CINERAMA" in normalized
+        or "CINERAMAUZ" in normalized
+        or bool(re.search(r"C[I1]NE\s*RAMA", raw))
+    )
+
+
 def _ottclub_text_hit(text: str) -> bool:
     raw = str(text or "").upper()
     compact = re.sub(r"[^A-Z0-9]+", "", raw)
@@ -349,7 +369,8 @@ async def _server_burned_ad_probe(item: dict) -> dict:
     url = str(item.get("url") or "")
     result = {
         "ok": False, "score": 0, "samples": 0, "error": "",
-        "ottclub_hits": 0, "ottclub_detected": False, "ocr_text": "",
+        "ottclub_hits": 0, "ottclub_detected": False,
+        "cinerama_hits": 0, "cinerama_detected": False, "ocr_text": "",
     }
     if not cid or not url.startswith(("http://", "https://")):
         result["error"] = "bad channel"
@@ -401,6 +422,7 @@ async def _server_burned_ad_probe(item: dict) -> dict:
 
         texts = await asyncio.gather(*(_ocr_ottclub_frame(frame, width, height) for frame in frames))
         hits = sum(1 for text in texts if _ottclub_text_hit(text))
+        cinerama_hits = sum(1 for text in texts if _cinerama_text_hit(text))
         compact_text = " | ".join(
             re.sub(r"\s+", " ", str(text or "")).strip()[:180]
             for text in texts if str(text or "").strip()
@@ -415,6 +437,8 @@ async def _server_burned_ad_probe(item: dict) -> dict:
             "brightness_var": round(brightness_var, 3),
             "ottclub_hits": int(hits),
             "ottclub_detected": bool(hits >= 2),
+            "cinerama_hits": int(cinerama_hits),
+            "cinerama_detected": bool(cinerama_hits >= 2),
             "ocr_text": compact_text,
         })
         return result
@@ -448,6 +472,35 @@ def _store_server_burned_probe(item: dict, probe: dict):
         _ottclub_stats["errors"] = int(_ottclub_stats.get("errors") or 0) + 1
     else:
         _burned_ad_stats["server_last_score"] = int(probe.get("score") or 0)
+
+    _cinerama_stats["probes"] = int(_cinerama_stats.get("probes") or 0) + 1
+    _cinerama_stats["last_probe"] = now
+    _cinerama_stats["last_channel_id"] = cid
+    _cinerama_stats["last_hits"] = int(probe.get("cinerama_hits") or 0)
+
+    cstate = dict(_cinerama_placeholder_state.get(cid) or {})
+    cdetected = bool(probe.get("ok") and probe.get("cinerama_detected"))
+    if cdetected:
+        cstate["positive_streak"] = int(cstate.get("positive_streak") or 0) + 1
+        cstate["negative_streak"] = 0
+        if not bool(cstate.get("active")):
+            _cinerama_stats["detections"] = int(_cinerama_stats.get("detections") or 0) + 1
+        cstate["active"] = True
+        cstate["last_match"] = now
+    elif probe.get("ok"):
+        cstate["positive_streak"] = 0
+        cstate["negative_streak"] = int(cstate.get("negative_streak") or 0) + 1
+        if int(cstate["negative_streak"]) >= 2:
+            cstate["active"] = False
+    cstate["hits"] = int(probe.get("cinerama_hits") or 0)
+    cstate["last_probe"] = now
+    cstate["ocr_text"] = str(probe.get("ocr_text") or "")[:500]
+    cstate["error"] = str(probe.get("error") or "")[:120]
+    _cinerama_placeholder_state[cid] = cstate
+    _cinerama_stats["active_channels"] = sum(
+        1 for value in _cinerama_placeholder_state.values()
+        if bool((value or {}).get("active"))
+    )
 
     state = dict(_ottclub_ad_state.get(cid) or {})
     detected = bool(probe.get("ok") and probe.get("ottclub_detected"))
@@ -486,6 +539,10 @@ def _store_server_burned_probe(item: dict, probe: dict):
         "ottclub_active": bool(state.get("active")),
         "ottclub_positive_streak": int(state.get("positive_streak") or 0),
         "ottclub_negative_streak": int(state.get("negative_streak") or 0),
+        "cinerama_hits": int(probe.get("cinerama_hits") or 0),
+        "cinerama_detected": bool(cdetected),
+        "cinerama_active": bool(cstate.get("active")),
+        "cinerama_negative_streak": int(cstate.get("negative_streak") or 0),
         "seen_at": max(int(current.get("seen_at") or 0), now),
     })
     channels[cid] = current
@@ -1293,6 +1350,15 @@ async def api_diagnostics(request):
                 )[:20],
                 "mode": "observe_only",
             },
+            "cinerama_placeholder": {
+                "probes": int(_cinerama_stats.get("probes") or 0),
+                "detections": int(_cinerama_stats.get("detections") or 0),
+                "active_channels": int(_cinerama_stats.get("active_channels") or 0),
+                "last_channel_id": str(_cinerama_stats.get("last_channel_id") or ""),
+                "last_hits": int(_cinerama_stats.get("last_hits") or 0),
+                "last_probe": int(_cinerama_stats.get("last_probe") or 0),
+                "mode": "temporary_overlay_auto_recheck",
+            },
             "ottclub_detector": {
                 "probes": int(_ottclub_stats.get("probes") or 0),
                 "errors": int(_ottclub_stats.get("errors") or 0),
@@ -1477,14 +1543,18 @@ async def api_ad_state(request):
     _burned_ad_stats["last_free_play"] = int(time.time())
     _burned_ad_stats["last_free_play_channel_id"] = cid
     ott = dict(_ottclub_ad_state.get(cid) or {})
+    cin = dict(_cinerama_placeholder_state.get(cid) or {})
+    active = bool(ott.get("active") or cin.get("active"))
+    reason = "cinerama_placeholder" if bool(cin.get("active")) else ("ottclub" if bool(ott.get("active")) else "")
     return web.json_response({
         "ok": True,
-        # Replacement is intentionally OTTCLUB-only.
-        "active": bool(ott.get("active")),
+        "active": active,
+        "reason": reason,
         "ottclub_active": bool(ott.get("active")),
         "ottclub_hits": int(ott.get("hits") or 0),
-        "ottclub_last_match": int(ott.get("last_match") or 0),
-        "checked_at": float(ott.get("last_probe") or 0),
+        "cinerama_active": bool(cin.get("active")),
+        "cinerama_hits": int(cin.get("hits") or 0),
+        "checked_at": float(max(ott.get("last_probe") or 0, cin.get("last_probe") or 0)),
     }, headers={"Cache-Control": "no-store"})
 
 
