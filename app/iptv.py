@@ -150,6 +150,7 @@ _burned_ad_stats = {
     "server_last_score": 0,
 }
 _burned_ad_last_report = {}
+_ottclub_quick_inflight = set()
 _ottclub_ad_state = {}
 _cinerama_placeholder_state = {}
 _cinerama_stats = {
@@ -367,6 +368,68 @@ def _ottclub_text_hit(text: str) -> bool:
         if re.search(r"OTTC[L1I]UB", value):
             return True
     return bool(re.search(r"\b[O0]TT\s*[-_. ]?\s*CL[UVI]B\b", raw))
+
+
+async def _quick_ottclub_probe(item: dict):
+    cid = str(item.get("id") or "")
+    url = str(item.get("url") or "")
+    if not cid or not url.startswith(("http://", "https://")) or cid in _ottclub_quick_inflight:
+        return
+    _ottclub_quick_inflight.add(cid)
+    proc = None
+    try:
+        width, height = 640, 360
+        frame_size = width * height
+        cmd = [
+            "ffmpeg", "-hide_banner", "-loglevel", "error",
+            "-i", url,
+            "-vf", f"fps=1,scale={width}:{height},format=gray",
+            "-frames:v", "1",
+            "-f", "rawvideo", "pipe:1",
+        ]
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=8)
+        if len(stdout) < frame_size:
+            return
+        text = await _ocr_ottclub_frame(stdout[:frame_size], width, height)
+        hit = _ottclub_text_hit(text)
+        now = int(time.time())
+        state = dict(_ottclub_ad_state.get(cid) or {})
+        state["last_probe"] = now
+        state["hits"] = 1 if hit else 0
+        state["ocr_text"] = re.sub(r"\s+", " ", str(text or "")).strip()[:500]
+        state["error"] = ""
+        if hit:
+            if not bool(state.get("active")):
+                _ottclub_stats["detections"] = int(_ottclub_stats.get("detections") or 0) + 1
+            state["active"] = True
+            state["last_match"] = now
+            state["positive_streak"] = max(1, int(state.get("positive_streak") or 0))
+            state["negative_streak"] = 0
+        else:
+            # A single quick negative frame is not enough to clear an active ad.
+            # The existing full 3-frame watcher remains responsible for clearing it.
+            if not bool(state.get("active")):
+                state["negative_streak"] = int(state.get("negative_streak") or 0) + 1
+        _ottclub_ad_state[cid] = state
+        _ottclub_stats["probes"] = int(_ottclub_stats.get("probes") or 0) + 1
+        _ottclub_stats["last_probe"] = now
+        _ottclub_stats["last_channel_id"] = cid
+        _ottclub_stats["last_hits"] = 1 if hit else 0
+        _ottclub_stats["last_text"] = state["ocr_text"]
+    except Exception:
+        _ottclub_stats["errors"] = int(_ottclub_stats.get("errors") or 0) + 1
+    finally:
+        if proc and proc.returncode is None:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        _ottclub_quick_inflight.discard(cid)
 
 
 async def _server_burned_ad_probe(item: dict) -> dict:
@@ -1582,6 +1645,11 @@ async def api_ad_viewing(request):
         return web.json_response({"ok": False, "error": "unknown channel"}, status=404)
     _burned_ad_stats["last_free_play"] = int(time.time())
     _burned_ad_stats["last_free_play_channel_id"] = cid
+    ott = dict(_ottclub_ad_state.get(cid) or {})
+    if int(time.time()) - int(ott.get("last_probe") or 0) >= 2:
+        asyncio.create_task(_quick_ottclub_probe(item))
+    if int(time.time()) - int(ott.get("last_probe") or 0) >= 2:
+        asyncio.create_task(_quick_ottclub_probe(item))
     return web.json_response({"ok": True}, headers={"Cache-Control": "no-store"})
 
 
