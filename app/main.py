@@ -376,10 +376,9 @@ async def language_handler(q: CallbackQuery):
     await _track_message(sent.chat.id, sent.message_id)
     if not ADMIN_ID or int(q.from_user.id) != int(ADMIN_ID):
         payment = await q.message.answer(
-            PAYMENT_TEXT[lang],
-            parse_mode='HTML',
+            {'hy':'💳 Ընտրեք վճարման եղանակը','ru':'💳 Выберите способ оплаты','en':'💳 Choose a payment method'}[lang],
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(text=PAY_BUTTON[lang], callback_data='payment:paid')
+                InlineKeyboardButton(text={'hy':'💵 Վճարել','ru':'💵 Оплатить','en':'💵 Pay'}[lang], callback_data='payment:choose')
             ]])
         )
         await _track_message(payment.chat.id, payment.message_id)
@@ -388,6 +387,61 @@ async def language_handler(q: CallbackQuery):
         reply_markup=miniapp_keyboard(q.from_user.id, lang)
     )
     await _track_message(menu.chat.id, menu.message_id)
+
+@dp.callback_query(F.data == 'payment:choose')
+async def payment_choose_handler(q: CallbackQuery):
+    uid = int(q.from_user.id)
+    lang = await get_user_language(uid) or _telegram_lang(q.from_user)
+    await q.answer()
+    await q.message.answer(
+        {'hy':'Ընտրեք վճարման եղանակը','ru':'Выберите способ оплаты','en':'Choose a payment method'}[lang],
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text='💵 USDT TRC20', callback_data='payment:usdt')],
+            [InlineKeyboardButton(text={'hy':'💳 Բանկային քարտ','ru':'💳 Банковская карта','en':'💳 Bank card'}[lang], callback_data='payment:card')],
+        ])
+    )
+
+@dp.callback_query(F.data == 'payment:usdt')
+async def payment_usdt_handler(q: CallbackQuery):
+    uid = int(q.from_user.id)
+    lang = await get_user_language(uid) or _telegram_lang(q.from_user)
+    await q.answer()
+    await set_setting(f'payment_method:{uid}', 'usdt')
+    sent = await q.message.answer(
+        PAYMENT_TEXT[lang],
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text=PAY_BUTTON[lang], callback_data='payment:paid')
+        ]])
+    )
+    await _track_message(sent.chat.id, sent.message_id)
+
+@dp.callback_query(F.data == 'payment:card')
+async def payment_card_handler(q: CallbackQuery):
+    uid = int(q.from_user.id)
+    lang = await get_user_language(uid) or _telegram_lang(q.from_user)
+    await q.answer({'hy':'Հարցումն ուղարկված է','ru':'Запрос отправлен','en':'Request sent'}[lang], show_alert=True)
+    await set_setting(f'payment_method:{uid}', 'card')
+    try:
+        if ADMIN_ID:
+            name = str(q.from_user.full_name or uid)
+            username = ('@' + q.from_user.username) if q.from_user.username else ''
+            sent = await bot.send_message(
+                ADMIN_ID,
+                '💳 Abaj TV · оплата банковской картой\n'
+                f'Пользователь: {name} {username}\n'
+                f'Telegram ID: {uid}\n\n'
+                'Пользователь хочет оплатить по карте.\n'
+                '↩️ Ответьте на это сообщение номером карты — бот отправит ответ пользователю.'
+            )
+            await set_setting(f'card_payment_admin_msg:{int(sent.message_id)}', str(uid))
+            await _track_message(sent.chat.id, sent.message_id)
+    except Exception as exc:
+        logging.warning('Card payment admin notify failed: %r', exc)
+    sent = await q.message.answer(
+        {'hy':'💳 Քարտով վճարման հարցումն ուղարկված է ադմինիստրատորին։ Նա կուղարկի քարտի համարը այստեղ։','ru':'💳 Запрос на оплату по карте отправлен администратору. Он пришлёт номер карты сюда.','en':'💳 Card payment request was sent to the administrator. The card number will be sent here.'}[lang]
+    )
+    await _track_message(sent.chat.id, sent.message_id)
 
 @dp.callback_query(F.data == 'payment:paid')
 async def payment_paid_handler(q: CallbackQuery):
@@ -410,12 +464,15 @@ async def payment_paid_handler(q: CallbackQuery):
         if ADMIN_ID:
             name = str(q.from_user.full_name or uid)
             username = ('@' + q.from_user.username) if q.from_user.username else ''
+            method = await get_setting(f'payment_method:{uid}', 'usdt')
+            method_text = 'Банковская карта' if method == 'card' else 'USDT TRC20'
             sent = await bot.send_message(
                 ADMIN_ID,
                 '💳 Abaj TV: пользователь нажал «Оплатил»\n'
                 f'Пользователь: {name} {username}\n'
                 f'Telegram ID: {uid}\n'
-                'Тариф: 12 месяцев · 12 USDT · TRC20',
+                f'Способ: {method_text}\n'
+                'Тариф: 12 месяцев · 12 USDT',
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
                     InlineKeyboardButton(text='✅ Получил', callback_data=f'payment:received:{uid}')
                 ]])
@@ -459,6 +516,26 @@ async def support_reply_handler(m: Message):
         return
     sender_id = int(m.from_user.id)
     replied_id = int(m.reply_to_message.message_id)
+
+    # Admin replies with a bank card number for a card-payment request.
+    if ADMIN_ID and sender_id == int(ADMIN_ID):
+        raw_card_uid = await get_setting(f'card_payment_admin_msg:{replied_id}', '')
+        try:
+            card_uid = int(raw_card_uid or 0)
+        except Exception:
+            card_uid = 0
+        if card_uid > 0:
+            lang = await get_user_language(card_uid) or 'ru'
+            sent = await bot.send_message(
+                card_uid,
+                ({'hy':'💳 Բանկային քարտի համարը՝\n\n','ru':'💳 Номер банковской карты для оплаты:\n\n','en':'💳 Bank card number for payment:\n\n'}[lang] + m.text),
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                    InlineKeyboardButton(text=PAY_BUTTON[lang], callback_data='payment:paid')
+                ]])
+            )
+            await _track_message(sent.chat.id, sent.message_id)
+            await _answer(m, '✅ Номер карты отправлен пользователю.')
+            return
 
     # Admin replies to a support message that came from the Mini App.
     if ADMIN_ID and sender_id == int(ADMIN_ID):

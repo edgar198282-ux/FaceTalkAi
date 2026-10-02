@@ -359,6 +359,8 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
       <option value="1080">1080p</option>
     </select>
     <button class="settingsAction" id="settingsAdminBtn" onclick="closeTvSettings();openAdmin()" style="display:none;background:#0b5f9e">🛠 Админ-панель</button>
+    <button class="settingsAction" id="appUpdateBtn" onclick="manualAppUpdate()" style="display:none;background:#123b78">🔄 Проверить обновление</button>
+    <div id="appVersionText" class="deviceMeta" style="display:none;text-align:center;margin-top:7px"></div>
     <button class="settingsClose" id="settingsCloseBtn" onclick="closeTvSettings()">Закрыть</button>
   </div>
 </div>
@@ -1313,8 +1315,38 @@ async function sendSupportAdmin(){
     if(status)status.textContent=appLang==='hy'?'Չհաջողվեց ուղարկել':(appLang==='en'?'Failed to send':'Не удалось отправить');
   }finally{if(btn)btn.disabled=false}
 }
+async function refreshAppUpdateState(){
+  const btn=document.getElementById('appUpdateBtn');
+  const ver=document.getElementById('appVersionText');
+  if(!btn||!ver)return;
+  const inApk=!!tvAppVersionCode;
+  btn.style.display=inApk?'block':'none';
+  ver.style.display=inApk?'block':'none';
+  if(!inApk)return;
+  const current=tvAppVersion||String(tvAppVersionCode);
+  ver.textContent=(appLang==='hy'?'Տարբերակ՝ v':(appLang==='en'?'Version: v':'Версия: v'))+current;
+  btn.textContent=appLang==='hy'?'🔄 Ստուգել թարմացումը':(appLang==='en'?'🔄 Check for update':'🔄 Проверить обновление');
+  try{
+    const r=await fetch('/api/app-release?ts='+Date.now(),{cache:'no-store'});
+    if(!r.ok)return;
+    const d=await r.json();
+    const latest=Number(d.version_code||0);
+    if(d.available&&latest>tvAppVersionCode){
+      const v=String(d.version_name||latest);
+      btn.textContent=appLang==='hy'?('⬆️ Թարմացնել մինչև v'+v):(appLang==='en'?('⬆️ Update to v'+v):('⬆️ Обновить до v'+v));
+      btn.dataset.update='1';
+    }else{
+      btn.dataset.update='0';
+    }
+  }catch(e){}
+}
+function manualAppUpdate(){
+  if(!tvAppVersionCode)return;
+  window.location.href='facetalk://check-update';
+}
 function openTvSettings(){
   paintTvSettings();
+  refreshAppUpdateState();
   loadEdemStatus();
   loadMyDevices();
   checkAdmin();
