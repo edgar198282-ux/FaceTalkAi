@@ -67,8 +67,8 @@ async def publish():
             print(text, flush=True)
 
 async def main():
-    # Full channel brain scan every 30 minutes by default. Manual refresh still runs immediately.
-    interval = max(900, int(os.getenv("IPTV_WORKER_INTERVAL", "1800")))
+    # Full AI channel analysis once every 24 hours by default. Manual refresh still runs immediately.
+    interval = max(3600, int(os.getenv("IPTV_WORKER_INTERVAL", "86400")))
     try:
         await restore_health()
     except Exception as exc:

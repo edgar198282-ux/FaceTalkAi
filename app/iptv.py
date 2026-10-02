@@ -38,9 +38,9 @@ SOURCE_URLS = [
     ("MD", "https://iptv-org.github.io/iptv/countries/md.m3u"),
 ]
 MAX_STREAMS = max(1500, int(os.getenv("IPTV_MAX_STREAMS", "3500")))
-REFRESH_SECONDS = max(900, int(os.getenv("IPTV_REFRESH_SECONDS", "1800")))
+REFRESH_SECONDS = max(3600, int(os.getenv("IPTV_REFRESH_SECONDS", "86400")))
 PROBE_CONCURRENCY = 40
-QUARANTINE_SECONDS = 60 * 60
+QUARANTINE_SECONDS = max(3600, int(os.getenv("IPTV_QUARANTINE_SECONDS", "86400")))
 DATA_ROOT = os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or os.path.join(os.getcwd(), "data")
 HEALTH_PATH = os.path.join(DATA_ROOT, "iptv_health.json")
 SNAPSHOT_PATH = os.path.join(DATA_ROOT, "iptv_snapshot.json")
@@ -1616,7 +1616,9 @@ async def refresh_channels(force: bool = False):
                 "adult_channels": sum(1 for x in channels.values() if bool(x.get("adult"))),
                 "with_logo": sum(1 for x in channels.values() if bool(x.get("logo"))),
                 "with_epg": sum(1 for x in channels.values() if bool(x.get("epg_now"))),
-                "scan_interval_seconds": 1800,
+                "scan_interval_seconds": REFRESH_SECONDS,
+                "quarantine_seconds": QUARANTINE_SECONDS,
+                "full_analysis_at": int(time.time()),
                 "discovered_api_streams": len(discovered_api),
                 "logos_enriched": enriched_logos,
                 "ru_logo_catalog_entries": len(ru_logo_catalog),
