@@ -1460,18 +1460,15 @@ async def api_ad_state(request):
     item = _state["channels"].get(cid)
     if not item:
         return web.json_response({"ok": False, "active": False, "error": "unknown channel"}, status=404)
-    data = await _free_channel_ad_state(item)
     ott = dict(_ottclub_ad_state.get(cid) or {})
     return web.json_response({
         "ok": True,
-        # Replacement is intentionally OTTCLUB-only. Generic HLS markers remain
-        # diagnostic information but never trigger the replacement overlay.
+        # Replacement is intentionally OTTCLUB-only.
         "active": bool(ott.get("active")),
         "ottclub_active": bool(ott.get("active")),
         "ottclub_hits": int(ott.get("hits") or 0),
         "ottclub_last_match": int(ott.get("last_match") or 0),
-        "marker": str(data.get("marker") or ""),
-        "checked_at": float(data.get("checked_at") or 0),
+        "checked_at": float(ott.get("last_probe") or 0),
     }, headers={"Cache-Control": "no-store"})
 
 
