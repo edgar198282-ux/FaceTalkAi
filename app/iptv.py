@@ -730,9 +730,6 @@ def _looks_junk(item: dict) -> bool:
         return True
     if not url.startswith(("http://", "https://")):
         return True
-    host = (urlparse(url).hostname or "").lower()
-    if host.endswith("cdn.ngenix.net"):
-        return True
     return False
 
 
