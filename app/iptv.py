@@ -935,11 +935,22 @@ def _epg_logo_for_channel(item: dict) -> str:
             return logo
     aliases = [item.get("name") or ""] + list(item.get("epg_aliases") or [])
     logo_names = _state.get("epg_logo_names") or {}
+    matched = set()
     for alias in aliases:
+        variants = []
         for variant in _epg_name_variants(alias):
+            if variant not in variants:
+                variants.append(variant)
+        for variant in _logo_name_variants(alias):
+            if variant not in variants:
+                variants.append(variant)
+        for variant in variants:
             logo = str(logo_names.get(variant) or "").strip()
             if logo:
-                return logo
+                matched.add(logo)
+    # Ambiguity-safe: only use name fallback when all matching aliases agree.
+    if len(matched) == 1:
+        return next(iter(matched))
     return ""
 
 
@@ -996,27 +1007,42 @@ async def _fetch_text(session: aiohttp.ClientSession, url: str) -> str:
 
 
 def _logo_name_variants(value: str) -> list[str]:
-    base = _normalize_name(value)
-    if not base:
+    raw = str(value or "").strip()
+    if not raw:
         return []
-    variants = [base]
 
-    # Safe cosmetic variants only: resolution/copy markers are already removed
-    # by _normalize_name; here we normalize common Russian channel labels.
-    compact = re.sub(r"\b(?:телеканал|канал)\b", " ", base, flags=re.I)
-    compact = re.sub(r"\s+", " ", compact).strip()
-    if compact and compact not in variants:
-        variants.append(compact)
+    raw_variants = [raw]
 
-    # "ТК 21" / "ТВ 21" are often listed simply as "ТВ21".
-    tk_tv = re.sub(r"\bтк\b", "тв", compact, flags=re.I)
-    tk_tv = re.sub(r"\s+", "", tk_tv)
-    if tk_tv and tk_tv not in variants:
-        variants.append(tk_tv)
+    # Remove only provider metadata/copy suffixes; keep the channel name itself.
+    cleaned = re.sub(r"\[[^\]]*(?:not\s*24/?7|geo[- ]?blocked|offline|backup)[^\]]*\]", " ", raw, flags=re.I)
+    cleaned = re.sub(r"\((?:\d{3,4}p|\d{3,4}i|hd|fhd|uhd|sd)\)", " ", cleaned, flags=re.I)
+    cleaned = re.sub(r"\s*\((?:2|3|4|5)\)\s*$", " ", cleaned, flags=re.I)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if cleaned and cleaned != raw:
+        raw_variants.append(cleaned)
 
-    joined = re.sub(r"\s+", "", compact)
-    if len(joined) >= 4 and joined not in variants:
-        variants.append(joined)
+    variants = []
+    for source in raw_variants:
+        base = _normalize_name(source)
+        if not base:
+            continue
+        if base not in variants:
+            variants.append(base)
+
+        compact = re.sub(r"\b(?:телеканал|канал)\b", " ", base, flags=re.I)
+        compact = re.sub(r"\s+", " ", compact).strip()
+        if compact and compact not in variants:
+            variants.append(compact)
+
+        # "ТК 21" / "ТВ 21" are often listed simply as "ТВ21".
+        tk_tv = re.sub(r"\bтк\b", "тв", compact, flags=re.I)
+        tk_tv = re.sub(r"\s+", "", tk_tv)
+        if tk_tv and tk_tv not in variants:
+            variants.append(tk_tv)
+
+        joined = re.sub(r"\s+", "", compact)
+        if len(joined) >= 4 and joined not in variants:
+            variants.append(joined)
 
     return variants
 
