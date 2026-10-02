@@ -1215,6 +1215,9 @@ async def refresh_channels(force: bool = False):
                     tvg_id = str(x.get('tvg_id') or '').strip().lower()
                     if tvg_id and tvg_id not in logo_by_id:
                         logo_by_id[tvg_id] = logo
+                    base_tvg_id = tvg_id.split("@", 1)[0].strip() if tvg_id else ""
+                    if base_tvg_id and base_tvg_id not in logo_by_id:
+                        logo_by_id[base_tvg_id] = logo
                     aliases = [x.get('name') or ''] + list(x.get('epg_aliases') or [])
                     for alias in aliases:
                         normalized = _normalize_name(alias)
@@ -1230,6 +1233,10 @@ async def refresh_channels(force: bool = False):
                     if not str(item.get('logo') or '').strip():
                         tvg_id = str(item.get('tvg_id') or '').strip().lower()
                         logo = logo_by_id.get(tvg_id) if tvg_id else None
+                        if not logo and tvg_id:
+                            base_tvg_id = tvg_id.split("@", 1)[0].strip()
+                            if base_tvg_id:
+                                logo = logo_by_id.get(base_tvg_id)
                         if not logo:
                             logo = logo_by_name.get((str(item.get('country') or '').upper(), _normalize_name(item.get('name') or '')))
                         if not logo and str(item.get('country') or '').upper() == 'RU':
