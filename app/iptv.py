@@ -1196,7 +1196,7 @@ async def _discover_iptv_org_api(session: aiohttp.ClientSession) -> tuple[list[d
             cid = str(x.get('channel'))
             if cid not in logo_map or bool(x.get('in_use')):
                 logo_map[cid] = str(x.get('url'))
-        full_logo_catalog = {"by_id": {}, "by_country": {}, "global": {}}
+        full_logo_catalog = {"by_id": {}, "by_country": {}, "global": {}, "slug": {}}
         for cid, m in meta.items():
             logo = logo_map.get(cid)
             if not logo:
@@ -1209,6 +1209,9 @@ async def _discover_iptv_org_api(session: aiohttp.ClientSession) -> tuple[list[d
                     if country:
                         full_logo_catalog["by_country"].setdefault((country, variant), set()).add(logo)
                     full_logo_catalog["global"].setdefault(variant, set()).add(logo)
+                slug = _tvlogo_slug(alias or '')
+                if slug and slug not in {"tv", "vse-tv", "sport", "kino", "music", "muzika"}:
+                    full_logo_catalog["slug"].setdefault(slug, set()).add(logo)
 
         out = []
         for s in streams:
@@ -1259,7 +1262,7 @@ async def _discover_iptv_org_api(session: aiohttp.ClientSession) -> tuple[list[d
             out.append(item)
         return out, full_logo_catalog
     except Exception:
-        return [], {"by_id": {}, "by_country": {}, "global": {}}
+        return [], {"by_id": {}, "by_country": {}, "global": {}, "slug": {}}
 
 
 async def _probe(session: aiohttp.ClientSession, item: dict, sem: asyncio.Semaphore) -> dict:
@@ -1404,6 +1407,12 @@ async def refresh_channels(force: bool = False):
                                 full_global_matches.update(full_global.get(v) or set())
                             if len(full_global_matches) == 1:
                                 logo = next(iter(full_global_matches))
+                        if not logo:
+                            slug = _tvlogo_slug(item.get('name') or '')
+                            if slug and slug not in {"tv", "vse-tv", "sport", "kino", "music", "muzika"}:
+                                slug_matches = (iptv_org_logo_catalog.get("slug") or {}).get(slug) or set()
+                                if len(slug_matches) == 1:
+                                    logo = next(iter(slug_matches))
                         if not logo:
                             country = str(item.get('country') or '').upper()
                             catalog = free_tv_logo_catalogs.get(country) or {}
