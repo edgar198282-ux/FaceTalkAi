@@ -160,7 +160,7 @@ def miniapp_keyboard(user_id: int | None = None, lang: str = 'ru'):
     labels={'hy':'📺 Բացել Abaj TV','ru':'📺 Открыть Abaj TV','en':'📺 Open Abaj TV'}
     apk_labels={'hy':'📱 Ներբեռնել APK','ru':'📱 Скачать APK','en':'📱 Download APK'}
     tv_apk_labels={'hy':'🖥️ Ներբեռնել TV APK','ru':'🖥️ Скачать TV APK','en':'🖥️ Download TV APK'}
-    qr_labels={'hy':'📷 QR TV-ի համար','ru':'📷 QR для TV','en':'📷 QR for TV'}
+    qr_labels={'hy':'📤 Կիսվել','ru':'📤 Поделиться','en':'📤 Share'}
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=labels.get(lang, labels['ru']), web_app=WebAppInfo(url=_miniapp_url_for_user(user_id)))],
                   [KeyboardButton(text=apk_labels.get(lang, apk_labels['ru']))],
@@ -174,14 +174,14 @@ async def _ensure_latest_menu(m: Message, lang: str):
     if not m.from_user:
         return
     key = f'menu_version:{int(m.from_user.id)}'
-    if await get_setting(key, '') == 'qr-v1':
+    if await get_setting(key, '') == 'share-v2':
         return
     await _answer(
         m,
         {'hy':'Թարմացված մենյու 👇','ru':'Обновлённое меню 👇','en':'Updated menu 👇'}.get(lang, 'Обновлённое меню 👇'),
         reply_markup=miniapp_keyboard(m.from_user.id, lang),
     )
-    await set_setting(key, 'qr-v1')
+    await set_setting(key, 'share-v2')
 
 def language_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -632,7 +632,7 @@ async def download_tv_apk(m: Message):
     else:
         await _answer(m, caption, reply_markup=keyboard)
 
-@dp.message(F.text.in_({'📷 QR TV-ի համար','📷 QR для TV','📷 QR for TV'}))
+@dp.message(F.text.in_({'📷 QR TV-ի համար','📷 QR для TV','📷 QR for TV','📤 Կիսվել','📤 Поделиться','📤 Share'}))
 async def show_tv_qr(m: Message):
     await _track_incoming(m)
     lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
@@ -640,10 +640,10 @@ async def show_tv_qr(m: Message):
     if not qr_photo:
         return await _answer(m, 'QR временно недоступен.')
     caption = {
-        'hy':'📷 Սկանավորեք QR կոդը՝ Abaj TV բոտը անմիջապես բացելու համար։',
-        'ru':'📷 Сканируйте QR-код — сразу откроется бот Abaj TV.',
-        'en':'📷 Scan the QR code to open the Abaj TV bot directly.',
-    }.get(lang, '📷 Сканируйте QR-код — сразу откроется бот Abaj TV.')
+        'hy':'📤 Կիսվեք Abaj TV-ով\n\n📷 Թող մյուս մարդը սկանավորի QR կոդը — Abaj TV բոտը անմիջապես կբացվի։',
+        'ru':'📤 Поделиться Abaj TV\n\n📷 Пусть человек сканирует QR-код — сразу откроется бот Abaj TV.',
+        'en':'📤 Share Abaj TV\n\n📷 Let the other person scan the QR code — the Abaj TV bot opens directly.',
+    }.get(lang, '📤 Поделиться Abaj TV\n\n📷 Пусть человек сканирует QR-код — сразу откроется бот Abaj TV.')
     markup = InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(
             text={'hy':'🤖 Բացել բոտը','ru':'🤖 Открыть бота','en':'🤖 Open bot'}.get(lang, '🤖 Открыть бота'),
