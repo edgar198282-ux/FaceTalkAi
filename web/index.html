@@ -121,6 +121,7 @@ body.playerFullscreenActive{overflow:hidden!important;background:#000!important}
 .playerView.appFullscreen .playerGestureHint,.playerView:fullscreen .playerGestureHint,.playerView:-webkit-full-screen .playerGestureHint{position:fixed!important;left:50%!important;top:50%!important;z-index:2147483647!important}
 .playerChannelHud{position:absolute;left:14px;top:14px;z-index:140;display:none;align-items:center;gap:10px;max-width:min(82vw,430px);padding:8px 11px;border-radius:14px;background:rgba(0,0,0,.68);backdrop-filter:blur(8px);color:#fff;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.28)}
 .playerChannelHud.show{display:flex}
+.nativeTv.playerClean .playerChannelHud{display:none!important}
 .playerChannelHudLogo{width:46px;height:46px;min-width:46px;border-radius:10px;object-fit:contain;background:rgba(255,255,255,.92);padding:3px;box-sizing:border-box}
 .playerChannelHudFallback{width:46px;height:46px;min-width:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.92);color:#60727f;font-weight:900;font-size:14px}
 .playerChannelHudText{min-width:0}
@@ -525,6 +526,7 @@ let tvRailIndex=0;
 let tvAutoResumeDone=false;
 let tvZapTimer=null;
 let tvPlayerUiTimer=null;
+let playerChannelHudTimer=null;
 let tvLastAutoTimer=null;
 let tvLastAutoInterval=null;
 let tvLastAutoCancelled=false;
@@ -1914,6 +1916,21 @@ function fmtDurationCompact(sec){
   if(h>0)return h+'ч '+String(m).padStart(2,'0')+'м';
   return Math.max(0,m)+'м';
 }
+function hidePlayerChannelHud(){
+  const hud=document.getElementById('playerChannelHud');
+  if(hud)hud.classList.remove('show');
+  if(playerChannelHudTimer){clearTimeout(playerChannelHudTimer);playerChannelHudTimer=null}
+}
+function showPlayerChannelHudForThreeSeconds(){
+  const hud=document.getElementById('playerChannelHud');
+  if(!hud)return;
+  hud.classList.add('show');
+  if(playerChannelHudTimer)clearTimeout(playerChannelHudTimer);
+  playerChannelHudTimer=setTimeout(()=>{
+    playerChannelHudTimer=null;
+    hud.classList.remove('show');
+  },3000);
+}
 function updatePlayerChannelHud(){
   const hud=document.getElementById('playerChannelHud');
   const logo=document.getElementById('playerChannelHudLogo');
@@ -1940,7 +1957,7 @@ function updatePlayerChannelHud(){
     const leftLabel=appLang==='hy'?'Մնացել է':(appLang==='en'?'Left':'Осталось');
     time.textContent=passedLabel+' '+fmtDurationCompact(elapsed)+' · '+leftLabel+' '+fmtDurationCompact(left);
     progress.style.width=epgProgress(p)+'%';
-    hud.classList.add('show');
+    if(!playerChannelHudTimer&&!hud.dataset.shownOnce)showPlayerChannelHudForThreeSeconds();
   }else{
     const v=document.getElementById('video');
     if(v&&Number.isFinite(v.duration)&&v.duration>0){
@@ -1954,7 +1971,7 @@ function updatePlayerChannelHud(){
       time.textContent=appLang==='hy'?'LIVE · EPG չկա':(appLang==='en'?'LIVE · no EPG':'LIVE · нет EPG');
       progress.style.width='0%';
     }
-    hud.classList.add('show');
+    if(!playerChannelHudTimer&&!hud.dataset.shownOnce)showPlayerChannelHudForThreeSeconds();
   }
 }
 function updatePlayerRemaining(){
@@ -2624,6 +2641,9 @@ function startFreeAdWatch(ch){
 }
 
 function openPlayer(id){
+
+  const hud=document.getElementById('playerChannelHud');
+  if(hud){hud.dataset.shownOnce='';hidePlayerChannelHud();}
   const ch=channels.find(x=>x.id===id);
   if(!ch)return;
   if(current&&current.id!==ch.id){
@@ -2634,6 +2654,8 @@ function openPlayer(id){
     localStorage.setItem('iptv_previous_channel',previousChannelId);
   }
   current=ch;
+  const hudNow=document.getElementById('playerChannelHud');
+  if(hudNow){hudNow.dataset.shownOnce='1';updatePlayerChannelHud();showPlayerChannelHudForThreeSeconds();}
   lastChannelId=ch.id;
   localStorage.setItem('iptv_last_channel',ch.id);
   syncDirtyLast=true;
@@ -3007,6 +3029,8 @@ function openTvRailFocused(){
   if(ch){toggleTvRail(false);openPlayer(ch.id)}
 }
 function closePlayer(){
+
+  hidePlayerChannelHud();
   stopFreeAdWatch();
   clearFirstFrameTimer();
   if(streamWarmTimer){clearTimeout(streamWarmTimer);streamWarmTimer=null}
