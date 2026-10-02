@@ -5,11 +5,14 @@ import hashlib
 import hmac
 import json
 import time
+from io import BytesIO
 from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
+
+import qrcode
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
-from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile
+from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile, BufferedInputFile
 
 from .config import TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_TOKEN_SOURCE, MINIAPP_URL, DATA_DIR, DB_PATH, EXPECTED_BOT_USERNAME, ADMIN_ID
 from .db import init_db, set_user_language, get_user_language, get_setting, set_setting, list_settings_prefix
@@ -71,6 +74,27 @@ def _apk_download_url():
 
 def _tv_apk_download_url():
     return "https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-tv-compat/AbajTV-TV-compat.apk"
+
+async def _bot_start_link(payload: str = "") -> str:
+    username = EXPECTED_BOT_USERNAME.strip().lstrip('@') if EXPECTED_BOT_USERNAME else ''
+    if not username and bot:
+        try:
+            me = await bot.get_me()
+            username = str(getattr(me, 'username', '') or '').strip().lstrip('@')
+        except Exception:
+            username = ''
+    if not username:
+        return ''
+    return f"https://t.me/{username}?start={payload}" if payload else f"https://t.me/{username}"
+
+async def _tv_apk_qr_photo() -> tuple[BufferedInputFile | None, str]:
+    link = await _bot_start_link('tv_apk')
+    if not link:
+        return None, ''
+    image = qrcode.make(link)
+    buf = BytesIO()
+    image.save(buf, format='PNG')
+    return BufferedInputFile(buf.getvalue(), filename='AbajTV-TV-QR.png'), link
 
 def start_keyboard(user_id: int | None = None, lang: str = "ru"):
     rows = []
@@ -290,6 +314,20 @@ async def start_handler(m: Message):
         )
         return
 
+    if payload == 'tv_apk':
+        tv_apk_url = _tv_apk_download_url()
+        await _answer(
+            m,
+            {'hy':'📺 Abaj TV Android TV APK','ru':'📺 Abaj TV для Android TV','en':'📺 Abaj TV for Android TV'}.get(lang, '📺 Abaj TV для Android TV'),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(
+                    text={'hy':'⬇️ Ներբեռնել TV APK','ru':'⬇️ Скачать TV APK','en':'⬇️ Download TV APK'}.get(lang, '⬇️ Скачать TV APK'),
+                    url=tv_apk_url,
+                )
+            ]]),
+        )
+        return
+
     if payload.startswith('tv_'):
         code = payload[3:].strip()
         if await _confirm_tv_pair_code(m, code, lang):
@@ -478,16 +516,27 @@ async def download_tv_apk(m: Message):
     await _track_incoming(m)
     lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
     tv_apk_url = _tv_apk_download_url()
-    await _answer(
-        m,
-        {'hy':'📺 Ներբեռնեք APK-ը Android TV-ի համար','ru':'📺 Скачайте APK для Android TV','en':'📺 Download APK for Android TV'}.get(lang, '📺 Скачайте APK для Android TV'),
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(
-                text={'hy':'📺 Ներբեռնել APK TV-ի համար','ru':'📺 Скачать APK для TV','en':'📺 Download APK for TV'}.get(lang, '📺 Скачать APK для TV'),
-                url=tv_apk_url,
-            )
-        ]]),
-    )
+    qr_photo, start_link = await _tv_apk_qr_photo()
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text={'hy':'⬇️ Ներբեռնել TV APK','ru':'⬇️ Скачать TV APK','en':'⬇️ Download TV APK'}.get(lang, '⬇️ Скачать TV APK'),
+            url=tv_apk_url,
+        )],
+        *([[InlineKeyboardButton(
+            text={'hy':'🤖 Բացել Abaj TV բոտը','ru':'🤖 Открыть бота Abaj TV','en':'🤖 Open Abaj TV bot'}.get(lang, '🤖 Открыть бота Abaj TV'),
+            url=start_link,
+        )]] if start_link else []),
+    ])
+    caption = {
+        'hy':'📺 Android TV APK\n\n📷 Սկանավորեք QR կոդը՝ Abaj TV բոտը անմիջապես բացելու համար։',
+        'ru':'📺 APK для Android TV\n\n📷 Сканируйте QR-код — сразу откроется бот Abaj TV.',
+        'en':'📺 Android TV APK\n\n📷 Scan the QR code to open the Abaj TV bot directly.',
+    }.get(lang, '📺 APK для Android TV\n\n📷 Сканируйте QR-код — сразу откроется бот Abaj TV.')
+    if qr_photo:
+        sent = await bot.send_photo(chat_id=m.chat.id, photo=qr_photo, caption=caption, reply_markup=keyboard)
+        await _track_message(sent.chat.id, sent.message_id)
+    else:
+        await _answer(m, caption, reply_markup=keyboard)
 
 @dp.message(F.text)
 async def text_handler(m: Message):
