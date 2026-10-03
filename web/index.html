@@ -112,11 +112,11 @@ button{cursor:pointer}
 }
 .playerView.open{display:flex}
 .playerView.miniPlayer{
-  inset:auto 12px calc(env(safe-area-inset-bottom,0px) + 76px) auto!important;
-  width:min(46vw,220px)!important;height:auto!important;aspect-ratio:16/9!important;
+  inset:auto 14px calc(env(safe-area-inset-bottom,0px) + 78px) auto!important;
+  width:min(53vw,365px)!important;height:auto!important;aspect-ratio:16/9!important;
   border-radius:14px!important;overflow:hidden!important;z-index:2147482500!important;
   background:#000!important;box-shadow:0 10px 32px rgba(0,0,0,.48)!important;
-  display:flex!important;transform:none!important;transition:width .18s ease,height .18s ease!important
+  display:flex!important;transform:none!important;transition:none!important;touch-action:none!important
 }
 .playerView.miniPlayer .playerTop,
 .playerView.miniPlayer .playerBottom,
@@ -130,13 +130,20 @@ button{cursor:pointer}
   padding:0!important;background:#000!important;display:flex!important
 }
 .playerView.miniPlayer video{width:100%!important;height:100%!important;object-fit:contain!important;background:#000!important}
-.miniPlayerClose{
-  display:none;position:absolute;right:6px;top:6px;z-index:2147483600;width:28px;height:28px;
-  border:0;border-radius:50%;background:rgba(0,0,0,.72);color:#fff;font-size:21px;line-height:28px;
-  align-items:center;justify-content:center;padding:0
+.miniPlayerControls{display:none;position:absolute;inset:0;z-index:2147483600;background:rgba(0,0,0,.28);pointer-events:none}
+.playerView.miniPlayer.showMiniControls .miniPlayerControls{display:block!important}
+.miniPlayerControls button{
+  position:absolute;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:#fff;
+  padding:0;text-shadow:0 2px 5px rgba(0,0,0,.8);pointer-events:auto;font-family:Arial,sans-serif
 }
-.playerView.miniPlayer .miniPlayerClose{display:flex!important}
+.miniSettings{left:10px;top:9px;width:34px;height:34px;font-size:25px}
+.miniPlayerClose{right:9px;top:8px;width:36px;height:36px;font-size:37px;font-weight:200;line-height:1}
+.miniRestore{left:50%;top:50%;transform:translate(-50%,-50%);width:52px;height:52px;font-size:35px}
+.miniPrev{left:10%;bottom:8px;width:40px;height:38px;font-size:26px}
+.miniPlay{left:50%;bottom:7px;transform:translateX(-50%);width:42px;height:40px;font-size:28px}
+.miniNext{right:10%;bottom:8px;width:40px;height:38px;font-size:26px}
 .playerView.miniPlayer .videoWrap{touch-action:none}
+.playerView.miniPlayer .freeAdOverlay{display:none!important}
 .playerView.nativePip{
   position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;
   z-index:2147483640!important;background:#000!important;display:flex!important
@@ -919,7 +926,14 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
   <div class="videoWrap" onclick="handlePlayerSurfaceClick(event)">
     <div class="playerBrand" onclick="dismissMobilePlayerLoading(event)"><img class="playerLoadingLogo" src="/static/abaj_tv_logo.jpg" alt="ABAJ TV"></div>
     <video id="video" preload="auto" playsinline webkit-playsinline disablepictureinpicture controlslist="nofullscreen nodownload noremoteplayback"></video>
-    <button id="miniPlayerClose" class="miniPlayerClose" aria-label="Закрыть" onclick="event.stopPropagation();closePlayer()">×</button>
+    <div id="miniPlayerControls" class="miniPlayerControls" onclick="event.stopPropagation()">
+      <button class="miniSettings" aria-label="Настройки" onclick="event.stopPropagation();openSettings()">⚙</button>
+      <button id="miniPlayerClose" class="miniPlayerClose" aria-label="Закрыть" onclick="event.stopPropagation();closePlayer()">×</button>
+      <button class="miniRestore" aria-label="Развернуть" onclick="event.stopPropagation();restoreMiniPlayer()">↗↙</button>
+      <button class="miniPrev" aria-label="Предыдущий канал" onclick="event.stopPropagation();playPrev()">◀|</button>
+      <button id="miniPlayPause" class="miniPlay" aria-label="Пауза" onclick="event.stopPropagation();togglePlayerPlayback()">Ⅱ</button>
+      <button class="miniNext" aria-label="Следующий канал" onclick="event.stopPropagation();playNext()">|▶</button>
+    </div>
     <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:linear-gradient(145deg,#07131f,#0d2740 55%,#103a5f);align-items:center;justify-content:center;text-align:center;color:white;padding:18px;box-sizing:border-box;pointer-events:none">
       <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;gap:0">
         <img src="/static/abaj_tv_logo.jpg" alt="ABAJ TV" style="width:min(28vw,220px);height:min(28vw,220px);max-width:58%;max-height:26vh;object-fit:contain;border-radius:18%;filter:drop-shadow(0 12px 28px rgba(0,0,0,.35))">
@@ -2496,6 +2510,25 @@ function installPlayerTouchGestures(){
   },{passive:false});
   wrap.addEventListener('touchcancel',()=>{active=false;mode=''}, {passive:true});
 }
+let miniControlsTimer=null;
+function hideMiniPlayerControls(){
+  const player=document.getElementById('playerView');
+  if(player)player.classList.remove('showMiniControls');
+  if(miniControlsTimer){clearTimeout(miniControlsTimer);miniControlsTimer=null}
+}
+function showMiniPlayerControls(){
+  const player=document.getElementById('playerView');
+  if(!player||!player.classList.contains('miniPlayer'))return;
+  player.classList.add('showMiniControls');
+  if(miniControlsTimer)clearTimeout(miniControlsTimer);
+  miniControlsTimer=setTimeout(hideMiniPlayerControls,2500);
+}
+function toggleMiniPlayerControls(){
+  const player=document.getElementById('playerView');
+  if(!player||!player.classList.contains('miniPlayer'))return;
+  if(player.classList.contains('showMiniControls'))hideMiniPlayerControls();
+  else showMiniPlayerControls();
+}
 function minimizePlayer(){
   if(nativeTv)return;
   const player=document.getElementById('playerView');
@@ -2504,8 +2537,9 @@ function minimizePlayer(){
     player.classList.remove('pureFullscreen','showPureControls');
     try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}
   }
-  player.classList.remove('appFullscreen','tvFullscreen','videoFill');
+  player.classList.remove('appFullscreen','tvFullscreen','videoFill','showMiniControls');
   player.classList.add('miniPlayer');
+  player.style.left='';player.style.top='';player.style.right='';player.style.bottom='';
   document.body.classList.remove('playerFullscreenActive','mobileLandscapePlayer','playerClean');
   document.body.classList.add('playerMiniActive');
   const v=document.getElementById('video');
@@ -2518,7 +2552,9 @@ function minimizePlayer(){
 function restoreMiniPlayer(){
   const player=document.getElementById('playerView');
   if(!player||!player.classList.contains('miniPlayer'))return;
+  hideMiniPlayerControls();
   player.classList.remove('miniPlayer');
+  player.style.left='';player.style.top='';player.style.right='';player.style.bottom='';
   document.body.classList.remove('playerMiniActive');
   window.scrollTo({top:window.scrollY,behavior:'auto'});
   showTvPlayerUi(true);
@@ -2538,7 +2574,7 @@ function handlePlayerSurfaceClick(event){
   const player=document.getElementById('playerView');
   if(event&&event.target&&event.target.closest&&event.target.closest('button,select,.channelRail'))return;
   if(player&&player.classList.contains('miniPlayer')){
-    restoreMiniPlayer();
+    toggleMiniPlayerControls();
     return;
   }
   if(player&&player.classList.contains('pureFullscreen')){
@@ -2581,34 +2617,71 @@ function installMiniPlayerDrag(){
   const player=document.getElementById('playerView');
   if(!player||player.dataset.miniDragReady==='1')return;
   player.dataset.miniDragReady='1';
-  let active=false,moved=false,sx=0,sy=0,startLeft=0,startTop=0;
-  player.addEventListener('touchstart',e=>{
-    if(!player.classList.contains('miniPlayer')||e.touches.length!==1)return;
-    if(e.target&&e.target.closest&&e.target.closest('.miniPlayerClose'))return;
-    const p=e.touches[0],r=player.getBoundingClientRect();
-    active=true;moved=false;sx=p.clientX;sy=p.clientY;startLeft=r.left;startTop=r.top;
-  },{passive:true});
-  player.addEventListener('touchmove',e=>{
-    if(!active||e.touches.length!==1)return;
-    const p=e.touches[0],dx=p.clientX-sx,dy=p.clientY-sy;
-    if(Math.hypot(dx,dy)>5)moved=true;
+  let active=false,moved=false,pointerId=null,sx=0,sy=0,startLeft=0,startTop=0;
+
+  const start=(x,y,id,target)=>{
+    if(!player.classList.contains('miniPlayer'))return false;
+    if(target&&target.closest&&target.closest('.miniPlayerControls button'))return false;
+    const r=player.getBoundingClientRect();
+    active=true;moved=false;pointerId=id;sx=x;sy=y;startLeft=r.left;startTop=r.top;
+    hideMiniPlayerControls();
+    return true;
+  };
+  const move=(x,y)=>{
+    if(!active)return;
+    const dx=x-sx,dy=y-sy;
+    if(Math.hypot(dx,dy)>4)moved=true;
     if(!moved)return;
-    e.preventDefault();
     const w=player.offsetWidth,h=player.offsetHeight;
     const left=Math.max(6,Math.min(window.innerWidth-w-6,startLeft+dx));
     const top=Math.max(6,Math.min(window.innerHeight-h-6,startTop+dy));
-    player.style.left=left+'px';player.style.top=top+'px';
-    player.style.right='auto';player.style.bottom='auto';
-  },{passive:false});
-  player.addEventListener('touchend',e=>{
+    player.style.left=left+'px';
+    player.style.top=top+'px';
+    player.style.right='auto';
+    player.style.bottom='auto';
+  };
+  const end=()=>{
     if(!active)return;
-    active=false;
-    if(moved){
-      e.preventDefault();e.stopPropagation();
-      playerGestureSuppressClickUntil=Date.now()+500;
-    }
-  },{passive:false});
-  player.addEventListener('touchcancel',()=>{active=false},{passive:true});
+    active=false;pointerId=null;
+    if(moved)playerGestureSuppressClickUntil=Date.now()+550;
+  };
+
+  if(window.PointerEvent){
+    player.addEventListener('pointerdown',e=>{
+      if(e.pointerType==='mouse'&&e.button!==0)return;
+      if(!start(e.clientX,e.clientY,e.pointerId,e.target))return;
+      try{player.setPointerCapture(e.pointerId)}catch(_){}
+      e.preventDefault();
+    },{passive:false,capture:true});
+    player.addEventListener('pointermove',e=>{
+      if(!active||e.pointerId!==pointerId)return;
+      move(e.clientX,e.clientY);
+      if(moved)e.preventDefault();
+    },{passive:false,capture:true});
+    player.addEventListener('pointerup',e=>{
+      if(!active||e.pointerId!==pointerId)return;
+      if(moved){e.preventDefault();e.stopPropagation()}
+      end();
+    },{passive:false,capture:true});
+    player.addEventListener('pointercancel',end,{passive:true,capture:true});
+  }else{
+    player.addEventListener('touchstart',e=>{
+      if(e.touches.length!==1)return;
+      const p=e.touches[0];
+      start(p.clientX,p.clientY,0,e.target);
+    },{passive:true,capture:true});
+    player.addEventListener('touchmove',e=>{
+      if(!active||e.touches.length!==1)return;
+      const p=e.touches[0];move(p.clientX,p.clientY);
+      if(moved)e.preventDefault();
+    },{passive:false,capture:true});
+    player.addEventListener('touchend',e=>{
+      if(!active)return;
+      if(moved){e.preventDefault();e.stopPropagation()}
+      end();
+    },{passive:false,capture:true});
+    player.addEventListener('touchcancel',end,{passive:true,capture:true});
+  }
 }
 installMiniPlayerDrag();
 
@@ -4558,6 +4631,7 @@ function closePlayer(){
   playerView.classList.remove('videoFill');
   playerView.classList.remove('pureFullscreen');
   playerView.classList.remove('miniPlayer');
+  playerView.classList.remove('showMiniControls');
   playerView.classList.remove('nativePip');
   playerView.style.left='';playerView.style.top='';playerView.style.right='';playerView.style.bottom='';
   setNativePlaybackActive(false);
@@ -4615,6 +4689,11 @@ function updatePlayerPlaybackUi(){
   if(icon)icon.textContent=paused?'▶':'Ⅱ';
   if(label)label.textContent=paused?(appLang==='en'?'Play':'Включить'):(appLang==='en'?'Pause':'Пауза');
   if(btn)btn.title=paused?'Включить':'Пауза';
+  const mini=document.getElementById('miniPlayPause');
+  if(mini){
+    mini.textContent=paused?'▶':'Ⅱ';
+    mini.setAttribute('aria-label',paused?'Включить':'Пауза');
+  }
 }
 function syncMobileLandscapePlayerUi(){
   if(nativeTv)return;
