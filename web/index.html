@@ -43,38 +43,40 @@ button{cursor:pointer}
 .titleBlock{min-width:0;flex:1 1 auto;overflow:visible}
 .title{
   width:100%;min-width:0;
-  display:flex;align-items:center;justify-content:space-between;
-  font-size:clamp(25px,6.8vw,30px);font-weight:950;line-height:1;white-space:nowrap;
-  padding:0 2px;
+  display:flex;align-items:center;justify-content:flex-start;
+  gap:1px;
+  font-size:clamp(30px,7.9vw,38px);
+  font-weight:950;line-height:1;white-space:nowrap;
+  padding:0 1px;letter-spacing:-.7px;
 }
 .title span{
   display:inline-block;
   color:#fff;
-  background:linear-gradient(180deg,#ffffff 0%,#7ff7ff 20%,#18c8ff 48%,#7b6dff 72%,#ff53d7 100%);
-  background-size:100% 240%;
+  background:linear-gradient(90deg,#ff4fd8 0%,#ffcc33 16%,#7dff4d 32%,#28e7ff 48%,#4d7dff 64%,#b84dff 80%,#ff4d6d 100%);
+  background-size:320% 320%;
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-  filter:drop-shadow(0 0 3px rgba(255,255,255,.95)) drop-shadow(0 0 8px rgba(0,225,255,.92)) drop-shadow(0 0 15px rgba(92,86,255,.7));
-  animation:abajLetterColor 4.2s linear infinite,abajLetterWave 1.9s ease-in-out infinite,abajLetterGlow 1.25s ease-in-out infinite;
+  filter:drop-shadow(0 0 4px rgba(255,255,255,.96)) drop-shadow(0 0 10px rgba(0,225,255,.94)) drop-shadow(0 0 18px rgba(255,70,215,.86));
+  animation:abajLetterColor 2.35s linear infinite,abajLetterWave 1.55s ease-in-out infinite,abajLetterGlow 1.1s ease-in-out infinite;
   will-change:transform,filter,background-position,opacity;
 }
 .title span:nth-child(1){animation-delay:0s,0s,0s}
-.title span:nth-child(2){animation-delay:-.7s,-.16s,-.22s}
-.title span:nth-child(3){animation-delay:-1.4s,-.32s,-.44s}
-.title span:nth-child(4){animation-delay:-2.1s,-.48s,-.66s}
-.title span:nth-child(5){animation-delay:-2.8s,-.64s,-.88s}
-.title span:nth-child(6){animation-delay:-3.5s,-.8s,-1.1s}
+.title span:nth-child(2){animation-delay:-.3s,-.10s,-.12s}
+.title span:nth-child(3){animation-delay:-.6s,-.20s,-.24s}
+.title span:nth-child(4){animation-delay:-.9s,-.30s,-.36s}
+.title span:nth-child(5){animation-delay:-1.2s,-.40s,-.48s}
+.title span:nth-child(6){animation-delay:-1.5s,-.50s,-.60s}
 @keyframes abajLetterColor{
-  0%{background-position:50% 0%}
-  50%{background-position:50% 100%}
-  100%{background-position:50% 0%}
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
 }
 @keyframes abajLetterWave{
   0%,100%{transform:translateY(0) scale(1)}
-  50%{transform:translateY(-2px) scale(1.055)}
+  50%{transform:translateY(-2px) scale(1.075)}
 }
 @keyframes abajLetterGlow{
-  0%,100%{opacity:.9;filter:drop-shadow(0 0 2px rgba(255,255,255,.88)) drop-shadow(0 0 7px rgba(0,225,255,.82)) drop-shadow(0 0 12px rgba(92,86,255,.58))}
-  50%{opacity:1;filter:drop-shadow(0 0 4px rgba(255,255,255,1)) drop-shadow(0 0 12px rgba(0,238,255,1)) drop-shadow(0 0 20px rgba(255,70,215,.92))}
+  0%,100%{opacity:.92;filter:drop-shadow(0 0 3px rgba(255,255,255,.9)) drop-shadow(0 0 8px rgba(0,225,255,.86)) drop-shadow(0 0 14px rgba(255,70,215,.72))}
+  50%{opacity:1;filter:drop-shadow(0 0 5px rgba(255,255,255,1)) drop-shadow(0 0 14px rgba(0,238,255,1)) drop-shadow(0 0 24px rgba(255,70,215,.96))}
 }
 .sub{font-size:12px;color:#e8f6ff;margin-top:1px;opacity:.92}
 .icons{display:flex;gap:4px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;flex:0 0 auto}
