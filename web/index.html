@@ -586,7 +586,8 @@ let streamWarmController=null;
 let tvHideUnreliable=localStorage.getItem('abaj_tv_hide_unreliable')!=='0';
 let tvAutoStartLast=localStorage.getItem('abaj_tv_autostart_last')!=='0';
 let tvPreferredQuality=localStorage.getItem('abaj_tv_quality')||'auto';
-let tvPlayerMode=['auto','hls','system'].includes(localStorage.getItem('abaj_tv_player_mode'))?localStorage.getItem('abaj_tv_player_mode'):'auto';
+const savedTvPlayerMode=localStorage.getItem('abaj_tv_player_mode');
+let tvPlayerMode=['auto','hls','system'].includes(savedTvPlayerMode)?savedTvPlayerMode:(nativeTv?'system':'auto');
 let appThemeHue=Math.max(0,Math.min(359,Number(localStorage.getItem('abaj_tv_theme_hue')||204)||204));
 let tvHeaderCollapsed=false;
 let mobileHeaderRaf=0;
@@ -2945,7 +2946,7 @@ function startTvWatchdog(ch){
       tvWatchdogStalls=0;
       const err=document.getElementById('playerError');
       if(err)err.textContent=ch.backup_count?'Поток завис. Переключаю резерв…':'Поток завис. Переподключаю…';
-      startStream(ch,!!ch.backup_count);
+      startStream(ch,!!ch.backup_count,nativeTv&&tvPlayerMode==='system');
     }
   },4000);
 }
@@ -3076,7 +3077,10 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         .catch(()=>scheduleReconnect(ch));
     }else{
       v.src=src;v.load();
-      v.play().then(()=>{streamRetries=0;clearFirstFrameTimer();const wrap=document.querySelector('.videoWrap');if(wrap)wrap.classList.add('playing');startTvWatchdog(ch)}).catch(()=>scheduleReconnect(ch));
+      v.play().then(()=>{streamRetries=0;clearFirstFrameTimer();const wrap=document.querySelector('.videoWrap');if(wrap)wrap.classList.add('playing');startTvWatchdog(ch)}).catch(()=>{
+        if(nativeTv&&!forceProxy&&!ch.personal){startStream(ch,preferBackup,true);return}
+        scheduleReconnect(ch);
+      });
     }
   }
 }
