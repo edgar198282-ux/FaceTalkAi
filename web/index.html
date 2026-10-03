@@ -3115,9 +3115,8 @@ function tvUseHlsForChannel(ch){
 }
 function tvShouldUseHls(ch){
   if(!nativeTv)return tvPlayerMode!=='system';
-  if(tvPlayerMode==='hls')return true;
   if(tvPlayerMode==='system')return false;
-  return tvUseHlsForChannel(ch);
+  return true;
 }
 function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
