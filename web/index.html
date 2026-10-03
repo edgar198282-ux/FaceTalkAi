@@ -2534,6 +2534,35 @@ function handlePlayerSurfaceClick(event){
   showTvPlayerUi(true);
 }
 installPlayerTouchGestures();
+
+function installPlayerMinimizeGesture(){
+  const player=document.getElementById('playerView');
+  if(!player||player.dataset.minimizeGestureReady==='1')return;
+  player.dataset.minimizeGestureReady='1';
+  let sy=0,sx=0,active=false,startedAt=0;
+  player.addEventListener('touchstart',e=>{
+    if(nativeTv||!player.classList.contains('open')||player.classList.contains('miniPlayer')||e.touches.length!==1)return;
+    if(e.target&&e.target.closest&&e.target.closest('button,select,.channelRail'))return;
+    const p=e.touches[0];
+    sx=p.clientX; sy=p.clientY; startedAt=Date.now(); active=true;
+  },{passive:true,capture:true});
+  player.addEventListener('touchend',e=>{
+    if(!active)return;
+    active=false;
+    const p=e.changedTouches&&e.changedTouches[0];
+    if(!p)return;
+    const dx=p.clientX-sx,dy=p.clientY-sy;
+    if(dy>=70&&Math.abs(dy)>Math.abs(dx)*1.05&&Date.now()-startedAt<1800){
+      e.preventDefault();
+      e.stopPropagation();
+      playerGestureSuppressClickUntil=Date.now()+650;
+      minimizePlayer();
+    }
+  },{passive:false,capture:true});
+  player.addEventListener('touchcancel',()=>{active=false},{passive:true,capture:true});
+}
+installPlayerMinimizeGesture();
+
 function addRecent(id,deferSync=false){
   recent=[id,...recent.filter(x=>x!==id)].slice(0,30);
   saveRecent(deferSync);
