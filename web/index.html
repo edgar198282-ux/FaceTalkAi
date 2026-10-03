@@ -2860,7 +2860,7 @@ function clearFirstFrameTimer(){
 function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
-  const waitMs=Number(ch.backup_count||0)>0?2500:4000;
+  const waitMs=Number(ch.backup_count||0)>0?3500:6000;
   firstFrameTimer=setTimeout(()=>{
     firstFrameTimer=null;
     if(token!==streamAttemptToken||!current||current.id!==ch.id)return;
@@ -3090,11 +3090,11 @@ function scheduleReconnect(ch,preferBackup=false){
     return;
   }
   streamRetries++;
-  err.textContent=nativeTv?'Быстро переподключаю…':'Автопереподключение через 2 сек…';
+  err.textContent='Автопереподключение через 2 сек…';
   reconnectTimer=setTimeout(()=>{
     reconnectTimer=null;
     if(current&&current.id===ch.id)startStream(ch,preferBackup);
-  },nativeTv?600:2000);
+  },2000);
 }
 
 function resetQualityMenu(){
