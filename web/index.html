@@ -882,7 +882,8 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
       <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;gap:0">
         <img src="/static/abaj_tv_logo.jpg" alt="ABAJ TV" style="width:min(28vw,220px);height:min(28vw,220px);max-width:58%;max-height:26vh;object-fit:contain;border-radius:18%;filter:drop-shadow(0 12px 28px rgba(0,0,0,.35))">
         <div style="font-size:clamp(17px,2.4vw,27px);font-weight:900;margin-top:14px">Рекламная пауза</div>
-        <div style="font-size:clamp(13px,1.8vw,18px);opacity:.82;margin-top:7px">Более 3000 каналов · до 3 устройств</div>
+        <div id="freeAdCountdown" style="font-size:clamp(16px,2.1vw,23px);font-weight:900;margin-top:7px;color:#9fe6ff">Осталось: 15 сек</div>
+        <div style="font-size:clamp(13px,1.8vw,18px);opacity:.82;margin-top:5px">Более 3000 каналов · до 3 устройств</div>
         <div class="freeAdPrice">Всего 1 доллар</div>
         <img src="/static/abaj_tv_share_qr.png" alt="QR Abaj TV" style="width:min(28vw,220px);height:min(28vw,220px);max-width:58%;max-height:26vh;object-fit:contain;background:#fff;border-radius:12px;padding:6px;box-sizing:border-box;margin-top:12px;filter:drop-shadow(0 8px 20px rgba(0,0,0,.28))">
         <div style="font-size:clamp(14px,1.8vw,20px);font-weight:900;letter-spacing:.2px;opacity:.96;margin-top:12px">Telegram: @FaceTalkID_bot</div>
@@ -3301,6 +3302,60 @@ function armInstantCineramaShield(ch){
   setFreeAdOverlay(true);
   return true;
 }
+let freeAdCountdownTimer=null;
+let freeAdCountdownEndsAt=0;
+let freeAdAudioCtx=null;
+let freeAdAudioNodes=[];
+
+function updateFreeAdCountdown(seconds){
+  const el=document.getElementById('freeAdCountdown');
+  if(!el)return;
+  el.textContent='Осталось: '+Math.max(0,Math.ceil(Number(seconds)||0))+' сек';
+}
+function startFreeAdCountdown(seconds=15){
+  if(freeAdCountdownTimer){clearInterval(freeAdCountdownTimer);freeAdCountdownTimer=null}
+  const safe=Math.max(1,Math.min(90,Number(seconds)||15));
+  freeAdCountdownEndsAt=Date.now()+safe*1000;
+  updateFreeAdCountdown(safe);
+  freeAdCountdownTimer=setInterval(()=>{
+    updateFreeAdCountdown(Math.max(0,(freeAdCountdownEndsAt-Date.now())/1000));
+  },250);
+}
+function stopFreeAdCountdown(){
+  if(freeAdCountdownTimer){clearInterval(freeAdCountdownTimer);freeAdCountdownTimer=null}
+  freeAdCountdownEndsAt=0;
+}
+function startFreeAdMusic(){
+  if(freeAdAudioCtx)return;
+  try{
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(!Ctx)return;
+    const ctx=new Ctx();
+    const master=ctx.createGain();
+    master.gain.value=0.018;
+    master.connect(ctx.destination);
+    [261.63,329.63,392].forEach((freq,i)=>{
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.type='sine';
+      osc.frequency.value=freq;
+      gain.gain.value=i===0?0.50:0.22;
+      osc.connect(gain);
+      gain.connect(master);
+      osc.start();
+      freeAdAudioNodes.push(osc,gain);
+    });
+    freeAdAudioCtx=ctx;
+    if(ctx.state==='suspended')ctx.resume().catch(()=>{});
+  }catch(e){}
+}
+function stopFreeAdMusic(){
+  freeAdAudioNodes.forEach(n=>{try{if(n.stop)n.stop()}catch(e){}});
+  freeAdAudioNodes=[];
+  try{if(freeAdAudioCtx)freeAdAudioCtx.close()}catch(e){}
+  freeAdAudioCtx=null;
+}
+
 function setFreeAdOverlay(active){
   const overlay=document.getElementById('freeAdOverlay');
   const v=document.getElementById('video');
@@ -3314,9 +3369,13 @@ function setFreeAdOverlay(active){
     freeAdMuteBefore=!!(v&&v.muted);
     if(v)v.muted=true;
     if(overlay)overlay.style.display='flex';
+    if(!freeAdCountdownEndsAt)startFreeAdCountdown(15);
+    startFreeAdMusic();
   }else{
     if(overlay)overlay.style.display='none';
     if(v)v.muted=freeAdMuteBefore;
+    stopFreeAdCountdown();
+    stopFreeAdMusic();
   }
 }
 function stopBurnedAdObserver(){
