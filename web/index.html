@@ -2829,6 +2829,25 @@ function startFreeAdWatch(ch){
   startBurnedAdObserver(ch);
 }
 
+function recreateNativeTvVideo(){
+  if(!nativeTv)return;
+  const old=document.getElementById('video');
+  if(!old||!old.parentNode)return;
+  try{
+    if(hls){try{hls.stopLoad()}catch(e){};try{hls.destroy()}catch(e){};hls=null}
+  }catch(e){}
+  const volume=Number.isFinite(Number(old.volume))?Number(old.volume):1;
+  const muted=!!old.muted;
+  const fresh=document.createElement('video');
+  fresh.id='video';
+  fresh.preload='auto';
+  fresh.setAttribute('playsinline','');
+  fresh.setAttribute('webkit-playsinline','');
+  fresh.controls=false;
+  fresh.volume=Math.max(0,Math.min(1,volume));
+  fresh.muted=muted;
+  old.parentNode.replaceChild(fresh,old);
+}
 function openPlayer(id){
 
   const hud=document.getElementById('playerChannelHud');
@@ -2842,6 +2861,7 @@ function openPlayer(id){
     streamAttemptToken++;
     if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
     if(tvChannelHeartbeatTimer){clearTimeout(tvChannelHeartbeatTimer);tvChannelHeartbeatTimer=null}
+    recreateNativeTvVideo();
   }
   if(current&&current.id!==ch.id){
     previousChannelId=current.id;
