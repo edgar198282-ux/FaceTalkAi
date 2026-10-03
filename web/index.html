@@ -135,11 +135,17 @@ button{cursor:pointer}
 .playerView.pureFullscreen .playerTimeline,
 .playerView.pureFullscreen .playerPrimaryControls,
 .playerView.pureFullscreen .playerChannelHud,
-.playerView.pureFullscreen .playerGestureHint,
 .playerView.pureFullscreen .channelRail,
 .playerView.pureFullscreen .playerBrand,
 .playerView.pureFullscreen #playerError{
   display:none!important;opacity:0!important;pointer-events:none!important
+}
+.playerView.pureFullscreen .playerGestureHint{
+  position:fixed!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;
+  z-index:2147483647!important;pointer-events:none!important
+}
+.playerView.pureFullscreen .playerGestureHint.show{
+  display:block!important;opacity:1!important
 }
 .playerView.pureFullscreen.showPureControls .playerBottom{
   display:block!important;opacity:1!important;pointer-events:auto!important;
@@ -2356,7 +2362,9 @@ function showPlayerGestureHint(text){
   el.textContent=text;
   el.classList.add('show');
   if(playerGestureHintTimer)clearTimeout(playerGestureHintTimer);
-  playerGestureHintTimer=setTimeout(()=>el.classList.remove('show'),650);
+  const player=document.getElementById('playerView');
+  const hintMs=player&&player.classList.contains('pureFullscreen')?900:650;
+  playerGestureHintTimer=setTimeout(()=>el.classList.remove('show'),hintMs);
 }
 function adjustPlayerVolume(step){
   let pct=-1;
