@@ -1681,6 +1681,14 @@ def public_state(compact: bool = False):
     for source in _state["channels"].values():
         if compact and str(source.get("status") or "") != "ONLINE":
             continue
+        if compact and (_is_wink_placeholder_stream(source) or _hide_unusable_catalog_channel(source)):
+            continue
+        cid = str(source.get("id") or "")
+        if compact and (
+            bool((_cinerama_placeholder_state.get(cid) or {}).get("active"))
+            or bool((_ottclub_ad_state.get(cid) or {}).get("active"))
+        ):
+            continue
         row = dict(source)
         current, nxt = _epg_for_channel(row)
         row["epg_now"] = current if current is not None else row.get("epg_now")
