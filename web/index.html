@@ -644,6 +644,9 @@ let freeViewingTimer=null;
 let freeAdActive=false;
 let freeAdMuteBefore=false;
 let freeAdRequestBusy=false;
+let freeAdShieldChannel='';
+let freeAdShieldStartedAt=0;
+let freeAdShieldVerifiedNegative=0;
 let burnedAdTimer=null;
 let burnedAdCanvas=null;
 let burnedAdPrevFrame=null;
@@ -2775,6 +2778,32 @@ function showTvInfo(){
   if(current)showTvZap(current);
 }
 
+function isCineramaStreamUrl(url){
+  try{
+    const u=String(url||'').toLowerCase();
+    return u.includes('cinerama.uz/')||u.includes('.cinerama.uz/');
+  }catch(e){return false}
+}
+function selectedFreeStreamUrl(ch){
+  if(!ch||ch.personal)return '';
+  const urls=tvDirectUrls(ch);
+  if(nativeTv&&urls.length){
+    const idx=Math.min(tvDirectAttemptIndex,Math.max(0,urls.length-1));
+    return String(urls[idx]||'');
+  }
+  return String(ch.url||'');
+}
+function shouldInstantShieldCinerama(ch){
+  return !!(ch&&!ch.personal&&isCineramaStreamUrl(selectedFreeStreamUrl(ch)));
+}
+function armInstantCineramaShield(ch){
+  if(!shouldInstantShieldCinerama(ch))return false;
+  freeAdShieldChannel=String(ch.id||'');
+  freeAdShieldStartedAt=Date.now()/1000;
+  freeAdShieldVerifiedNegative=0;
+  setFreeAdOverlay(true);
+  return true;
+}
 function setFreeAdOverlay(active){
   const overlay=document.getElementById('freeAdOverlay');
   const v=document.getElementById('video');
@@ -2806,6 +2835,9 @@ function stopFreeAdWatch(){
   if(freeViewingTimer){clearInterval(freeViewingTimer);freeViewingTimer=null}
   stopBurnedAdObserver();
   freeAdRequestBusy=false;
+  freeAdShieldChannel='';
+  freeAdShieldStartedAt=0;
+  freeAdShieldVerifiedNegative=0;
   setFreeAdOverlay(false);
 }
 async function checkFreeAdState(){
@@ -2817,7 +2849,31 @@ async function checkFreeAdState(){
     if(!r.ok)return;
     const d=await r.json();
     if(!current||current.id!==id||current.personal)return;
-    setFreeAdOverlay(!!d.active);
+    if(d.active){
+      freeAdShieldVerifiedNegative=0;
+      setFreeAdOverlay(true);
+      return;
+    }
+    const shielding=freeAdShieldChannel===String(id||'')&&freeAdShieldStartedAt>0;
+    if(shielding){
+      const checkedAt=Number(d.checked_at||0);
+      // Never reveal a Cinerama source until a probe performed after this
+      // channel-open has returned negative twice. This prevents even a single
+      // provider promo frame from flashing before our ABAJ TV overlay.
+      if(checkedAt<freeAdShieldStartedAt){
+        setFreeAdOverlay(true);
+        return;
+      }
+      freeAdShieldVerifiedNegative++;
+      if(freeAdShieldVerifiedNegative<2){
+        setFreeAdOverlay(true);
+        return;
+      }
+      freeAdShieldChannel='';
+      freeAdShieldStartedAt=0;
+      freeAdShieldVerifiedNegative=0;
+    }
+    setFreeAdOverlay(false);
   }catch(e){}finally{
     freeAdRequestBusy=false;
   }
@@ -2945,8 +3001,18 @@ function notifyFreeViewing(ch){
   }catch(e){}
 }
 function startFreeAdWatch(ch){
+  const keepInstantShield=freeAdShieldChannel===String(ch&&ch.id||'')&&freeAdShieldStartedAt>0;
+  const shieldStartedAt=freeAdShieldStartedAt;
   stopFreeAdWatch();
   if(!ch||ch.personal)return;
+  if(keepInstantShield){
+    freeAdShieldChannel=String(ch.id||'');
+    freeAdShieldStartedAt=shieldStartedAt;
+    freeAdShieldVerifiedNegative=0;
+    setFreeAdOverlay(true);
+  }else{
+    armInstantCineramaShield(ch);
+  }
   notifyFreeViewing(ch);
   freeViewingTimer=setInterval(()=>{
     if(current&&current.id===ch.id&&!current.personal)notifyFreeViewing(ch);
@@ -3013,6 +3079,9 @@ function openPlayer(id){
   current=ch;
   lastChannelId=ch.id;
   localStorage.setItem('iptv_last_channel',ch.id);
+  // Provider-side Cinerama promo is burned into many free streams.
+  // Shield it before playback begins rather than reacting after OCR sees it.
+  armInstantCineramaShield(ch);
   streamRetries=0;
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   const playerView=document.getElementById('playerView');
@@ -3392,6 +3461,9 @@ function startStream(ch,preferBackup=false,forceProxy=false){
     }
   }
   const directSrc=directUrls[Math.min(tvDirectAttemptIndex,Math.max(0,directUrls.length-1))]||'';
+  if(nativeTv&&!ch.personal&&isCineramaStreamUrl(directSrc)){
+    if(freeAdShieldChannel!==String(ch.id||''))armInstantCineramaShield(ch);
+  }
   const src=(nativeTv&&!ch.personal&&directSrc)?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
