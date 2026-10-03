@@ -2943,6 +2943,12 @@ function openPlayer(id){
   if(hud){hud.dataset.shownOnce='';hidePlayerChannelHud();}
   const ch=channels.find(x=>x.id===id);
   if(!ch)return;
+  if(nativeTv){
+    playbackOpenStartedAt=performance.now();
+    playbackMetricSent=false;
+    playbackPlayerMode='';
+    playbackFallbackCount=0;
+  }
   const switchingChannel=!!(current&&current.id!==ch.id);
   if(switchingChannel){
     stopFreeAdWatch();
@@ -3029,6 +3035,29 @@ let tvDirectAttemptIndex=0;
 const tvHlsFallbackChannels=new Set();
 const tvFailureReportAt=new Map();
 let tvChannelSwitchBusyUntil=0;
+let playbackOpenStartedAt=0;
+let playbackMetricSent=false;
+let playbackPlayerMode='';
+let playbackFallbackCount=0;
+function reportPlaybackMetric(event,ch,extra={}){
+  if(!nativeTv||!ch)return;
+  const payload={
+    event,
+    channel_id:String(ch.id||''),
+    quality:channelQuality(ch),
+    player:String(extra.player||playbackPlayerMode||'unknown'),
+    startup_ms:Math.max(0,Math.round(Number(extra.startup_ms||0))),
+    fallbacks:Math.max(0,Number(extra.fallbacks??playbackFallbackCount)||0),
+    backup_index:Math.max(0,Number(extra.backup_index??tvDirectAttemptIndex)||0)
+  };
+  fetch('/api/iptv/playback-metric',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',...authHeaders()},
+    body:JSON.stringify(payload),
+    keepalive:true,
+    cache:'no-store'
+  }).catch(()=>{});
+}
 function tvDirectUrls(ch){
   return [String(ch&&ch.url||''),...(Array.isArray(ch&&ch.backups)?ch.backups:[])].filter(Boolean);
 }
@@ -3082,6 +3111,7 @@ function armFirstFrameTimer(ch,preferBackup,token){
     if((wrap&&wrap.classList.contains('frameReady'))||(v&&v.readyState>=2&&!v.paused))return;
     const err=document.getElementById('playerError');
     if(nativeTv&&tvPlayerMode==='system'&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
+      playbackFallbackCount++;
       tvHlsFallbackChannels.add(String(ch.id||''));
       if(err)err.textContent='Пробую совместимый плеер…';
       startStream(ch,preferBackup,false);
@@ -3191,6 +3221,12 @@ function startTvWatchdog(ch){
       tvWatchdogStalls=0;
       const err=document.getElementById('playerError');
       if(err)err.textContent=ch.backup_count?'Поток завис. Переключаю резерв…':'Поток завис. Переподключаю…';
+      reportPlaybackMetric('stall',ch,{
+        startup_ms:performance.now()-playbackOpenStartedAt,
+        player:playbackPlayerMode,
+        fallbacks:playbackFallbackCount,
+        backup_index:tvDirectAttemptIndex
+      });
       if(!tryNextTvDirect(ch))scheduleReconnect(ch,true);
     }
   },4000);
@@ -3212,6 +3248,15 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       clearFirstFrameTimer();
       if(nativeTv)tvChannelSwitchBusyUntil=0;
       if(wrap)wrap.classList.add('playing','frameReady');
+      if(nativeTv&&!playbackMetricSent){
+        playbackMetricSent=true;
+        reportPlaybackMetric('first_frame',ch,{
+          startup_ms:performance.now()-playbackOpenStartedAt,
+          player:playbackPlayerMode,
+          fallbacks:playbackFallbackCount,
+          backup_index:tvDirectAttemptIndex
+        });
+      }
       startTvWatchdog(ch);
       if(!postStartTasksDone){
         postStartTasksDone=true;
@@ -3263,6 +3308,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   resetQualityMenu();
 
   const useHlsJs=(tvPlayerMode!=='system'||tvUseHlsForChannel(ch))&&window.Hls&&Hls.isSupported();
+  if(nativeTv)playbackPlayerMode=useHlsJs?'hls':'system';
   if(useHlsJs){
     hls=new Hls({
       enableWorker:true,
@@ -3392,6 +3438,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         setTimeout(confirmPlayback,120);
       }).catch(()=>{
         if(nativeTv&&tvPlayerMode==='system'&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
+          playbackFallbackCount++;
           tvHlsFallbackChannels.add(String(ch.id||''));
           err.textContent='Пробую совместимый плеер…';
           startStream(ch,preferBackup,false);

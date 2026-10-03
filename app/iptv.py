@@ -97,6 +97,7 @@ def _save_json(path: str, data):
 
 _stream_health = _load_json(HEALTH_PATH, {})
 _client_failure_last = {}
+_playback_metrics = []
 
 def _health_score(url: str) -> float:
     h = _stream_health.get(url) or {}
@@ -1836,6 +1837,34 @@ def _rewrite_hls(text: str, base: str) -> str:
     return "\n".join(out) + "\n"
 
 
+def _playback_benchmark_summary():
+    rows = list(_playback_metrics[-1000:])
+    first_frames = [x for x in rows if x.get("event") == "first_frame" and int(x.get("startup_ms") or 0) > 0]
+    stalls = [x for x in rows if x.get("event") == "stall"]
+
+    def group_stats(player):
+        vals = sorted(int(x.get("startup_ms") or 0) for x in first_frames if x.get("player") == player and int(x.get("startup_ms") or 0) > 0)
+        if not vals:
+            return {"count": 0, "p50_ms": 0, "p90_ms": 0, "avg_ms": 0}
+        p50 = vals[min(len(vals) - 1, int((len(vals) - 1) * 0.50))]
+        p90 = vals[min(len(vals) - 1, int((len(vals) - 1) * 0.90))]
+        return {
+            "count": len(vals),
+            "p50_ms": p50,
+            "p90_ms": p90,
+            "avg_ms": round(sum(vals) / len(vals)),
+        }
+
+    return {
+        "samples": len(rows),
+        "first_frames": len(first_frames),
+        "stalls": len(stalls),
+        "system": group_stats("system"),
+        "hls": group_stats("hls"),
+        "recent": rows[-40:],
+    }
+
+
 async def api_diagnostics(request):
     state = public_state()
     rows = state.get("channels") or []
@@ -1889,6 +1918,7 @@ async def api_diagnostics(request):
     return web.json_response({
         "ok": True,
         "stats": state.get("stats") or {},
+        "playback_benchmark": _playback_benchmark_summary(),
         "missing_logo_samples": missing_logo_samples,
         "scan_history": history[-48:],
         "ad_detection": {
@@ -2328,6 +2358,39 @@ async def api_play(request):
         },
     )
 
+async def api_playback_metric(request):
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    cid = str(payload.get("channel_id") or "").strip()[:80]
+    event = str(payload.get("event") or "").strip().lower()
+    if event not in {"first_frame", "stall"} or not cid:
+        return web.json_response({"ok": False}, status=400)
+    item = (_state.get("channels") or {}).get(cid)
+    if not item:
+        return web.json_response({"ok": False}, status=404)
+    player = str(payload.get("player") or "").strip().lower()
+    if player not in {"system", "hls"}:
+        player = "unknown"
+    row = {
+        "ts": int(time.time()),
+        "event": event,
+        "channel_id": cid,
+        "name": str(item.get("name") or "")[:120],
+        "country": str(item.get("country") or "")[:8],
+        "quality": str(payload.get("quality") or item.get("quality") or "")[:12],
+        "player": player,
+        "startup_ms": max(0, min(30000, int(payload.get("startup_ms") or 0))),
+        "fallbacks": max(0, min(20, int(payload.get("fallbacks") or 0))),
+        "backup_index": max(0, min(20, int(payload.get("backup_index") or 0))),
+    }
+    _playback_metrics.append(row)
+    if len(_playback_metrics) > 1000:
+        del _playback_metrics[:-1000]
+    return web.json_response({"ok": True}, headers={"Cache-Control": "no-store"})
+
+
 async def api_client_stream_failure(request):
     try:
         payload = await request.json()
@@ -2526,6 +2589,7 @@ def install(app: web.Application):
     app.router.add_post("/api/iptv/refresh", api_refresh)
     app.router.add_get("/api/iptv/play", api_play)
     app.router.add_post("/api/iptv/client-stream-failure", api_client_stream_failure)
+    app.router.add_post("/api/iptv/playback-metric", api_playback_metric)
     app.router.add_post("/api/iptv/ad-viewing", api_ad_viewing)
     app.router.add_get("/api/iptv/ad-state", api_ad_state)
     app.router.add_post("/api/iptv/ad-visual-observe", api_ad_visual_observe)
