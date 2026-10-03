@@ -251,8 +251,10 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onUserLeaveHint(){
+        if(playbackActive&&!isTv&&Build.VERSION.SDK_INT>=Build.VERSION_CODES.O){
+            enterPlaybackPictureInPicture();
+        }
         super.onUserLeaveHint();
-        if(Build.VERSION.SDK_INT<Build.VERSION_CODES.S)enterPlaybackPictureInPicture();
     }
 
     @Override public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig){
@@ -387,6 +389,8 @@ public class MainActivity extends Activity {
         activityResumed=false;
         if(isTv&&webView!=null){
             webView.evaluateJavascript("if(typeof suspendTvPlayback==='function')suspendTvPlayback()",null);
+        }else if(playbackActive&&Build.VERSION.SDK_INT>=Build.VERSION_CODES.O&&!isInPictureInPictureMode()){
+            enterPlaybackPictureInPicture();
         }
         super.onPause();
     }
