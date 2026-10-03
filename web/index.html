@@ -587,7 +587,7 @@ let tvHideUnreliable=localStorage.getItem('abaj_tv_hide_unreliable')!=='0';
 let tvAutoStartLast=localStorage.getItem('abaj_tv_autostart_last')!=='0';
 let tvPreferredQuality=localStorage.getItem('abaj_tv_quality')||'auto';
 const savedTvPlayerMode=localStorage.getItem('abaj_tv_player_mode');
-let tvPlayerMode=['auto','hls','system'].includes(savedTvPlayerMode)?savedTvPlayerMode:(nativeTv?'system':'auto');
+let tvPlayerMode=['hls','system'].includes(savedTvPlayerMode)?savedTvPlayerMode:(nativeTv?'system':'auto');
 let appThemeHue=Math.max(0,Math.min(359,Number(localStorage.getItem('abaj_tv_theme_hue')||204)||204));
 let tvHeaderCollapsed=false;
 let mobileHeaderRaf=0;
