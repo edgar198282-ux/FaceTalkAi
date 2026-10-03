@@ -3351,6 +3351,8 @@ async function checkFreeAdState(){
     if(d.active){
       freeAdShieldSawPositive=true;
       freeAdShieldVerifiedNegative=0;
+      freeAdShieldChannel=String(id||'');
+      if(!freeAdShieldStartedAt)freeAdShieldStartedAt=Date.now()/1000;
       setFreeAdOverlay(true);
       return;
     }
@@ -3363,8 +3365,8 @@ async function checkFreeAdState(){
         return;
       }
 
-      // Cinerama promo can appear a few seconds AFTER playback begins.
-      // Early negative OCR must never uncover that delayed provider screen.
+      // Provider promo can appear a few seconds AFTER playback begins.
+      // Early negative OCR must never uncover a delayed Cinerama/OTTClub card.
       if(!freeAdShieldSawPositive){
         freeAdShieldVerifiedNegative++;
         if(shieldAge<12||freeAdShieldVerifiedNegative<5){
@@ -3372,8 +3374,8 @@ async function checkFreeAdState(){
           return;
         }
       }else{
-        // Once the provider promo has actually been seen, require several
-        // fresh negative probes before revealing the channel again.
+        // Once OTTClub/Cinerama has actually been seen, keep our ad in place
+        // until 4 fresh clean probes confirm that normal programming returned.
         freeAdShieldVerifiedNegative++;
         if(freeAdShieldVerifiedNegative<4){
           setFreeAdOverlay(true);
