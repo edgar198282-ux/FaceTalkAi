@@ -1314,6 +1314,7 @@ async def api_app_auth_complete(request):
     }))
 
 _ai_dub_locks = {}
+_ai_dub_context = {}
 
 async def api_iptv_ai_dub_chunk(request):
     user = await _user_from_request(request)
@@ -1331,8 +1332,13 @@ async def api_iptv_ai_dub_chunk(request):
     item = iptv._state.get('channels', {}).get(cid)
     if not item or item.get('status') != 'ONLINE':
         return web.json_response({'ok':False,'error':'channel unavailable'}, status=404)
-    source = str(item.get('url') or '').strip()
-    if not source:
+
+    candidates = []
+    for source in [str(item.get('url') or ''), *[str(x or '') for x in (item.get('backups') or [])]]:
+        source = source.strip()
+        if source and source not in candidates:
+            candidates.append(source)
+    if not candidates:
         return web.json_response({'ok':False,'error':'stream unavailable'}, status=404)
 
     lock = _ai_dub_locks.setdefault(uid, asyncio.Lock())
@@ -1343,31 +1349,61 @@ async def api_iptv_ai_dub_chunk(request):
         import tempfile
         wav_path = ''
         tts_path = ''
+        selected_source = ''
         try:
             fd, wav_path = tempfile.mkstemp(prefix='abaj-ai-dub-', suffix='.wav', dir=DATA_DIR)
             os.close(fd)
-            proc = await asyncio.create_subprocess_exec(
-                'ffmpeg','-nostdin','-hide_banner','-loglevel','error',
-                '-i',source,'-vn','-t','4.8','-ac','1','-ar','16000','-y',wav_path,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            try:
-                _, err = await asyncio.wait_for(proc.communicate(), timeout=14)
-            except asyncio.TimeoutError:
-                proc.kill()
-                await proc.communicate()
-                return web.json_response({'ok':False,'error':'stream timeout'}, status=504)
-            if proc.returncode != 0 or not os.path.isfile(wav_path) or os.path.getsize(wav_path) < 1200:
-                return web.json_response({'ok':False,'error':'audio unavailable'}, status=422)
 
-            text, _provider = await ai_service.transcribe(wav_path)
-            if not text or len(text.strip()) < 2:
+            capture_error = ''
+            for source in candidates[:3]:
+                try:
+                    proc = await asyncio.create_subprocess_exec(
+                        'ffmpeg','-nostdin','-hide_banner','-loglevel','error',
+                        '-user_agent','IPTV-Player/1.0',
+                        '-rw_timeout','7000000',
+                        '-reconnect','1','-reconnect_streamed','1','-reconnect_delay_max','1',
+                        '-i',source,
+                        '-vn','-t','6.8','-ac','1','-ar','16000','-af','highpass=f=90,lowpass=f=7600',
+                        '-y',wav_path,
+                        stdout=asyncio.subprocess.DEVNULL,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    try:
+                        _, err = await asyncio.wait_for(proc.communicate(), timeout=16)
+                    except asyncio.TimeoutError:
+                        proc.kill()
+                        _, err = await proc.communicate()
+                    if proc.returncode == 0 and os.path.isfile(wav_path) and os.path.getsize(wav_path) >= 1800:
+                        selected_source = source
+                        break
+                    capture_error = (err or b'').decode('utf-8','ignore')[-260:]
+                except Exception as exc:
+                    capture_error = str(exc)[:260]
+
+            if not selected_source:
+                return web.json_response({'ok':False,'error':'audio unavailable','detail':capture_error[:160]}, status=422)
+
+            text, stt_provider = await ai_service.transcribe_dub(wav_path)
+            text = (text or '').strip()
+            if len(text) < 2:
                 return web.Response(status=204)
-            translated = await ai_service.translate_text(text, lang)
+
+            previous = _ai_dub_context.get(uid) or {}
+            if previous.get('channel_id') != cid or previous.get('lang') != lang:
+                previous = {}
+            context = str(previous.get('source_text') or '')[-1400:]
+            translated = (await ai_service.translate_text(text, lang, context=context)).strip()
             if not translated:
                 return web.Response(status=204)
-            tts_path, _tts_provider = await ai_service.synthesize(translated)
+
+            _ai_dub_context[uid] = {
+                'channel_id': cid,
+                'lang': lang,
+                'source_text': (context + '\n' + text).strip()[-2200:],
+                'updated_at': int(time.time()),
+            }
+
+            tts_path, tts_provider = await ai_service.synthesize_dub(translated, lang)
             if not tts_path or not os.path.isfile(tts_path):
                 return web.json_response({'ok':False,'error':'voice unavailable'}, status=503)
             with open(tts_path,'rb') as audio_file:
@@ -1380,6 +1416,10 @@ async def api_iptv_ai_dub_chunk(request):
                 headers={
                     'Cache-Control':'no-store',
                     'X-Abaj-AI-Lang':lang,
+                    'X-Abaj-AI-STT':str(stt_provider)[:80],
+                    'X-Abaj-AI-TTS':str(tts_provider)[:80],
+                    'X-Abaj-AI-Text-Len':str(len(text)),
+                    'X-Abaj-AI-Translation-Len':str(len(translated)),
                 },
             )
         except Exception as exc:
