@@ -1676,6 +1676,10 @@ async def refresh_channels(force: bool = False):
                 "adult_channels": sum(1 for x in channels.values() if bool(x.get("adult"))),
                 "with_logo": sum(1 for x in channels.values() if bool(x.get("logo"))),
                 "with_epg": sum(1 for x in channels.values() if bool(x.get("epg_now"))),
+                "verified_hd": sum(1 for x in channels.values() if x.get("status") == "ONLINE" and bool(x.get("quality_verified")) and str(x.get("quality") or "").upper() == "HD"),
+                "verified_fhd": sum(1 for x in channels.values() if x.get("status") == "ONLINE" and bool(x.get("quality_verified")) and str(x.get("quality") or "").upper() == "FHD"),
+                "verified_4k": sum(1 for x in channels.values() if x.get("status") == "ONLINE" and bool(x.get("quality_verified")) and str(x.get("quality") or "").upper() == "4K"),
+                "quality_verified_streams": sum(1 for x in channels.values() if x.get("status") == "ONLINE" and bool(x.get("quality_verified"))),
                 "scan_interval_seconds": REFRESH_SECONDS,
                 "quarantine_seconds": QUARANTINE_SECONDS,
                 "full_analysis_at": int(time.time()),
@@ -1706,7 +1710,7 @@ def public_state(compact: bool = False):
     rows = []
     compact_keys = {
         "id", "name", "group", "country", "logo", "status", "tvg_id",
-        "quality", "height", "url", "backups",
+        "quality", "height", "reported_height", "quality_verified", "url", "backups",
         "latency_ms", "backup_count", "epg_now", "epg_next",
         "unreliable", "adult"
     }
