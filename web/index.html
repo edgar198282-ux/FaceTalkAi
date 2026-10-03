@@ -3099,7 +3099,10 @@ function tryNextTvDirect(ch){
   return true;
 }
 function tvUseHlsForChannel(ch){
-  return !!(nativeTv&&ch&&tvHlsFallbackChannels.has(String(ch.id||'')));
+  if(!nativeTv||!ch)return false;
+  if(String(ch.tvg_id||'').toLowerCase()==='yerkirmedia.am')return true;
+  if(String(ch.name||'').trim().toLowerCase()==='yerkir media')return true;
+  return tvHlsFallbackChannels.has(String(ch.id||''));
 }
 function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
