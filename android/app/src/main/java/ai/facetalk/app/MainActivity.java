@@ -304,7 +304,7 @@ public class MainActivity extends Activity {
                 if(event.getAction()==KeyEvent.ACTION_DOWN){
                     if(event.getRepeatCount()==0){
                         webView.evaluateJavascript(
-                            "(function(){var p=document.getElementById('playerView');if(p&&p.classList.contains('open')){if(typeof tvNativeRemote==='function')tvNativeRemote('ok')}else if(typeof beginTvChannelOk==='function'){beginTvChannelOk()}else if(typeof tvNativeRemote==='function'){tvNativeRemote('ok')}})()",
+                            "if(typeof tvNativeOkDown==='function')tvNativeOkDown();else if(typeof tvNativeRemote==='function')tvNativeRemote('ok')",
                             null
                         );
                     }
@@ -312,7 +312,7 @@ public class MainActivity extends Activity {
                 }
                 if(event.getAction()==KeyEvent.ACTION_UP){
                     webView.evaluateJavascript(
-                        "(function(){var p=document.getElementById('playerView');if(!(p&&p.classList.contains('open'))&&typeof endTvChannelOk==='function')endTvChannelOk()})()",
+                        "if(typeof tvNativeOkUp==='function')tvNativeOkUp()",
                         null
                     );
                     return true;

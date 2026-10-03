@@ -3335,6 +3335,22 @@ function activatePlayerControl(){
   if(typeof el.click==='function'){el.click();return true}
   return false;
 }
+function tvNativeOkDown(){
+  if(!nativeTv)return;
+  const player=document.getElementById('playerView');
+  if((player&&player.classList.contains('open'))||!tvHeaderCollapsed){
+    tvNativeRemote('ok');
+    return;
+  }
+  beginTvChannelOk();
+}
+function tvNativeOkUp(){
+  if(!nativeTv)return;
+  const player=document.getElementById('playerView');
+  if(player&&player.classList.contains('open'))return;
+  if(!tvHeaderCollapsed)return;
+  endTvChannelOk();
+}
 function tvNativeRemote(action){
   if(!nativeTv)return;
   if(tvSettingPickerOpen()){
@@ -3569,7 +3585,7 @@ window.addEventListener('online',()=>{handleOnline();flushPendingFavorites();loa
 document.addEventListener('visibilitychange',handleVisibilityChange);
 if(!navigator.onLine)handleOffline();
 setInterval(()=>{load()},nativeTv?180000:60000);
-setInterval(()=>{if(!document.hidden){flushPendingFavorites();loadSyncedState(false)}},nativeTv?8000:2000);
+setInterval(()=>{if(!document.hidden){flushPendingFavorites();loadSyncedState(false)}},nativeTv?20000:2000);
 </script>
 </body>
 </html>
