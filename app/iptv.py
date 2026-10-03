@@ -2110,10 +2110,7 @@ async def api_play(request):
     prefer_backup = request.query.get("failover") == "1" and len(urls) > 1
     fast_start = request.query.get("fast") == "1"
     if fast_start and original_primary and not prefer_backup and request.query.get("proxy") != "1":
-        health = _stream_health.get(original_primary) or {}
-        last_ok = max(int(health.get("last_runtime_ok") or 0), int(health.get("last_ok") or 0))
-        if last_ok and int(time.time()) - last_ok <= 900 and int(health.get("consecutive_failures") or 0) == 0:
-            raise web.HTTPTemporaryRedirect(original_primary)
+        raise web.HTTPTemporaryRedirect(original_primary)
     primary_candidates = urls[1:] if prefer_backup else urls[:3]
     fallback_candidates = [original_primary] if prefer_backup and original_primary else []
 
