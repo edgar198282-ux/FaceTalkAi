@@ -683,7 +683,7 @@ async def api_admin_access_users(request):
             'is_admin': bool(ADMIN_ID and int(uid) == int(ADMIN_ID)),
         })
 
-    rows.sort(key=lambda x: (not x['active'], x['payment_status'] != 'pending', x['name'] or str(x['user_id'])))
+    rows.sort(key=lambda x: (not x['is_admin'], not x['active'], x['payment_status'] != 'pending', x['name'] or str(x['user_id'])))
     return web.json_response({
         'ok': True,
         'total': sum(1 for x in rows if not x['is_admin']),
