@@ -2868,10 +2868,6 @@ function openPlayer(id){
   if(nativeTv)showPlayerChannelHudForThreeSeconds();
   showTvZap(ch);
   if(!nativeTv&&window.innerWidth>window.innerHeight)setAppFullscreen(true);
-  if(nativeTv){
-    if(tvChannelHeartbeatTimer)clearTimeout(tvChannelHeartbeatTimer);
-    tvChannelHeartbeatTimer=setTimeout(()=>refreshTvAuth(false),1200);
-  }
 }
 function stopTvWatchdog(){
   if(tvWatchdogTimer){clearInterval(tvWatchdogTimer);tvWatchdogTimer=null}
@@ -3021,7 +3017,13 @@ function startStream(ch,preferBackup=false,forceProxy=false){
           scheduleStateSync();
           startFreeAdWatch(ch);
           renderRail();
-        },nativeTv?700:0);
+        },nativeTv?4000:0);
+        if(nativeTv){
+          if(tvChannelHeartbeatTimer)clearTimeout(tvChannelHeartbeatTimer);
+          tvChannelHeartbeatTimer=setTimeout(()=>{
+            if(current&&current.id===ch.id)refreshTvAuth(false);
+          },6000);
+        }
       }
     };
     if(!nativeTv){reveal();return}
