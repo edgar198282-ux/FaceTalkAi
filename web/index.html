@@ -3545,7 +3545,7 @@ function shouldInstantShieldCinerama(ch){
   return !!(ch&&!ch.personal&&isCineramaStreamUrl(selectedFreeStreamUrl(ch)));
 }
 function armInstantCineramaShield(ch){
-  if(!ch||ch.personal)return false;
+  if(!shouldInstantShieldCinerama(ch))return false;
   freeAdShieldChannel=String(ch.id||'');
   freeAdShieldStartedAt=Date.now()/1000;
   freeAdShieldVerifiedNegative=0;
@@ -3693,7 +3693,7 @@ async function checkFreeAdState(){
       // Early negative OCR must never uncover a delayed Cinerama/OTTClub card.
       if(!freeAdShieldSawPositive){
         freeAdShieldVerifiedNegative++;
-        if(shieldAge<15||freeAdShieldVerifiedNegative<6){
+        if(shieldAge<12||freeAdShieldVerifiedNegative<5){
           setFreeAdOverlay(true);
           return;
         }
