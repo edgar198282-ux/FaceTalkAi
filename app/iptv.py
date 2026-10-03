@@ -640,11 +640,14 @@ async def _quick_ottclub_probe(item: dict):
             return
         text = await _ocr_ottclub_frame(stdout[:frame_size], width, height)
         hit = _ottclub_text_hit(text)
+        cinerama_hit = _cinerama_text_hit(text)
         now = int(time.time())
+        compact_text = re.sub(r"\s+", " ", str(text or "")).strip()[:500]
+
         state = dict(_ottclub_ad_state.get(cid) or {})
         state["last_probe"] = now
         state["hits"] = 1 if hit else 0
-        state["ocr_text"] = re.sub(r"\s+", " ", str(text or "")).strip()[:500]
+        state["ocr_text"] = compact_text
         state["error"] = ""
         if hit:
             if not bool(state.get("active")):
@@ -654,16 +657,44 @@ async def _quick_ottclub_probe(item: dict):
             state["positive_streak"] = max(1, int(state.get("positive_streak") or 0))
             state["negative_streak"] = 0
         else:
-            # A single quick negative frame is not enough to clear an active ad.
-            # The existing full 3-frame watcher remains responsible for clearing it.
-            if not bool(state.get("active")):
-                state["negative_streak"] = int(state.get("negative_streak") or 0) + 1
+            state["positive_streak"] = 0
+            state["negative_streak"] = int(state.get("negative_streak") or 0) + 1
+            if int(state["negative_streak"]) >= 2:
+                state["active"] = False
         _ottclub_ad_state[cid] = state
+
+        cstate = dict(_cinerama_placeholder_state.get(cid) or {})
+        cstate["last_probe"] = now
+        cstate["hits"] = 1 if cinerama_hit else 0
+        cstate["ocr_text"] = compact_text
+        cstate["error"] = ""
+        if cinerama_hit:
+            if not bool(cstate.get("active")):
+                _cinerama_stats["detections"] = int(_cinerama_stats.get("detections") or 0) + 1
+            cstate["active"] = True
+            cstate["last_match"] = now
+            cstate["positive_streak"] = max(1, int(cstate.get("positive_streak") or 0))
+            cstate["negative_streak"] = 0
+        else:
+            cstate["positive_streak"] = 0
+            cstate["negative_streak"] = int(cstate.get("negative_streak") or 0) + 1
+            if int(cstate["negative_streak"]) >= 2:
+                cstate["active"] = False
+        _cinerama_placeholder_state[cid] = cstate
+
         _ottclub_stats["probes"] = int(_ottclub_stats.get("probes") or 0) + 1
         _ottclub_stats["last_probe"] = now
         _ottclub_stats["last_channel_id"] = cid
         _ottclub_stats["last_hits"] = 1 if hit else 0
-        _ottclub_stats["last_text"] = state["ocr_text"]
+        _ottclub_stats["last_text"] = compact_text
+        _cinerama_stats["probes"] = int(_cinerama_stats.get("probes") or 0) + 1
+        _cinerama_stats["last_probe"] = now
+        _cinerama_stats["last_channel_id"] = cid
+        _cinerama_stats["last_hits"] = 1 if cinerama_hit else 0
+        _cinerama_stats["active_channels"] = sum(
+            1 for value in _cinerama_placeholder_state.values()
+            if bool((value or {}).get("active"))
+        )
     except Exception:
         _ottclub_stats["errors"] = int(_ottclub_stats.get("errors") or 0) + 1
     finally:
@@ -2376,6 +2407,9 @@ async def api_ad_state(request):
     _burned_ad_stats["last_free_play_channel_id"] = cid
     ott = dict(_ottclub_ad_state.get(cid) or {})
     cin = dict(_cinerama_placeholder_state.get(cid) or {})
+    last_quick = max(int(ott.get("last_probe") or 0), int(cin.get("last_probe") or 0))
+    if int(time.time()) - last_quick >= 1:
+        asyncio.create_task(_quick_ottclub_probe(item))
     active = bool(ott.get("active") or cin.get("active"))
     reason = "cinerama_placeholder" if bool(cin.get("active")) else ("ottclub" if bool(ott.get("active")) else "")
     return web.json_response({
