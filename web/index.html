@@ -69,7 +69,7 @@ button{cursor:pointer}
 }
 .iconBtn:active,.iconBtn.active{background:rgba(255,255,255,.22);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}
 .iconBtn.favoriteOn{color:#ff3b4f!important;background:rgba(255,59,79,.12);text-shadow:0 0 12px rgba(255,59,79,.28)}
-.toolbar{display:grid;grid-template-columns:minmax(0,1fr) 76px;gap:7px;padding-top:9px;align-items:center}
+.toolbar{display:none!important}
 .search,.select{
   height:42px;border:1px solid rgba(255,255,255,.58);border-radius:12px;background:rgba(255,255,255,.9);
   padding:0 12px;font-size:15px;outline:none;color:#34444d;box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 3px 9px rgba(0,78,145,.1)
@@ -678,6 +678,13 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
 .tvShortcut{position:fixed;left:34px;top:28px;z-index:440;display:none;background:rgba(3,14,28,.92);color:#fff;border-radius:14px;padding:10px 16px;font-size:17px;font-weight:800}.tvShortcut.show{display:block}
 .tvGuide{position:fixed;inset:0;z-index:460;display:none;background:rgba(1,10,22,.96);color:#fff;padding:28px}.tvGuide.open{display:block}.tvGuideHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.tvGuideTitle{font-size:30px;font-weight:900}.tvGuideHint{font-size:15px;color:#9ec7df}.tvGuideList{height:calc(100vh - 92px);overflow:auto;display:grid;gap:7px}.tvGuideRow{display:grid;grid-template-columns:70px 220px minmax(300px,1.25fr) minmax(260px,1fr);gap:14px;align-items:center;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.06);font-size:17px}.tvGuideRow.focused{background:#168de8;box-shadow:0 0 0 3px #ffd400 inset}.tvGuideNo{font-size:22px;font-weight:900;color:#ffd400}.tvGuideName{font-weight:900}.tvGuideNow,.tvGuideNext{min-width:0}.tvGuideProgramTitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:800}.tvGuideTime{font-size:13px;color:#9ec7df;margin-top:4px}.tvGuideProgress{height:4px;background:rgba(255,255,255,.16);border-radius:999px;overflow:hidden;margin-top:6px}.tvGuideProgress span{display:block;height:100%;background:#ffd400}.tvGuideNext{color:#a9c8da}.tvGuideRow.focused .tvGuideTime,.tvGuideRow.focused .tvGuideNext{color:#fff}
 .tvSearch{position:fixed;inset:0;z-index:470;display:none;align-items:flex-start;justify-content:center;background:rgba(1,10,22,.94);padding-top:72px}.tvSearch.open{display:flex}.tvSearchCard{width:min(900px,90vw);background:#fff;border-radius:24px;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,.4)}.tvSearchTitle{font-size:28px;font-weight:900;color:#0d4d86;margin-bottom:14px}.tvSearchInput{width:100%;font-size:30px;padding:16px 18px;border:3px solid #168de8;border-radius:16px;outline:none}.tvSearchHint{font-size:16px;color:#5b7488;margin-top:10px}
+@media(max-width:700px){
+  .tvSearch{padding:76px 14px 0;background:rgba(1,10,22,.72)}
+  .tvSearchCard{width:100%;border-radius:18px;padding:16px}
+  .tvSearchTitle{font-size:20px;margin-bottom:10px}
+  .tvSearchInput{font-size:20px;padding:13px 14px;border-width:2px;border-radius:13px}
+  .tvSearchHint{font-size:13px;margin-top:8px}
+}
 
 .tvSettingPicker{position:fixed;inset:0;z-index:10050;display:none;align-items:center;justify-content:center;background:rgba(0,12,28,.76);padding:30px;box-sizing:border-box}
 .tvSettingPicker.open{display:flex}
@@ -689,10 +696,10 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
 </style>
 </head>
 <body>
-<div class="tvSearch" id="tvSearch">
+<div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
   <div class="tvSearchCard">
     <div class="tvSearchTitle">Поиск канала</div>
-    <input id="tvSearchInput" class="tvSearchInput" placeholder="Введите название канала">
+    <input id="tvSearchInput" class="tvSearchInput" placeholder="Введите название канала" oninput="syncTopChannelSearch(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();closeTvSearch(true)}">
     <div class="tvSearchHint">Введите название · OK применить · Back отменить</div>
   </div>
 </div>
@@ -732,7 +739,7 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
       </div>
       <div class="icons">
         <button id="listBtn" class="iconBtn active" onclick="toggleLayoutMode()" title="Список / Плитка">☷</button>
-        <button id="refreshBtn" class="iconBtn" onclick="refreshChannels()" title="Обновить">↻</button>
+        <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">⌕</button>
         <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск">⌕ <span>Поиск</span></button>
         <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="openTvSettings()" title="Настройки">⚙ <span>Настройки</span></button>
         <div id="tvClock" class="tvClock"></div>
@@ -2066,32 +2073,42 @@ function closeTvSettingPicker(apply=false){
 }
 
 function tvSearchOpen(){
-  return nativeTv&&document.getElementById('tvSearch').classList.contains('open');
+  const box=document.getElementById('tvSearch');
+  return !!(box&&box.classList.contains('open'));
+}
+function syncTopChannelSearch(value){
+  const hidden=document.getElementById('search');
+  if(hidden)hidden.value=value||'';
+  focusIndex=0;
+  render();
 }
 function openTvSearch(){
-  if(!nativeTv)return;
   const box=document.getElementById('tvSearch');
   const input=document.getElementById('tvSearchInput');
-  input.value=document.getElementById('search').value||'';
+  if(!box||!input)return;
+  const hidden=document.getElementById('search');
+  input.value=hidden?hidden.value||'':'';
   box.classList.add('open');
   setTimeout(()=>{
     input.focus();
     input.select();
-    try{if(window.AbajNative&&typeof window.AbajNative.showKeyboard==='function')window.AbajNative.showKeyboard()}catch(e){}
+    if(nativeTv){
+      try{if(window.AbajNative&&typeof window.AbajNative.showKeyboard==='function')window.AbajNative.showKeyboard()}catch(e){}
+    }
   },120);
 }
 function closeTvSearch(apply){
-  if(!nativeTv)return;
   const box=document.getElementById('tvSearch');
   const input=document.getElementById('tvSearchInput');
+  if(!box||!input)return;
   if(apply){
-    document.getElementById('search').value=input.value||'';
-    focusIndex=0;
-    render();
-    showTvShortcut(input.value?('Поиск: '+input.value):'Поиск очищен');
+    syncTopChannelSearch(input.value||'');
+    if(nativeTv)showTvShortcut(input.value?('Поиск: '+input.value):'Поиск очищен');
   }
   box.classList.remove('open');
-  try{if(window.AbajNative&&typeof window.AbajNative.hideKeyboard==='function')window.AbajNative.hideKeyboard()}catch(e){}
+  if(nativeTv){
+    try{if(window.AbajNative&&typeof window.AbajNative.hideKeyboard==='function')window.AbajNative.hideKeyboard()}catch(e){}
+  }
   try{document.activeElement.blur()}catch(e){}
 }
 
