@@ -1987,10 +1987,12 @@ function localizedCategoryLabel(group){
 function channelQuality(ch){
   const q=String(ch&&ch.quality||'').trim().toUpperCase();
   const height=Number(ch&&ch.height||0);
+  const verified=ch&&ch.quality_verified===true;
   const raw=[
     ch&&ch.resolution,ch&&ch.video_quality,ch&&ch.name,ch&&ch.group
   ].filter(v=>v!==undefined&&v!==null).join(' ').toLowerCase();
-  if(q==='4K'||q==='UHD'||height>=2000||/(^|[^a-z0-9])(4k|uhd|2160p?|3840x2160)([^a-z0-9]|$)/i.test(raw))return '4K';
+  if(ch&&ch.personal&&(q==='4K'||q==='UHD'||height>=2000||/(^|[^a-z0-9])(4k|uhd|2160p?|3840x2160)([^a-z0-9]|$)/i.test(raw)))return '4K';
+  if(verified&&height>=2000)return '4K';
   if(q==='FHD'||(height>=1000&&height<2000)||/(^|[^a-z0-9])(fhd|full[ ._-]?hd|1080p?|1920x1080)([^a-z0-9]|$)/i.test(raw))return 'FHD';
   if(q==='HD'||(height>=700&&height<1000)||/(^|[^a-z0-9])(720p?|1280x720|hd)([^a-z0-9]|$)/i.test(raw))return 'HD';
   return 'SD';
@@ -2001,7 +2003,7 @@ function cacheChannels(){
   try{
     const slim=channels.map(x=>({
       id:x.id,name:x.name,group:x.group,country:x.country,logo:x.logo,status:x.status,tvg_id:x.tvg_id,
-      quality:x.quality,resolution:x.resolution,video_quality:x.video_quality,height:x.height,
+      quality:x.quality,resolution:x.resolution,video_quality:x.video_quality,height:x.height,quality_verified:x.quality_verified===true,
       latency_ms:x.latency_ms,backup_count:x.backup_count,uptime_pct:x.uptime_pct,health_score:x.health_score,health_samples:x.health_samples,unreliable:!!x.unreliable,epg_now:x.epg_now,epg_next:x.epg_next,
       personal:!!x.personal,provider:x.provider,adult:!!x.adult
     }));
@@ -2027,13 +2029,10 @@ function restoreCachedChannels(){
 }
 async function load(){
   try{
-    try{
-      const accessR=await fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'});
-      edemStatus=accessR.ok?await accessR.json():{active:false,configured:false};
-    }catch(e){
-      edemStatus={active:false,configured:false};
-    }
     restoreCachedChannels();
+    const edemStatusPromise=fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'})
+      .then(async r=>r.ok?await r.json():{active:false,configured:false})
+      .catch(()=>({active:false,configured:false}));
     const mainPromise=fetch('/api/iptv/channels?compact=1',{cache:'no-store'}).then(async r=>{
       if(!r.ok)throw new Error('channels '+r.status);
       return await r.json();
@@ -2043,6 +2042,10 @@ async function load(){
       return await r.json();
     }).catch(()=>({channels:[]}));
     const d=await mainPromise;
+    edemStatus=await Promise.race([
+      edemStatusPromise,
+      new Promise(resolve=>setTimeout(()=>resolve({active:false,configured:false}),500))
+    ]);
     const ed=await Promise.race([
       edemPromise,
       new Promise(resolve=>setTimeout(()=>resolve({channels:[]}),500))
