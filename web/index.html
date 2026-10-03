@@ -2880,6 +2880,7 @@ function streamWarmKey(ch,preferBackup=false){
   return (ch&&ch.personal?'edem:':'free:')+String(ch&&ch.id||'')+(preferBackup?':b':'');
 }
 function getWarmedManifest(ch,preferBackup=false){
+  if(!ch||!ch.personal)return '';
   const key=streamWarmKey(ch,preferBackup);
   const item=streamWarmCache.get(key);
   if(!item)return '';
@@ -2887,7 +2888,7 @@ function getWarmedManifest(ch,preferBackup=false){
   return String(item.text||'');
 }
 async function prefetchStreamManifest(ch,signal){
-  if(!nativeTv||!ch||!ch.id)return;
+  if(!nativeTv||!ch||!ch.id||!ch.personal)return;
   const key=streamWarmKey(ch,false);
   const cached=streamWarmCache.get(key);
   if(cached&&Date.now()-Number(cached.ts||0)<30000)return;
