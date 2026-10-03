@@ -120,6 +120,28 @@ OFFICIAL_CHANNELS = [
         "quality": "4K",
         "height": 2160,
     },
+    {
+        "name": "Fresh TV Armenia (1080p)",
+        "group": "Music",
+        "tvg_id": "FreshTV.am",
+        "country": "AM",
+        "source": "public:freshtv",
+        "url": "https://freshtv-live.ru/FreshTV/index.m3u8?token=livestream",
+        "adult": False,
+        "quality": "FHD",
+        "height": 1080,
+    },
+    {
+        "name": "Fireplace Vibes (2160p)",
+        "group": "4K",
+        "tvg_id": "",
+        "country": "US",
+        "source": "public:cloudfront:fireplace-4k",
+        "url": "https://d21izs34d0y5tl.cloudfront.net/Fireplace_4K_SONO20.m3u8",
+        "adult": False,
+        "quality": "4K",
+        "height": 2160,
+    },
 ]
 
 SOURCE_URLS = [
