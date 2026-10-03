@@ -194,6 +194,7 @@ _burned_ad_stats = {
     "server_last_score": 0,
 }
 _burned_ad_last_report = {}
+_burned_ad_probe_inflight = set()
 _ottclub_quick_inflight = set()
 _ottclub_ad_state = {}
 _cinerama_placeholder_state = {}
@@ -660,6 +661,31 @@ def _store_server_burned_probe(item: dict, probe: dict):
         "seen_at": max(int(current.get("seen_at") or 0), now),
     })
     channels[cid] = current
+
+async def _probe_current_burned_ad(item: dict):
+    cid = str(item.get("id") or "")
+    if not cid or cid in _burned_ad_probe_inflight:
+        return
+    _burned_ad_probe_inflight.add(cid)
+    try:
+        probe = await _server_burned_ad_probe(item)
+        _store_server_burned_probe(item, probe)
+    except Exception:
+        pass
+    finally:
+        _burned_ad_probe_inflight.discard(cid)
+
+async def _probe_current_burned_ad_pair(item: dict):
+    cid = str(item.get("id") or "")
+    if not cid:
+        return
+    await _probe_current_burned_ad(item)
+    await asyncio.sleep(3)
+    if str(_burned_ad_stats.get("last_free_play_channel_id") or "") != cid:
+        return
+    if int(time.time()) - int(_burned_ad_stats.get("last_free_play") or 0) > 20:
+        return
+    await _probe_current_burned_ad(item)
 
 def _restore_saved_snapshot():
     saved = _load_json(SNAPSHOT_PATH, {})
@@ -1998,6 +2024,7 @@ async def api_ad_viewing(request):
     ott = dict(_ottclub_ad_state.get(cid) or {})
     if int(time.time()) - int(ott.get("last_probe") or 0) >= 2:
         asyncio.create_task(_quick_ottclub_probe(item))
+    asyncio.create_task(_probe_current_burned_ad_pair(item))
     return web.json_response({"ok": True}, headers={"Cache-Control": "no-store"})
 
 
