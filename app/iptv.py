@@ -596,11 +596,10 @@ def _store_server_burned_probe(item: dict, probe: dict):
     if cdetected:
         cstate["positive_streak"] = int(cstate.get("positive_streak") or 0) + 1
         cstate["negative_streak"] = 0
-        if int(cstate["positive_streak"]) >= 2:
-            if not bool(cstate.get("active")):
-                _cinerama_stats["detections"] = int(_cinerama_stats.get("detections") or 0) + 1
-            cstate["active"] = True
-            cstate["last_match"] = now
+        if not bool(cstate.get("active")):
+            _cinerama_stats["detections"] = int(_cinerama_stats.get("detections") or 0) + 1
+        cstate["active"] = True
+        cstate["last_match"] = now
     elif probe.get("ok"):
         cstate["positive_streak"] = 0
         cstate["negative_streak"] = int(cstate.get("negative_streak") or 0) + 1

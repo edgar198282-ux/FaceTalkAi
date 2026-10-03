@@ -2823,6 +2823,8 @@ function startFreeAdWatch(ch){
     if(current&&current.id===ch.id&&!current.personal)notifyFreeViewing(ch);
   },30000);
   checkFreeAdState();
+  setTimeout(()=>{if(current&&current.id===ch.id)checkFreeAdState()},800);
+  setTimeout(()=>{if(current&&current.id===ch.id)checkFreeAdState()},1800);
   freeAdTimer=setInterval(checkFreeAdState,3000);
   startBurnedAdObserver(ch);
 }
@@ -3042,9 +3044,11 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       if(!postStartTasksDone){
         postStartTasksDone=true;
         setTimeout(()=>{
+          if(current&&current.id===ch.id)startFreeAdWatch(ch);
+        },nativeTv?250:0);
+        setTimeout(()=>{
           if(!current||current.id!==ch.id)return;
           scheduleStateSync();
-          startFreeAdWatch(ch);
           renderRail();
         },nativeTv?4000:0);
         if(nativeTv){
