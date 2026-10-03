@@ -188,10 +188,17 @@ body.playerFullscreenActive{overflow:hidden!important;background:#000!important}
 .playerChannelHudBar span{display:block;height:100%;width:0;background:#38bdf8;border-radius:4px}
 .playerView.appFullscreen .playerChannelHud,.playerView:fullscreen .playerChannelHud,.playerView:-webkit-full-screen .playerChannelHud{position:fixed!important;left:18px!important;top:18px!important;z-index:2147483646!important}
 .playerBrand{position:fixed;inset:0;z-index:120;pointer-events:auto;background:#031a4a;opacity:1;transition:opacity .12s ease;display:flex;align-items:center;justify-content:center}.nativeTv .playerBrand{pointer-events:none}.playerLoadingLogo{width:min(18vw,112px);height:min(18vw,112px);object-fit:contain;border-radius:22px;image-rendering:auto;filter:drop-shadow(0 8px 18px rgba(0,0,0,.28));animation:abajLogoPulse 1.15s ease-in-out infinite}@keyframes abajLogoPulse{0%,100%{opacity:.76}50%{opacity:1}}
-.videoWrap.frameReady .playerBrand{opacity:0}
+.videoWrap.frameReady .playerBrand{opacity:0;pointer-events:none}
 video{width:100%;height:100%;object-fit:contain;background:transparent;position:relative;z-index:1;transition:opacity .08s ease}
-.nativeTv .videoWrap video{opacity:0!important}
-.nativeTv .videoWrap.frameReady video{opacity:1!important}
+.videoWrap:not(.frameReady) video{opacity:0!important}
+.videoWrap.frameReady video{opacity:1!important}
+.playerView.pureFullscreen .videoWrap:not(.frameReady) .playerBrand,
+.playerView.appFullscreen .videoWrap:not(.frameReady) .playerBrand,
+.playerView:fullscreen .videoWrap:not(.frameReady) .playerBrand,
+.playerView:-webkit-full-screen .videoWrap:not(.frameReady) .playerBrand{
+  display:flex!important;opacity:1!important;pointer-events:none!important;position:fixed!important;inset:0!important;
+  background:#031a4a!important;align-items:center!important;justify-content:center!important;z-index:2147483646!important
+}
 .playerBottom{padding:10px 10px 12px;background:linear-gradient(180deg,#101114,#09090a);border-top:1px solid rgba(255,255,255,.08);box-shadow:0 -8px 24px rgba(0,0,0,.2)}
 .playerMeta{display:flex;justify-content:space-between;gap:10px;align-items:center;min-height:34px}
 .playerMetaMain{display:flex;align-items:center;gap:10px;min-width:0}
