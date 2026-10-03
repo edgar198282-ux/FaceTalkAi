@@ -3326,7 +3326,7 @@ function armInstantCineramaShield(ch){
 let freeAdCountdownTimer=null;
 let freeAdCountdownEndsAt=0;
 let freeAdAudioCtx=null;
-let freeAdAudioNodes=[];
+let freeAdAudioNodes=[];\nlet freeAdMusicTimer=null;
 
 function updateFreeAdCountdown(seconds){
   const el=document.getElementById('freeAdCountdown');
@@ -3353,24 +3353,38 @@ function startFreeAdMusic(){
     if(!Ctx)return;
     const ctx=new Ctx();
     const master=ctx.createGain();
-    master.gain.value=0.018;
+    master.gain.value=0.045;
     master.connect(ctx.destination);
-    [261.63,329.63,392].forEach((freq,i)=>{
-      const osc=ctx.createOscillator();
-      const gain=ctx.createGain();
-      osc.type='sine';
-      osc.frequency.value=freq;
-      gain.gain.value=i===0?0.50:0.22;
-      osc.connect(gain);
-      gain.connect(master);
-      osc.start();
-      freeAdAudioNodes.push(osc,gain);
-    });
     freeAdAudioCtx=ctx;
+
+    const notes=[523.25,659.25,783.99,659.25,587.33,698.46,783.99,1046.50];
+    const playPhrase=()=>{
+      if(!freeAdAudioCtx)return;
+      const start=ctx.currentTime+0.03;
+      notes.forEach((freq,i)=>{
+        const osc=ctx.createOscillator();
+        const gain=ctx.createGain();
+        const t=start+i*0.34;
+        osc.type='triangle';
+        osc.frequency.setValueAtTime(freq,t);
+        gain.gain.setValueAtTime(0.0001,t);
+        gain.gain.exponentialRampToValueAtTime(0.32,t+0.025);
+        gain.gain.exponentialRampToValueAtTime(0.0001,t+0.26);
+        osc.connect(gain);
+        gain.connect(master);
+        osc.start(t);
+        osc.stop(t+0.3);
+        freeAdAudioNodes.push(osc,gain);
+      });
+    };
+
+    playPhrase();
+    freeAdMusicTimer=setInterval(playPhrase,3100);
     if(ctx.state==='suspended')ctx.resume().catch(()=>{});
   }catch(e){}
 }
 function stopFreeAdMusic(){
+  if(freeAdMusicTimer){clearInterval(freeAdMusicTimer);freeAdMusicTimer=null}
   freeAdAudioNodes.forEach(n=>{try{if(n.stop)n.stop()}catch(e){}});
   freeAdAudioNodes=[];
   try{if(freeAdAudioCtx)freeAdAudioCtx.close()}catch(e){}
