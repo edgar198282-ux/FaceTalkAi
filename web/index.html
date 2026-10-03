@@ -3223,7 +3223,7 @@ function startTvWatchdog(ch){
       tvWatchdogStalls=0;
     }
     tvWatchdogLastTime=t;
-    if(tvWatchdogStalls>=3){
+    if(tvWatchdogStalls>=2){
       tvWatchdogStalls=0;
       const err=document.getElementById('playerError');
       if(err)err.textContent=ch.backup_count?'Поток завис. Переключаю резерв…':'Поток завис. Переподключаю…';
@@ -3235,7 +3235,7 @@ function startTvWatchdog(ch){
       });
       if(!tryNextTvDirect(ch))scheduleReconnect(ch,true);
     }
-  },5000);
+  },4000);
 }
 
 function startStream(ch,preferBackup=false,forceProxy=false){
@@ -3320,12 +3320,12 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       enableWorker:true,
       lowLatencyMode:false,
       startFragPrefetch:true,
-      maxBufferLength:nativeTv?10:20,
-      maxMaxBufferLength:nativeTv?18:30,
-      backBufferLength:nativeTv?5:10,
-      manifestLoadingTimeOut:nativeTv?7000:10000,
-      levelLoadingTimeOut:nativeTv?7000:10000,
-      fragLoadingTimeOut:nativeTv?12000:14000,
+      maxBufferLength:nativeTv?6:20,
+      maxMaxBufferLength:nativeTv?12:30,
+      backBufferLength:nativeTv?3:10,
+      manifestLoadingTimeOut:nativeTv?6000:10000,
+      levelLoadingTimeOut:nativeTv?6000:10000,
+      fragLoadingTimeOut:nativeTv?9000:14000,
       capLevelToPlayerSize:true
     });
     if(ch.personal){
