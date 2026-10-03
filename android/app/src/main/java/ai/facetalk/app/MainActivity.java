@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.DownloadManager;
+import android.app.PictureInPictureParams;
 import android.app.PendingIntent;
 import android.app.UiModeManager;
 import android.media.AudioManager;
@@ -24,6 +25,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.util.Rational;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
@@ -70,6 +72,7 @@ public class MainActivity extends Activity {
     private volatile long lastWebHeartbeatAt=System.currentTimeMillis();
     private volatile long lastTvChannelKeyAt=0L;
     private volatile boolean activityResumed=false;
+    private volatile boolean playbackActive=false;
     private volatile boolean tvRecoveryQueued=false;
     private volatile long tvRecoveryStartedAt=0L;
     public final class AbajNativeBridge {
@@ -109,6 +112,10 @@ public class MainActivity extends Activity {
             lastWebHeartbeatAt=System.currentTimeMillis();
             tvRecoveryQueued=false;
             tvRecoveryStartedAt=0L;
+        }
+        @JavascriptInterface public void setPlaybackActive(boolean active){
+            playbackActive=active;
+            runOnUiThread(()->updatePictureInPictureParams(active));
         }
     }
     private final Runnable periodicUpdateCheck=new Runnable(){
@@ -220,6 +227,43 @@ public class MainActivity extends Activity {
             if(am!=null)am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,android.os.SystemClock.elapsedRealtime()+1200L,pi);
             android.os.Process.killProcess(android.os.Process.myPid());
         }catch(Exception ignored){}
+    }
+
+    private void updatePictureInPictureParams(boolean active){
+        if(isTv||Build.VERSION.SDK_INT<Build.VERSION_CODES.O)return;
+        try{
+            PictureInPictureParams.Builder b=new PictureInPictureParams.Builder()
+                .setAspectRatio(new Rational(16,9));
+            if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.S)b.setAutoEnterEnabled(active);
+            setPictureInPictureParams(b.build());
+        }catch(Exception ignored){}
+    }
+
+    private void enterPlaybackPictureInPicture(){
+        if(isTv||!playbackActive||Build.VERSION.SDK_INT<Build.VERSION_CODES.O||isInPictureInPictureMode())return;
+        try{
+            if(webView!=null)webView.evaluateJavascript("if(typeof enterNativePipUi==='function')enterNativePipUi()",null);
+            PictureInPictureParams params=new PictureInPictureParams.Builder()
+                .setAspectRatio(new Rational(16,9))
+                .build();
+            enterPictureInPictureMode(params);
+        }catch(Exception ignored){}
+    }
+
+    @Override protected void onUserLeaveHint(){
+        super.onUserLeaveHint();
+        if(Build.VERSION.SDK_INT<Build.VERSION_CODES.S)enterPlaybackPictureInPicture();
+    }
+
+    @Override public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig){
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode,newConfig);
+        if(webView!=null){
+            if(isInPictureInPictureMode){
+                webView.evaluateJavascript("if(typeof enterNativePipUi==='function')enterNativePipUi()",null);
+            }else{
+                webView.evaluateJavascript("if(typeof exitNativePipUi==='function')exitNativePipUi()",null);
+            }
+        }
     }
 
     private void enterTvImmersive(){
