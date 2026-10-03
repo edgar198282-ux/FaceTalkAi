@@ -1293,6 +1293,30 @@ async def _discover_iptv_org_api(session: aiohttp.ClientSession) -> tuple[list[d
         return [], {"by_id": {}, "by_country": {}, "global": {}, "slug": {}}
 
 
+def _quality_from_height(height: int) -> str:
+    height = int(height or 0)
+    if height >= 2000:
+        return "4K"
+    if height >= 1000:
+        return "FHD"
+    if height >= 700:
+        return "HD"
+    return ""
+
+
+def _hls_manifest_height(chunk: bytes) -> int:
+    if not chunk or b"#EXTM3U" not in chunk:
+        return 0
+    text = chunk.decode("utf-8", "ignore")
+    heights = []
+    for width, height in re.findall(r"RESOLUTION\s*=\s*(\d{2,5})x(\d{2,5})", text, re.I):
+        try:
+            heights.append(int(height))
+        except Exception:
+            pass
+    return max(heights) if heights else 0
+
+
 async def _probe(session: aiohttp.ClientSession, item: dict, sem: asyncio.Semaphore) -> dict:
     started = None
     ok = False
@@ -1302,11 +1326,11 @@ async def _probe(session: aiohttp.ClientSession, item: dict, sem: asyncio.Semaph
         async with sem:
             started = time.perf_counter()
             timeout = aiohttp.ClientTimeout(total=8, connect=4, sock_read=4)
-            headers = {"Range": "bytes=0-2047", "User-Agent": "IPTV-Player/1.0"}
+            headers = {"Range": "bytes=0-16383", "User-Agent": "IPTV-Player/1.0"}
             async with session.get(item["url"], headers=headers, timeout=timeout, allow_redirects=True) as r:
                 code = r.status
                 ctype = (r.headers.get("content-type") or "").lower()
-                chunk = await r.content.read(2048)
+                chunk = await r.content.read(16384)
                 is_hls = b"#EXTM3U" in chunk or "mpegurl" in ctype or urlparse(str(r.url)).path.lower().endswith(".m3u8")
                 ok = r.status in (200, 206) and (is_hls or ctype.startswith(("video/", "audio/")) or len(chunk) >= 188)
                 if not ok:
@@ -1314,6 +1338,14 @@ async def _probe(session: aiohttp.ClientSession, item: dict, sem: asyncio.Semaph
     except Exception as exc:
         error = str(exc)[:120]
     row = dict(item)
+    actual_height = _hls_manifest_height(chunk if 'chunk' in locals() else b"") if ok else 0
+    if actual_height:
+        row["reported_height"] = int(row.get("height") or 0)
+        row["height"] = actual_height
+        row["quality"] = _quality_from_height(actual_height)
+        row["quality_verified"] = True
+    else:
+        row["quality_verified"] = False
     row.update({
         "status": "ONLINE" if ok else "OFFLINE",
         "status_code": code,
