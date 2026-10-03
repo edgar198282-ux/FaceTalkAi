@@ -2229,7 +2229,7 @@ async def api_proxy(request):
     if not url.startswith(("http://", "https://")) or not hmac.compare_digest(sig, _token(url)):
         raise web.HTTPForbidden(text="Invalid stream token")
     timeout = aiohttp.ClientTimeout(total=None, connect=3, sock_read=10)
-    session = aiohttp.ClientSession(headers={"User-Agent": "IPTV-Player/1.0"})
+    session = request.app["iptv_proxy_session"]
     try:
         r = await session.get(url, timeout=timeout, allow_redirects=True)
         ctype = (r.headers.get("content-type") or "").lower()
@@ -2238,8 +2238,7 @@ async def api_proxy(request):
         is_hls = "mpegurl" in ctype or urlparse(final_url).path.lower().endswith(".m3u8")
         if is_hls:
             body = await r.read()
-            await r.release()
-            await session.close()
+            r.release()
             return web.Response(
                 text=_rewrite_hls(body.decode("utf-8", "ignore"), final_url),
                 content_type="application/vnd.apple.mpegurl",
@@ -2263,14 +2262,16 @@ async def api_proxy(request):
             await resp.write_eof()
         finally:
             r.release()
-            await session.close()
         return resp
     except Exception:
-        await session.close()
         raise
 
 
 async def start_background(app):
+    app["iptv_proxy_session"] = aiohttp.ClientSession(
+        connector=aiohttp.TCPConnector(limit=128, limit_per_host=16, ttl_dns_cache=300, keepalive_timeout=30),
+        headers={"User-Agent": "IPTV-Player/1.0"},
+    )
     worker_mode = str(os.getenv("IPTV_BACKGROUND_ENABLED", "1")).strip().lower() in {"0", "false", "no", "off"}
 
     async def ad_watch_loop():
@@ -2344,6 +2345,9 @@ async def stop_background(app):
         task = app.get(key)
         if task:
             task.cancel()
+    session = app.get("iptv_proxy_session")
+    if session and not session.closed:
+        await session.close()
 
 
 def install(app: web.Application):
