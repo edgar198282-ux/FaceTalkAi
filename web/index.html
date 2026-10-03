@@ -2892,7 +2892,7 @@ async function prefetchStreamManifest(ch,signal){
   const cached=streamWarmCache.get(key);
   if(cached&&Date.now()-Number(cached.ts||0)<30000)return;
   const basePath=ch.personal?'/api/iptv/edem/play':'/api/iptv/play';
-  const src=basePath+'?id='+encodeURIComponent(ch.id)+'&prefetch=1&t='+Date.now();
+  const src=basePath+'?id='+encodeURIComponent(ch.id)+'&prefetch=1'+(!ch.personal?'&proxy=1':'')+'&t='+Date.now();
   try{
     const r=await fetch(src,{headers:ch.personal?authHeaders():{},cache:'no-store',redirect:'manual',signal});
     if(!r.ok)return;
@@ -2962,7 +2962,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   v.pause();v.removeAttribute('src');v.load();
   const basePath=ch.personal?'/api/iptv/edem/play':'/api/iptv/play';
   const auth=ch.personal?authHeaders():{};
-  const src=basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now();
+  const src=basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+(nativeTv&&!preferBackup&&!forceProxy&&!ch.personal?'&fast=1':'')+'&t='+Date.now();
   resetQualityMenu();
 
   const useHlsJs=tvPlayerMode!=='system'&&window.Hls&&Hls.isSupported();
