@@ -2,7 +2,9 @@ package ai.facetalk.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.DownloadManager;
+import android.app.PendingIntent;
 import android.app.UiModeManager;
 import android.media.AudioManager;
 import android.content.BroadcastReceiver;
@@ -51,6 +53,9 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST=4101, MEDIA_PERMISSION_REQUEST=4102;
@@ -61,6 +66,11 @@ public class MainActivity extends Activity {
     private long pendingApkDownloadId=-1L; private Uri pendingApkUri; private BroadcastReceiver downloadReceiver;
     private volatile boolean updateCheckRunning=false, updateDownloadRunning=false; private long lastUpdateCheckAt=0L;
     private final Handler updateHandler=new Handler(Looper.getMainLooper());
+    private final ScheduledExecutorService tvWatchdogExecutor=Executors.newSingleThreadScheduledExecutor();
+    private volatile long lastWebHeartbeatAt=System.currentTimeMillis();
+    private volatile boolean activityResumed=false;
+    private volatile boolean tvRecoveryQueued=false;
+    private volatile long tvRecoveryStartedAt=0L;
     public final class AbajNativeBridge {
         @JavascriptInterface public int adjustVolume(int delta){
             AudioManager am=(AudioManager)getSystemService(Context.AUDIO_SERVICE);
@@ -93,6 +103,11 @@ public class MainActivity extends Activity {
                     if(imm!=null)imm.hideSoftInputFromWindow(webView.getWindowToken(),0);
                 }catch(Exception ignored){}
             });
+        }
+        @JavascriptInterface public void heartbeat(){
+            lastWebHeartbeatAt=System.currentTimeMillis();
+            tvRecoveryQueued=false;
+            tvRecoveryStartedAt=0L;
         }
     }
     private final Runnable periodicUpdateCheck=new Runnable(){
@@ -158,11 +173,52 @@ public class MainActivity extends Activity {
                 if(!"http".equals(scheme)&&!"https".equals(scheme)){openExternal(uri);return true;} return false; }
         });
         if(!BuildConfig.PLAY_STORE_BUILD)registerApkDownloadReceiver();
+        startTvHangWatchdog();
         loadOrAuthorize();
         if(!BuildConfig.PLAY_STORE_BUILD){
             updateHandler.postDelayed(()->checkForAppUpdate(true,false),2500L);
             updateHandler.postDelayed(periodicUpdateCheck,30L*60L*1000L);
         }
+    }
+
+    private void startTvHangWatchdog(){
+        if(!isTv)return;
+        lastWebHeartbeatAt=System.currentTimeMillis();
+        tvWatchdogExecutor.scheduleAtFixedRate(()->{
+            if(!activityResumed||webView==null)return;
+            long now=System.currentTimeMillis();
+            long stale=now-lastWebHeartbeatAt;
+            if(stale>=12000L&&!tvRecoveryQueued){
+                tvRecoveryQueued=true;
+                tvRecoveryStartedAt=now;
+                runOnUiThread(()->{
+                    try{
+                        if(webView!=null){
+                            webView.stopLoading();
+                            loadOrAuthorize();
+                        }
+                    }catch(Exception ignored){}
+                });
+                return;
+            }
+            if(tvRecoveryQueued&&tvRecoveryStartedAt>0L&&now-tvRecoveryStartedAt>=13000L&&stale>=25000L){
+                restartTvProcess();
+            }
+        },5L,5L,TimeUnit.SECONDS);
+    }
+    private void restartTvProcess(){
+        if(!isTv)return;
+        try{
+            Intent launch=getPackageManager().getLaunchIntentForPackage(getPackageName());
+            if(launch==null)return;
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            int flags=PendingIntent.FLAG_UPDATE_CURRENT;
+            if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.M)flags|=PendingIntent.FLAG_IMMUTABLE;
+            PendingIntent pi=PendingIntent.getActivity(this,9917,launch,flags);
+            AlarmManager am=(AlarmManager)getSystemService(Context.ALARM_SERVICE);
+            if(am!=null)am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,android.os.SystemClock.elapsedRealtime()+1200L,pi);
+            android.os.Process.killProcess(android.os.Process.myPid());
+        }catch(Exception ignored){}
     }
 
     private void enterTvImmersive(){
@@ -283,6 +339,7 @@ public class MainActivity extends Activity {
     @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode!=MEDIA_PERMISSION_REQUEST||pendingWebPermission==null)return;PermissionRequest r=pendingWebPermission;pendingWebPermission=null;boolean ok=true;for(int x:grantResults)if(x!=PackageManager.PERMISSION_GRANTED)ok=false;if(ok)r.grant(r.getResources());else r.deny();}
     @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){super.onActivityResult(requestCode,resultCode,data);if(requestCode!=FILE_CHOOSER_REQUEST||fileCallback==null)return;fileCallback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode,data));fileCallback=null;}
     @Override protected void onPause(){
+        activityResumed=false;
         if(isTv&&webView!=null){
             webView.evaluateJavascript("if(typeof suspendTvPlayback==='function')suspendTvPlayback()",null);
         }
@@ -291,6 +348,10 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume(){
         super.onResume();
+        activityResumed=true;
+        lastWebHeartbeatAt=System.currentTimeMillis();
+        tvRecoveryQueued=false;
+        tvRecoveryStartedAt=0L;
         enterTvImmersive();
         if(!isTv)checkPendingAppAuth();
         if(isTv&&webView!=null){
@@ -409,13 +470,25 @@ public class MainActivity extends Activity {
     }
 
     private void openExternal(Uri uri){if(uri==null)return;try{String s=uri.getScheme()==null?"":uri.getScheme().toLowerCase(),h=uri.getHost()==null?"":uri.getHost().toLowerCase();if("tg".equals(s)||"t.me".equals(h)||"telegram.me".equals(h)){Intent t=new Intent(Intent.ACTION_VIEW,uri);t.setPackage("org.telegram.messenger");try{startActivity(t);return;}catch(Exception ignored){}}startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}}
-    @Override protected void onDestroy(){updateHandler.removeCallbacksAndMessages(null);if(downloadReceiver!=null){try{unregisterReceiver(downloadReceiver);}catch(Exception ignored){}}if(webView!=null)webView.destroy();super.onDestroy();}
+    @Override protected void onDestroy(){activityResumed=false;updateHandler.removeCallbacksAndMessages(null);try{tvWatchdogExecutor.shutdownNow();}catch(Exception ignored){}if(downloadReceiver!=null){try{unregisterReceiver(downloadReceiver);}catch(Exception ignored){}}if(webView!=null)webView.destroy();super.onDestroy();}
     @Override public void onBackPressed(){
         if(customView!=null){hideCustomView();return;}
         if(isTv&&webView!=null){
+            final boolean[] answered={false};
+            updateHandler.postDelayed(()->{
+                if(answered[0]||isFinishing())return;
+                answered[0]=true;
+                lastWebHeartbeatAt=System.currentTimeMillis();
+                try{
+                    webView.stopLoading();
+                    loadOrAuthorize();
+                }catch(Exception ignored){}
+            },800L);
             webView.evaluateJavascript(
                 "(function(){try{return (typeof handleTvBack==='function')?handleTvBack():false}catch(e){return false}})()",
                 value->{
+                    if(answered[0])return;
+                    answered[0]=true;
                     if("true".equals(value)){
                         lastTvBackAt=0L;
                         return;

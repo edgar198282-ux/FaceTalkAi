@@ -3677,6 +3677,11 @@ loadSyncedState(true);
 ensureTvPairing();
 if(nativeTv){
   tvAuthRefreshTimer=setInterval(()=>refreshTvAuth(false),5*60*1000);
+  const sendNativeHeartbeat=()=>{
+    try{if(window.AbajNative&&typeof window.AbajNative.heartbeat==='function')window.AbajNative.heartbeat()}catch(e){}
+  };
+  sendNativeHeartbeat();
+  setInterval(sendNativeHeartbeat,2000);
 }
 function syncPlayerFullscreenToOrientation(){
   if(nativeTv)return;
