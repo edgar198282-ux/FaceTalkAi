@@ -3300,7 +3300,7 @@ function selectedFreeStreamUrl(ch){
   return String(ch.url||'');
 }
 function shouldInstantShieldCinerama(ch){
-  return !!(ch&&!ch.personal&&isProviderAdStreamUrl(selectedFreeStreamUrl(ch)));
+  return !!(ch&&!ch.personal&&isCineramaStreamUrl(selectedFreeStreamUrl(ch)));
 }
 function armInstantCineramaShield(ch){
   if(!shouldInstantShieldCinerama(ch))return false;
