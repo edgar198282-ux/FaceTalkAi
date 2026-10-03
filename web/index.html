@@ -1598,6 +1598,8 @@ function openTvGuideFocused(){
 
 function showTvShortcut(text){
   if(!nativeTv)return;
+  const player=document.getElementById('playerView');
+  if(player&&player.classList.contains('open'))return;
   const el=document.getElementById('tvShortcut');
   el.textContent=text;
   el.classList.add('show');
