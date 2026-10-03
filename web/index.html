@@ -647,6 +647,7 @@ let freeAdRequestBusy=false;
 let freeAdShieldChannel='';
 let freeAdShieldStartedAt=0;
 let freeAdShieldVerifiedNegative=0;
+let freeAdShieldSawPositive=false;
 let burnedAdTimer=null;
 let burnedAdCanvas=null;
 let burnedAdPrevFrame=null;
@@ -2801,6 +2802,7 @@ function armInstantCineramaShield(ch){
   freeAdShieldChannel=String(ch.id||'');
   freeAdShieldStartedAt=Date.now()/1000;
   freeAdShieldVerifiedNegative=0;
+  freeAdShieldSawPositive=false;
   setFreeAdOverlay(true);
   return true;
 }
@@ -2838,6 +2840,7 @@ function stopFreeAdWatch(){
   freeAdShieldChannel='';
   freeAdShieldStartedAt=0;
   freeAdShieldVerifiedNegative=0;
+  freeAdShieldSawPositive=false;
   setFreeAdOverlay(false);
 }
 async function checkFreeAdState(){
@@ -2850,6 +2853,7 @@ async function checkFreeAdState(){
     const d=await r.json();
     if(!current||current.id!==id||current.personal)return;
     if(d.active){
+      freeAdShieldSawPositive=true;
       freeAdShieldVerifiedNegative=0;
       setFreeAdOverlay(true);
       return;
@@ -2857,21 +2861,34 @@ async function checkFreeAdState(){
     const shielding=freeAdShieldChannel===String(id||'')&&freeAdShieldStartedAt>0;
     if(shielding){
       const checkedAt=Number(d.checked_at||0);
-      // Never reveal a Cinerama source until a probe performed after this
-      // channel-open has returned negative twice. This prevents even a single
-      // provider promo frame from flashing before our ABAJ TV overlay.
+      const shieldAge=(Date.now()/1000)-freeAdShieldStartedAt;
       if(checkedAt<freeAdShieldStartedAt){
         setFreeAdOverlay(true);
         return;
       }
-      freeAdShieldVerifiedNegative++;
-      if(freeAdShieldVerifiedNegative<2){
-        setFreeAdOverlay(true);
-        return;
+
+      // Cinerama promo can appear a few seconds AFTER playback begins.
+      // Early negative OCR must never uncover that delayed provider screen.
+      if(!freeAdShieldSawPositive){
+        freeAdShieldVerifiedNegative++;
+        if(shieldAge<12||freeAdShieldVerifiedNegative<5){
+          setFreeAdOverlay(true);
+          return;
+        }
+      }else{
+        // Once the provider promo has actually been seen, require several
+        // fresh negative probes before revealing the channel again.
+        freeAdShieldVerifiedNegative++;
+        if(freeAdShieldVerifiedNegative<4){
+          setFreeAdOverlay(true);
+          return;
+        }
       }
+
       freeAdShieldChannel='';
       freeAdShieldStartedAt=0;
       freeAdShieldVerifiedNegative=0;
+      freeAdShieldSawPositive=false;
     }
     setFreeAdOverlay(false);
   }catch(e){}finally{
@@ -3003,12 +3020,14 @@ function notifyFreeViewing(ch){
 function startFreeAdWatch(ch){
   const keepInstantShield=freeAdShieldChannel===String(ch&&ch.id||'')&&freeAdShieldStartedAt>0;
   const shieldStartedAt=freeAdShieldStartedAt;
+  const shieldSawPositive=freeAdShieldSawPositive;
   stopFreeAdWatch();
   if(!ch||ch.personal)return;
   if(keepInstantShield){
     freeAdShieldChannel=String(ch.id||'');
     freeAdShieldStartedAt=shieldStartedAt;
     freeAdShieldVerifiedNegative=0;
+    freeAdShieldSawPositive=shieldSawPositive;
     setFreeAdOverlay(true);
   }else{
     armInstantCineramaShield(ch);
