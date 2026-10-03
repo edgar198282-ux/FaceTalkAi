@@ -77,6 +77,7 @@ HEALTH_PATH = os.path.join(DATA_ROOT, "iptv_health.json")
 SNAPSHOT_PATH = os.path.join(DATA_ROOT, "iptv_snapshot.json")
 HISTORY_PATH = os.path.join(DATA_ROOT, "iptv_scan_history.json")
 AD_HISTORY_PATH = os.path.join(DATA_ROOT, "iptv_ad_history.json")
+PLAYBACK_METRICS_PATH = os.path.join(DATA_ROOT, "iptv_playback_metrics.json")
 os.makedirs(DATA_ROOT, exist_ok=True)
 
 def _load_json(path: str, default):
@@ -97,7 +98,8 @@ def _save_json(path: str, data):
 
 _stream_health = _load_json(HEALTH_PATH, {})
 _client_failure_last = {}
-_playback_metrics = []
+_playback_metrics = _load_json(PLAYBACK_METRICS_PATH, [])
+_playback_metric_unsaved = 0
 
 def _health_score(url: str) -> float:
     h = _stream_health.get(url) or {}
@@ -2359,6 +2361,7 @@ async def api_play(request):
     )
 
 async def api_playback_metric(request):
+    global _playback_metric_unsaved
     try:
         payload = await request.json()
     except Exception:
@@ -2388,6 +2391,13 @@ async def api_playback_metric(request):
     _playback_metrics.append(row)
     if len(_playback_metrics) > 1000:
         del _playback_metrics[:-1000]
+    _playback_metric_unsaved += 1
+    if event == "stall" or _playback_metric_unsaved >= 10:
+        try:
+            _save_json(PLAYBACK_METRICS_PATH, _playback_metrics)
+            _playback_metric_unsaved = 0
+        except Exception:
+            pass
     return web.json_response({"ok": True}, headers={"Cache-Control": "no-store"})
 
 
