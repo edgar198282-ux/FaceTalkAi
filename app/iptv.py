@@ -65,6 +65,7 @@ def _save_json(path: str, data):
     os.replace(tmp, path)
 
 _stream_health = _load_json(HEALTH_PATH, {})
+_client_failure_last = {}
 
 def _health_score(url: str) -> float:
     h = _stream_health.get(url) or {}
@@ -2269,6 +2270,17 @@ async def api_client_stream_failure(request):
         return web.json_response({"ok": False}, status=400)
 
     now = int(time.time())
+    report_key = f"{cid}|{failed_url}"
+    previous_report = int(_client_failure_last.get(report_key) or 0)
+    if previous_report and now - previous_report < 30:
+        return web.json_response({"ok": True, "duplicate": True}, headers={"Cache-Control": "no-store"})
+    _client_failure_last[report_key] = now
+    if len(_client_failure_last) > 4000:
+        cutoff = now - 120
+        for key, stamp in list(_client_failure_last.items()):
+            if int(stamp or 0) < cutoff:
+                _client_failure_last.pop(key, None)
+
     h = dict(_stream_health.get(failed_url) or {})
     h["failures"] = int(h.get("failures") or 0) + 1
     h["consecutive_failures"] = int(h.get("consecutive_failures") or 0) + 1
@@ -2295,11 +2307,6 @@ async def api_client_stream_failure(request):
             item["status"] = "OFFLINE"
             item["error"] = reason
 
-    try:
-        _save_json(HEALTH_PATH, _stream_health)
-        _save_json(SNAPSHOT_PATH, {"saved_at": now, "state": public_state()})
-    except Exception:
-        pass
     return web.json_response({
         "ok": True,
         "channel_id": cid,

@@ -2930,7 +2930,8 @@ function openPlayer(id){
   if(hud){hud.dataset.shownOnce='';hidePlayerChannelHud();}
   const ch=channels.find(x=>x.id===id);
   if(!ch)return;
-  if(current&&current.id!==ch.id){
+  const switchingChannel=!!(current&&current.id!==ch.id);
+  if(switchingChannel){
     stopFreeAdWatch();
     stopTvWatchdog();
     clearFirstFrameTimer();
@@ -2939,7 +2940,7 @@ function openPlayer(id){
     if(tvChannelHeartbeatTimer){clearTimeout(tvChannelHeartbeatTimer);tvChannelHeartbeatTimer=null}
     recreateNativeTvVideo();
   }
-  if(current&&current.id!==ch.id){
+  if(switchingChannel){
     previousChannelId=current.id;
     localStorage.setItem('iptv_previous_channel',previousChannelId);
   }else if(lastChannelId&&lastChannelId!==ch.id&&!previousChannelId){
@@ -2959,7 +2960,14 @@ function openPlayer(id){
     try{document.activeElement.blur()}catch(e){}
   }
   warmTvDirectConnection(ch);
-  startStream(ch);
+  if(nativeTv&&switchingChannel){
+    const switchId=String(ch.id||'');
+    setTimeout(()=>{
+      if(current&&String(current.id||'')===switchId)startStream(ch);
+    },180);
+  }else{
+    startStream(ch);
+  }
   const hudNow=document.getElementById('playerChannelHud');
   if(hudNow){hudNow.dataset.shownOnce='1';updatePlayerChannelHud();}
   syncDirtyLast=true;
@@ -3003,7 +3011,8 @@ function clearFirstFrameTimer(){
 }
 let tvDirectAttemptChannel='';
 let tvDirectAttemptIndex=0;
-let tvFailureReportKey='';
+const tvFailureReportAt=new Map();
+let tvChannelSwitchBusyUntil=0;
 function tvDirectUrls(ch){
   return [String(ch&&ch.url||''),...(Array.isArray(ch&&ch.backups)?ch.backups:[])].filter(Boolean);
 }
@@ -3012,9 +3021,13 @@ function reportTvStreamFailure(ch,reason){
   const urls=tvDirectUrls(ch);
   const failedUrl=urls[Math.min(tvDirectAttemptIndex,Math.max(0,urls.length-1))]||'';
   if(!failedUrl)return;
-  const reportKey=String(ch.id||'')+'|'+failedUrl+'|'+String(streamAttemptToken);
-  if(tvFailureReportKey===reportKey)return;
-  tvFailureReportKey=reportKey;
+  const reportKey=String(ch.id||'')+'|'+failedUrl;
+  const now=Date.now();
+  if(now-Number(tvFailureReportAt.get(reportKey)||0)<30000)return;
+  tvFailureReportAt.set(reportKey,now);
+  if(tvFailureReportAt.size>300){
+    for(const [key,stamp] of tvFailureReportAt){if(now-Number(stamp||0)>120000)tvFailureReportAt.delete(key)}
+  }
   try{
     fetch('/api/iptv/client-stream-failure',{
       method:'POST',
@@ -3170,6 +3183,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
     const reveal=()=>{
       if(attemptToken!==streamAttemptToken)return;
       clearFirstFrameTimer();
+      if(nativeTv)tvChannelSwitchBusyUntil=0;
       if(wrap)wrap.classList.add('playing','frameReady');
       startTvWatchdog(ch);
       if(!postStartTasksDone){
@@ -3515,6 +3529,8 @@ function tvTogglePlayerUi(){
   }
 }
 function queueTvChannelStep(delta){
+  const now=Date.now();
+  if(now<tvChannelSwitchBusyUntil)return;
   const rows=filteredNow.length?filteredNow:channels;
   if(!rows.length)return;
   let base=current?rows.findIndex(x=>x.id===current.id):currentIndex;
@@ -3527,7 +3543,10 @@ function queueTvChannelStep(delta){
   tvZapStepTimer=setTimeout(()=>{
     tvZapStepTimer=null;
     tvZapStepOffset=0;
-    if(ch)openPlayer(ch.id);
+    if(ch){
+      tvChannelSwitchBusyUntil=Date.now()+2500;
+      openPlayer(ch.id);
+    }
   },320);
 }
 function updatePlayerPlaybackUi(){
