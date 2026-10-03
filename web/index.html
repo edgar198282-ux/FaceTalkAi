@@ -2831,6 +2831,14 @@ function openPlayer(id){
   const ch=channels.find(x=>x.id===id);
   if(!ch)return;
   if(current&&current.id!==ch.id){
+    stopFreeAdWatch();
+    stopTvWatchdog();
+    clearFirstFrameTimer();
+    streamAttemptToken++;
+    if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
+    if(tvChannelHeartbeatTimer){clearTimeout(tvChannelHeartbeatTimer);tvChannelHeartbeatTimer=null}
+  }
+  if(current&&current.id!==ch.id){
     previousChannelId=current.id;
     localStorage.setItem('iptv_previous_channel',previousChannelId);
   }else if(lastChannelId&&lastChannelId!==ch.id&&!previousChannelId){
@@ -3053,8 +3061,12 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   };
   const err=document.getElementById('playerError');
   err.textContent='';
-  if(hls){hls.destroy();hls=null}
-  v.pause();v.removeAttribute('src');v.load();
+  if(hls){try{hls.stopLoad()}catch(e){};try{hls.destroy()}catch(e){};hls=null}
+  try{v.pause()}catch(e){}
+  if(!(nativeTv&&tvPlayerMode==='system')){
+    v.removeAttribute('src');
+    try{v.load()}catch(e){}
+  }
   const basePath=ch.personal?'/api/iptv/edem/play':'/api/iptv/play';
   const auth=ch.personal?authHeaders():{};
   const directUrls=tvDirectUrls(ch);
@@ -3178,7 +3190,8 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         .then(()=>{streamRetries=0;markFrameReady()})
         .catch(()=>scheduleReconnect(ch));
     }else{
-      v.src=src;v.load();
+      v.src=src;
+      if(!(nativeTv&&tvPlayerMode==='system')){try{v.load()}catch(e){}}
       v.play().then(()=>{streamRetries=0;markFrameReady()}).catch(()=>{
         if(tryNextTvDirect(ch))return;
         scheduleReconnect(ch,true);
