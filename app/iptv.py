@@ -594,12 +594,24 @@ def _ottclub_text_hit(text: str) -> bool:
     for value in candidates:
         if "OTTCLUB" in value:
             return True
-        # Allow one common OCR miss while keeping the match specific to OTTCLUB.
+        # Allow common OCR misses while keeping the match specific to OTTCLUB.
         if re.search(r"OTTCL[UVI]B", value):
             return True
         if re.search(r"OTTC[L1I]UB", value):
             return True
-    return bool(re.search(r"\b[O0]TT\s*[-_. ]?\s*CL[UVI]B\b", raw))
+
+    if re.search(r"\b[O0]TT\s*[-_. ]?\s*CL[UVI]B\b", raw):
+        return True
+
+    # OTT Club promo cards often have a small logo and a large QR / device
+    # instruction area. OCR sometimes reads only "OTT" from the logo, so use
+    # a second promo-specific marker rather than requiring CLUB every time.
+    ott_token = bool(re.search(r"(^|[^A-Z0-9])[O0]TT([^A-Z0-9]|$)", raw)) or "OTT" in normalized[:120]
+    promo_markers = (
+        "QR", "SAMSUNG", "ANDROID", "SMART TV", "SMARTTV",
+        "DEVICE", "DEVICES", "APP", "APPS", "BLUETOOTH"
+    )
+    return bool(ott_token and any(marker in raw or marker.replace(" ", "") in normalized for marker in promo_markers))
 
 
 async def _quick_ottclub_probe(item: dict):
@@ -767,7 +779,7 @@ async def _server_burned_ad_probe(item: dict) -> dict:
             "avg_diff": round(avg_diff, 3),
             "brightness_var": round(brightness_var, 3),
             "ottclub_hits": int(hits),
-            "ottclub_detected": bool(hits >= 2),
+            "ottclub_detected": bool(hits >= 1),
             "cinerama_hits": int(cinerama_hits),
             "cinerama_detected": bool(cinerama_hits >= 2),
             "ocr_text": compact_text,
@@ -838,11 +850,10 @@ def _store_server_burned_probe(item: dict, probe: dict):
     if detected:
         state["positive_streak"] = int(state.get("positive_streak") or 0) + 1
         state["negative_streak"] = 0
-        if int(state["positive_streak"]) >= 2:
-            if not bool(state.get("active")):
-                _ottclub_stats["detections"] = int(_ottclub_stats.get("detections") or 0) + 1
-            state["active"] = True
-            state["last_match"] = now
+        if not bool(state.get("active")):
+            _ottclub_stats["detections"] = int(_ottclub_stats.get("detections") or 0) + 1
+        state["active"] = True
+        state["last_match"] = now
     elif probe.get("ok"):
         state["positive_streak"] = 0
         state["negative_streak"] = int(state.get("negative_streak") or 0) + 1
