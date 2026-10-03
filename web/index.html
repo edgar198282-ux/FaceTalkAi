@@ -3142,7 +3142,8 @@ async function prefetchStreamManifest(ch,signal){
   }catch(e){}
 }
 function scheduleAdjacentPrefetch(ch){
-  if(!nativeTv||!ch)return;
+  if(nativeTv)return;
+  if(!ch)return;
   if(streamWarmTimer){clearTimeout(streamWarmTimer);streamWarmTimer=null}
   if(streamWarmController){try{streamWarmController.abort()}catch(e){} streamWarmController=null}
   streamWarmTimer=setTimeout(()=>{
@@ -3255,9 +3256,9 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       enableWorker:true,
       lowLatencyMode:false,
       startFragPrefetch:true,
-      maxBufferLength:nativeTv?4:20,
-      maxMaxBufferLength:nativeTv?8:30,
-      backBufferLength:nativeTv?2:10,
+      maxBufferLength:nativeTv?6:20,
+      maxMaxBufferLength:nativeTv?12:30,
+      backBufferLength:nativeTv?3:10,
       manifestLoadingTimeOut:nativeTv?6000:10000,
       levelLoadingTimeOut:nativeTv?6000:10000,
       fragLoadingTimeOut:nativeTv?9000:14000,
