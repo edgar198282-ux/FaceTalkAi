@@ -111,54 +111,6 @@ button{cursor:pointer}
   position:fixed;inset:0;background:#000;color:#fff;z-index:100;display:none;flex-direction:column
 }
 .playerView.open{display:flex}
-.playerView.miniPlayer{
-  inset:auto 14px calc(env(safe-area-inset-bottom,0px) + 78px) auto!important;
-  width:min(53vw,365px)!important;height:auto!important;aspect-ratio:16/9!important;
-  border-radius:14px!important;overflow:hidden!important;z-index:2147482500!important;
-  background:#000!important;box-shadow:0 10px 32px rgba(0,0,0,.48)!important;
-  display:flex!important;transform:none!important;transition:none!important;touch-action:none!important
-}
-.playerView.miniPlayer .playerTop,
-.playerView.miniPlayer .playerBottom,
-.playerView.miniPlayer .playerChannelHud,
-.playerView.miniPlayer .channelRail,
-.playerView.miniPlayer .playerBrand,
-.playerView.miniPlayer #playerError,
-.playerView.miniPlayer .playerGestureHint{display:none!important}
-.playerView.miniPlayer .videoWrap{
-  position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
-  padding:0!important;background:#000!important;display:flex!important
-}
-.playerView.miniPlayer video{width:100%!important;height:100%!important;object-fit:contain!important;background:#000!important}
-.miniPlayerControls{display:none;position:absolute;inset:0;z-index:2147483600;background:rgba(0,0,0,.28);pointer-events:none}
-.playerView.miniPlayer.showMiniControls .miniPlayerControls{display:block!important}
-.miniPlayerControls button{
-  position:absolute;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:#fff;
-  padding:0;text-shadow:0 2px 5px rgba(0,0,0,.8);pointer-events:auto;font-family:Arial,sans-serif
-}
-.miniSettings{left:10px;top:9px;width:34px;height:34px;font-size:25px}
-.miniPlayerClose{right:9px;top:8px;width:36px;height:36px;font-size:37px;font-weight:200;line-height:1}
-.miniRestore{left:50%;top:50%;transform:translate(-50%,-50%);width:52px;height:52px;font-size:35px}
-.miniPrev{left:10%;bottom:8px;width:40px;height:38px;font-size:26px}
-.miniPlay{left:50%;bottom:7px;transform:translateX(-50%);width:42px;height:40px;font-size:28px}
-.miniNext{right:10%;bottom:8px;width:40px;height:38px;font-size:26px}
-.playerView.miniPlayer .videoWrap{touch-action:none}
-.playerView.miniPlayer .freeAdOverlay{display:none!important}
-.playerView.nativePip{
-  position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;
-  z-index:2147483640!important;background:#000!important;display:flex!important
-}
-.playerView.nativePip .playerTop,
-.playerView.nativePip .playerBottom,
-.playerView.nativePip .playerChannelHud,
-.playerView.nativePip .channelRail,
-.playerView.nativePip .playerBrand,
-.playerView.nativePip #playerError,
-.playerView.nativePip .playerGestureHint,
-.playerView.nativePip .miniPlayerClose{display:none!important}
-.playerView.nativePip .videoWrap{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;background:#000!important}
-.playerView.nativePip video{width:100%!important;height:100%!important;object-fit:contain!important;background:#000!important}
-body.playerMiniActive{overflow:auto!important}
 .playerView.appFullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;transform:none!important;z-index:1000!important;background:#000!important}
 .playerView.appFullscreen .playerTop,.playerView.appFullscreen .playerBottom{display:none!important}
 .playerView.appFullscreen .videoWrap{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;background:#000!important;padding:0!important}
@@ -926,14 +878,6 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
   <div class="videoWrap" onclick="handlePlayerSurfaceClick(event)">
     <div class="playerBrand" onclick="dismissMobilePlayerLoading(event)"><img class="playerLoadingLogo" src="/static/abaj_tv_logo.jpg" alt="ABAJ TV"></div>
     <video id="video" preload="auto" playsinline webkit-playsinline disablepictureinpicture controlslist="nofullscreen nodownload noremoteplayback"></video>
-    <div id="miniPlayerControls" class="miniPlayerControls" onclick="event.stopPropagation()">
-      <button class="miniSettings" aria-label="Настройки" onclick="event.stopPropagation();openSettings()">⚙</button>
-      <button id="miniPlayerClose" class="miniPlayerClose" aria-label="Закрыть" onclick="event.stopPropagation();closePlayer()">×</button>
-      <button class="miniRestore" aria-label="Развернуть" onclick="event.stopPropagation();restoreMiniPlayer()">↗↙</button>
-      <button class="miniPrev" aria-label="Предыдущий канал" onclick="event.stopPropagation();playPrev()">◀|</button>
-      <button id="miniPlayPause" class="miniPlay" aria-label="Пауза" onclick="event.stopPropagation();togglePlayerPlayback()">Ⅱ</button>
-      <button class="miniNext" aria-label="Следующий канал" onclick="event.stopPropagation();playNext()">|▶</button>
-    </div>
     <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:linear-gradient(145deg,#07131f,#0d2740 55%,#103a5f);align-items:center;justify-content:center;text-align:center;color:white;padding:18px;box-sizing:border-box;pointer-events:none">
       <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;gap:0">
         <img src="/static/abaj_tv_logo.jpg" alt="ABAJ TV" style="width:min(28vw,220px);height:min(28vw,220px);max-width:58%;max-height:26vh;object-fit:contain;border-radius:18%;filter:drop-shadow(0 12px 28px rgba(0,0,0,.35))">
@@ -987,12 +931,6 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
-try{
-  if(window.Telegram&&window.Telegram.WebApp){
-    window.Telegram.WebApp.expand();
-    if(typeof window.Telegram.WebApp.disableVerticalSwipes==='function')window.Telegram.WebApp.disableVerticalSwipes();
-  }
-}catch(e){}
 let channels=[];
 let sourceFilter='all';
 try{localStorage.removeItem('abaj_tv_source_filter')}catch(e){}
@@ -2450,12 +2388,10 @@ function installPlayerTouchGestures(){
   const wrap=document.querySelector('.videoWrap');
   if(!wrap||wrap.dataset.gestureReady==='1')return;
   wrap.dataset.gestureReady='1';
-  let sx=0,sy=0,lx=0,ly=0,mode='',active=false,startedAt=0,miniCandidate=false;
+  let sx=0,sy=0,lx=0,ly=0,mode='',active=false,startedAt=0;
   wrap.addEventListener('touchstart',e=>{
     if(nativeTv||e.touches.length!==1)return;
-    const player=document.getElementById('playerView');
-    if(player&&player.classList.contains('miniPlayer'))return;
-    const p=e.touches[0]; sx=lx=p.clientX; sy=ly=p.clientY; mode=''; active=true; miniCandidate=false; startedAt=Date.now();
+    const p=e.touches[0]; sx=lx=p.clientX; sy=ly=p.clientY; mode=''; active=true; startedAt=Date.now();
   },{passive:true});
   wrap.addEventListener('touchmove',e=>{
     if(!active||e.touches.length!==1)return;
@@ -2464,13 +2400,8 @@ function installPlayerTouchGestures(){
     if(!mode)return;
     e.preventDefault();
     if(mode==='v'){
-      const totalDy=p.clientY-sy;
-      if(totalDy<-36&&Math.abs(totalDy)>Math.abs(dx)*1.15){
-        miniCandidate=true;
-        return;
-      }
       const delta=p.clientY-ly;
-      if(!miniCandidate&&Math.abs(delta)>=18){
+      if(Math.abs(delta)>=18){
         const steps=Math.max(1,Math.floor(Math.abs(delta)/18));
         adjustPlayerVolume(delta<0?steps:-steps);
         ly=p.clientY;
@@ -2490,10 +2421,6 @@ function installPlayerTouchGestures(){
       playerGestureSuppressClickUntil=Date.now()+450;
       if(dx<0){showPlayerGestureHint('Канал ▶');playNext();}
       else{showPlayerGestureHint('◀ Канал');playPrev();}
-    }else if(mode==='v'&&dy<=-90&&Math.abs(dy)>Math.abs(dx)*1.15&&Date.now()-startedAt<1800){
-      e.preventDefault();
-      playerGestureSuppressClickUntil=Date.now()+500;
-      minimizePlayer();
     }else if(mode==='v'){
       playerGestureSuppressClickUntil=Date.now()+300;
     }else if(moved<14&&player&&player.classList.contains('pureFullscreen')){
@@ -2510,55 +2437,6 @@ function installPlayerTouchGestures(){
   },{passive:false});
   wrap.addEventListener('touchcancel',()=>{active=false;mode=''}, {passive:true});
 }
-let miniControlsTimer=null;
-function hideMiniPlayerControls(){
-  const player=document.getElementById('playerView');
-  if(player)player.classList.remove('showMiniControls');
-  if(miniControlsTimer){clearTimeout(miniControlsTimer);miniControlsTimer=null}
-}
-function showMiniPlayerControls(){
-  const player=document.getElementById('playerView');
-  if(!player||!player.classList.contains('miniPlayer'))return;
-  player.classList.add('showMiniControls');
-  if(miniControlsTimer)clearTimeout(miniControlsTimer);
-  miniControlsTimer=setTimeout(hideMiniPlayerControls,2500);
-}
-function toggleMiniPlayerControls(){
-  const player=document.getElementById('playerView');
-  if(!player||!player.classList.contains('miniPlayer'))return;
-  if(player.classList.contains('showMiniControls'))hideMiniPlayerControls();
-  else showMiniPlayerControls();
-}
-function minimizePlayer(){
-  if(nativeTv)return;
-  const player=document.getElementById('playerView');
-  if(!player||!player.classList.contains('open')||!current)return;
-  if(player.classList.contains('pureFullscreen')){
-    player.classList.remove('pureFullscreen','showPureControls');
-    try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}
-  }
-  player.classList.remove('appFullscreen','tvFullscreen','videoFill','showMiniControls');
-  player.classList.add('miniPlayer');
-  player.style.left='';player.style.top='';player.style.right='';player.style.bottom='';
-  document.body.classList.remove('playerFullscreenActive','mobileLandscapePlayer','playerClean');
-  document.body.classList.add('playerMiniActive');
-  const v=document.getElementById('video');
-  if(v){
-    v.controls=false;
-    try{v.removeAttribute('controls')}catch(e){}
-    try{const p=v.play();if(p&&p.catch)p.catch(()=>{})}catch(e){}
-  }
-}
-function restoreMiniPlayer(){
-  const player=document.getElementById('playerView');
-  if(!player||!player.classList.contains('miniPlayer'))return;
-  hideMiniPlayerControls();
-  player.classList.remove('miniPlayer');
-  player.style.left='';player.style.top='';player.style.right='';player.style.bottom='';
-  document.body.classList.remove('playerMiniActive');
-  window.scrollTo({top:window.scrollY,behavior:'auto'});
-  showTvPlayerUi(true);
-}
 function dismissMobilePlayerLoading(event){
   if(event){event.preventDefault();event.stopPropagation()}
   if(nativeTv)return;
@@ -2573,10 +2451,6 @@ function handlePlayerSurfaceClick(event){
   if(Date.now()-pureTapHandledAt<450)return;
   const player=document.getElementById('playerView');
   if(event&&event.target&&event.target.closest&&event.target.closest('button,select,.channelRail'))return;
-  if(player&&player.classList.contains('miniPlayer')){
-    toggleMiniPlayerControls();
-    return;
-  }
   if(player&&player.classList.contains('pureFullscreen')){
     togglePureFullscreenControls();
     return;
@@ -2584,127 +2458,6 @@ function handlePlayerSurfaceClick(event){
   showTvPlayerUi(true);
 }
 installPlayerTouchGestures();
-
-function installPlayerMinimizeGesture(){
-  const player=document.getElementById('playerView');
-  if(!player||player.dataset.minimizeGestureReady==='1')return;
-  player.dataset.minimizeGestureReady='1';
-  let sy=0,sx=0,active=false,startedAt=0;
-  player.addEventListener('touchstart',e=>{
-    if(nativeTv||!player.classList.contains('open')||player.classList.contains('miniPlayer')||e.touches.length!==1)return;
-    if(e.target&&e.target.closest&&e.target.closest('button,select,.channelRail'))return;
-    const p=e.touches[0];
-    sx=p.clientX; sy=p.clientY; startedAt=Date.now(); active=true;
-  },{passive:true,capture:true});
-  player.addEventListener('touchend',e=>{
-    if(!active)return;
-    active=false;
-    const p=e.changedTouches&&e.changedTouches[0];
-    if(!p)return;
-    const dx=p.clientX-sx,dy=p.clientY-sy;
-    if(dy<=-70&&Math.abs(dy)>Math.abs(dx)*1.05&&Date.now()-startedAt<1800){
-      e.preventDefault();
-      e.stopPropagation();
-      playerGestureSuppressClickUntil=Date.now()+650;
-      minimizePlayer();
-    }
-  },{passive:false,capture:true});
-  player.addEventListener('touchcancel',()=>{active=false},{passive:true,capture:true});
-}
-installPlayerMinimizeGesture();
-
-function installMiniPlayerDrag(){
-  const player=document.getElementById('playerView');
-  if(!player||player.dataset.miniDragReady==='1')return;
-  player.dataset.miniDragReady='1';
-  let active=false,moved=false,pointerId=null,sx=0,sy=0,startLeft=0,startTop=0;
-
-  const start=(x,y,id,target)=>{
-    if(!player.classList.contains('miniPlayer'))return false;
-    if(target&&target.closest&&target.closest('.miniPlayerControls button'))return false;
-    const r=player.getBoundingClientRect();
-    active=true;moved=false;pointerId=id;sx=x;sy=y;startLeft=r.left;startTop=r.top;
-    hideMiniPlayerControls();
-    return true;
-  };
-  const move=(x,y)=>{
-    if(!active)return;
-    const dx=x-sx,dy=y-sy;
-    if(Math.hypot(dx,dy)>4)moved=true;
-    if(!moved)return;
-    const w=player.offsetWidth,h=player.offsetHeight;
-    const left=Math.max(6,Math.min(window.innerWidth-w-6,startLeft+dx));
-    const top=Math.max(6,Math.min(window.innerHeight-h-6,startTop+dy));
-    player.style.left=left+'px';
-    player.style.top=top+'px';
-    player.style.right='auto';
-    player.style.bottom='auto';
-  };
-  const end=()=>{
-    if(!active)return;
-    active=false;pointerId=null;
-    if(moved)playerGestureSuppressClickUntil=Date.now()+550;
-  };
-
-  if(window.PointerEvent){
-    player.addEventListener('pointerdown',e=>{
-      if(e.pointerType==='mouse'&&e.button!==0)return;
-      if(!start(e.clientX,e.clientY,e.pointerId,e.target))return;
-      try{player.setPointerCapture(e.pointerId)}catch(_){}
-      e.preventDefault();
-    },{passive:false,capture:true});
-    player.addEventListener('pointermove',e=>{
-      if(!active||e.pointerId!==pointerId)return;
-      move(e.clientX,e.clientY);
-      if(moved)e.preventDefault();
-    },{passive:false,capture:true});
-    player.addEventListener('pointerup',e=>{
-      if(!active||e.pointerId!==pointerId)return;
-      if(moved){e.preventDefault();e.stopPropagation()}
-      end();
-    },{passive:false,capture:true});
-    player.addEventListener('pointercancel',end,{passive:true,capture:true});
-  }else{
-    player.addEventListener('touchstart',e=>{
-      if(e.touches.length!==1)return;
-      const p=e.touches[0];
-      start(p.clientX,p.clientY,0,e.target);
-    },{passive:true,capture:true});
-    player.addEventListener('touchmove',e=>{
-      if(!active||e.touches.length!==1)return;
-      const p=e.touches[0];move(p.clientX,p.clientY);
-      if(moved)e.preventDefault();
-    },{passive:false,capture:true});
-    player.addEventListener('touchend',e=>{
-      if(!active)return;
-      if(moved){e.preventDefault();e.stopPropagation()}
-      end();
-    },{passive:false,capture:true});
-    player.addEventListener('touchcancel',end,{passive:true,capture:true});
-  }
-}
-installMiniPlayerDrag();
-
-function setNativePlaybackActive(active){
-  try{
-    if(window.AbajNative&&typeof window.AbajNative.setPlaybackActive==='function')window.AbajNative.setPlaybackActive(!!active);
-  }catch(e){}
-}
-function enterNativePipUi(){
-  const player=document.getElementById('playerView');
-  if(!player||!player.classList.contains('open'))return;
-  player.classList.remove('miniPlayer','pureFullscreen','showPureControls','appFullscreen','tvFullscreen','videoFill');
-  player.style.left='';player.style.top='';player.style.right='';player.style.bottom='';
-  player.classList.add('nativePip');
-  document.body.classList.remove('playerMiniActive','playerFullscreenActive','mobileLandscapePlayer','playerClean');
-}
-function exitNativePipUi(){
-  const player=document.getElementById('playerView');
-  if(!player)return;
-  player.classList.remove('nativePip');
-  if(player.classList.contains('open'))showTvPlayerUi(true);
-}
-
 function addRecent(id,deferSync=false){
   recent=[id,...recent.filter(x=>x!==id)].slice(0,30);
   saveRecent(deferSync);
@@ -3460,11 +3213,7 @@ function showTvZap(ch){
 }
 function handleAppBack(){
   const player=document.getElementById('playerView');
-  if(player&&player.classList.contains('open')){
-    if(player.classList.contains('miniPlayer'))return false;
-    if(!nativeTv){minimizePlayer();return true}
-    closePlayer();return true;
-  }
+  if(player&&player.classList.contains('open')){closePlayer();return true}
   if(tvSettingPickerOpen()){closeTvSettingPicker(false);return true}
   if(tvSettingsOpen()){closeTvSettings();return true}
   const admin=document.getElementById('adminPanel');
@@ -3557,7 +3306,6 @@ let freeAdCountdownTimer=null;
 let freeAdCountdownEndsAt=0;
 let freeAdAudioCtx=null;
 let freeAdAudioNodes=[];
-let freeAdMusicTimer=null;
 
 function updateFreeAdCountdown(seconds){
   const el=document.getElementById('freeAdCountdown');
@@ -3584,37 +3332,24 @@ function startFreeAdMusic(){
     if(!Ctx)return;
     const ctx=new Ctx();
     const master=ctx.createGain();
-    master.gain.value=0.055;
+    master.gain.value=0.018;
     master.connect(ctx.destination);
+    [261.63,329.63,392].forEach((freq,i)=>{
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.type='sine';
+      osc.frequency.value=freq;
+      gain.gain.value=i===0?0.50:0.22;
+      osc.connect(gain);
+      gain.connect(master);
+      osc.start();
+      freeAdAudioNodes.push(osc,gain);
+    });
     freeAdAudioCtx=ctx;
-
-    const melody=[523.25,659.25,783.99,659.25,587.33,698.46,783.99,1046.50];
-    const playPhrase=()=>{
-      if(!freeAdAudioCtx)return;
-      const start=ctx.currentTime+0.03;
-      melody.forEach((freq,i)=>{
-        const osc=ctx.createOscillator();
-        const gain=ctx.createGain();
-        const t=start+i*0.34;
-        osc.type='triangle';
-        osc.frequency.setValueAtTime(freq,t);
-        gain.gain.setValueAtTime(0.0001,t);
-        gain.gain.exponentialRampToValueAtTime(0.34,t+0.025);
-        gain.gain.exponentialRampToValueAtTime(0.0001,t+0.27);
-        osc.connect(gain);
-        gain.connect(master);
-        osc.start(t);
-        osc.stop(t+0.3);
-        freeAdAudioNodes.push(osc,gain);
-      });
-    };
-    playPhrase();
-    freeAdMusicTimer=setInterval(playPhrase,3100);
     if(ctx.state==='suspended')ctx.resume().catch(()=>{});
   }catch(e){}
 }
 function stopFreeAdMusic(){
-  if(freeAdMusicTimer){clearInterval(freeAdMusicTimer);freeAdMusicTimer=null}
   freeAdAudioNodes.forEach(n=>{try{if(n.stop)n.stop()}catch(e){}});
   freeAdAudioNodes=[];
   try{if(freeAdAudioCtx)freeAdAudioCtx.close()}catch(e){}
@@ -3930,7 +3665,6 @@ function openPlayer(id){
   const loadingBrand=playerView.querySelector('.playerBrand');
   if(loadingBrand)loadingBrand.style.display='flex';
   playerView.classList.add('open');
-  setNativePlaybackActive(true);
   document.body.classList.remove('playerClean');
   if(nativeTv){
     playerView.classList.add('tvFullscreen');
@@ -4630,14 +4364,8 @@ function closePlayer(){
   playerView.classList.remove('appFullscreen');
   playerView.classList.remove('videoFill');
   playerView.classList.remove('pureFullscreen');
-  playerView.classList.remove('miniPlayer');
-  playerView.classList.remove('showMiniControls');
-  playerView.classList.remove('nativePip');
-  playerView.style.left='';playerView.style.top='';playerView.style.right='';playerView.style.bottom='';
-  setNativePlaybackActive(false);
   document.body.classList.remove('playerFullscreenActive');
   document.body.classList.remove('mobileLandscapePlayer');
-  document.body.classList.remove('playerMiniActive');
   try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}
   const closeVideo=document.getElementById('video');
   if(closeVideo&&!nativeTv){
@@ -4689,11 +4417,6 @@ function updatePlayerPlaybackUi(){
   if(icon)icon.textContent=paused?'▶':'Ⅱ';
   if(label)label.textContent=paused?(appLang==='en'?'Play':'Включить'):(appLang==='en'?'Pause':'Пауза');
   if(btn)btn.title=paused?'Включить':'Пауза';
-  const mini=document.getElementById('miniPlayPause');
-  if(mini){
-    mini.textContent=paused?'▶':'Ⅱ';
-    mini.setAttribute('aria-label',paused?'Включить':'Пауза');
-  }
 }
 function syncMobileLandscapePlayerUi(){
   if(nativeTv)return;
