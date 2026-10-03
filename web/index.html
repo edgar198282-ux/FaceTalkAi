@@ -2040,7 +2040,11 @@ function restoreCachedChannels(){
     const cached=JSON.parse(localStorage.getItem(CHANNEL_CACHE_KEY)||'null');
     if(!cached||!Array.isArray(cached.channels)||!cached.channels.length)return false;
     if(Date.now()-Number(cached.ts||0)>12*60*60*1000)return false;
-    channels=applyChannelAccessGate(cached.channels.filter(x=>!tvHideUnreliable||!x.unreliable||x.personal));
+    channels=applyChannelAccessGate(cached.channels.filter(x=>{
+      const key=(String(x&&x.name||'')+' '+String(x&&x.tvg_id||'')).toLowerCase();
+      if(key.includes('shoghakat')||key.includes('շողակաթ'))return false;
+      return !tvHideUnreliable||!x.unreliable||x.personal;
+    }));
     const groups=visibleChannelGroups();
     const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const sel=document.getElementById('group');
@@ -2075,7 +2079,11 @@ async function load(){
       edemPromise,
       new Promise(resolve=>setTimeout(()=>resolve({channels:[]}),500))
     ]);
-    let base=(d.channels||[]).filter(x=>x.status==='ONLINE'&&(!tvHideUnreliable||!x.unreliable));
+    let base=(d.channels||[]).filter(x=>{
+      const key=(String(x&&x.name||'')+' '+String(x&&x.tvg_id||'')).toLowerCase();
+      if(key.includes('shoghakat')||key.includes('շողակաթ'))return false;
+      return x.status==='ONLINE'&&(!tvHideUnreliable||!x.unreliable);
+    });
     if(Array.isArray(ed.channels)&&ed.channels.length){
       base=base.concat(ed.channels.map(x=>({...x,personal:true,provider:'Edem'})));
     }
