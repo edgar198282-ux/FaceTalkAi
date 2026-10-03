@@ -2568,7 +2568,7 @@ function handleOnline(){
 }
 
 function showTvZap(ch){
-  if(!nativeTv||!ch)return;
+  if(nativeTv||!ch)return;
   const rows=filteredNow.length?filteredNow:channels;
   const no=Math.max(1,rows.findIndex(x=>x.id===ch.id)+1);
   document.getElementById('tvZapNo').textContent=String(no);
