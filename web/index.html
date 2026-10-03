@@ -3101,11 +3101,6 @@ function tryNextTvDirect(ch){
 function tvUseHlsForChannel(ch){
   return !!(nativeTv&&ch&&tvHlsFallbackChannels.has(String(ch.id||'')));
 }
-function tvNeedsStableProxy(ch){
-  if(!nativeTv||!ch||ch.personal)return false;
-  return String(ch.tvg_id||'').toLowerCase()==='yerkirmedia.am'||
-    String(ch.name||'').trim().toLowerCase()==='yerkir media';
-}
 function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
@@ -3312,11 +3307,10 @@ function startStream(ch,preferBackup=false,forceProxy=false){
     }
   }
   const directSrc=directUrls[Math.min(tvDirectAttemptIndex,Math.max(0,directUrls.length-1))]||'';
-  const stableProxy=forceProxy||tvNeedsStableProxy(ch);
-  const src=(nativeTv&&!ch.personal&&directSrc&&!stableProxy)?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(stableProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
+  const src=(nativeTv&&!ch.personal&&directSrc)?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
-  const useHlsJs=(tvPlayerMode!=='system'||tvUseHlsForChannel(ch)||stableProxy)&&window.Hls&&Hls.isSupported();
+  const useHlsJs=(tvPlayerMode!=='system'||tvUseHlsForChannel(ch))&&window.Hls&&Hls.isSupported();
   if(nativeTv)playbackPlayerMode=useHlsJs?'hls':'system';
   if(useHlsJs){
     hls=new Hls({
