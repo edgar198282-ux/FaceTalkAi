@@ -32,6 +32,17 @@ OFFICIAL_CHANNELS = [
         "quality": "",
         "height": 0,
     },
+    {
+        "name": "5TV Armenia",
+        "group": "News",
+        "tvg_id": "5TV.am",
+        "country": "AM",
+        "source": "official:5tv.am",
+        "url": "https://live-5tvam.cdnvideo.ru/5tvam/5tvam/playlist.m3u8",
+        "adult": False,
+        "quality": "",
+        "height": 0,
+    },
 ]
 
 SOURCE_URLS = [
