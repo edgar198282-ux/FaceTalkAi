@@ -484,27 +484,44 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   body:not(.nativeTv) .playerView.open .playerBottom,
   body:not(.nativeTv) .playerView.open.appFullscreen .playerBottom{
     display:block!important;position:absolute!important;left:0!important;right:0!important;bottom:0!important;z-index:220!important;
-    padding:34px 14px 10px!important;background:linear-gradient(0deg,rgba(0,0,0,.92),rgba(0,0,0,.62),rgba(0,0,0,0))!important;
+    padding:24px 12px 7px!important;background:linear-gradient(0deg,rgba(0,0,0,.88),rgba(0,0,0,.50),rgba(0,0,0,0))!important;
     border:0!important;pointer-events:auto!important
   }
-  body:not(.nativeTv) .playerView.open .playerMeta{display:none!important}
-  body:not(.nativeTv) .playerView.open .playerTimeline{margin:0 4px 8px!important;height:4px!important}
+  body:not(.nativeTv) .playerView.open .playerMeta{
+    display:flex!important;position:absolute!important;left:12px!important;top:10px!important;z-index:225!important;
+    width:auto!important;max-width:58vw!important;min-height:0!important;padding:7px 10px!important;border-radius:13px!important;
+    background:rgba(3,14,25,.72)!important;backdrop-filter:blur(8px)!important;box-shadow:0 4px 18px rgba(0,0,0,.28)!important
+  }
+  body:not(.nativeTv) .playerView.open .playerMetaMain{gap:8px!important}
+  body:not(.nativeTv) .playerView.open .playerMetaLogo,
+  body:not(.nativeTv) .playerView.open .playerMetaLogoFallback{
+    width:34px!important;height:34px!important;min-width:34px!important;border-radius:8px!important
+  }
+  body:not(.nativeTv) .playerView.open .playerMetaText b{
+    display:block!important;max-width:42vw!important;font-size:14px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important
+  }
+  body:not(.nativeTv) .playerView.open #playerGroup{
+    display:block!important;max-width:42vw!important;font-size:10px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;margin-top:1px!important
+  }
+  body:not(.nativeTv) .playerView.open .playerMeta>div:last-child{display:none!important}
+  body:not(.nativeTv) .playerView.open .playerTimeline{margin:0 6px 6px!important;height:3px!important}
   body:not(.nativeTv) .playerView.open .playerPrimaryControls{
-    grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:12px!important;margin:0 auto!important;max-width:620px!important
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px!important;margin:0 auto!important;max-width:560px!important
   }
   body:not(.nativeTv) .playerView.open .playerCircleCtrl{
-    min-height:54px!important;gap:3px!important
+    min-height:46px!important;gap:2px!important
   }
   body:not(.nativeTv) .playerView.open .playerCircleCtrl .playerCtrlIcon{
-    width:40px!important;height:40px!important;font-size:18px!important
+    width:34px!important;height:34px!important;font-size:15px!important
   }
   body:not(.nativeTv) .playerView.open .playerPlayCtrl .playerCtrlIcon{
-    width:48px!important;height:48px!important;margin-top:-4px!important;font-size:22px!important
+    width:42px!important;height:42px!important;margin-top:-4px!important;font-size:19px!important
   }
   body:not(.nativeTv) .playerView.open .playerCircleCtrl small{
-    font-size:9px!important;color:#fff!important;text-shadow:0 1px 2px #000!important
+    font-size:8px!important;color:#fff!important;text-shadow:0 1px 2px #000!important
   }
   body:not(.nativeTv) .playerView.open #playerError{display:none!important}
+  body:not(.nativeTv) .playerView.open .playerBottom{max-height:34vh!important}
 }
 
 /* Light / dark appearance */
@@ -3478,6 +3495,7 @@ function openPlayer(id){
   streamRetries=0;
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   const playerView=document.getElementById('playerView');
+  if(!nativeTv)playerView.classList.remove('videoFill');
   const loadingBrand=playerView.querySelector('.playerBrand');
   if(loadingBrand)loadingBrand.style.display='flex';
   playerView.classList.add('open');
