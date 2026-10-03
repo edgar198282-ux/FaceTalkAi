@@ -2877,6 +2877,23 @@ function stopTvWatchdog(){
 function clearFirstFrameTimer(){
   if(firstFrameTimer){clearTimeout(firstFrameTimer);firstFrameTimer=null}
 }
+let tvDirectAttemptChannel='';
+let tvDirectAttemptIndex=0;
+function tvDirectUrls(ch){
+  return [String(ch&&ch.url||''),...(Array.isArray(ch&&ch.backups)?ch.backups:[])].filter(Boolean);
+}
+function tryNextTvDirect(ch){
+  if(!nativeTv||!ch||ch.personal)return false;
+  const urls=tvDirectUrls(ch);
+  if(tvDirectAttemptChannel!==String(ch.id||'')){
+    tvDirectAttemptChannel=String(ch.id||'');
+    tvDirectAttemptIndex=0;
+  }
+  if(tvDirectAttemptIndex+1>=urls.length)return false;
+  tvDirectAttemptIndex++;
+  startStream(ch,true,false);
+  return true;
+}
 function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
@@ -2989,7 +3006,7 @@ function startTvWatchdog(ch){
       tvWatchdogStalls=0;
       const err=document.getElementById('playerError');
       if(err)err.textContent=ch.backup_count?'Поток завис. Переключаю резерв…':'Поток завис. Переподключаю…';
-      startStream(ch,!!ch.backup_count,false);
+      if(!tryNextTvDirect(ch))scheduleReconnect(ch,true);
     }
   },4000);
 }
@@ -3039,8 +3056,17 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   v.pause();v.removeAttribute('src');v.load();
   const basePath=ch.personal?'/api/iptv/edem/play':'/api/iptv/play';
   const auth=ch.personal?authHeaders():{};
-  const directUrls=[String(ch.url||''),...(Array.isArray(ch.backups)?ch.backups:[])].filter(Boolean);
-  const directSrc=preferBackup&&directUrls.length>1?directUrls[1]:directUrls[0];
+  const directUrls=tvDirectUrls(ch);
+  if(nativeTv&&!ch.personal){
+    const cid=String(ch.id||'');
+    if(tvDirectAttemptChannel!==cid){
+      tvDirectAttemptChannel=cid;
+      tvDirectAttemptIndex=0;
+    }else if(!preferBackup){
+      tvDirectAttemptIndex=0;
+    }
+  }
+  const directSrc=directUrls[Math.min(tvDirectAttemptIndex,Math.max(0,directUrls.length-1))]||'';
   const src=(nativeTv&&!ch.personal&&directSrc)?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
@@ -3119,11 +3145,12 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         startStream(ch,preferBackup,true);
         return;
       }
-      if(data.type===Hls.ErrorTypes.NETWORK_ERROR && nativeTv&&!preferBackup&&Number(ch.backup_count||0)>0){
+      if(data.type===Hls.ErrorTypes.NETWORK_ERROR && nativeTv&&!ch.personal){
         clearFirstFrameTimer();
-        err.textContent='Переключаю резерв…';
-        startStream(ch,true,forceProxy);
-        return;
+        if(tryNextTvDirect(ch)){
+          err.textContent='Пробую следующий источник…';
+          return;
+        }
       }
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR && streamRetries<3){
         streamRetries++;
@@ -3152,8 +3179,8 @@ function startStream(ch,preferBackup=false,forceProxy=false){
     }else{
       v.src=src;v.load();
       v.play().then(()=>{streamRetries=0;markFrameReady()}).catch(()=>{
-        if(nativeTv&&!ch.personal&&!preferBackup&&Number(ch.backup_count||0)>0){startStream(ch,true,false);return}
-        scheduleReconnect(ch,preferBackup);
+        if(tryNextTvDirect(ch))return;
+        scheduleReconnect(ch,true);
       });
     }
   }
