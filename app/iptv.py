@@ -22,6 +22,9 @@ def _is_adult_channel(row):
 
 SOURCE_URLS = [
     ("HQ", "https://dearbulut.github.io/iptv/playlists/best.m3u"),
+    ("HQ", "https://dearbulut.github.io/iptv/playlists/online.m3u"),
+    ("RU", "https://raw.githubusercontent.com/smolnp/IPTVru/refs/heads/gh-pages/IPTVstable.m3u8"),
+    ("RU", "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv-top.m3u"),
     ("AM", "https://iptv-org.github.io/iptv/countries/am.m3u"),
     ("AM", "https://iptv-org.github.io/iptv/languages/hye.m3u"),
     ("AM", "https://dearbulut.github.io/iptv/playlists/country/am.m3u"),
