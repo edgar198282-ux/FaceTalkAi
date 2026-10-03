@@ -662,6 +662,7 @@ async def api_admin_access_users(request):
             continue
         sub = await _edem_subscription_state(uid)
         pay = await _edem_payment_state(uid)
+        device_count, _ = await _tv_device_usage(uid)
         if sub['active'] and not is_admin:
             active_count += 1
         if pay.get('status') == 'pending' and not is_admin:
@@ -682,7 +683,9 @@ async def api_admin_access_users(request):
             'expires_at': int(sub.get('expires_at') or 0),
             'days_left': sub.get('days_left'),
             'payment_status': str(pay.get('status') or 'none'),
-            'is_admin': bool(ADMIN_ID and int(uid) == int(ADMIN_ID)),
+            'device_count': int(device_count),
+            'device_limit': 0 if is_admin else 3,
+            'is_admin': is_admin,
         })
 
     rows.sort(key=lambda x: (not x['is_admin'], not x['active'], x['payment_status'] != 'pending', x['name'] or str(x['user_id'])))
