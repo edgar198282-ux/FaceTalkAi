@@ -67,7 +67,7 @@ async def chat(role_key, history, user_text):
         raise RuntimeError("Не настроены GROQ_API_KEY и OPENAI_API_KEY")
     raise RuntimeError(" | ".join(errors)[-500:] or "AI недоступен")
 
-async def translate_text(text, target_lang):
+async def translate_text(text, target_lang, context=""):
     text = (text or "").strip()
     if not text:
         return ""
@@ -75,10 +75,15 @@ async def translate_text(text, target_lang):
     if not target:
         raise RuntimeError("Unsupported translation language")
     groq_client, openai_client = await _clients()
-    messages = [
-        {"role":"system","content":f"Translate spoken dialogue into {target}. Preserve meaning, tone, names and numbers. Return only the translated dialogue, no notes."},
-        {"role":"user","content":text[:5000]},
-    ]
+    system = (
+        f"You are a professional live film and TV dialogue translator. Translate ONLY the current dialogue into {target}. "
+        "Keep names, numbers, jokes, tone and conversational style accurate. Do not summarize, explain, censor, add speaker labels, "
+        "or repeat context. If the source is already in the target language, return it naturally unchanged."
+    )
+    messages = [{"role":"system","content":system}]
+    if context:
+        messages.append({"role":"system","content":"Previous dialogue context for continuity only; do not translate or repeat it:\n"+context[-1800:]})
+    messages.append({"role":"user","content":"Current dialogue:\n"+text[:5000]})
     errors = []
     if groq_client:
         try:
@@ -95,6 +100,79 @@ async def translate_text(text, target_lang):
         except Exception as e:
             errors.append(str(e))
     raise RuntimeError(" | ".join(errors)[-500:] or "Перевод недоступен")
+
+
+async def transcribe_dub(path):
+    groq_client, openai_client = await _clients()
+    errors = []
+    if groq_client:
+        for model in ("whisper-large-v3", GROQ_TRANSCRIBE_MODEL):
+            if not model:
+                continue
+            try:
+                with open(path, "rb") as f:
+                    r = await asyncio.wait_for(
+                        groq_client.audio.transcriptions.create(
+                            model=model,
+                            file=f,
+                            response_format="json",
+                            temperature=0,
+                            prompt="Accurate movie and television dialogue. Preserve names, numbers and punctuation."
+                        ),
+                        timeout=50
+                    )
+                text = (r.text or "").strip()
+                if text:
+                    return text, "groq:"+model
+            except Exception as e:
+                errors.append(f"Groq STT {model}: {e}")
+    if openai_client:
+        try:
+            with open(path, "rb") as f:
+                r = await asyncio.wait_for(
+                    openai_client.audio.transcriptions.create(
+                        model=TRANSCRIBE_MODEL,
+                        file=f,
+                        prompt="Accurate movie and television dialogue. Preserve names, numbers and punctuation."
+                    ),
+                    timeout=50
+                )
+            text = (r.text or "").strip()
+            if text:
+                return text, "openai"
+        except Exception as e:
+            errors.append(f"OpenAI STT: {e}")
+    raise RuntimeError(" | ".join(errors)[-500:] or "Распознавание голоса недоступно")
+
+
+async def synthesize_dub(text, target_lang):
+    text = (text or "").strip()
+    if not text:
+        return None, None
+    voice = {
+        "ru": FREE_TTS_VOICE_RU,
+        "hy": FREE_TTS_VOICE_HY,
+        "en": FREE_TTS_VOICE_EN,
+    }.get(str(target_lang or "").lower(), _detect_voice(text))
+    try:
+        import edge_tts
+        fd, path = tempfile.mkstemp(dir=TMP_DIR, suffix=".mp3")
+        os.close(fd)
+        communicate = edge_tts.Communicate(text[:3500], voice=voice, rate="+4%")
+        await asyncio.wait_for(communicate.save(path), timeout=45)
+        if os.path.exists(path) and os.path.getsize(path) > 1000:
+            return path, "edge-tts"
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    except Exception:
+        try:
+            if 'path' in locals() and os.path.exists(path):
+                os.remove(path)
+        except OSError:
+            pass
+    return await synthesize(text)
 
 
 async def transcribe(path):
