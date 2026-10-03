@@ -1673,7 +1673,24 @@ function focusFirstChannelAfterFilter(){
 function persistTvBrowseState(){
   localStorage.setItem('abaj_tv_filter',modeFilter||'all');
   localStorage.setItem('abaj_tv_category',activeCategory||'');
-  if(nativeTv)localStorage.setItem('abaj_tv_focus_index',String(Math.max(0,focusIndex||0)));
+  if(nativeTv){
+    localStorage.setItem('abaj_tv_focus_index',String(Math.max(0,focusIndex||0)));
+    const cards=[...document.querySelectorAll('.channel')];
+    const card=cards[Math.max(0,Math.min(focusIndex,cards.length-1))];
+    if(card&&card.dataset.id)localStorage.setItem('abaj_tv_focus_channel',String(card.dataset.id));
+  }
+}
+function restoreTvBrowseFocus(){
+  if(!nativeTv||current)return;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const cards=[...document.querySelectorAll('.channel')];
+    if(!cards.length)return;
+    const savedId=localStorage.getItem('abaj_tv_focus_channel')||lastChannelId||'';
+    let idx=savedId?cards.findIndex(x=>String(x.dataset.id||'')===String(savedId)):-1;
+    if(idx<0)idx=Math.max(0,Math.min(Number(localStorage.getItem('abaj_tv_focus_index')||0),cards.length-1));
+    if(idx<0||idx>=cards.length)idx=0;
+    setTvFocus(idx,true);
+  }));
 }
 function applyTvBrowseUi(){
   document.querySelectorAll('.chip[data-source]').forEach(x=>x.classList.toggle('active',x.dataset.source===sourceFilter));
@@ -2003,6 +2020,7 @@ async function load(){
       (d.running?' · '+t.updating:'');
     cacheChannels();
     render();
+    restoreTvBrowseFocus();
     if(lastChannelId&&!current&&document.visibilityState==='visible'){
       const last=channels.find(x=>x.id===lastChannelId);
       if(last){
@@ -2376,7 +2394,11 @@ function setTvFocus(index,scroll=true){
   if(nativeTv&&!tvHeaderCollapsed)setTvHeaderCollapsed(true,false);
   if(!cards.length)return;
   focusIndex=Math.max(0,Math.min(cards.length-1,index));
-  if(nativeTv)localStorage.setItem('abaj_tv_focus_index',String(focusIndex));
+  if(nativeTv){
+    localStorage.setItem('abaj_tv_focus_index',String(focusIndex));
+    const selected=cards[focusIndex];
+    if(selected&&selected.dataset.id)localStorage.setItem('abaj_tv_focus_channel',String(selected.dataset.id));
+  }
   cards.forEach((x,i)=>x.classList.toggle('focused',i===focusIndex));
   const el=cards[focusIndex];
   try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(_){}}
@@ -3610,6 +3632,8 @@ document.addEventListener('focusin',e=>{
   const idx=cards.indexOf(card);
   if(idx>=0){
     focusIndex=idx;
+    localStorage.setItem('abaj_tv_focus_index',String(idx));
+    if(card.dataset.id)localStorage.setItem('abaj_tv_focus_channel',String(card.dataset.id));
     const focusedChannel=channels.find(x=>String(x.id)===String(card.dataset.id));
     if(focusedChannel)warmTvDirectConnection(focusedChannel);
     cards.forEach((x,i)=>x.classList.toggle('focused',i===idx));
