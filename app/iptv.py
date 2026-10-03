@@ -175,6 +175,17 @@ OFFICIAL_CHANNELS = [
         "quality": "4K",
         "height": 2160,
     },
+    {
+        "name": "Shoghakat TV (1080p)",
+        "group": "Religious",
+        "tvg_id": "ShoghakatTV.am",
+        "country": "AM",
+        "source": "public:cdnvideo:shoghakat",
+        "url": "https://hls-mycdn08724960135.cdnvideo.ru/mycdn08724960135/stream1/playlist.m3u8",
+        "adult": False,
+        "quality": "FHD",
+        "height": 1080,
+    },
 ]
 
 SOURCE_URLS = [
