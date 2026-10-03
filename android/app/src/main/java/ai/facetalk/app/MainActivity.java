@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.DownloadManager;
 import android.app.PendingIntent;
+import android.app.PictureInPictureParams;
 import android.app.UiModeManager;
 import android.media.AudioManager;
 import android.content.BroadcastReceiver;
@@ -24,6 +25,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.util.Rational;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
@@ -70,6 +72,7 @@ public class MainActivity extends Activity {
     private volatile long lastWebHeartbeatAt=System.currentTimeMillis();
     private volatile long lastTvChannelKeyAt=0L;
     private volatile boolean activityResumed=false;
+    private volatile boolean pipPlaybackActive=false;
     private volatile boolean tvRecoveryQueued=false;
     private volatile long tvRecoveryStartedAt=0L;
     public final class AbajNativeBridge {
@@ -109,6 +112,14 @@ public class MainActivity extends Activity {
             lastWebHeartbeatAt=System.currentTimeMillis();
             tvRecoveryQueued=false;
             tvRecoveryStartedAt=0L;
+        }
+        @JavascriptInterface public void setPipPlaybackActive(boolean active){
+            pipPlaybackActive=active&&!isTv;
+            runOnUiThread(()->updatePictureInPictureParams());
+        }
+        @JavascriptInterface public void enterPictureInPicture(){
+            if(isTv||!pipPlaybackActive)return;
+            runOnUiThread(()->enterAbajPictureInPicture());
         }
     }
     private final Runnable periodicUpdateCheck=new Runnable(){
@@ -339,6 +350,49 @@ public class MainActivity extends Activity {
     private void handleWebPermission(PermissionRequest r){if(r==null)return;if(BuildConfig.PLAY_STORE_BUILD){r.deny();return;}boolean mic=false,cam=false;for(String x:r.getResources()){if(PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(x))mic=true;if(PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(x))cam=true;}boolean mg=!mic||Build.VERSION.SDK_INT<23||checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED;boolean cg=!cam||Build.VERSION.SDK_INT<23||checkSelfPermission(Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED;if(mg&&cg){r.grant(r.getResources());return;}pendingWebPermission=r;if(Build.VERSION.SDK_INT>=23)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO,Manifest.permission.CAMERA},MEDIA_PERMISSION_REQUEST);else r.grant(r.getResources());}
     @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode!=MEDIA_PERMISSION_REQUEST||pendingWebPermission==null)return;PermissionRequest r=pendingWebPermission;pendingWebPermission=null;boolean ok=true;for(int x:grantResults)if(x!=PackageManager.PERMISSION_GRANTED)ok=false;if(ok)r.grant(r.getResources());else r.deny();}
     @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){super.onActivityResult(requestCode,resultCode,data);if(requestCode!=FILE_CHOOSER_REQUEST||fileCallback==null)return;fileCallback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode,data));fileCallback=null;}
+    private void updatePictureInPictureParams(){
+        if(isTv||Build.VERSION.SDK_INT<Build.VERSION_CODES.O)return;
+        try{
+            PictureInPictureParams.Builder b=new PictureInPictureParams.Builder()
+                .setAspectRatio(new Rational(16,9));
+            if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.S){
+                b.setAutoEnterEnabled(pipPlaybackActive);
+                b.setSeamlessResizeEnabled(true);
+            }
+            setPictureInPictureParams(b.build());
+        }catch(Exception ignored){}
+    }
+
+    private void enterAbajPictureInPicture(){
+        if(isTv||!pipPlaybackActive||Build.VERSION.SDK_INT<Build.VERSION_CODES.O||isInPictureInPictureMode())return;
+        try{
+            PictureInPictureParams.Builder b=new PictureInPictureParams.Builder()
+                .setAspectRatio(new Rational(16,9));
+            if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.S){
+                b.setAutoEnterEnabled(true);
+                b.setSeamlessResizeEnabled(true);
+            }
+            enterPictureInPictureMode(b.build());
+        }catch(Exception ignored){}
+    }
+
+    @Override protected void onUserLeaveHint(){
+        super.onUserLeaveHint();
+        if(!isTv&&pipPlaybackActive&&Build.VERSION.SDK_INT>=Build.VERSION_CODES.O&&Build.VERSION.SDK_INT<Build.VERSION_CODES.S){
+            enterAbajPictureInPicture();
+        }
+    }
+
+    @Override public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig){
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode,newConfig);
+        if(webView!=null){
+            webView.evaluateJavascript(
+                "if(typeof setNativePipMode==='function')setNativePipMode("+(isInPictureInPictureMode?"true":"false")+")",
+                null
+            );
+        }
+    }
+
     @Override protected void onPause(){
         activityResumed=false;
         if(isTv&&webView!=null){
