@@ -1646,7 +1646,7 @@ def public_state(compact: bool = False):
     rows = []
     compact_keys = {
         "id", "name", "group", "country", "logo", "status", "tvg_id",
-        "quality", "height",
+        "quality", "height", "url", "backups",
         "latency_ms", "backup_count", "epg_now", "epg_next",
         "unreliable", "adult"
     }

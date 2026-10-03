@@ -107,7 +107,7 @@ public class MainActivity extends Activity {
         fullscreenContainer.addView(webView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(fullscreenContainer);
         webView.addJavascriptInterface(new AbajNativeBridge(),"AbajNative");
-        WebSettings s=webView.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setMediaPlaybackRequiresUserGesture(false); s.setCacheMode(WebSettings.LOAD_NO_CACHE); s.setAllowFileAccess(true); s.setAllowContentAccess(true); s.setUserAgentString(s.getUserAgentString()+" AbajTV-Android/"+BuildConfig.VERSION_NAME); webView.clearCache(true);
+        WebSettings s=webView.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setMediaPlaybackRequiresUserGesture(false); s.setCacheMode(WebSettings.LOAD_NO_CACHE); s.setAllowFileAccess(true); s.setAllowContentAccess(true); if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP)s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW); s.setUserAgentString(s.getUserAgentString()+" AbajTV-Android/"+BuildConfig.VERSION_NAME); webView.clearCache(true);
         if(isTv){
             s.setTextZoom(115);
             s.setBuiltInZoomControls(false);

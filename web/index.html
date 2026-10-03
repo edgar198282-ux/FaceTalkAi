@@ -2946,7 +2946,7 @@ function startTvWatchdog(ch){
       tvWatchdogStalls=0;
       const err=document.getElementById('playerError');
       if(err)err.textContent=ch.backup_count?'Поток завис. Переключаю резерв…':'Поток завис. Переподключаю…';
-      startStream(ch,!!ch.backup_count,nativeTv&&tvPlayerMode==='system');
+      startStream(ch,!!ch.backup_count,false);
     }
   },4000);
 }
@@ -2964,7 +2964,9 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   v.pause();v.removeAttribute('src');v.load();
   const basePath=ch.personal?'/api/iptv/edem/play':'/api/iptv/play';
   const auth=ch.personal?authHeaders():{};
-  const src=basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+(nativeTv&&!preferBackup&&!forceProxy&&!ch.personal?'&fast=1':'')+'&t='+Date.now();
+  const directUrls=[String(ch.url||''),...(Array.isArray(ch.backups)?ch.backups:[])].filter(Boolean);
+  const directSrc=preferBackup&&directUrls.length>1?directUrls[1]:directUrls[0];
+  const src=(nativeTv&&!ch.personal&&directSrc)?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
   const useHlsJs=tvPlayerMode!=='system'&&window.Hls&&Hls.isSupported();
@@ -3039,13 +3041,13 @@ function startStream(ch,preferBackup=false,forceProxy=false){
     hls.on(Hls.Events.ERROR,(event,data)=>{
       if(!data||!data.fatal)return;
 
-      if(data.type===Hls.ErrorTypes.NETWORK_ERROR && !forceProxy && !ch.personal){
+      if(data.type===Hls.ErrorTypes.NETWORK_ERROR && !nativeTv && !forceProxy && !ch.personal){
         clearFirstFrameTimer();
         err.textContent='Проверяю совместимый поток…';
         startStream(ch,preferBackup,true);
         return;
       }
-      if(data.type===Hls.ErrorTypes.NETWORK_ERROR && nativeTv&&Number(ch.backup_count||0)>0){
+      if(data.type===Hls.ErrorTypes.NETWORK_ERROR && nativeTv&&!preferBackup&&Number(ch.backup_count||0)>0){
         clearFirstFrameTimer();
         err.textContent='Переключаю резерв…';
         startStream(ch,true,forceProxy);
@@ -3078,8 +3080,8 @@ function startStream(ch,preferBackup=false,forceProxy=false){
     }else{
       v.src=src;v.load();
       v.play().then(()=>{streamRetries=0;clearFirstFrameTimer();const wrap=document.querySelector('.videoWrap');if(wrap)wrap.classList.add('playing');startTvWatchdog(ch)}).catch(()=>{
-        if(nativeTv&&!forceProxy&&!ch.personal){startStream(ch,preferBackup,true);return}
-        scheduleReconnect(ch);
+        if(nativeTv&&!ch.personal&&!preferBackup&&Number(ch.backup_count||0)>0){startStream(ch,true,false);return}
+        scheduleReconnect(ch,preferBackup);
       });
     }
   }
