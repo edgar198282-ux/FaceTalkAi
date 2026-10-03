@@ -2426,6 +2426,7 @@ let tvChannelOkLongTriggered=false;
 function focusedChannelCard(){
   const cards=[...document.querySelectorAll('.channel')];
   const focused=document.activeElement&&document.activeElement.closest?document.activeElement.closest('.channel'):null;
+  if(nativeTv)return focused||null;
   return focused||cards[focusIndex]||null;
 }
 function applyTvChannelFavorite(id){
@@ -3521,6 +3522,12 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='Enter'){
     e.preventDefault();
     if(nativeTv){
+      const active=document.activeElement;
+      const activeChannel=active&&active.closest?active.closest('.channel'):null;
+      if(!activeChannel){
+        if(active&&typeof active.click==='function'&&active!==document.body)active.click();
+        return;
+      }
       if(!e.repeat)beginTvChannelOk();
     }else openFocused();
   }
@@ -3561,8 +3568,8 @@ window.addEventListener('offline',handleOffline);
 window.addEventListener('online',()=>{handleOnline();flushPendingFavorites();loadSyncedState(true)});
 document.addEventListener('visibilitychange',handleVisibilityChange);
 if(!navigator.onLine)handleOffline();
-setInterval(()=>{load()},60000);
-setInterval(()=>{if(!document.hidden){flushPendingFavorites();loadSyncedState(false)}},2000);
+setInterval(()=>{load()},nativeTv?180000:60000);
+setInterval(()=>{if(!document.hidden){flushPendingFavorites();loadSyncedState(false)}},nativeTv?8000:2000);
 </script>
 </body>
 </html>
