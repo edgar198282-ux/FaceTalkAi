@@ -626,8 +626,13 @@ let streamWarmController=null;
 let tvHideUnreliable=localStorage.getItem('abaj_tv_hide_unreliable')!=='0';
 let tvAutoStartLast=localStorage.getItem('abaj_tv_autostart_last')!=='0';
 let tvPreferredQuality=localStorage.getItem('abaj_tv_quality')||'auto';
-const savedTvPlayerMode=localStorage.getItem('abaj_tv_player_mode');
-let tvPlayerMode=['hls','system'].includes(savedTvPlayerMode)?savedTvPlayerMode:(nativeTv?'system':'auto');
+let savedTvPlayerMode=localStorage.getItem('abaj_tv_player_mode');
+if(nativeTv&&localStorage.getItem('abaj_tv_player_auto_native_v1')!=='1'){
+  savedTvPlayerMode='auto';
+  localStorage.setItem('abaj_tv_player_mode','auto');
+  localStorage.setItem('abaj_tv_player_auto_native_v1','1');
+}
+let tvPlayerMode=['auto','hls','system'].includes(savedTvPlayerMode)?savedTvPlayerMode:'auto';
 let appThemeHue=Math.max(0,Math.min(359,Number(localStorage.getItem('abaj_tv_theme_hue')||204)||204));
 let tvHeaderCollapsed=false;
 let mobileHeaderRaf=0;
@@ -1495,7 +1500,7 @@ function toggleAdultSetting(){
   render();
 }
 function setTvPlayerMode(value){
-  tvPlayerMode=['hls','system'].includes(String(value))?String(value):'auto';
+  tvPlayerMode=['auto','hls','system'].includes(String(value))?String(value):'auto';
   localStorage.setItem('abaj_tv_player_mode',tvPlayerMode);
   paintTvSettings();
   if(current){
@@ -3108,10 +3113,16 @@ function tvUseHlsForChannel(ch){
   if(String(ch.name||'').trim().toLowerCase()==='yerkir media')return true;
   return tvHlsFallbackChannels.has(String(ch.id||''));
 }
+function tvShouldUseHls(ch){
+  if(!nativeTv)return tvPlayerMode!=='system';
+  if(tvPlayerMode==='hls')return true;
+  if(tvPlayerMode==='system')return false;
+  return tvUseHlsForChannel(ch);
+}
 function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
-  const usingHls=tvUseHlsForChannel(ch)||tvPlayerMode!=='system';
+  const usingHls=tvShouldUseHls(ch);
   const waitMs=usingHls?(Number(ch.backup_count||0)>0?3200:5000):1800;
   firstFrameTimer=setTimeout(()=>{
     firstFrameTimer=null;
@@ -3120,7 +3131,7 @@ function armFirstFrameTimer(ch,preferBackup,token){
     const wrap=document.querySelector('.videoWrap');
     if((wrap&&wrap.classList.contains('frameReady'))||(v&&v.readyState>=2&&!v.paused))return;
     const err=document.getElementById('playerError');
-    if(nativeTv&&tvPlayerMode==='system'&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
+    if(nativeTv&&tvPlayerMode!=='hls'&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
       playbackFallbackCount++;
       tvHlsFallbackChannels.add(String(ch.id||''));
       if(err)err.textContent='Пробую совместимый плеер…';
@@ -3297,7 +3308,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   err.textContent='';
   if(hls){try{hls.stopLoad()}catch(e){};try{hls.destroy()}catch(e){};hls=null}
   try{v.pause()}catch(e){}
-  if(!(nativeTv&&tvPlayerMode==='system'&&!tvUseHlsForChannel(ch))){
+  if(!(nativeTv&&!tvShouldUseHls(ch))){
     v.removeAttribute('src');
     try{v.load()}catch(e){}
   }
@@ -3317,7 +3328,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   const src=(nativeTv&&!ch.personal&&directSrc)?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
-  const useHlsJs=(tvPlayerMode!=='system'||tvUseHlsForChannel(ch))&&window.Hls&&Hls.isSupported();
+  const useHlsJs=tvShouldUseHls(ch)&&window.Hls&&Hls.isSupported();
   if(nativeTv)playbackPlayerMode=useHlsJs?'hls':'system';
   if(useHlsJs){
     hls=new Hls({
@@ -3427,7 +3438,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         .catch(()=>scheduleReconnect(ch));
     }else{
       v.src=src;
-      if(!(nativeTv&&tvPlayerMode==='system')){try{v.load()}catch(e){}}
+      if(!(nativeTv&&!tvShouldUseHls(ch))){try{v.load()}catch(e){}}
       v.play().then(()=>{
         streamRetries=0;
         if(!nativeTv){markFrameReady();return}
@@ -3447,7 +3458,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         v.addEventListener('canplay',confirmPlayback);
         setTimeout(confirmPlayback,120);
       }).catch(()=>{
-        if(nativeTv&&tvPlayerMode==='system'&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
+        if(nativeTv&&tvPlayerMode!=='hls'&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
           playbackFallbackCount++;
           tvHlsFallbackChannels.add(String(ch.id||''));
           err.textContent='Пробую совместимый плеер…';
