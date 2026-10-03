@@ -2380,10 +2380,15 @@ async def api_ad_viewing(request):
         return web.json_response({"ok": False, "error": "unknown channel"}, status=404)
     _burned_ad_stats["last_free_play"] = int(time.time())
     _burned_ad_stats["last_free_play_channel_id"] = cid
+    requested_source = str((body or {}).get("source_url") or "").strip()
+    allowed_sources = {str(item.get("url") or ""), *(str(x or "") for x in (item.get("backups") or []))}
+    probe_item = dict(item)
+    if requested_source and requested_source in allowed_sources:
+        probe_item["url"] = requested_source
     ott = dict(_ottclub_ad_state.get(cid) or {})
-    if int(time.time()) - int(ott.get("last_probe") or 0) >= 2:
-        asyncio.create_task(_quick_ottclub_probe(item))
-    asyncio.create_task(_probe_current_burned_ad_pair(item))
+    if int(time.time()) - int(ott.get("last_probe") or 0) >= 1:
+        asyncio.create_task(_quick_ottclub_probe(probe_item))
+    asyncio.create_task(_probe_current_burned_ad_pair(probe_item))
     return web.json_response({"ok": True}, headers={"Cache-Control": "no-store"})
 
 
@@ -2394,11 +2399,16 @@ async def api_ad_state(request):
         return web.json_response({"ok": False, "active": False, "error": "unknown channel"}, status=404)
     _burned_ad_stats["last_free_play"] = int(time.time())
     _burned_ad_stats["last_free_play_channel_id"] = cid
+    requested_source = str(request.query.get("source") or "").strip()
+    allowed_sources = {str(item.get("url") or ""), *(str(x or "") for x in (item.get("backups") or []))}
+    probe_item = dict(item)
+    if requested_source and requested_source in allowed_sources:
+        probe_item["url"] = requested_source
     ott = dict(_ottclub_ad_state.get(cid) or {})
     cin = dict(_cinerama_placeholder_state.get(cid) or {})
     last_quick = max(int(ott.get("last_probe") or 0), int(cin.get("last_probe") or 0))
     if int(time.time()) - last_quick >= 1:
-        asyncio.create_task(_quick_ottclub_probe(item))
+        asyncio.create_task(_quick_ottclub_probe(probe_item))
     active = bool(ott.get("active") or cin.get("active"))
     reason = "cinerama_placeholder" if bool(cin.get("active")) else ("ottclub" if bool(ott.get("active")) else "")
     return web.json_response({
