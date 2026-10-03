@@ -560,10 +560,22 @@ public class MainActivity extends Activity {
                 "(function(){try{return (typeof handleAppBack==='function')?handleAppBack():false}catch(e){return false}})()",
                 value->{
                     if("true".equals(value))return;
+                    if(playbackActive){
+                        enterPlaybackPictureInPicture();
+                        updateHandler.postDelayed(()->{
+                            try{moveTaskToBack(true);}catch(Exception ignored){}
+                        },180L);
+                        return;
+                    }
                     if(webView.canGoBack())webView.goBack();
                     else super.onBackPressed();
                 }
             );
+            return;
+        }
+        if(playbackActive){
+            enterPlaybackPictureInPicture();
+            updateHandler.postDelayed(()->{try{moveTaskToBack(true);}catch(Exception ignored){}},180L);
             return;
         }
         super.onBackPressed();
