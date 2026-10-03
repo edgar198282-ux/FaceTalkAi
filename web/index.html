@@ -343,6 +343,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   }
   body:not(.nativeTv) .tvTopAction span,
   body:not(.nativeTv) .tvClock{display:none!important}
+  body:not(.nativeTv) #tvTopSearchBtn{display:none!important}
   body:not(.nativeTv) #listBtn,
   body:not(.nativeTv) #refreshBtn{display:inline-flex!important}
 
@@ -359,13 +360,19 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   }
   body:not(.nativeTv) .select{width:78px!important;min-width:78px!important;padding-right:25px!important}
 
-  body:not(.nativeTv) .countryChips,
   body:not(.nativeTv) .modeChips,
   body:not(.nativeTv) .quickCats,
-  body:not(.nativeTv).tvMode .countryChips,
   body:not(.nativeTv).tvMode .modeChips,
   body:not(.nativeTv).tvMode .quickCats{
     display:flex!important;gap:6px!important;padding-top:7px!important;overflow-x:auto!important
+  }
+  body:not(.nativeTv) .countryChips,
+  body:not(.nativeTv).tvMode .countryChips{
+    display:none!important;gap:6px!important;padding-top:7px!important;overflow-x:auto!important
+  }
+  body:not(.nativeTv).countryPanelOpen .countryChips,
+  body:not(.nativeTv).tvMode.countryPanelOpen .countryChips{
+    display:flex!important
   }
   body:not(.nativeTv) .countryChips .chip.flagOnly{
     min-width:44px!important;width:44px!important;height:34px!important;padding:0!important;font-size:20px!important;border-radius:15px!important
@@ -380,7 +387,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
     width:44px!important;min-width:44px!important;padding:0!important
   }
   body:not(.nativeTv) .favText{display:none!important}
-  body:not(.nativeTv) .countriesBtn{display:none!important}
+  body:not(.nativeTv) .countriesBtn{display:inline-flex!important;min-width:auto!important;padding:0 12px!important}
   body:not(.nativeTv) .quickCats .cat{padding:0 13px!important}
   body:not(.nativeTv) .content,
   body:not(.nativeTv).tvMode .content{padding:0!important}
@@ -2383,12 +2390,11 @@ async function load(){
   }
 }
 function toggleCountryFilters(){
-  if(!nativeTv)return;
   const open=!document.body.classList.contains('countryPanelOpen');
   document.body.classList.toggle('countryPanelOpen',open);
   const btn=document.getElementById('countriesBtn');
   if(btn)btn.classList.toggle('active',open);
-  if(open){
+  if(open&&nativeTv){
     setTimeout(()=>{
       const first=document.querySelector('#countryChips .chip');
       if(first){try{first.focus({preventScroll:true})}catch(_){}}
