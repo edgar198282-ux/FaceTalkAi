@@ -1920,7 +1920,7 @@ function setSourceFilter(btn,v){
   focusFirstChannelAfterFilter();
 }
 function setModeFilter(btn,v){
-  if(nativeTv&&value!=='country'){document.body.classList.remove('countryPanelOpen');const cb=document.getElementById('countriesBtn');if(cb)cb.classList.remove('active');}
+  if(nativeTv){document.body.classList.remove('countryPanelOpen');const cb=document.getElementById('countriesBtn');if(cb)cb.classList.remove('active');}
   if(v==='adult'&&!adultEnabled)return;
   modeFilter=v;
   const isCountry=COUNTRY_FILTERS.has(v);
