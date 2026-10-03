@@ -577,11 +577,23 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   }
   body:not(.nativeTv) .playerView.open #playerError{display:none!important}
   body:not(.nativeTv) .playerView.open .playerBottom{max-height:34vh!important}
-  body:not(.nativeTv) .playerView.open.pureFullscreen .playerBottom,
-  body:not(.nativeTv) .playerView.open.pureFullscreen .playerMeta,
-  body:not(.nativeTv) .playerView.open.pureFullscreen .playerTimeline,
-  body:not(.nativeTv) .playerView.open.pureFullscreen .playerPrimaryControls{
+  body:not(.nativeTv) .playerView.open.pureFullscreen:not(.showPureControls) .playerBottom,
+  body:not(.nativeTv) .playerView.open.pureFullscreen:not(.showPureControls) .playerMeta,
+  body:not(.nativeTv) .playerView.open.pureFullscreen:not(.showPureControls) .playerTimeline,
+  body:not(.nativeTv) .playerView.open.pureFullscreen:not(.showPureControls) .playerPrimaryControls{
     display:none!important
+  }
+  body:not(.nativeTv) .playerView.open.pureFullscreen.showPureControls .playerBottom{
+    display:block!important;opacity:1!important;pointer-events:auto!important
+  }
+  body:not(.nativeTv) .playerView.open.pureFullscreen.showPureControls .playerMeta{
+    display:flex!important;opacity:1!important
+  }
+  body:not(.nativeTv) .playerView.open.pureFullscreen.showPureControls .playerTimeline{
+    display:block!important;opacity:1!important
+  }
+  body:not(.nativeTv) .playerView.open.pureFullscreen.showPureControls .playerPrimaryControls{
+    display:grid!important;opacity:1!important
   }
   body:not(.nativeTv) .playerView.open.pureFullscreen .videoWrap{
     inset:0!important;width:100%!important;height:100%!important
@@ -2392,6 +2404,8 @@ function installPlayerTouchGestures(){
     const p=e.changedTouches&&e.changedTouches[0];
     if(!p)return;
     const dx=p.clientX-sx,dy=p.clientY-sy;
+    const moved=Math.hypot(dx,dy);
+    const player=document.getElementById('playerView');
     if(mode==='h'&&Math.abs(dx)>=60&&Math.abs(dx)>Math.abs(dy)*1.15&&Date.now()-startedAt<1400){
       e.preventDefault();
       playerGestureSuppressClickUntil=Date.now()+450;
@@ -2399,6 +2413,12 @@ function installPlayerTouchGestures(){
       else{showPlayerGestureHint('◀ Канал');playPrev();}
     }else if(mode==='v'){
       playerGestureSuppressClickUntil=Date.now()+300;
+    }else if(moved<14&&player&&player.classList.contains('pureFullscreen')){
+      // WebView may suppress the synthetic click in fullscreen. Handle tap
+      // directly here so controls always appear.
+      e.preventDefault();
+      playerGestureSuppressClickUntil=Date.now()+300;
+      showPureFullscreenControls();
     }
     mode='';
   },{passive:false});
@@ -2424,6 +2444,18 @@ function handlePlayerSurfaceClick(event){
   showTvPlayerUi(true);
 }
 installPlayerTouchGestures();
+(()=>{
+  const wrap=document.querySelector('.videoWrap');
+  if(!wrap||wrap.dataset.pureTapReady==='1')return;
+  wrap.dataset.pureTapReady='1';
+  wrap.addEventListener('pointerup',e=>{
+    if(nativeTv||e.pointerType!=='touch')return;
+    const player=document.getElementById('playerView');
+    if(!player||!player.classList.contains('pureFullscreen'))return;
+    if(e.target&&e.target.closest&&e.target.closest('button,select,.channelRail'))return;
+    showPureFullscreenControls();
+  },{passive:true});
+})();
 function addRecent(id,deferSync=false){
   recent=[id,...recent.filter(x=>x!==id)].slice(0,30);
   saveRecent(deferSync);
