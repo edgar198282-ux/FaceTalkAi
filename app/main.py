@@ -73,7 +73,7 @@ def _apk_download_url():
     return urlunsplit((parts.scheme, parts.netloc, "/downloads/AbajTV-latest.apk", "", ""))
 
 def _tv_apk_download_url():
-    return "https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-tv-compat/AbajTV-TV-compat.apk"
+    return "https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-latest/AbajTV-TV-compat.apk"
 
 async def _bot_start_link(payload: str = "") -> str:
     username = EXPECTED_BOT_USERNAME.strip().lstrip('@') if EXPECTED_BOT_USERNAME else ''
