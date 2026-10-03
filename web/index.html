@@ -3281,6 +3281,15 @@ function isCineramaStreamUrl(url){
     return u.includes('cinerama.uz/')||u.includes('.cinerama.uz/');
   }catch(e){return false}
 }
+function isProviderAdStreamUrl(url){
+  try{
+    const u=String(url||'').toLowerCase();
+    return isCineramaStreamUrl(u)
+      ||u.includes('stream.mcquack.net/')
+      ||u.includes('ottclub')
+      ||u.includes('ott-club');
+  }catch(e){return false}
+}
 function selectedFreeStreamUrl(ch){
   if(!ch||ch.personal)return '';
   const urls=tvDirectUrls(ch);
@@ -3291,7 +3300,7 @@ function selectedFreeStreamUrl(ch){
   return String(ch.url||'');
 }
 function shouldInstantShieldCinerama(ch){
-  return !!(ch&&!ch.personal&&isCineramaStreamUrl(selectedFreeStreamUrl(ch)));
+  return !!(ch&&!ch.personal&&isProviderAdStreamUrl(selectedFreeStreamUrl(ch)));
 }
 function armInstantCineramaShield(ch){
   if(!shouldInstantShieldCinerama(ch))return false;
@@ -3356,12 +3365,13 @@ function stopFreeAdMusic(){
   freeAdAudioCtx=null;
 }
 
-function setFreeAdOverlay(active){
+function setFreeAdOverlay(active,seconds){
   const overlay=document.getElementById('freeAdOverlay');
   const v=document.getElementById('video');
   active=!!active;
   if(active===freeAdActive){
     if(overlay)overlay.style.display=active?'flex':'none';
+    if(active&&Number(seconds)>0)startFreeAdCountdown(seconds);
     return;
   }
   freeAdActive=active;
@@ -3369,7 +3379,7 @@ function setFreeAdOverlay(active){
     freeAdMuteBefore=!!(v&&v.muted);
     if(v)v.muted=true;
     if(overlay)overlay.style.display='flex';
-    if(!freeAdCountdownEndsAt)startFreeAdCountdown(15);
+    startFreeAdCountdown(Number(seconds)>0?seconds:15);
     startFreeAdMusic();
   }else{
     if(overlay)overlay.style.display='none';
@@ -3412,7 +3422,8 @@ async function checkFreeAdState(){
       freeAdShieldVerifiedNegative=0;
       freeAdShieldChannel=String(id||'');
       if(!freeAdShieldStartedAt)freeAdShieldStartedAt=Date.now()/1000;
-      setFreeAdOverlay(true);
+      const remaining=Math.max(1,Number(d.remaining||d.estimated_duration||15));
+      setFreeAdOverlay(true,remaining);
       return;
     }
     const shielding=freeAdShieldChannel===String(id||'')&&freeAdShieldStartedAt>0;
