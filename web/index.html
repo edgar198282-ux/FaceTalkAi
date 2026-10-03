@@ -3570,9 +3570,49 @@ function getPlayerControls(){
 function focusPlayerControl(step=0){
   const controls=getPlayerControls();
   if(!controls.length)return false;
-  let i=controls.indexOf(document.activeElement);
+  let active=document.activeElement;
+  if(active&&active.tagName==='SELECT'&&active.closest)active=active.closest('.ctrl');
+  let i=controls.indexOf(active);
   if(i<0)i=0;else if(step)i=(i+step+controls.length)%controls.length;
   try{controls[i].focus({preventScroll:true})}catch(_){try{controls[i].focus()}catch(__){}}
+  return true;
+}
+function playerControlRows(){
+  const visible=sel=>[...document.querySelectorAll(sel+' .ctrl')].filter(el=>el.offsetParent!==null);
+  return [visible('#playerView .playerPrimaryControls'),visible('#playerView .playerUtilityControls')].filter(r=>r.length);
+}
+function focusPlayerControlSpatial(direction){
+  const rows=playerControlRows();
+  if(!rows.length)return false;
+  let active=document.activeElement;
+  if(active&&active.tagName==='SELECT'&&active.closest)active=active.closest('.ctrl');
+  let rowIndex=rows.findIndex(row=>row.includes(active));
+  if(rowIndex<0){
+    const target=rows[0][0];
+    try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
+    return true;
+  }
+  const row=rows[rowIndex];
+  let col=row.indexOf(active);
+  if(direction==='left'||direction==='right'){
+    const delta=direction==='right'?1:-1;
+    col=Math.max(0,Math.min(row.length-1,col+delta));
+    const target=row[col];
+    try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
+    return true;
+  }
+  const nextRowIndex=direction==='down'?rowIndex+1:rowIndex-1;
+  if(nextRowIndex<0||nextRowIndex>=rows.length)return true;
+  const a=active.getBoundingClientRect();
+  const ax=a.left+a.width/2;
+  let target=rows[nextRowIndex][0],best=Infinity;
+  rows[nextRowIndex].forEach(el=>{
+    const r=el.getBoundingClientRect();
+    const x=r.left+r.width/2;
+    const dist=Math.abs(x-ax);
+    if(dist<best){best=dist;target=el}
+  });
+  try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
   return true;
 }
 function activatePlayerControl(){
@@ -3665,13 +3705,16 @@ function tvNativeRemote(action){
       return;
     }
     const controlsHidden=document.body.classList.contains('playerClean');
-    if(action==='left'){queueTvChannelStep(-1);return}
-    if(action==='right'){queueTvChannelStep(1);return}
     if(controlsHidden){
-      if(action==='ok'){showTvPlayerUi(true);focusPlayerControl(0);return}
-      if(action==='up'||action==='down'){showTvPlayerUi(true);focusPlayerControl(0);return}
+      if(action==='left'){queueTvChannelStep(-1);return}
+      if(action==='right'){queueTvChannelStep(1);return}
+      if(action==='ok'||action==='up'||action==='down'){showTvPlayerUi(true);focusPlayerControl(0);return}
     }
-    if(action==='up'||action==='down'){showTvPlayerUi(true);focusPlayerControl(action==='down'?1:-1);return}
+    if(action==='left'||action==='right'||action==='up'||action==='down'){
+      showTvPlayerUi(true);
+      focusPlayerControlSpatial(action);
+      return;
+    }
     if(action==='ok'){
       showTvPlayerUi(true);
       if(!activatePlayerControl())focusPlayerControl(0);
@@ -3746,15 +3789,15 @@ document.addEventListener('keydown',e=>{
   if(playerOpen){
     if(nativeTv&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
       e.preventDefault();
-      if(e.key==='ArrowLeft'){queueTvChannelStep(-1);return}
-      if(e.key==='ArrowRight'){queueTvChannelStep(1);return}
       const controlsHidden=document.body.classList.contains('playerClean');
       if(controlsHidden){
+        if(e.key==='ArrowLeft'){queueTvChannelStep(-1);return}
+        if(e.key==='ArrowRight'){queueTvChannelStep(1);return}
         showTvPlayerUi(true);focusPlayerControl(0);return
       }
       showTvPlayerUi(true);
-      if(e.key==='ArrowUp')focusPlayerControl(-1);
-      else focusPlayerControl(1);
+      const direction=e.key==='ArrowLeft'?'left':e.key==='ArrowRight'?'right':e.key==='ArrowUp'?'up':'down';
+      focusPlayerControlSpatial(direction);
       return
     }
     if(e.key==='Enter'){
