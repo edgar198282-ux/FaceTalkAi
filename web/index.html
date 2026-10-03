@@ -4180,7 +4180,10 @@ function closePlayer(){
   playerView.classList.remove('tvFullscreen');
   playerView.classList.remove('appFullscreen');
   document.body.classList.remove('playerFullscreenActive');
+  document.body.classList.remove('mobileLandscapePlayer');
   try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}
+  const closeVideo=document.getElementById('video');
+  if(closeVideo&&!nativeTv)closeVideo.controls=true;
   toggleTvRail(false);
   current=null;currentIndex=-1;
   if(nativeTv&&closingId){
@@ -4238,8 +4241,17 @@ function syncMobileLandscapePlayerUi(){
   if(!v||!player)return;
   const landscape=window.matchMedia&&window.matchMedia('(orientation: landscape)').matches&&window.innerHeight<=520;
   const active=player.classList.contains('open');
-  v.controls=!(landscape&&active);
-  document.body.classList.toggle('mobileLandscapePlayer',!!(landscape&&active));
+  const useLandscapeUi=!!(landscape&&active);
+
+  // Never let the phone enter native <video> fullscreen: that mode replaces
+  // our ABAJ TV controls with browser/system controls.
+  v.controls=!useLandscapeUi;
+  if(useLandscapeUi){
+    setAppFullscreen(true);
+  }else if(active&&player.classList.contains('appFullscreen')){
+    setAppFullscreen(false);
+  }
+  document.body.classList.toggle('mobileLandscapePlayer',useLandscapeUi);
 }
 window.addEventListener('resize',()=>setTimeout(syncMobileLandscapePlayerUi,60),{passive:true});
 window.addEventListener('orientationchange',()=>setTimeout(syncMobileLandscapePlayerUi,180),{passive:true});
@@ -4282,16 +4294,15 @@ async function toggleFullscreen(){
     showTvShortcut(player.classList.contains('tvFullscreen')?'Полный экран':'Окно плеера');
     return;
   }
+
+  // Mobile uses app-level fullscreen only. Native HTML video fullscreen hides
+  // our own controls, so it must never be requested here.
   const turningOn=!player.classList.contains('appFullscreen');
   setAppFullscreen(turningOn);
-  if(!turningOn){
-    try{if(document.fullscreenElement)await document.exitFullscreen()}catch(e){}
-    return;
-  }
+  const v=document.getElementById('video');
+  if(v)v.controls=!turningOn;
   try{
-    if(player.requestFullscreen){await player.requestFullscreen();return}
-    const v=document.getElementById('video');
-    if(v&&v.webkitEnterFullscreen){v.webkitEnterFullscreen()}
+    if(document.fullscreenElement)await document.exitFullscreen();
   }catch(e){}
 }
 
