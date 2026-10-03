@@ -427,8 +427,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
 
   body:not(.nativeTv) .toolbar,
   body:not(.nativeTv).tvMode .toolbar{
-    display:grid!important;grid-template-columns:minmax(0,1fr) 78px!important;
-    gap:8px!important;padding-top:8px!important
+    display:none!important
   }
   body:not(.nativeTv) .search,
   body:not(.nativeTv) .select,
@@ -739,7 +738,7 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
       </div>
       <div class="icons">
         <button id="listBtn" class="iconBtn active" onclick="toggleLayoutMode()" title="Список / Плитка">☷</button>
-        <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">⌕</button>
+        <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
         <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск">⌕ <span>Поиск</span></button>
         <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="openTvSettings()" title="Настройки">⚙ <span>Настройки</span></button>
         <div id="tvClock" class="tvClock"></div>
