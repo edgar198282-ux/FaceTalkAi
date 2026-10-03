@@ -3003,6 +3003,7 @@ function clearFirstFrameTimer(){
 }
 let tvDirectAttemptChannel='';
 let tvDirectAttemptIndex=0;
+let tvFailureReportKey='';
 function tvDirectUrls(ch){
   return [String(ch&&ch.url||''),...(Array.isArray(ch&&ch.backups)?ch.backups:[])].filter(Boolean);
 }
@@ -3011,6 +3012,9 @@ function reportTvStreamFailure(ch,reason){
   const urls=tvDirectUrls(ch);
   const failedUrl=urls[Math.min(tvDirectAttemptIndex,Math.max(0,urls.length-1))]||'';
   if(!failedUrl)return;
+  const reportKey=String(ch.id||'')+'|'+failedUrl+'|'+String(streamAttemptToken);
+  if(tvFailureReportKey===reportKey)return;
+  tvFailureReportKey=reportKey;
   try{
     fetch('/api/iptv/client-stream-failure',{
       method:'POST',
@@ -3036,12 +3040,13 @@ function tryNextTvDirect(ch){
 function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
-  const waitMs=Number(ch.backup_count||0)>0?2200:4000;
+  const waitMs=Number(ch.backup_count||0)>0?3200:5000;
   firstFrameTimer=setTimeout(()=>{
     firstFrameTimer=null;
     if(token!==streamAttemptToken||!current||current.id!==ch.id)return;
     const v=document.getElementById('video');
-    if(v&&v.readyState>=3&&!v.paused)return;
+    const wrap=document.querySelector('.videoWrap');
+    if((wrap&&wrap.classList.contains('frameReady'))||(v&&v.readyState>=2&&!v.paused))return;
     reportTvStreamFailure(ch,'first_frame_timeout');
     const err=document.getElementById('playerError');
     if(!preferBackup&&Number(ch.backup_count||0)>0){
@@ -3326,7 +3331,25 @@ function startStream(ch,preferBackup=false,forceProxy=false){
     }else{
       v.src=src;
       if(!(nativeTv&&tvPlayerMode==='system')){try{v.load()}catch(e){}}
-      v.play().then(()=>{streamRetries=0;markFrameReady()}).catch(()=>{
+      v.play().then(()=>{
+        streamRetries=0;
+        if(!nativeTv){markFrameReady();return}
+        let confirmed=false;
+        const confirmPlayback=()=>{
+          if(confirmed||attemptToken!==streamAttemptToken)return;
+          if(v.paused||v.readyState<2)return;
+          if(!(v.currentTime>0)&&v.readyState<3)return;
+          confirmed=true;
+          v.removeEventListener('playing',confirmPlayback);
+          v.removeEventListener('timeupdate',confirmPlayback);
+          v.removeEventListener('canplay',confirmPlayback);
+          markFrameReady();
+        };
+        v.addEventListener('playing',confirmPlayback);
+        v.addEventListener('timeupdate',confirmPlayback);
+        v.addEventListener('canplay',confirmPlayback);
+        setTimeout(confirmPlayback,120);
+      }).catch(()=>{
         reportTvStreamFailure(ch,'native_play_error');
         if(tryNextTvDirect(ch))return;
         scheduleReconnect(ch,true);
