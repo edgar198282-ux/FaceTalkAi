@@ -234,14 +234,47 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
 .nativeTv.nativeList .channel .name{font-size:20px!important}
 .nativeTv.nativeList .channel .now{font-size:14px!important}
 .nativeTv.nativeList .channel .side{flex-direction:column!important;padding:8px!important}
-.nativeTv .channel{min-height:146px!important}
-.nativeTv .channel .logoWrap{height:72px!important}
-.nativeTv .channel .logo{max-width:100%!important;max-height:47px!important;opacity:1!important;transform:none!important;transition:none!important}
+.nativeTv .channel{min-height:164px!important;border-radius:20px!important}
+.nativeTv .channel .logoWrap{height:104px!important;border-radius:15px 15px 0 0!important}
+.nativeTv .channel .logo{max-width:90%!important;max-height:68px!important;opacity:1!important;transform:none!important;transition:none!important}
+.nativeTv .gridChannelName{
+  display:block!important;position:static!important;left:auto!important;right:auto!important;bottom:auto!important;
+  min-height:34px!important;padding:7px 9px 8px!important;border-radius:0 0 15px 15px!important;
+  background:rgba(255,255,255,.98)!important;color:#173f5c!important;font-size:14px!important;font-weight:850!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;text-align:center!important;
+  text-shadow:none!important;pointer-events:none!important;border-top:1px solid rgba(60,135,185,.12)!important;
+}
 .nativeTv .channel .info{padding:6px 8px!important}
 .nativeTv .channel .name{font-size:15px!important}
 .nativeTv .channel .now{font-size:11px!important}
 .nativeTv .channel .next{font-size:10px!important}
 .nativeTv .channel .side{padding:0 7px 6px!important}
+
+/* Light / dark appearance */
+body.darkMode{background:#07111b!important;color:#eaf5ff}
+body.darkMode .app{background:#08131e!important;border-color:#17293a!important}
+body.darkMode .top{background:rgba(8,19,30,.96)!important;border-color:#17293a!important}
+body.darkMode .content,
+body.darkMode .list{background:linear-gradient(180deg,#08131e,#0b1825)!important}
+body.darkMode .channel{background:#101d29!important;border-color:#22384a!important;box-shadow:0 7px 18px rgba(0,0,0,.34)!important}
+body.darkMode .logoWrap{background:linear-gradient(180deg,#172635,#101b27)!important}
+body.darkMode .gridChannelName{background:#101d29!important;color:#eef8ff!important;border-top-color:#22384a!important}
+body.darkMode .name{color:#eef8ff!important}
+body.darkMode .now,body.darkMode .next,body.darkMode .country{color:#9eb7c8!important}
+body.darkMode .chip,body.darkMode .cat{background:#142434!important;color:#d9efff!important;border-color:#2a465c!important}
+body.darkMode .chip.active,body.darkMode .cat.active{background:#087fe1!important;color:#fff!important}
+body.darkMode .search,body.darkMode .select{background:#101d29!important;color:#eef8ff!important;border-color:#294357!important}
+body.darkMode .settingsCard{background:#0d1925!important;color:#eef8ff!important}
+body.darkMode .settingsTitle,body.darkMode .settingsLabel{color:#dcefff!important}
+body.darkMode .adminRow,body.darkMode .themePicker,body.darkMode .deviceManager{background:#132334!important;border-color:#28445a!important;color:#eef8ff!important}
+body.darkMode .deviceRow{background:#0f1d2a!important;border-color:#28445a!important}
+body.darkMode .deviceName{color:#eef8ff!important}
+body.darkMode .deviceMeta,body.darkMode .themePickerHead,body.darkMode .deviceManagerHead{color:#9eb7c8!important}
+.appearanceToggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 4px}
+.appearanceToggle button{border:1px solid #b9dff5;border-radius:12px;padding:11px 10px;background:#e8f5ff;color:#0b5f9e;font-weight:850}
+.appearanceToggle button.active{background:#087fe1;color:#fff;border-color:#087fe1}
+body.darkMode .appearanceToggle button{background:#142434;color:#d9efff;border-color:#2a465c}
+body.darkMode .appearanceToggle button.active{background:#087fe1;color:#fff;border-color:#087fe1}
 
 .adminPanel{position:fixed;inset:0;background:rgba(3,27,62,.72);z-index:220;display:none;align-items:flex-end;justify-content:center;padding:12px}.adminPanel.open{display:flex}.adminCard{width:min(760px,100%);max-height:88vh;overflow:auto;background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}.adminHead{display:flex;align-items:center;justify-content:space-between;gap:10px}.adminTitle{font-size:22px;font-weight:800;color:#0d4d86}.adminClose{border:0;background:#d9efff;color:#0b5f9e;border-radius:12px;padding:10px 13px;font-weight:800}.adminForm{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin:14px 0}.adminForm input{height:44px;border:1px solid #aad7f2;border-radius:11px;padding:0 11px;background:white}.adminForm button{border:0;border-radius:11px;background:#087fe1;color:white;padding:0 14px;font-weight:800}.adminRows{display:grid;gap:8px}.adminRow{background:white;border:1px solid #cde7f7;border-radius:14px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.adminMeta{font-size:12px;color:#55758c;margin-top:4px}.limitBox{display:flex;gap:6px;align-items:center}.limitBox input{width:58px;height:36px;border:1px solid #b9dff5;border-radius:9px;padding:0 8px}.limitBox button{height:36px;border:0;border-radius:9px;background:#168de8;color:white;padding:0 10px}.adminEmpty{padding:18px;text-align:center;color:#66869a}@media(max-width:650px){.adminForm{grid-template-columns:1fr}.adminRow{grid-template-columns:1fr}.limitBox{justify-content:flex-start}}
 .settingsModal{position:fixed;inset:0;z-index:520;display:none;align-items:flex-end;justify-content:center;background:rgba(3,27,62,.72);padding:12px}.settingsModal.open{display:flex}.settingsCard{width:min(560px,100%);max-height:90vh;overflow:auto;background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}.themePicker{margin:12px 0 4px;padding:11px 12px;background:#eaf6ff;border:1px solid #c9e6f8;border-radius:14px}.themePickerHead{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:#55758c}.themePreview{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,70,120,.18)}.themeHue{width:100%;height:18px;margin-top:10px;appearance:none;-webkit-appearance:none;border-radius:999px;outline:none;background:linear-gradient(90deg,#ff3b30,#ff9500,#ffcc00,#34c759,#00c7be,#007aff,#5856d6,#af52de,#ff2d55,#ff3b30)}.themeHue::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid #0b5f9e;box-shadow:0 2px 8px rgba(0,0,0,.2)}.themeHue::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#fff;border:3px solid #0b5f9e;box-shadow:0 2px 8px rgba(0,0,0,.2)}.themeReset{margin-top:9px;border:0;border-radius:10px;background:#d9efff;color:#0b5f9e;padding:8px 11px;font-weight:800}.deviceManager{margin:12px 0 2px;padding:11px 12px;background:#eaf6ff;border:1px solid #c9e6f8;border-radius:14px}.deviceManagerHead{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:#55758c}.deviceRows{display:grid;gap:7px;margin-top:9px}.deviceRow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #d5eaf7;border-radius:11px;padding:9px 10px}.deviceInfo{min-width:0}.deviceName{font-weight:800;color:#184f76;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.deviceMeta{font-size:11px;color:#7890a0;margin-top:2px}.deviceDisconnect{border:0;border-radius:9px;background:#e34b5d;color:#fff;padding:7px 9px;font-weight:800;white-space:nowrap}.deviceDisconnect.current{background:#c9e6f8;color:#52758d}.settingsTitle{font-size:22px;font-weight:900;color:#0d4d86;margin-bottom:14px}.settingsLabel{font-size:13px;color:#55758c;margin:10px 0 7px}.settingsLang{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.settingsLang button,.settingsAction{border:0;border-radius:12px;padding:12px 10px;background:#e2f2ff;color:#0b5f9e;font-weight:800}.settingsLang button.active{background:#087fe1;color:#fff}.settingsAction{width:100%;margin-top:10px;background:#087fe1;color:#fff}.settingsClose{width:100%;margin-top:9px;border:0;border-radius:12px;padding:11px;background:#d9efff;color:#0b5f9e;font-weight:800}.nativeTv #tvSettingsModal button:focus,.nativeTv #tvSettingsModal select:focus,.nativeTv #tvSettingsModal input[type="range"]:focus{outline:none!important;box-shadow:0 0 0 4px #ffd400!important;position:relative;z-index:5}
@@ -375,6 +408,11 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
       <button id="langHyBtn" onclick="setAppLanguage('hy')">🇦🇲 Հայերեն</button>
       <button id="langRuBtn" onclick="setAppLanguage('ru')">🇷🇺 Русский</button>
       <button id="langEnBtn" onclick="setAppLanguage('en')">🇬🇧 English</button>
+    </div>
+    <div class="settingsLabel" id="settingsAppearanceLabel">Режим</div>
+    <div class="appearanceToggle">
+      <button id="appearanceLightBtn" onclick="setAppearanceMode('light')">☀ Светлый</button>
+      <button id="appearanceDarkBtn" onclick="setAppearanceMode('dark')">🌙 Тёмный</button>
     </div>
     <button class="settingsAction" id="tvAutoStartBtn" onclick="toggleTvAutoStartSetting()">Автостарт последнего канала</button>
     <button class="settingsAction" id="tvHideBadBtn" onclick="toggleTvHideBadSetting()">Скрывать нестабильные каналы</button>
@@ -634,6 +672,7 @@ if(nativeTv&&localStorage.getItem('abaj_tv_player_auto_native_v1')!=='1'){
 }
 let tvPlayerMode=['auto','hls','system'].includes(savedTvPlayerMode)?savedTvPlayerMode:'auto';
 let appThemeHue=Math.max(0,Math.min(359,Number(localStorage.getItem('abaj_tv_theme_hue')||204)||204));
+let appAppearanceMode=localStorage.getItem('abaj_tv_appearance')==='dark'?'dark':'light';
 let tvHeaderCollapsed=false;
 let mobileHeaderRaf=0;
 let tvHeaderBackAt=0;
@@ -1332,6 +1371,9 @@ function paintTvSettings(){
   const preview=document.getElementById('themePreview');
   const themeLabel=document.getElementById('settingsThemeLabel');
   const themeReset=document.getElementById('themeResetBtn');
+  const appearanceLabel=document.getElementById('settingsAppearanceLabel');
+  const appearanceLight=document.getElementById('appearanceLightBtn');
+  const appearanceDark=document.getElementById('appearanceDarkBtn');
   if(auto)auto.textContent=(tvAutoStartLast?'✓ ':'✕ ')+t.auto;
   if(bad)bad.textContent=(tvHideUnreliable?'✓ ':'✕ ')+t.hide;
   if(adult){
@@ -1351,12 +1393,27 @@ function paintTvSettings(){
   if(preview)preview.style.background='hsl('+appThemeHue+' 78% 56%)';
   if(themeLabel)themeLabel.textContent=appLang==='hy'?'Հավելվածի ֆոնի գույնը':(appLang==='en'?'App background color':'Цвет фона приложения');
   if(themeReset)themeReset.textContent=appLang==='hy'?'Վերականգնել գույնը':(appLang==='en'?'Reset color':'Сбросить цвет');
+  if(appearanceLabel)appearanceLabel.textContent=appLang==='hy'?'Ռեժիմ':(appLang==='en'?'Appearance':'Режим');
+  if(appearanceLight)appearanceLight.textContent=appLang==='hy'?'☀ Բաց':(appLang==='en'?'☀ Light':'☀ Светлый');
+  if(appearanceDark)appearanceDark.textContent=appLang==='hy'?'🌙 Մուգ':(appLang==='en'?'🌙 Dark':'🌙 Тёмный');
+  if(appearanceLight)appearanceLight.classList.toggle('active',appAppearanceMode==='light');
+  if(appearanceDark)appearanceDark.classList.toggle('active',appAppearanceMode==='dark');
   applyAppLanguage();
+}
+function applyAppearanceMode(){
+  document.body.classList.toggle('darkMode',appAppearanceMode==='dark');
+}
+function setAppearanceMode(value){
+  appAppearanceMode=String(value)==='dark'?'dark':'light';
+  localStorage.setItem('abaj_tv_appearance',appAppearanceMode);
+  applyAppearanceMode();
+  paintTvSettings();
 }
 function applyThemeHue(){
   document.documentElement.style.setProperty('--theme-hue',String(appThemeHue));
   const meta=document.querySelector('meta[name="theme-color"]');
-  if(meta)meta.setAttribute('content','hsl('+appThemeHue+' 78% 50%)');
+  if(meta)meta.setAttribute('content',appAppearanceMode==='dark'?'#08131e':'hsl('+appThemeHue+' 78% 50%)');
+  applyAppearanceMode();
 }
 function setThemeHue(value){
   appThemeHue=Math.max(0,Math.min(359,Number(value)||0));
