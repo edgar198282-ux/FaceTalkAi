@@ -472,7 +472,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
     <video id="video" controls preload="auto" playsinline webkit-playsinline></video>
     <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:linear-gradient(145deg,#07131f,#0d2740 55%,#103a5f);align-items:center;justify-content:center;text-align:center;color:white;padding:18px;box-sizing:border-box;pointer-events:none">
       <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;gap:0">
-        <img src="/static/abaj_tv_logo.svg" alt="ABAJ TV" style="width:min(28vw,220px);height:min(28vw,220px);max-width:58%;max-height:26vh;object-fit:contain;filter:drop-shadow(0 12px 28px rgba(0,0,0,.35))" onerror="this.onerror=null;this.src='/static/abaj_tv_logo.jpg'">
+        <img src="/static/abaj_tv_logo.jpg" alt="ABAJ TV" style="width:min(28vw,220px);height:min(28vw,220px);max-width:58%;max-height:26vh;object-fit:contain;border-radius:18%;filter:drop-shadow(0 12px 28px rgba(0,0,0,.35))">
         <div style="font-size:clamp(17px,2.4vw,27px);font-weight:900;margin-top:14px">Рекламная пауза</div>
         <div style="font-size:clamp(13px,1.8vw,18px);opacity:.82;margin-top:7px">Более 3000 каналов · до 3 устройств</div>
         <div class="freeAdPrice">Всего 1 доллар</div>
@@ -2943,10 +2943,14 @@ function startFreeAdWatch(ch){
   freeViewingTimer=setInterval(()=>{
     if(current&&current.id===ch.id&&!current.personal)notifyFreeViewing(ch);
   },30000);
+  // Poll aggressively during playback: the server now performs a one-frame
+  // OCR probe for Cinerama/OTTClub, so the replacement overlay can appear
+  // almost immediately instead of waiting several seconds.
   checkFreeAdState();
-  setTimeout(()=>{if(current&&current.id===ch.id)checkFreeAdState()},800);
-  setTimeout(()=>{if(current&&current.id===ch.id)checkFreeAdState()},1800);
-  freeAdTimer=setInterval(checkFreeAdState,3000);
+  [180,420,750,1100,1600,2300].forEach(ms=>{
+    setTimeout(()=>{if(current&&current.id===ch.id)checkFreeAdState()},ms);
+  });
+  freeAdTimer=setInterval(checkFreeAdState,900);
   startBurnedAdObserver(ch);
 }
 
