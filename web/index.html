@@ -4047,6 +4047,10 @@ function activatePlayerControl(){
 }
 function tvNativeOkDown(){
   if(!nativeTv)return;
+  if(tvSettingsOpen()||tvSettingPickerOpen()||tvGuideOpen()||tvSearchOpen()){
+    tvNativeRemote('ok');
+    return;
+  }
   const player=document.getElementById('playerView');
   if((player&&player.classList.contains('open'))||!tvHeaderCollapsed){
     tvNativeRemote('ok');
@@ -4056,6 +4060,7 @@ function tvNativeOkDown(){
 }
 function tvNativeOkUp(){
   if(!nativeTv)return;
+  if(tvSettingsOpen()||tvSettingPickerOpen()||tvGuideOpen()||tvSearchOpen())return;
   const player=document.getElementById('playerView');
   if(player&&player.classList.contains('open'))return;
   if(!tvHeaderCollapsed)return;
@@ -4191,7 +4196,25 @@ document.addEventListener('keydown',e=>{
     return;
   }
   if(tvSettingsOpen()){
-    if(e.key==='Escape'||e.key==='Backspace'){e.preventDefault();closeTvSettings()}
+    if(e.key==='Escape'||e.key==='Backspace'){
+      e.preventDefault();
+      closeTvSettings();
+      return;
+    }
+    if(nativeTv&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.key)){
+      e.preventDefault();
+      const action=e.key==='ArrowUp'?'up':
+        e.key==='ArrowDown'?'down':
+        e.key==='ArrowLeft'?'left':
+        e.key==='ArrowRight'?'right':'ok';
+      tvNativeRemote(action);
+      return;
+    }
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const el=document.activeElement;
+      if(el&&typeof el.click==='function')el.click();
+    }
     return;
   }
   if(tvSearchOpen()){
