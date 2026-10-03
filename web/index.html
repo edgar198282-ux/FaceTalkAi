@@ -2348,6 +2348,7 @@ function togglePlayerFavorite(){
   if(current)showTvZap(current);
 }
 let playerGestureSuppressClickUntil=0;
+let pureTapHandledAt=0;
 let playerGestureHintTimer=null;
 function showPlayerGestureHint(text){
   const el=document.getElementById('playerGestureHint');
@@ -2418,7 +2419,8 @@ function installPlayerTouchGestures(){
       // directly here so controls always appear.
       e.preventDefault();
       playerGestureSuppressClickUntil=Date.now()+300;
-      showPureFullscreenControls();
+      pureTapHandledAt=Date.now();
+      togglePureFullscreenControls();
     }
     mode='';
   },{passive:false});
@@ -2438,7 +2440,7 @@ function handlePlayerSurfaceClick(event){
   const player=document.getElementById('playerView');
   if(event&&event.target&&event.target.closest&&event.target.closest('button,select,.channelRail'))return;
   if(player&&player.classList.contains('pureFullscreen')){
-    showPureFullscreenControls();
+    togglePureFullscreenControls();
     return;
   }
   showTvPlayerUi(true);
@@ -2453,7 +2455,8 @@ installPlayerTouchGestures();
     const player=document.getElementById('playerView');
     if(!player||!player.classList.contains('pureFullscreen'))return;
     if(e.target&&e.target.closest&&e.target.closest('button,select,.channelRail'))return;
-    showPureFullscreenControls();
+    if(Date.now()-pureTapHandledAt<450)return;
+    togglePureFullscreenControls();
   },{passive:true});
 })();
 function addRecent(id,deferSync=false){
@@ -4426,6 +4429,12 @@ function setAppFullscreen(on){
   document.body.classList.toggle('playerFullscreenActive',!!on);
 }
 let pureFullscreenControlsTimer=null;
+function hidePureFullscreenControls(){
+  const player=document.getElementById('playerView');
+  if(!player)return;
+  player.classList.remove('showPureControls');
+  if(pureFullscreenControlsTimer){clearTimeout(pureFullscreenControlsTimer);pureFullscreenControlsTimer=null}
+}
 function showPureFullscreenControls(){
   const player=document.getElementById('playerView');
   if(!player||!player.classList.contains('pureFullscreen'))return;
@@ -4435,6 +4444,12 @@ function showPureFullscreenControls(){
     player.classList.remove('showPureControls');
     pureFullscreenControlsTimer=null;
   },6000);
+}
+function togglePureFullscreenControls(){
+  const player=document.getElementById('playerView');
+  if(!player||!player.classList.contains('pureFullscreen'))return;
+  if(player.classList.contains('showPureControls'))hidePureFullscreenControls();
+  else showPureFullscreenControls();
 }
 async function enterPureFullscreen(){
   const player=document.getElementById('playerView');
