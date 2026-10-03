@@ -68,6 +68,7 @@ public class MainActivity extends Activity {
     private final Handler updateHandler=new Handler(Looper.getMainLooper());
     private final ScheduledExecutorService tvWatchdogExecutor=Executors.newSingleThreadScheduledExecutor();
     private volatile long lastWebHeartbeatAt=System.currentTimeMillis();
+    private volatile long lastTvChannelKeyAt=0L;
     private volatile boolean activityResumed=false;
     private volatile boolean tvRecoveryQueued=false;
     private volatile long tvRecoveryStartedAt=0L;
@@ -408,6 +409,12 @@ public class MainActivity extends Activity {
                     else if(code==KeyEvent.KEYCODE_DPAD_DOWN)action="down";
                     else if(code==KeyEvent.KEYCODE_DPAD_LEFT)action="left";
                     else action="right";
+                    if(code==KeyEvent.KEYCODE_DPAD_LEFT||code==KeyEvent.KEYCODE_DPAD_RIGHT){
+                        if(event.getRepeatCount()>0)return true;
+                        long now=System.currentTimeMillis();
+                        if(now-lastTvChannelKeyAt<320L)return true;
+                        lastTvChannelKeyAt=now;
+                    }
                     webView.evaluateJavascript("if(typeof tvNativeRemote==='function')tvNativeRemote('"+action+"')",null);
                     return true;
                 }
