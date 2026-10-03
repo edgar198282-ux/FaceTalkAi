@@ -1528,7 +1528,11 @@ function openTvSearch(){
   const input=document.getElementById('tvSearchInput');
   input.value=document.getElementById('search').value||'';
   box.classList.add('open');
-  setTimeout(()=>{input.focus();input.select()},50);
+  setTimeout(()=>{
+    input.focus();
+    input.select();
+    try{if(window.AbajNative&&typeof window.AbajNative.showKeyboard==='function')window.AbajNative.showKeyboard()}catch(e){}
+  },120);
 }
 function closeTvSearch(apply){
   if(!nativeTv)return;
@@ -1541,6 +1545,7 @@ function closeTvSearch(apply){
     showTvShortcut(input.value?('Поиск: '+input.value):'Поиск очищен');
   }
   box.classList.remove('open');
+  try{if(window.AbajNative&&typeof window.AbajNative.hideKeyboard==='function')window.AbajNative.hideKeyboard()}catch(e){}
   try{document.activeElement.blur()}catch(e){}
 }
 
@@ -2023,8 +2028,11 @@ async function refreshChannels(){
   setTimeout(load,2500);
   setTimeout(load,9000);
 }
+function normalizeSearchText(v){
+  return String(v||'').toLowerCase().replace(/ё/g,'е').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zа-я0-9ա-ֆ]+/gi,' ').replace(/\s+/g,' ').trim();
+}
 function getFiltered(){
-  const q=(document.getElementById('search').value||'').trim().toLowerCase();
+  const q=normalizeSearchText(document.getElementById('search').value||'');
   const g=document.getElementById('group').value||'';
   let rows=channels.slice();
   if(!adultEnabled)rows=rows.filter(x=>!isAdultChannel(x));
@@ -2041,7 +2049,21 @@ function getFiltered(){
   }
   if(g)rows=rows.filter(x=>(x.group||'Other')===g);
   if(activeCategory)rows=rows.filter(x=>normalizeCat(x.group)===activeCategory);
-  if(q)rows=rows.filter(x=>(x.name||'').toLowerCase().includes(q));
+  if(q){
+    const terms=q.split(' ').filter(Boolean);
+    rows=rows.filter(x=>{
+      const countryMeta=COUNTRY_META[x.country]||{};
+      const hay=normalizeSearchText([
+        x.name,
+        x.group,
+        x.country,
+        countryMeta.name,
+        x.quality,
+        x.height
+      ].filter(Boolean).join(' '));
+      return terms.every(term=>hay.includes(term));
+    });
+  }
   return rows;
 }
 function fmtClock(ts){

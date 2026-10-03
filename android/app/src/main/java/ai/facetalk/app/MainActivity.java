@@ -36,6 +36,7 @@ import android.view.View;
 import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
 
 import androidx.core.content.FileProvider;
@@ -75,6 +76,23 @@ public class MainActivity extends Activity {
             if(am==null)return -1;
             int max=Math.max(1,am.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
             return Math.round(am.getStreamVolume(AudioManager.STREAM_MUSIC)*100f/max);
+        }
+        @JavascriptInterface public void showKeyboard(){
+            runOnUiThread(()->{
+                try{
+                    webView.requestFocus();
+                    InputMethodManager imm=(InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if(imm!=null)imm.showSoftInput(webView,InputMethodManager.SHOW_IMPLICIT);
+                }catch(Exception ignored){}
+            });
+        }
+        @JavascriptInterface public void hideKeyboard(){
+            runOnUiThread(()->{
+                try{
+                    InputMethodManager imm=(InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if(imm!=null)imm.hideSoftInputFromWindow(webView.getWindowToken(),0);
+                }catch(Exception ignored){}
+            });
         }
     }
     private final Runnable periodicUpdateCheck=new Runnable(){
