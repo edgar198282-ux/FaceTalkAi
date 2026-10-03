@@ -1220,7 +1220,7 @@ function esc(s){
   }[m]));
 }
 function saveFavs(){localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));syncDirtyFavorites=true;scheduleStateSync()}
-function saveRecent(){localStorage.setItem('iptv_recent',JSON.stringify(recent.slice(0,30)));syncDirtyRecent=true;scheduleStateSync()}
+function saveRecent(deferSync=false){localStorage.setItem('iptv_recent',JSON.stringify(recent.slice(0,30)));syncDirtyRecent=true;if(!deferSync)scheduleStateSync()}
 
 function setLayout(v){
   layout=v==='grid'?'grid':'list';
@@ -1884,9 +1884,9 @@ function handlePlayerSurfaceClick(event){
   if(nativeTv){showTvPlayerUi(true);return}
 }
 installPlayerTouchGestures();
-function addRecent(id){
+function addRecent(id,deferSync=false){
   recent=[id,...recent.filter(x=>x!==id)].slice(0,30);
-  saveRecent();
+  saveRecent(deferSync);
 }
 function normalizeCat(group){
   const g=(group||'').toLowerCase();
@@ -2819,13 +2819,19 @@ function openPlayer(id){
   localStorage.setItem('iptv_last_channel',ch.id);
   streamRetries=0;
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
+  const playerView=document.getElementById('playerView');
+  playerView.classList.add('open');
+  if(nativeTv){
+    playerView.classList.add('tvFullscreen');
+    document.body.classList.add('playerClean');
+    try{document.activeElement.blur()}catch(e){}
+  }
   warmTvDirectConnection(ch);
   startStream(ch);
   const hudNow=document.getElementById('playerChannelHud');
   if(hudNow){hudNow.dataset.shownOnce='1';updatePlayerChannelHud();}
   syncDirtyLast=true;
-  scheduleStateSync();
-  addRecent(ch.id);
+  addRecent(ch.id,true);
   filteredNow=getFiltered();
   currentIndex=Math.max(0,filteredNow.findIndex(x=>x.id===id));
   document.getElementById('playerTitle').textContent=ch.name;
@@ -2836,19 +2842,10 @@ function openPlayer(id){
   updatePlayerFavoriteUi();
   updatePlayerRemaining();
   updatePlayerChannelHud();
-  const playerView=document.getElementById('playerView');
-  playerView.classList.add('open');
   updatePlayerChannelHud();
   if(nativeTv)showPlayerChannelHudForThreeSeconds();
-  if(nativeTv){
-    playerView.classList.add('tvFullscreen');
-    document.body.classList.add('playerClean');
-    try{document.activeElement.blur()}catch(e){}
-  }
   showTvZap(ch);
   if(!nativeTv&&window.innerWidth>window.innerHeight)setAppFullscreen(true);
-  startFreeAdWatch(ch);
-  renderRail();
   if(nativeTv){
     if(tvChannelHeartbeatTimer)clearTimeout(tvChannelHeartbeatTimer);
     tvChannelHeartbeatTimer=setTimeout(()=>refreshTvAuth(false),1200);
@@ -2987,6 +2984,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   if(nativeTv)v.controls=false;
   const wrap=document.querySelector('.videoWrap');
   if(wrap)wrap.classList.remove('playing','frameReady');
+  let postStartTasksDone=false;
   const markFrameReady=()=>{
     if(attemptToken!==streamAttemptToken)return;
     const reveal=()=>{
@@ -2994,6 +2992,15 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       clearFirstFrameTimer();
       if(wrap)wrap.classList.add('playing','frameReady');
       startTvWatchdog(ch);
+      if(!postStartTasksDone){
+        postStartTasksDone=true;
+        setTimeout(()=>{
+          if(!current||current.id!==ch.id)return;
+          scheduleStateSync();
+          startFreeAdWatch(ch);
+          renderRail();
+        },nativeTv?700:0);
+      }
     };
     if(!nativeTv){reveal();return}
     if(typeof v.requestVideoFrameCallback==='function'){
@@ -3622,8 +3629,8 @@ window.addEventListener('offline',handleOffline);
 window.addEventListener('online',()=>{handleOnline();flushPendingFavorites();loadSyncedState(true)});
 document.addEventListener('visibilitychange',handleVisibilityChange);
 if(!navigator.onLine)handleOffline();
-setInterval(()=>{load()},nativeTv?180000:60000);
-setInterval(()=>{if(!document.hidden){flushPendingFavorites();loadSyncedState(false)}},nativeTv?20000:2000);
+setInterval(()=>{const p=document.getElementById('playerView');if(nativeTv&&p&&p.classList.contains('open'))return;load()},nativeTv?180000:60000);
+setInterval(()=>{if(document.hidden)return;const p=document.getElementById('playerView');if(nativeTv&&p&&p.classList.contains('open'))return;flushPendingFavorites();loadSyncedState(false)},nativeTv?20000:2000);
 </script>
 </body>
 </html>
