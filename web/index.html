@@ -506,7 +506,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
       <button class="ctrl playerCircleCtrl" onclick="playNext()" title="Следующий канал"><span class="playerCtrlIcon">|▶</span><small>След. канал</small></button>
     </div>
     <div class="playerUtilityControls" onclick="event.stopPropagation()">
-      <label class="ctrl playerUtilityCtrl playerQualityCtrl" tabindex="0"><span class="playerUtilityIcon">HD</span><span><b>Качество</b><small>Auto</small></span>
+      <label class="ctrl playerUtilityCtrl playerQualityCtrl" tabindex="0"><span class="playerUtilityIcon">HD</span><span><b>Качество</b><small id="playerQualityValue">Auto</small></span>
         <select id="qualitySelect" onchange="setQuality(this.value)" aria-label="Качество"><option value="-1">Auto</option></select>
       </label>
       <button class="ctrl playerUtilityCtrl" onclick="nativeTv?toggleTvRail():closePlayer()" title="Каналы"><span class="playerUtilityIcon">☷</span><span><b>Каналы</b><small>Список</small></span><span class="playerUtilityArrow">›</span></button>
@@ -3333,6 +3333,8 @@ function resetQualityMenu(){
   if(!s)return;
   s.innerHTML='<option value="-1">Auto</option>';
   s.value='-1';
+  const value=document.getElementById('playerQualityValue');
+  if(value)value.textContent='Auto';
 }
 
 function updateQualityMenu(){
@@ -3349,9 +3351,14 @@ function updateQualityMenu(){
   });
   s.innerHTML=opts.join('');
   if([...s.options].some(o=>o.value===previous))s.value=previous;
+  const value=document.getElementById('playerQualityValue');
+  if(value)value.textContent=s.options[s.selectedIndex]?s.options[s.selectedIndex].text:'Auto';
 }
 
 function setQuality(value){
+  const s=document.getElementById('qualitySelect');
+  const valueLabel=document.getElementById('playerQualityValue');
+  if(valueLabel&&s)valueLabel.textContent=s.options[s.selectedIndex]?s.options[s.selectedIndex].text:'Auto';
   if(!hls)return;
   const level=parseInt(value,10);
   hls.currentLevel=Number.isFinite(level)?level:-1;
@@ -3571,7 +3578,11 @@ function focusPlayerControl(step=0){
 function activatePlayerControl(){
   const el=document.activeElement;
   if(!getPlayerControls().includes(el))return false;
-  if(el.tagName==='SELECT'){try{el.focus()}catch(_){};return true}
+  if(el.classList&&el.classList.contains('playerQualityCtrl')){
+    const select=el.querySelector('select');
+    if(select){try{select.focus();select.click()}catch(_){};return true}
+  }
+  if(el.tagName==='SELECT'){try{el.focus();el.click()}catch(_){};return true}
   if(typeof el.click==='function'){el.click();return true}
   return false;
 }
