@@ -160,14 +160,10 @@ def miniapp_keyboard(user_id: int | None = None, lang: str = 'ru'):
     labels={'hy':'📺 Բացել Abaj TV','ru':'📺 Открыть Abaj TV','en':'📺 Open Abaj TV'}
     apk_labels={'hy':'📱 Ներբեռնել APK','ru':'📱 Скачать APK','en':'📱 Download APK'}
     tv_apk_labels={'hy':'🖥️ Ներբեռնել TV APK','ru':'🖥️ Скачать TV APK','en':'🖥️ Download TV APK'}
-    qr_labels={'hy':'📷 QR TV-ի համար','ru':'📷 QR для TV','en':'📷 QR for TV'}
-    share_labels={'hy':'📤 Կիսվել','ru':'📤 Поделиться','en':'📤 Share'}
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=labels.get(lang, labels['ru']), web_app=WebAppInfo(url=_miniapp_url_for_user(user_id)))],
                   [KeyboardButton(text=apk_labels.get(lang, apk_labels['ru']))],
-                  [KeyboardButton(text=tv_apk_labels.get(lang, tv_apk_labels['ru']))],
-                  [KeyboardButton(text=qr_labels.get(lang, qr_labels['ru']))],
-                  [KeyboardButton(text=share_labels.get(lang, share_labels['ru']))]],
+                  [KeyboardButton(text=tv_apk_labels.get(lang, tv_apk_labels['ru']))]],
         resize_keyboard=True,
         is_persistent=True,
     )
@@ -176,14 +172,14 @@ async def _ensure_latest_menu(m: Message, lang: str):
     if not m.from_user:
         return
     key = f'menu_version:{int(m.from_user.id)}'
-    if await get_setting(key, '') == 'share-v3':
+    if await get_setting(key, '') == 'menu-v4':
         return
     await _answer(
         m,
         {'hy':'Թարմացված մենյու 👇','ru':'Обновлённое меню 👇','en':'Updated menu 👇'}.get(lang, 'Обновлённое меню 👇'),
         reply_markup=miniapp_keyboard(m.from_user.id, lang),
     )
-    await set_setting(key, 'share-v3')
+    await set_setting(key, 'menu-v4')
 
 def language_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
