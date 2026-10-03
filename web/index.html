@@ -3011,6 +3011,7 @@ function clearFirstFrameTimer(){
 }
 let tvDirectAttemptChannel='';
 let tvDirectAttemptIndex=0;
+const tvHlsFallbackChannels=new Set();
 const tvFailureReportAt=new Map();
 let tvChannelSwitchBusyUntil=0;
 function tvDirectUrls(ch){
@@ -3050,18 +3051,28 @@ function tryNextTvDirect(ch){
   startStream(ch,true,false);
   return true;
 }
+function tvUseHlsForChannel(ch){
+  return !!(nativeTv&&ch&&tvHlsFallbackChannels.has(String(ch.id||'')));
+}
 function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
-  const waitMs=Number(ch.backup_count||0)>0?3200:5000;
+  const usingHls=tvUseHlsForChannel(ch)||tvPlayerMode!=='system';
+  const waitMs=usingHls?(Number(ch.backup_count||0)>0?3200:5000):1800;
   firstFrameTimer=setTimeout(()=>{
     firstFrameTimer=null;
     if(token!==streamAttemptToken||!current||current.id!==ch.id)return;
     const v=document.getElementById('video');
     const wrap=document.querySelector('.videoWrap');
     if((wrap&&wrap.classList.contains('frameReady'))||(v&&v.readyState>=2&&!v.paused))return;
-    reportTvStreamFailure(ch,'first_frame_timeout');
     const err=document.getElementById('playerError');
+    if(nativeTv&&tvPlayerMode==='system'&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
+      tvHlsFallbackChannels.add(String(ch.id||''));
+      if(err)err.textContent='Пробую совместимый плеер…';
+      startStream(ch,preferBackup,false);
+      return;
+    }
+    reportTvStreamFailure(ch,'first_frame_timeout');
     if(!preferBackup&&Number(ch.backup_count||0)>0){
       if(err)err.textContent='Медленный старт. Переключаю резерв…';
       startStream(ch,true);
@@ -3215,7 +3226,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   err.textContent='';
   if(hls){try{hls.stopLoad()}catch(e){};try{hls.destroy()}catch(e){};hls=null}
   try{v.pause()}catch(e){}
-  if(!(nativeTv&&tvPlayerMode==='system')){
+  if(!(nativeTv&&tvPlayerMode==='system'&&!tvUseHlsForChannel(ch))){
     v.removeAttribute('src');
     try{v.load()}catch(e){}
   }
@@ -3235,15 +3246,15 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   const src=(nativeTv&&!ch.personal&&directSrc)?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
-  const useHlsJs=tvPlayerMode!=='system'&&window.Hls&&Hls.isSupported();
+  const useHlsJs=(tvPlayerMode!=='system'||tvUseHlsForChannel(ch))&&window.Hls&&Hls.isSupported();
   if(useHlsJs){
     hls=new Hls({
       enableWorker:true,
       lowLatencyMode:false,
       startFragPrefetch:true,
-      maxBufferLength:nativeTv?8:20,
-      maxMaxBufferLength:nativeTv?16:30,
-      backBufferLength:nativeTv?4:10,
+      maxBufferLength:nativeTv?4:20,
+      maxMaxBufferLength:nativeTv?8:30,
+      backBufferLength:nativeTv?2:10,
       manifestLoadingTimeOut:nativeTv?6000:10000,
       levelLoadingTimeOut:nativeTv?6000:10000,
       fragLoadingTimeOut:nativeTv?9000:14000,
@@ -3364,6 +3375,12 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         v.addEventListener('canplay',confirmPlayback);
         setTimeout(confirmPlayback,120);
       }).catch(()=>{
+        if(nativeTv&&tvPlayerMode==='system'&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
+          tvHlsFallbackChannels.add(String(ch.id||''));
+          err.textContent='Пробую совместимый плеер…';
+          startStream(ch,preferBackup,false);
+          return;
+        }
         reportTvStreamFailure(ch,'native_play_error');
         if(tryNextTvDirect(ch))return;
         scheduleReconnect(ch,true);
