@@ -2420,6 +2420,7 @@ function installPlayerTouchGestures(){
       e.preventDefault();
       playerGestureSuppressClickUntil=Date.now()+300;
       pureTapHandledAt=Date.now();
+      playerGestureSuppressClickUntil=Date.now()+500;
       togglePureFullscreenControls();
     }
     mode='';
@@ -2437,6 +2438,7 @@ function dismissMobilePlayerLoading(event){
 }
 function handlePlayerSurfaceClick(event){
   if(Date.now()<playerGestureSuppressClickUntil)return;
+  if(Date.now()-pureTapHandledAt<450)return;
   const player=document.getElementById('playerView');
   if(event&&event.target&&event.target.closest&&event.target.closest('button,select,.channelRail'))return;
   if(player&&player.classList.contains('pureFullscreen')){
