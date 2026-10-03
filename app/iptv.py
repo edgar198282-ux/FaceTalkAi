@@ -20,6 +20,20 @@ def _is_adult_channel(row):
     raw = ' '.join(str(row.get(k) or '') for k in ('name','group','tvg_id')).lower()
     return bool(ADULT_KEYWORDS.search(raw))
 
+OFFICIAL_CHANNELS = [
+    {
+        "name": "Yerkir Media",
+        "group": "General",
+        "tvg_id": "YerkirMedia.am",
+        "country": "AM",
+        "source": "official:yerkirmedia.am",
+        "url": "http://yerkirmedia.am/yerkirmedia/live.m3u8",
+        "adult": False,
+        "quality": "",
+        "height": 0,
+    },
+]
+
 SOURCE_URLS = [
     ("HQ", "https://dearbulut.github.io/iptv/playlists/best.m3u"),
     ("HQ", "https://dearbulut.github.io/iptv/playlists/online.m3u"),
@@ -1397,6 +1411,13 @@ async def refresh_channels(force: bool = False):
                     else:
                         candidates.extend(_parse_m3u(text, country, url))
                 candidates.extend(discovered_api)
+                for official in OFFICIAL_CHANNELS:
+                    item = dict(official)
+                    key_src = _channel_key(item)
+                    if not key_src or _looks_junk(item):
+                        continue
+                    item["id"] = hashlib.sha1(key_src.encode("utf-8")).hexdigest()[:16]
+                    candidates.append(item)
                 # Enrich legacy M3U rows with logos discovered from the fresh API.
                 # Prefer exact tvg-id, then normalized channel name within the same country.
                 logo_by_id = {}
