@@ -39,30 +39,41 @@ button{cursor:pointer}
   backdrop-filter:blur(18px) saturate(1.08);
   box-shadow:0 8px 24px rgba(0,48,110,.10)
 }
-.titleRow{display:flex;align-items:center;justify-content:space-between;gap:9px}.brandWrap{display:flex;align-items:center;gap:8px;min-width:0}.brandLogo{width:48px;height:48px;border-radius:14px;object-fit:contain;background:#083f9b;padding:3px;border:1px solid rgba(255,255,255,.62);box-shadow:0 4px 14px rgba(0,55,130,.28)}
-.titleBlock{min-width:0}
+.titleRow{display:flex;align-items:center;justify-content:space-between;gap:8px}.brandWrap{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 auto}.brandLogo{width:48px;height:48px;border-radius:14px;object-fit:contain;background:#083f9b;padding:3px;border:1px solid rgba(255,255,255,.62);box-shadow:0 4px 14px rgba(0,55,130,.28)}
+.titleBlock{min-width:0;flex:1 1 auto;overflow:visible}
 .title{
-  font-size:23px;font-weight:900;letter-spacing:.45px;white-space:nowrap;overflow:visible;text-overflow:clip;
+  display:block;width:100%;
+  font-size:clamp(25px,6.8vw,30px);font-weight:950;letter-spacing:1.15px;white-space:nowrap;overflow:visible;text-overflow:clip;
   color:transparent;
-  background:linear-gradient(90deg,#00f6ff 0%,#1687ff 16%,#8b5cff 32%,#ff35d3 48%,#ffcf33 64%,#3dff9a 80%,#00f6ff 100%);
-  background-size:320% 100%;
+  background:linear-gradient(90deg,#00f6ff 0%,#1687ff 13%,#8b5cff 27%,#ff35d3 42%,#ffcf33 57%,#3dff9a 72%,#ffffff 86%,#00f6ff 100%);
+  background-size:420% 100%;
   -webkit-background-clip:text;
   background-clip:text;
   -webkit-text-fill-color:transparent;
-  filter:drop-shadow(0 0 3px rgba(255,255,255,.95)) drop-shadow(0 0 8px rgba(0,238,255,.95)) drop-shadow(0 0 15px rgba(89,78,255,.78));
-  animation:abajTitleNeonShift 3.2s linear infinite,abajTitleNeonPulse 1.25s ease-in-out infinite;
-  will-change:background-position,filter,opacity
+  transform-origin:left center;
+  filter:drop-shadow(0 0 3px rgba(255,255,255,.95)) drop-shadow(0 0 9px rgba(0,238,255,.95)) drop-shadow(0 0 16px rgba(89,78,255,.78));
+  animation:abajTitleNeonShift 3.6s linear infinite,abajTitleNeonPulse 1.35s ease-in-out infinite,abajTitleNeonBreath 4.8s ease-in-out infinite,abajTitleNeonFlicker 7s steps(1,end) infinite;
+  will-change:background-position,filter,opacity,transform,letter-spacing
 }
 @keyframes abajTitleNeonShift{
   0%{background-position:0% 50%}
-  100%{background-position:320% 50%}
+  50%{background-position:210% 50%}
+  100%{background-position:420% 50%}
 }
 @keyframes abajTitleNeonPulse{
-  0%,100%{opacity:.9;filter:drop-shadow(0 0 2px rgba(255,255,255,.85)) drop-shadow(0 0 7px rgba(0,238,255,.85)) drop-shadow(0 0 13px rgba(89,78,255,.68))}
-  50%{opacity:1;filter:drop-shadow(0 0 4px rgba(255,255,255,1)) drop-shadow(0 0 12px rgba(0,238,255,1)) drop-shadow(0 0 22px rgba(255,53,211,.92))}
+  0%,100%{filter:drop-shadow(0 0 2px rgba(255,255,255,.78)) drop-shadow(0 0 7px rgba(0,238,255,.82)) drop-shadow(0 0 13px rgba(89,78,255,.62))}
+  50%{filter:drop-shadow(0 0 4px rgba(255,255,255,1)) drop-shadow(0 0 13px rgba(0,238,255,1)) drop-shadow(0 0 24px rgba(255,53,211,.94))}
+}
+@keyframes abajTitleNeonBreath{
+  0%,100%{transform:scaleX(1);letter-spacing:1.15px}
+  50%{transform:scaleX(1.035);letter-spacing:1.55px}
+}
+@keyframes abajTitleNeonFlicker{
+  0%,92%,94%,96%,100%{opacity:1}
+  93%,95%{opacity:.72}
 }
 .sub{font-size:12px;color:#e8f6ff;margin-top:1px;opacity:.92}
-.icons{display:flex;gap:4px;flex-wrap:nowrap;justify-content:flex-end;align-items:center}
+.icons{display:flex;gap:4px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;flex:0 0 auto}
 .iconBtn{
   width:34px;height:34px;min-width:34px;min-height:34px;padding:0;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.06);border-radius:50%;
   font-size:17px;color:#fff;display:inline-flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)
