@@ -384,6 +384,7 @@ _burned_ad_last_report = {}
 _burned_ad_probe_inflight = set()
 _ottclub_quick_inflight = set()
 _ottclub_ad_state = {}
+_ottclub_duration_samples = []
 _cinerama_placeholder_state = {}
 _cinerama_stats = {
     "probes": 0,
@@ -403,6 +404,27 @@ _ottclub_stats = {
     "last_text": "",
 }
 _compact_response_cache = {"key": None, "body": b"", "expires_at": 0.0}
+
+def _estimated_ottclub_duration() -> int:
+    values = sorted(int(x) for x in _ottclub_duration_samples if 4 <= int(x) <= 120)
+    if not values:
+        return 15
+    mid = len(values) // 2
+    if len(values) % 2:
+        return max(5, min(90, values[mid]))
+    return max(5, min(90, round((values[mid - 1] + values[mid]) / 2)))
+
+
+def _finish_ottclub_duration(state: dict, now: int):
+    started = int(state.get("active_since") or 0)
+    if started and now > started:
+        duration = now - started
+        if 4 <= duration <= 120:
+            _ottclub_duration_samples.append(duration)
+            if len(_ottclub_duration_samples) > 40:
+                del _ottclub_duration_samples[:-40]
+    state["active_since"] = 0
+
 
 def _record_ad_transition(item: dict, active: bool, marker: str):
     cid = str(item.get("id") or "")
@@ -653,6 +675,9 @@ async def _quick_ottclub_probe(item: dict):
         if hit:
             if not bool(state.get("active")):
                 _ottclub_stats["detections"] = int(_ottclub_stats.get("detections") or 0) + 1
+                state["active_since"] = now
+            elif not int(state.get("active_since") or 0):
+                state["active_since"] = now
             state["active"] = True
             state["last_match"] = now
             state["positive_streak"] = max(1, int(state.get("positive_streak") or 0))
@@ -661,6 +686,8 @@ async def _quick_ottclub_probe(item: dict):
             state["positive_streak"] = 0
             state["negative_streak"] = int(state.get("negative_streak") or 0) + 1
             if int(state["negative_streak"]) >= 2:
+                if bool(state.get("active")):
+                    _finish_ottclub_duration(state, now)
                 state["active"] = False
         _ottclub_ad_state[cid] = state
 
@@ -852,12 +879,17 @@ def _store_server_burned_probe(item: dict, probe: dict):
         state["negative_streak"] = 0
         if not bool(state.get("active")):
             _ottclub_stats["detections"] = int(_ottclub_stats.get("detections") or 0) + 1
+            state["active_since"] = now
+        elif not int(state.get("active_since") or 0):
+            state["active_since"] = now
         state["active"] = True
         state["last_match"] = now
     elif probe.get("ok"):
         state["positive_streak"] = 0
         state["negative_streak"] = int(state.get("negative_streak") or 0) + 1
         if int(state["negative_streak"]) >= 2:
+            if bool(state.get("active")):
+                _finish_ottclub_duration(state, now)
             state["active"] = False
     state["last_probe"] = now
     state["hits"] = int(probe.get("ottclub_hits") or 0)
@@ -2422,9 +2454,18 @@ async def api_ad_state(request):
         asyncio.create_task(_quick_ottclub_probe(probe_item))
     active = bool(ott.get("active") or cin.get("active"))
     reason = "cinerama_placeholder" if bool(cin.get("active")) else ("ottclub" if bool(ott.get("active")) else "")
+    estimated_duration = _estimated_ottclub_duration() if reason == "ottclub" else 15
+    active_since = int((ott if reason == "ottclub" else cin).get("active_since") or 0)
+    elapsed = max(0, int(time.time()) - active_since) if active_since else 0
+    remaining = max(0, estimated_duration - elapsed) if active else 0
     return web.json_response({
         "ok": True,
         "active": active,
+        "estimated_duration": estimated_duration,
+        "active_since": active_since,
+        "elapsed": elapsed,
+        "remaining": remaining,
+        "ottclub_duration_samples": list(_ottclub_duration_samples[-10:]),
         "reason": reason,
         "ottclub_active": bool(ott.get("active")),
         "ottclub_hits": int(ott.get("hits") or 0),
