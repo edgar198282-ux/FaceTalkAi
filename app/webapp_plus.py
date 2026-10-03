@@ -657,9 +657,11 @@ async def api_admin_access_users(request):
     pending_count = 0
     now = int(time.time())
     for uid in sorted(ids):
+        is_admin = bool(ADMIN_ID and int(uid) == int(ADMIN_ID))
+        if not is_admin and str(await get_setting(f'abaj_access_hidden:{uid}', '0') or '0') == '1':
+            continue
         sub = await _edem_subscription_state(uid)
         pay = await _edem_payment_state(uid)
-        is_admin = bool(ADMIN_ID and int(uid) == int(ADMIN_ID))
         if sub['active'] and not is_admin:
             active_count += 1
         if pay.get('status') == 'pending' and not is_admin:
@@ -704,10 +706,11 @@ async def api_admin_access_set(request):
     except Exception:
         return web.json_response({'ok':False,'error':'bad user_id'}, status=400)
     action = str(body.get('action') or '').strip().lower()
-    if action not in {'grant', 'revoke'}:
+    if action not in {'grant', 'revoke', 'reject', 'delete'}:
         return web.json_response({'ok':False,'error':'bad action'}, status=400)
     now = int(time.time())
     if action == 'grant':
+        await set_setting(f'abaj_access_hidden:{uid}', '0')
         expires_at = now + 365 * 86400
         await set_setting(f'edem_expires_at:{uid}', str(expires_at))
         pay = {'status':'paid','last_paid_at':now,'plan_days':365,'last_amount':0}
@@ -716,6 +719,24 @@ async def api_admin_access_set(request):
             await request.app['bot'].send_message(uid, '✅ Доступ к Abaj TV активирован администратором на 12 месяцев.')
         except Exception:
             pass
+    elif action == 'reject':
+        await set_setting(f'edem_expires_at:{uid}', '0')
+        pay = await _edem_payment_state(uid)
+        pay['status'] = 'rejected'
+        await set_setting(f'edem_payment:{uid}', json.dumps(pay, ensure_ascii=False, separators=(',', ':')))
+        _edem_sessions.pop(uid, None)
+        try:
+            await request.app['bot'].send_message(uid, '❌ Запрос на доступ к Abaj TV отклонён администратором.')
+        except Exception:
+            pass
+    elif action == 'delete':
+        await set_setting(f'edem_expires_at:{uid}', '0')
+        await set_setting(f'edem_playlist:{uid}', '')
+        pay = await _edem_payment_state(uid)
+        pay['status'] = 'deleted'
+        await set_setting(f'edem_payment:{uid}', json.dumps(pay, ensure_ascii=False, separators=(',', ':')))
+        await set_setting(f'abaj_access_hidden:{uid}', '1')
+        _edem_sessions.pop(uid, None)
     else:
         await set_setting(f'edem_expires_at:{uid}', '0')
         pay = await _edem_payment_state(uid)
@@ -766,6 +787,7 @@ async def api_iptv_edem_payment_request(request):
         'plan_days':plan_days,
         'last_amount':amount,
     }
+    await set_setting(f'abaj_access_hidden:{uid}', '0')
     await set_setting(f'edem_payment:{uid}', json.dumps(payment, ensure_ascii=False, separators=(',', ':')))
 
     try:
