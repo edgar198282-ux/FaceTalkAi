@@ -494,6 +494,11 @@ async def payment_received_handler(q: CallbackQuery):
     await set_setting(f'edem_expires_at:{uid}', str(expires_at))
     payment = {'status':'paid','last_paid_at':now,'plan_days':365,'last_amount':12}
     await set_setting(f'edem_payment:{uid}', json.dumps(payment, ensure_ascii=False, separators=(',', ':')))
+    try:
+        if q.message:
+            await q.message.edit_reply_markup(reply_markup=None)
+    except Exception as exc:
+        logging.warning('Payment received button cleanup failed: %r', exc)
     await q.answer('Доступ активирован на 12 месяцев', show_alert=True)
     try:
         lang = await get_user_language(uid) or 'ru'
