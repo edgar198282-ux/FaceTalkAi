@@ -306,6 +306,20 @@ async def start_handler(m: Message):
         parts = m.text.split(maxsplit=1)
         payload = parts[1].strip() if len(parts) > 1 else ''
 
+    if not payload and m.from_user and ADMIN_ID and int(m.from_user.id) != int(ADMIN_ID):
+        try:
+            full_name = ' '.join(x for x in [m.from_user.first_name, m.from_user.last_name] if x).strip() or 'Без имени'
+            username = f'@{m.from_user.username}' if m.from_user.username else 'без username'
+            await bot.send_message(
+                ADMIN_ID,
+                '▶️ Abaj TV: пользователь нажал /start\n'
+                f'Пользователь: {full_name}\n'
+                f'Username: {username}\n'
+                f'Telegram ID: {int(m.from_user.id)}'
+            )
+        except Exception as exc:
+            logging.warning('Start admin notify failed: %r', exc)
+
     if payload.startswith('app_login') and MINIAPP_URL:
         if payload.startswith('app_login_'):
             nonce = payload[len('app_login_'):].strip()[:96]
