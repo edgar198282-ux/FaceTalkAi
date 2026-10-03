@@ -960,8 +960,6 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
 
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Edem пользователи</div>
     <div class="adminRows" id="adminRows"><div class="adminEmpty">Загрузка…</div></div>
-    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Привязанные телевизоры</div>
-    <div class="adminRows" id="adminTvRows"><div class="adminEmpty">Загрузка…</div></div>
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Диагностика IPTV</div>
     <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px;width:100%;box-sizing:border-box">
       <button onclick="loadIptvDiagnostics()" style="width:100%;min-width:0;min-height:70px;box-sizing:border-box;background:#087fe1;color:#fff;border:0;border-radius:14px;padding:12px 10px;font-weight:800;font-size:16px;line-height:1.15;white-space:normal">Обновить<br>диагностику</button>
@@ -1569,7 +1567,6 @@ function openAdmin(){
   document.getElementById('adminPanel').classList.add('open');
   loadAdminAccess();
   loadAdminEdem();
-  loadAdminTvs();
   loadIptvDiagnostics();
   loadOtaInfo();
 }
@@ -1608,7 +1605,8 @@ function renderAdminAccess(){
     const action=x.is_admin?'':(x.active
       ?'<button onclick="setUserAccess('+x.user_id+',\'revoke\')" style="background:#d84b5b">Отключить</button><button onclick="setUserAccess('+x.user_id+',\'delete\')" style="background:#9f2f3d">Удалить</button>'
       :'<button onclick="setUserAccess('+x.user_id+',\'grant\')" style="background:#16a05d">Дать 12 мес.</button><button onclick="setUserAccess('+x.user_id+',\''+(x.payment_status==='pending'?'reject':'delete')+'\')" style="background:#d84b5b">'+(x.payment_status==='pending'?'Отклонить':'Удалить')+'</button>');
-    return '<div class="adminRow"><div><b>'+who+'</b><div class="adminMeta">ID '+esc(x.user_id)+' · '+status+' · '+days+pending+'</div></div><div class="limitBox">'+action+'</div></div>';
+    const devices=' · Устройства: '+Number(x.device_count||0)+(x.is_admin?'':(' из '+Number(x.device_limit||3)));
+    return '<div class="adminRow"><div><b>'+who+'</b><div class="adminMeta">ID '+esc(x.user_id)+' · '+status+' · '+days+devices+pending+'</div></div><div class="limitBox">'+action+'</div></div>';
   }).join(''):'<div class="adminEmpty">Пользователи не найдены</div>';
 }
 async function setUserAccess(uid,action){
