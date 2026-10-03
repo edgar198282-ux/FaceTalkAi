@@ -115,6 +115,32 @@ button{cursor:pointer}
 .playerView.appFullscreen .playerTop,.playerView.appFullscreen .playerBottom{display:none!important}
 .playerView.appFullscreen .videoWrap{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;background:#000!important;padding:0!important}
 .playerView.appFullscreen video{width:100%!important;height:100%!important;object-fit:contain!important}
+
+/* Pure Screen mode: video only, absolutely no ABAJ overlays or controls. */
+.playerView.pureFullscreen{
+  position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;
+  max-width:none!important;transform:none!important;z-index:2147483000!important;background:#000!important
+}
+.playerView.pureFullscreen .videoWrap{
+  position:absolute!important;inset:0!important;width:100%!important;height:100%!important;padding:0!important;background:#000!important;
+  display:flex!important;align-items:center!important;justify-content:center!important
+}
+.playerView.pureFullscreen video{
+  width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;
+  object-fit:contain!important;background:#000!important
+}
+.playerView.pureFullscreen .playerTop,
+.playerView.pureFullscreen .playerBottom,
+.playerView.pureFullscreen .playerMeta,
+.playerView.pureFullscreen .playerTimeline,
+.playerView.pureFullscreen .playerPrimaryControls,
+.playerView.pureFullscreen .playerChannelHud,
+.playerView.pureFullscreen .playerGestureHint,
+.playerView.pureFullscreen .channelRail,
+.playerView.pureFullscreen .playerBrand,
+.playerView.pureFullscreen #playerError{
+  display:none!important;opacity:0!important;pointer-events:none!important
+}
 body.playerFullscreenActive{overflow:hidden!important;background:#000!important}
 .playerTop{
   height:58px;display:flex;align-items:center;gap:12px;padding:0 12px;background:rgba(0,0,0,.86)
@@ -532,6 +558,18 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   }
   body:not(.nativeTv) .playerView.open #playerError{display:none!important}
   body:not(.nativeTv) .playerView.open .playerBottom{max-height:34vh!important}
+  body:not(.nativeTv) .playerView.open.pureFullscreen .playerBottom,
+  body:not(.nativeTv) .playerView.open.pureFullscreen .playerMeta,
+  body:not(.nativeTv) .playerView.open.pureFullscreen .playerTimeline,
+  body:not(.nativeTv) .playerView.open.pureFullscreen .playerPrimaryControls{
+    display:none!important
+  }
+  body:not(.nativeTv) .playerView.open.pureFullscreen .videoWrap{
+    inset:0!important;width:100%!important;height:100%!important
+  }
+  body:not(.nativeTv) .playerView.open.pureFullscreen video{
+    width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:contain!important
+  }
 }
 
 /* Light / dark appearance */
@@ -2358,6 +2396,11 @@ function dismissMobilePlayerLoading(event){
 }
 function handlePlayerSurfaceClick(event){
   if(Date.now()<playerGestureSuppressClickUntil)return;
+  const player=document.getElementById('playerView');
+  if(player&&player.classList.contains('pureFullscreen')){
+    exitPureFullscreen();
+    return;
+  }
   if(event&&event.target&&event.target.closest&&event.target.closest('button,select,.channelRail'))return;
   showTvPlayerUi(true);
 }
@@ -4207,6 +4250,7 @@ function closePlayer(){
   playerView.classList.remove('tvFullscreen');
   playerView.classList.remove('appFullscreen');
   playerView.classList.remove('videoFill');
+  playerView.classList.remove('pureFullscreen');
   document.body.classList.remove('playerFullscreenActive');
   document.body.classList.remove('mobileLandscapePlayer');
   try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}
@@ -4269,6 +4313,11 @@ function syncMobileLandscapePlayerUi(){
   const landscape=window.matchMedia&&window.matchMedia('(orientation: landscape)').matches&&window.innerHeight<=520;
   const active=player.classList.contains('open');
   const useLandscapeUi=!!(landscape&&active);
+  if(player.classList.contains('pureFullscreen')){
+    v.controls=false;
+    try{v.removeAttribute('controls')}catch(e){}
+    return;
+  }
 
   // Mobile always uses ABAJ TV controls. Native browser/video controls can
   // enter their own fullscreen and hide our interface, so keep them disabled.
@@ -4284,6 +4333,15 @@ function syncMobileLandscapePlayerUi(){
 }
 window.addEventListener('resize',()=>setTimeout(syncMobileLandscapePlayerUi,60),{passive:true});
 window.addEventListener('orientationchange',()=>setTimeout(syncMobileLandscapePlayerUi,180),{passive:true});
+document.addEventListener('fullscreenchange',()=>{
+  const player=document.getElementById('playerView');
+  if(player&&player.classList.contains('pureFullscreen')&&!document.fullscreenElement&&!nativeTv){
+    player.classList.remove('pureFullscreen');
+    document.body.classList.remove('playerClean');
+    syncMobileLandscapePlayerUi();
+    showTvPlayerUi(true);
+  }
+});
 
 function togglePlayerPlayback(){
   const v=document.getElementById('video');
@@ -4315,37 +4373,50 @@ function setAppFullscreen(on){
   player.classList.toggle('appFullscreen',!!on);
   document.body.classList.toggle('playerFullscreenActive',!!on);
 }
-async function toggleFullscreen(){
+async function enterPureFullscreen(){
   const player=document.getElementById('playerView');
   if(!player)return;
-  if(nativeTv){
-    player.classList.toggle('tvFullscreen');
-    showTvShortcut(player.classList.contains('tvFullscreen')?'Полный экран':'Окно плеера');
-    showTvPlayerUi(true);
-    return;
-  }
-
-  const landscape=window.matchMedia&&window.matchMedia('(orientation: landscape)').matches&&window.innerHeight<=520;
-  if(landscape){
-    // Landscape already uses the full app viewport. The Screen button must
-    // therefore change the VIDEO fit, not toggle the same shell fullscreen.
-    player.classList.toggle('videoFill');
-    setAppFullscreen(true);
-    showTvPlayerUi(true);
-  }else{
-    player.classList.remove('videoFill');
-    setAppFullscreen(!player.classList.contains('appFullscreen'));
-    showTvPlayerUi(true);
-  }
-
+  player.classList.add('pureFullscreen','appFullscreen');
+  player.classList.remove('videoFill');
+  document.body.classList.add('playerFullscreenActive','playerClean');
+  if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
   const v=document.getElementById('video');
   if(v){
     v.controls=false;
     try{v.removeAttribute('controls')}catch(e){}
   }
-  try{
-    if(document.fullscreenElement)await document.exitFullscreen();
-  }catch(e){}
+  if(!nativeTv){
+    try{
+      if(!document.fullscreenElement&&player.requestFullscreen){
+        await player.requestFullscreen();
+      }else if(!document.fullscreenElement&&player.webkitRequestFullscreen){
+        player.webkitRequestFullscreen();
+      }
+    }catch(e){}
+  }
+}
+async function exitPureFullscreen(){
+  const player=document.getElementById('playerView');
+  if(!player)return;
+  player.classList.remove('pureFullscreen');
+  document.body.classList.remove('playerClean');
+  if(!nativeTv){
+    try{
+      if(document.fullscreenElement)await document.exitFullscreen();
+      else if(document.webkitFullscreenElement&&document.webkitExitFullscreen)document.webkitExitFullscreen();
+    }catch(e){}
+    syncMobileLandscapePlayerUi();
+  }
+  showTvPlayerUi(true);
+}
+async function toggleFullscreen(){
+  const player=document.getElementById('playerView');
+  if(!player)return;
+  if(player.classList.contains('pureFullscreen')){
+    await exitPureFullscreen();
+    return;
+  }
+  await enterPureFullscreen();
 }
 
 function tvNumberInput(digit){
