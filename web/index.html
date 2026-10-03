@@ -1597,10 +1597,12 @@ function renderAdminAccess(){
   const box=document.getElementById('accessRows');
   if(!box)return;
   const q=String(document.getElementById('accessSearch')?.value||'').trim().toLowerCase();
-  const rows=adminAccessUsers.filter(x=>!q||String(x.user_id).includes(q)||String(x.name||'').toLowerCase().includes(q)||String(x.username||'').toLowerCase().includes(q));
+  const rows=adminAccessUsers
+    .filter(x=>!q||String(x.user_id).includes(q)||String(x.name||'').toLowerCase().includes(q)||String(x.username||'').toLowerCase().includes(q))
+    .sort((a,b)=>Number(!!b.is_admin)-Number(!!a.is_admin));
   box.innerHTML=rows.length?rows.map(x=>{
-    const who=esc(x.name||('ID '+x.user_id))+(x.username?(' · @'+esc(x.username)):'');
-    const status=x.is_admin?'Администратор':(x.active?'✅ Активен':'⛔ Нет доступа');
+    const who=(x.is_admin?'👑 ':'')+esc(x.name||('ID '+x.user_id))+(x.username?(' · @'+esc(x.username)):'');
+    const status=x.is_admin?'👑 Администратор':(x.active?'✅ Активен':'⛔ Нет доступа');
     const days=x.is_admin?'без срока':(x.days_left==null?'—':(x.days_left+' дн.'));
     const pending=x.payment_status==='pending'?' · 💳 ожидает проверки':'';
     const action=x.is_admin?'':(x.active
