@@ -478,6 +478,9 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   body:not(.nativeTv) .playerView.open video{
     width:100%!important;height:100%!important;object-fit:contain!important
   }
+  body:not(.nativeTv) .playerView.open.videoFill video{
+    object-fit:cover!important
+  }
   body:not(.nativeTv) .playerView.open .playerBottom,
   body:not(.nativeTv) .playerView.open.appFullscreen .playerBottom{
     display:block!important;position:absolute!important;left:0!important;right:0!important;bottom:0!important;z-index:220!important;
@@ -4175,6 +4178,7 @@ function closePlayer(){
   playerView.classList.remove('open');
   playerView.classList.remove('tvFullscreen');
   playerView.classList.remove('appFullscreen');
+  playerView.classList.remove('videoFill');
   document.body.classList.remove('playerFullscreenActive');
   document.body.classList.remove('mobileLandscapePlayer');
   try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}
@@ -4244,8 +4248,9 @@ function syncMobileLandscapePlayerUi(){
   try{v.removeAttribute('controls')}catch(e){}
   if(useLandscapeUi){
     setAppFullscreen(true);
-  }else if(active&&player.classList.contains('appFullscreen')){
-    setAppFullscreen(false);
+  }else{
+    player.classList.remove('videoFill');
+    if(active&&player.classList.contains('appFullscreen'))setAppFullscreen(false);
   }
   document.body.classList.toggle('mobileLandscapePlayer',useLandscapeUi);
 }
@@ -4288,13 +4293,23 @@ async function toggleFullscreen(){
   if(nativeTv){
     player.classList.toggle('tvFullscreen');
     showTvShortcut(player.classList.contains('tvFullscreen')?'Полный экран':'Окно плеера');
+    showTvPlayerUi(true);
     return;
   }
 
-  // Mobile uses app-level fullscreen only. Native HTML video fullscreen hides
-  // our own controls, so it must never be requested here.
-  const turningOn=!player.classList.contains('appFullscreen');
-  setAppFullscreen(turningOn);
+  const landscape=window.matchMedia&&window.matchMedia('(orientation: landscape)').matches&&window.innerHeight<=520;
+  if(landscape){
+    // Landscape already uses the full app viewport. The Screen button must
+    // therefore change the VIDEO fit, not toggle the same shell fullscreen.
+    player.classList.toggle('videoFill');
+    setAppFullscreen(true);
+    showTvPlayerUi(true);
+  }else{
+    player.classList.remove('videoFill');
+    setAppFullscreen(!player.classList.contains('appFullscreen'));
+    showTvPlayerUi(true);
+  }
+
   const v=document.getElementById('video');
   if(v){
     v.controls=false;
