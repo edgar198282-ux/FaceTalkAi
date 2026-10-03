@@ -3387,7 +3387,11 @@ function showTvZap(ch){
 }
 function handleAppBack(){
   const player=document.getElementById('playerView');
-  if(player&&player.classList.contains('open')){closePlayer();return true}
+  if(player&&player.classList.contains('open')){
+    if(player.classList.contains('miniPlayer'))return false;
+    if(!nativeTv){minimizePlayer();return true}
+    closePlayer();return true;
+  }
   if(tvSettingPickerOpen()){closeTvSettingPicker(false);return true}
   if(tvSettingsOpen()){closeTvSettings();return true}
   const admin=document.getElementById('adminPanel');
