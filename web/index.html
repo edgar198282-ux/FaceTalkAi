@@ -1065,6 +1065,11 @@ let burnedAdSamples=[];
 let burnedAdLastReportAt=0;
 let burnedAdStateTimer=null;
 let burnedAdFirstFrameSent=false;
+let qrAdTimer=null;
+let qrAdDetector=null;
+let qrAdBusy=false;
+let qrAdLastSeenAt=0;
+let qrAdChannel='';
 let tvWatchdogTimer=null;
 let tvSystemFallbackChannels=new Set();
 try{
@@ -3388,9 +3393,61 @@ function setFreeAdOverlay(active,seconds){
     stopFreeAdMusic();
   }
 }
+function stopQrAdObserver(){
+  if(qrAdTimer){clearInterval(qrAdTimer);qrAdTimer=null}
+  qrAdBusy=false;
+  qrAdLastSeenAt=0;
+  qrAdChannel='';
+}
+async function sampleQrAdFrame(ch){
+  if(qrAdBusy||!ch||ch.personal||!current||current.id!==ch.id)return;
+  if(!isProviderAdStreamUrl(selectedFreeStreamUrl(ch)))return;
+  const v=document.getElementById('video');
+  if(!v||v.readyState<2||v.videoWidth<64||v.videoHeight<64||v.paused)return;
+  if(!('BarcodeDetector' in window))return;
+  qrAdBusy=true;
+  try{
+    if(!qrAdDetector){
+      const formats=await BarcodeDetector.getSupportedFormats().catch(()=>[]);
+      if(!formats.includes('qr_code'))return;
+      qrAdDetector=new BarcodeDetector({formats:['qr_code']});
+    }
+    const codes=await qrAdDetector.detect(v);
+    const now=Date.now();
+    if(Array.isArray(codes)&&codes.length){
+      qrAdLastSeenAt=now;
+      qrAdChannel=String(ch.id||'');
+      freeAdShieldChannel=qrAdChannel;
+      freeAdShieldStartedAt=now/1000;
+      freeAdShieldSawPositive=true;
+      freeAdShieldVerifiedNegative=0;
+      if(!freeAdActive)setFreeAdOverlay(true,15);
+      return;
+    }
+    if(qrAdChannel===String(ch.id||'')&&qrAdLastSeenAt&&now-qrAdLastSeenAt>1800){
+      qrAdChannel='';
+      qrAdLastSeenAt=0;
+      freeAdShieldChannel='';
+      freeAdShieldStartedAt=0;
+      freeAdShieldSawPositive=false;
+      freeAdShieldVerifiedNegative=0;
+      setFreeAdOverlay(false);
+    }
+  }catch(e){}finally{
+    qrAdBusy=false;
+  }
+}
+function startQrAdObserver(ch){
+  stopQrAdObserver();
+  if(!ch||ch.personal||nativeTv||!isProviderAdStreamUrl(selectedFreeStreamUrl(ch)))return;
+  if(!('BarcodeDetector' in window))return;
+  sampleQrAdFrame(ch);
+  qrAdTimer=setInterval(()=>sampleQrAdFrame(ch),300);
+}
 function stopBurnedAdObserver(){
   if(burnedAdTimer){clearInterval(burnedAdTimer);burnedAdTimer=null}
   if(burnedAdStateTimer){clearTimeout(burnedAdStateTimer);burnedAdStateTimer=null}
+  stopQrAdObserver();
   burnedAdPrevFrame=null;
   burnedAdSamples=[];
   burnedAdLastReportAt=0;
@@ -3457,6 +3514,10 @@ async function checkFreeAdState(){
       freeAdShieldStartedAt=0;
       freeAdShieldVerifiedNegative=0;
       freeAdShieldSawPositive=false;
+    }
+    if(qrAdChannel===String(id||'')&&qrAdLastSeenAt&&Date.now()-qrAdLastSeenAt<2200){
+      setFreeAdOverlay(true);
+      return;
     }
     setFreeAdOverlay(false);
   }catch(e){}finally{
@@ -3613,6 +3674,7 @@ function startFreeAdWatch(ch){
   });
   freeAdTimer=setInterval(checkFreeAdState,900);
   startBurnedAdObserver(ch);
+  startQrAdObserver(ch);
 }
 
 function recreateNativeTvVideo(){
