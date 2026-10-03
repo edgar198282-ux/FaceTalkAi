@@ -652,6 +652,24 @@ let burnedAdLastReportAt=0;
 let burnedAdStateTimer=null;
 let burnedAdFirstFrameSent=false;
 let tvWatchdogTimer=null;
+let tvSystemFallbackChannels=new Set();
+try{
+  const saved=JSON.parse(localStorage.getItem('abaj_tv_system_fallback_channels')||'[]');
+  if(Array.isArray(saved))tvSystemFallbackChannels=new Set(saved.map(String).slice(0,200));
+}catch(e){}
+function rememberTvSystemFallback(ch){
+  const id=String(ch&&ch.id||'');
+  if(!id)return;
+  tvSystemFallbackChannels.add(id);
+  try{localStorage.setItem('abaj_tv_system_fallback_channels',JSON.stringify([...tvSystemFallbackChannels].slice(-200)))}catch(e){}
+}
+function forgetTvSystemFallback(ch){
+  const id=String(ch&&ch.id||'');
+  if(!id)return;
+  if(tvSystemFallbackChannels.delete(id)){
+    try{localStorage.setItem('abaj_tv_system_fallback_channels',JSON.stringify([...tvSystemFallbackChannels].slice(-200)))}catch(e){}
+  }
+}
 let tvWatchdogLastTime=-1;
 let tvWatchdogStalls=0;
 let tvAuthRefreshTimer=null;
@@ -1502,6 +1520,7 @@ function toggleAdultSetting(){
 function setTvPlayerMode(value){
   tvPlayerMode=['auto','hls','system'].includes(String(value))?String(value):'auto';
   localStorage.setItem('abaj_tv_player_mode',tvPlayerMode);
+  if(tvPlayerMode==='hls'&&current)forgetTvSystemFallback(current);
   paintTvSettings();
   if(current){
     streamRetries=0;
@@ -3125,7 +3144,9 @@ function tvForceSystemForChannel(ch){
 function tvShouldUseHls(ch){
   if(!nativeTv)return tvPlayerMode!=='system';
   if(tvForceSystemForChannel(ch))return false;
+  if(tvPlayerMode==='hls')return true;
   if(tvPlayerMode==='system')return false;
+  if(tvSystemFallbackChannels.has(String(ch&&ch.id||'')))return false;
   return true;
 }
 function armFirstFrameTimer(ch,preferBackup,token){
@@ -3420,6 +3441,15 @@ function startStream(ch,preferBackup=false,forceProxy=false){
           err.textContent='Пробую следующий источник…';
           return;
         }
+        const urls=tvDirectUrls(ch);
+        const httpOnly=urls.length>0&&urls.every(u=>/^http:\/\//i.test(String(u)));
+        if(tvPlayerMode==='auto'&&httpOnly&&!tvSystemFallbackChannels.has(String(ch.id||''))){
+          playbackFallbackCount++;
+          rememberTvSystemFallback(ch);
+          err.textContent='Пробую системный плеер…';
+          startStream(ch,false,false);
+          return;
+        }
       }
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR && streamRetries<3){
         streamRetries++;
@@ -3469,6 +3499,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       }).catch(()=>{
         if(nativeTv&&tvPlayerMode!=='hls'&&!tvForceSystemForChannel(ch)&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
           playbackFallbackCount++;
+          forgetTvSystemFallback(ch);
           tvHlsFallbackChannels.add(String(ch.id||''));
           err.textContent='Пробую совместимый плеер…';
           startStream(ch,preferBackup,false);
