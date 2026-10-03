@@ -672,6 +672,7 @@ function forgetTvSystemFallback(ch){
 }
 let tvWatchdogLastTime=-1;
 let tvWatchdogStalls=0;
+let tvPlaybackStable=false;
 let tvAuthRefreshTimer=null;
 let tvChannelHeartbeatTimer=null;
 let tvShortcutTimer=null;
@@ -3266,9 +3267,10 @@ function startTvWatchdog(ch){
       tvWatchdogStalls++;
     }else{
       tvWatchdogStalls=0;
+      if(t>0)tvPlaybackStable=true;
     }
     tvWatchdogLastTime=t;
-    if(tvWatchdogStalls>=2){
+    if(tvWatchdogStalls>=3){
       tvWatchdogStalls=0;
       const err=document.getElementById('playerError');
       if(err)err.textContent=ch.backup_count?'Поток завис. Переключаю резерв…':'Поток завис. Переподключаю…';
@@ -3286,6 +3288,7 @@ function startTvWatchdog(ch){
 function startStream(ch,preferBackup=false,forceProxy=false){
   stopTvWatchdog();
   clearFirstFrameTimer();
+  tvPlaybackStable=false;
   const attemptToken=++streamAttemptToken;
   const v=document.getElementById('video');
   if(nativeTv)v.controls=false;
@@ -3297,6 +3300,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
     const reveal=()=>{
       if(attemptToken!==streamAttemptToken)return;
       clearFirstFrameTimer();
+      tvPlaybackStable=true;
       if(nativeTv)tvChannelSwitchBusyUntil=0;
       if(wrap)wrap.classList.add('playing','frameReady');
       if(nativeTv&&!playbackMetricSent){
@@ -3427,6 +3431,17 @@ function startStream(ch,preferBackup=false,forceProxy=false){
 
     hls.on(Hls.Events.ERROR,(event,data)=>{
       if(!data||!data.fatal)return;
+
+      if(nativeTv&&tvPlaybackStable){
+        if(data.type===Hls.ErrorTypes.NETWORK_ERROR){
+          try{hls.startLoad()}catch(e){}
+          return;
+        }
+        if(data.type===Hls.ErrorTypes.MEDIA_ERROR){
+          try{hls.recoverMediaError()}catch(e){}
+          return;
+        }
+      }
 
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR && !nativeTv && !forceProxy && !ch.personal){
         clearFirstFrameTimer();
