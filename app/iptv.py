@@ -96,6 +96,26 @@ def _save_json(path: str, data):
         os.fsync(f.fileno())
     os.replace(tmp, path)
 
+
+def _restore_channel_snapshot() -> int:
+    payload = _load_json(SNAPSHOT_PATH, {})
+    state = payload.get("state") if isinstance(payload, dict) else None
+    if not isinstance(state, dict) or not isinstance(state.get("channels"), list):
+        return 0
+    channels = {}
+    for row in state.get("channels") or []:
+        if isinstance(row, dict) and row.get("id"):
+            channels[str(row["id"])] = dict(row)
+    if not channels:
+        return 0
+    _state["channels"] = channels
+    _state["last_refresh"] = int(state.get("last_refresh") or payload.get("saved_at") or time.time())
+    _state["stats"] = dict(state.get("stats") or {})
+    _state["error"] = str(state.get("error") or "")[:300]
+    _state["epg_last_refresh"] = int(state.get("epg_last_refresh") or 0)
+    _state["epg_error"] = str(state.get("epg_error") or "")[:300]
+    return len(channels)
+
 _stream_health = _load_json(HEALTH_PATH, {})
 _client_failure_last = {}
 _playback_metrics = _load_json(PLAYBACK_METRICS_PATH, [])
@@ -1365,9 +1385,67 @@ async def _probe(session: aiohttp.ClientSession, item: dict, sem: asyncio.Semaph
                 code = r.status
                 ctype = (r.headers.get("content-type") or "").lower()
                 chunk = await r.content.read(16384)
-                is_hls = b"#EXTM3U" in chunk or "mpegurl" in ctype or urlparse(str(r.url)).path.lower().endswith(".m3u8")
+                final_url = str(r.url)
+                is_hls = b"#EXTM3U" in chunk or "mpegurl" in ctype or urlparse(final_url).path.lower().endswith(".m3u8")
                 ok = r.status in (200, 206) and (is_hls or ctype.startswith(("video/", "audio/")) or len(chunk) >= 188)
-                if not ok:
+                if ok and is_hls and (str(item.get("quality") or "").upper() == "4K" or int(item.get("height") or 0) >= 2000):
+                    manifest = chunk.decode("utf-8", "ignore")
+                    media_url = final_url
+                    if "#EXT-X-STREAM-INF" in manifest:
+                        variants = []
+                        lines = [line.strip() for line in manifest.splitlines() if line.strip()]
+                        for idx, line in enumerate(lines):
+                            if not line.startswith("#EXT-X-STREAM-INF"):
+                                continue
+                            height = 0
+                            bandwidth = 0
+                            m_res = re.search(r"RESOLUTION=\\d+x(\\d+)", line, re.I)
+                            m_bw = re.search(r"BANDWIDTH=(\\d+)", line, re.I)
+                            if m_res:
+                                height = int(m_res.group(1))
+                            if m_bw:
+                                bandwidth = int(m_bw.group(1))
+                            for nxt in lines[idx + 1:]:
+                                if not nxt.startswith("#"):
+                                    variants.append((height, bandwidth, urljoin(final_url, nxt)))
+                                    break
+                        if variants:
+                            best_height, _, media_url = max(variants, key=lambda x: (x[0], x[1]))
+                            if best_height:
+                                item = dict(item)
+                                item["reported_height"] = int(item.get("height") or 0)
+                                item["height"] = best_height
+                                item["quality"] = _quality_from_height(best_height)
+                                item["quality_verified"] = True
+                        async with session.get(media_url, timeout=timeout, allow_redirects=True) as media_r:
+                            if media_r.status not in (200, 206):
+                                ok = False
+                                error = f"variant {media_r.status}"[:120]
+                            else:
+                                media_final = str(media_r.url)
+                                media_body = await media_r.content.read(65536)
+                                media_manifest = media_body.decode("utf-8", "ignore")
+                    else:
+                        media_manifest = manifest
+                        media_final = final_url
+                    if ok:
+                        segment_url = ""
+                        for raw_line in media_manifest.splitlines():
+                            line = raw_line.strip()
+                            if line and not line.startswith("#"):
+                                segment_url = urljoin(media_final, line)
+                                break
+                        if not segment_url:
+                            ok = False
+                            error = "hls no media segment"
+                        else:
+                            seg_headers = {"Range": "bytes=0-4095", "User-Agent": "IPTV-Player/1.0"}
+                            async with session.get(segment_url, headers=seg_headers, timeout=timeout, allow_redirects=True) as seg_r:
+                                seg = await seg_r.content.read(4096)
+                                if seg_r.status not in (200, 206) or len(seg) < 188:
+                                    ok = False
+                                    error = f"segment {seg_r.status} {len(seg)}b"[:120]
+                if not ok and not error:
                     error = f"{r.status} {ctype}"[:120]
     except Exception as exc:
         error = str(exc)[:120]
@@ -2079,6 +2157,10 @@ async def api_worker_snapshot(request):
         _state["epg_error"] = incoming_epg_error
     _state["error"] = str(state.get("error") or "")[:300]
     _worker_control["last_worker_snapshot"] = int(time.time())
+    try:
+        _save_json(SNAPSHOT_PATH, {"saved_at": int(time.time()), "state": public_state()})
+    except Exception:
+        pass
     return web.json_response({"ok": True, "channels": len(channels), "last_refresh": _state["last_refresh"], "epg_last_refresh": _state["epg_last_refresh"]})
 
 
@@ -2508,6 +2590,14 @@ async def api_proxy(request):
 
 
 async def start_background(app):
+    restored_channels = 0
+    try:
+        restored_channels = _restore_channel_snapshot()
+    except Exception:
+        restored_channels = 0
+    if restored_channels:
+        print(f"Restored IPTV snapshot: {restored_channels} channels", flush=True)
+
     app["iptv_proxy_session"] = aiohttp.ClientSession(
         connector=aiohttp.TCPConnector(limit=128, limit_per_host=16, ttl_dns_cache=300, keepalive_timeout=30),
         headers={"User-Agent": "IPTV-Player/1.0"},
