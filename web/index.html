@@ -42,35 +42,39 @@ button{cursor:pointer}
 .titleRow{display:flex;align-items:center;justify-content:space-between;gap:8px}.brandWrap{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 auto}.brandLogo{width:48px;height:48px;border-radius:14px;object-fit:contain;background:#083f9b;padding:3px;border:1px solid rgba(255,255,255,.62);box-shadow:0 4px 14px rgba(0,55,130,.28)}
 .titleBlock{min-width:0;flex:1 1 auto;overflow:visible}
 .title{
-  display:block;width:100%;
-  font-size:clamp(25px,6.8vw,30px);font-weight:950;letter-spacing:1.15px;white-space:nowrap;overflow:visible;text-overflow:clip;
-  color:transparent;
-  background:linear-gradient(90deg,#00f6ff 0%,#1687ff 13%,#8b5cff 27%,#ff35d3 42%,#ffcf33 57%,#3dff9a 72%,#ffffff 86%,#00f6ff 100%);
-  background-size:420% 100%;
-  -webkit-background-clip:text;
-  background-clip:text;
-  -webkit-text-fill-color:transparent;
-  transform-origin:left center;
-  filter:drop-shadow(0 0 3px rgba(255,255,255,.95)) drop-shadow(0 0 9px rgba(0,238,255,.95)) drop-shadow(0 0 16px rgba(89,78,255,.78));
-  animation:abajTitleNeonShift 3.6s linear infinite,abajTitleNeonPulse 1.35s ease-in-out infinite,abajTitleNeonBreath 4.8s ease-in-out infinite,abajTitleNeonFlicker 7s steps(1,end) infinite;
-  will-change:background-position,filter,opacity,transform,letter-spacing
+  width:100%;min-width:0;
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:clamp(25px,6.8vw,30px);font-weight:950;line-height:1;white-space:nowrap;
+  padding:0 2px;
 }
-@keyframes abajTitleNeonShift{
-  0%{background-position:0% 50%}
-  50%{background-position:210% 50%}
-  100%{background-position:420% 50%}
+.title span{
+  display:inline-block;
+  color:#fff;
+  background:linear-gradient(180deg,#ffffff 0%,#7ff7ff 20%,#18c8ff 48%,#7b6dff 72%,#ff53d7 100%);
+  background-size:100% 240%;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 3px rgba(255,255,255,.95)) drop-shadow(0 0 8px rgba(0,225,255,.92)) drop-shadow(0 0 15px rgba(92,86,255,.7));
+  animation:abajLetterColor 4.2s linear infinite,abajLetterWave 1.9s ease-in-out infinite,abajLetterGlow 1.25s ease-in-out infinite;
+  will-change:transform,filter,background-position,opacity;
 }
-@keyframes abajTitleNeonPulse{
-  0%,100%{filter:drop-shadow(0 0 2px rgba(255,255,255,.78)) drop-shadow(0 0 7px rgba(0,238,255,.82)) drop-shadow(0 0 13px rgba(89,78,255,.62))}
-  50%{filter:drop-shadow(0 0 4px rgba(255,255,255,1)) drop-shadow(0 0 13px rgba(0,238,255,1)) drop-shadow(0 0 24px rgba(255,53,211,.94))}
+.title span:nth-child(1){animation-delay:0s,0s,0s}
+.title span:nth-child(2){animation-delay:-.7s,-.16s,-.22s}
+.title span:nth-child(3){animation-delay:-1.4s,-.32s,-.44s}
+.title span:nth-child(4){animation-delay:-2.1s,-.48s,-.66s}
+.title span:nth-child(5){animation-delay:-2.8s,-.64s,-.88s}
+.title span:nth-child(6){animation-delay:-3.5s,-.8s,-1.1s}
+@keyframes abajLetterColor{
+  0%{background-position:50% 0%}
+  50%{background-position:50% 100%}
+  100%{background-position:50% 0%}
 }
-@keyframes abajTitleNeonBreath{
-  0%,100%{transform:scaleX(1);letter-spacing:1.15px}
-  50%{transform:scaleX(1.035);letter-spacing:1.55px}
+@keyframes abajLetterWave{
+  0%,100%{transform:translateY(0) scale(1)}
+  50%{transform:translateY(-2px) scale(1.055)}
 }
-@keyframes abajTitleNeonFlicker{
-  0%,92%,94%,96%,100%{opacity:1}
-  93%,95%{opacity:.72}
+@keyframes abajLetterGlow{
+  0%,100%{opacity:.9;filter:drop-shadow(0 0 2px rgba(255,255,255,.88)) drop-shadow(0 0 7px rgba(0,225,255,.82)) drop-shadow(0 0 12px rgba(92,86,255,.58))}
+  50%{opacity:1;filter:drop-shadow(0 0 4px rgba(255,255,255,1)) drop-shadow(0 0 12px rgba(0,238,255,1)) drop-shadow(0 0 20px rgba(255,70,215,.92))}
 }
 .sub{font-size:12px;color:#e8f6ff;margin-top:1px;opacity:.92}
 .icons{display:flex;gap:4px;flex-wrap:nowrap;justify-content:flex-end;align-items:center;flex:0 0 auto}
@@ -818,7 +822,7 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
       <div class="brandWrap">
         <img class="brandLogo" src="/static/abaj_tv_logo.jpg" alt="Abaj TV">
         <div class="titleBlock">
-          <div class="title">ABAJ TV</div>
+          <div class="title" aria-label="ABAJ TV"><span>A</span><span>B</span><span>A</span><span>J</span><span>T</span><span>V</span></div>
         </div>
       </div>
       <div class="icons">
