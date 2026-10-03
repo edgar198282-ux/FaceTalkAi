@@ -137,7 +137,7 @@ body.playerFullscreenActive{overflow:hidden!important;background:#000!important}
 .playerChannelHudBar span{display:block;height:100%;width:0;background:#38bdf8;border-radius:4px}
 .playerView.appFullscreen .playerChannelHud,.playerView:fullscreen .playerChannelHud,.playerView:-webkit-full-screen .playerChannelHud{position:fixed!important;left:18px!important;top:18px!important;z-index:2147483646!important}
 .playerBrand{position:fixed;inset:0;z-index:120;pointer-events:none;background:#031a4a;opacity:1;transition:opacity .12s ease;display:flex;align-items:center;justify-content:center}.playerLoadingLogo{width:min(22vw,132px);height:min(22vw,132px);object-fit:contain;border-radius:24px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.34));animation:abajLogoPulse 1.15s ease-in-out infinite}@keyframes abajLogoPulse{0%,100%{transform:scale(.96);opacity:.72}50%{transform:scale(1.035);opacity:1}}
-.videoWrap.playing .playerBrand{opacity:0}
+.videoWrap.playing .playerBrand{opacity:0}.nativeTv .playerBrand{display:none!important}
 video{width:100%;height:100%;object-fit:contain;background:transparent;position:relative;z-index:1}
 .playerBottom{padding:10px 10px 12px;background:linear-gradient(180deg,#101114,#09090a);border-top:1px solid rgba(255,255,255,.08);box-shadow:0 -8px 24px rgba(0,0,0,.2)}
 .playerMeta{display:flex;justify-content:space-between;gap:10px;align-items:center;min-height:34px}
