@@ -2848,7 +2848,8 @@ async function checkFreeAdState(){
   freeAdRequestBusy=true;
   const id=current.id;
   try{
-    const r=await fetch('/api/iptv/ad-state?id='+encodeURIComponent(id)+'&t='+Date.now(),{cache:'no-store'});
+    const actualSource=selectedFreeStreamUrl(current);
+    const r=await fetch('/api/iptv/ad-state?id='+encodeURIComponent(id)+'&source='+encodeURIComponent(actualSource)+'&t='+Date.now(),{cache:'no-store'});
     if(!r.ok)return;
     const d=await r.json();
     if(!current||current.id!==id||current.personal)return;
@@ -3012,7 +3013,7 @@ function notifyFreeViewing(ch){
     fetch('/api/iptv/ad-viewing',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({channel_id:ch.id}),
+      body:JSON.stringify({channel_id:ch.id,source_url:selectedFreeStreamUrl(ch)}),
       keepalive:true
     });
   }catch(e){}
@@ -3195,9 +3196,16 @@ function tvDirectUrls(ch){
   if(!nativeTv||!ch)return urls;
   const isYerkir=String(ch.tvg_id||'').toLowerCase()==='yerkirmedia.am'||String(ch.name||'').trim().toLowerCase()==='yerkir media';
   if(isYerkir)return urls;
-  const https=urls.filter(u=>/^https:\/\//i.test(u));
-  const other=urls.filter(u=>!/^https:\/\//i.test(u));
-  return https.length?[...https,...other]:urls;
+  // Cinerama often injects its own startup promo. Prefer every verified
+  // non-Cinerama source before Cinerama, even when the alternative is HTTP.
+  const clean=urls.filter(u=>!isCineramaStreamUrl(u));
+  const cinerama=urls.filter(u=>isCineramaStreamUrl(u));
+  if(clean.length){
+    const cleanHttps=clean.filter(u=>/^https:\/\//i.test(u));
+    const cleanOther=clean.filter(u=>!/^https:\/\//i.test(u));
+    return [...cleanHttps,...cleanOther,...cinerama];
+  }
+  return urls;
 }
 function reportTvStreamFailure(ch,reason){
   if(!nativeTv||!ch||ch.personal)return;
