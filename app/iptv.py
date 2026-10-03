@@ -1653,6 +1653,8 @@ def public_state(compact: bool = False):
         "unreliable", "adult"
     }
     for source in _state["channels"].values():
+        if compact and str(source.get("status") or "") != "ONLINE":
+            continue
         row = dict(source)
         current, nxt = _epg_for_channel(row)
         row["epg_now"] = current if current is not None else row.get("epg_now")
