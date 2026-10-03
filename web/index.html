@@ -332,6 +332,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
       <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
       <button class="chip" data-filter="HD" onclick="setModeFilter(this,'HD')">HD</button>
       <button class="chip" data-filter="4K" onclick="setModeFilter(this,'4K')">4K</button>
+      <button class="chip" data-filter="FHD" onclick="setModeFilter(this,'FHD')">FHD</button>
       <button id="adultChip" class="chip adultChip" data-filter="adult" onclick="setModeFilter(this,'adult')">18+</button>
       <button class="chip" data-filter="recent" onclick="setModeFilter(this,'recent')">↺ RECENT</button>
     </div>
@@ -538,7 +539,7 @@ const COUNTRY_META={
 const COUNTRY_FILTERS=new Set(Object.keys(COUNTRY_META));
 let adultEnabled=localStorage.getItem('abaj_tv_adult_enabled')==='1';
 let modeFilter=localStorage.getItem('abaj_tv_filter')||'all';
-if(modeFilter!=='all'&&!COUNTRY_FILTERS.has(modeFilter)&&!['HD','4K','adult','fav','recent'].includes(modeFilter))modeFilter='all';
+if(modeFilter!=='all'&&!COUNTRY_FILTERS.has(modeFilter)&&!['HD','FHD','4K','adult','fav','recent'].includes(modeFilter))modeFilter='all';
 if(modeFilter==='adult'&&!adultEnabled)modeFilter='all';
 let activeCategory=localStorage.getItem('abaj_tv_category')||'';
 const launchParams=new URLSearchParams(location.search);
@@ -1974,13 +1975,14 @@ function localizedCategoryLabel(group){
   return labels[key]||group||'';
 }
 function channelQuality(ch){
-  const raw=[
-    ch&&ch.quality,ch&&ch.resolution,ch&&ch.video_quality,ch&&ch.height,
-    ch&&ch.name,ch&&ch.group
-  ].filter(v=>v!==undefined&&v!==null).join(' ').toLowerCase();
+  const q=String(ch&&ch.quality||'').trim().toUpperCase();
   const height=Number(ch&&ch.height||0);
-  if(height>=2000||/(^|[^a-z0-9])(4k|uhd|2160p?|3840x2160)([^a-z0-9]|$)/i.test(raw))return '4K';
-  if(height>=720||/(^|[^a-z0-9])(fhd|full[ ._-]?hd|1080p?|1920x1080|720p?|1280x720|hd)([^a-z0-9]|$)/i.test(raw))return 'HD';
+  const raw=[
+    ch&&ch.resolution,ch&&ch.video_quality,ch&&ch.name,ch&&ch.group
+  ].filter(v=>v!==undefined&&v!==null).join(' ').toLowerCase();
+  if(q==='4K'||q==='UHD'||height>=2000||/(^|[^a-z0-9])(4k|uhd|2160p?|3840x2160)([^a-z0-9]|$)/i.test(raw))return '4K';
+  if(q==='FHD'||(height>=1000&&height<2000)||/(^|[^a-z0-9])(fhd|full[ ._-]?hd|1080p?|1920x1080)([^a-z0-9]|$)/i.test(raw))return 'FHD';
+  if(q==='HD'||(height>=700&&height<1000)||/(^|[^a-z0-9])(720p?|1280x720|hd)([^a-z0-9]|$)/i.test(raw))return 'HD';
   return 'SD';
 }
 
@@ -2105,6 +2107,7 @@ function getFiltered(){
   else if(sourceFilter==='edem')rows=rows.filter(x=>!!x.personal);
   if(COUNTRY_FILTERS.has(modeFilter))rows=rows.filter(x=>x.country===modeFilter);
   if(modeFilter==='HD')rows=rows.filter(x=>channelQuality(x)==='HD');
+  if(modeFilter==='FHD')rows=rows.filter(x=>channelQuality(x)==='FHD');
   if(modeFilter==='4K')rows=rows.filter(x=>channelQuality(x)==='4K');
   if(modeFilter==='adult')rows=adultEnabled?rows.filter(x=>isAdultChannel(x)):[];
   if(modeFilter==='fav')rows=rows.filter(x=>favs.has(x.id));
