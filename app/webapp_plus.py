@@ -12,6 +12,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from .config import DATA_DIR, PORT, ADMIN_ID, TELEGRAM_BOT_TOKEN
 from . import iptv
+from . import ai as ai_service
 from .db import get_setting, set_setting, list_settings_prefix, list_user_ids
 from .webapp import (
     api_error_middleware,
@@ -1312,6 +1313,86 @@ async def api_app_auth_complete(request):
         'ft_sig': sig,
     }))
 
+_ai_dub_locks = {}
+
+async def api_iptv_ai_dub_chunk(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    cid = str(body.get('channel_id') or '').strip()
+    lang = str(body.get('lang') or '').strip().lower()
+    if lang not in {'ru','hy','en'}:
+        return web.json_response({'ok':False,'error':'bad language'}, status=400)
+    item = iptv._state.get('channels', {}).get(cid)
+    if not item or item.get('status') != 'ONLINE':
+        return web.json_response({'ok':False,'error':'channel unavailable'}, status=404)
+    source = str(item.get('url') or '').strip()
+    if not source:
+        return web.json_response({'ok':False,'error':'stream unavailable'}, status=404)
+
+    lock = _ai_dub_locks.setdefault(uid, asyncio.Lock())
+    if lock.locked():
+        return web.json_response({'ok':False,'error':'busy'}, status=429)
+
+    async with lock:
+        import tempfile
+        wav_path = ''
+        tts_path = ''
+        try:
+            fd, wav_path = tempfile.mkstemp(prefix='abaj-ai-dub-', suffix='.wav', dir=DATA_DIR)
+            os.close(fd)
+            proc = await asyncio.create_subprocess_exec(
+                'ffmpeg','-nostdin','-hide_banner','-loglevel','error',
+                '-i',source,'-vn','-t','4.8','-ac','1','-ar','16000','-y',wav_path,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            try:
+                _, err = await asyncio.wait_for(proc.communicate(), timeout=14)
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.communicate()
+                return web.json_response({'ok':False,'error':'stream timeout'}, status=504)
+            if proc.returncode != 0 or not os.path.isfile(wav_path) or os.path.getsize(wav_path) < 1200:
+                return web.json_response({'ok':False,'error':'audio unavailable'}, status=422)
+
+            text, _provider = await ai_service.transcribe(wav_path)
+            if not text or len(text.strip()) < 2:
+                return web.Response(status=204)
+            translated = await ai_service.translate_text(text, lang)
+            if not translated:
+                return web.Response(status=204)
+            tts_path, _tts_provider = await ai_service.synthesize(translated)
+            if not tts_path or not os.path.isfile(tts_path):
+                return web.json_response({'ok':False,'error':'voice unavailable'}, status=503)
+            with open(tts_path,'rb') as audio_file:
+                audio = audio_file.read()
+            if not audio:
+                return web.Response(status=204)
+            return web.Response(
+                body=audio,
+                content_type='audio/mpeg',
+                headers={
+                    'Cache-Control':'no-store',
+                    'X-Abaj-AI-Lang':lang,
+                },
+            )
+        except Exception as exc:
+            return web.json_response({'ok':False,'error':str(exc)[:180]}, status=503)
+        finally:
+            for path in (wav_path, tts_path):
+                if path:
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+
+
 async def api_healthz(request):
     channels_loaded = bool(iptv._state.get("channels"))
     payload = {
@@ -1342,6 +1423,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
+    app.router.add_post('/api/iptv/ai-dub/chunk', api_iptv_ai_dub_chunk)
     app.router.add_post('/api/support/message', api_support_message)
     app.router.add_get('/api/admin/iptv/edem', api_admin_iptv_edem_list); app.router.add_post('/api/admin/iptv/edem/assign', api_admin_iptv_edem_assign); app.router.add_post('/api/admin/iptv/edem/limit', api_admin_iptv_edem_limit); app.router.add_post('/api/admin/iptv/edem/subscription', api_admin_iptv_edem_subscription); app.router.add_post('/api/admin/iptv/edem/payment', api_admin_iptv_edem_payment); app.router.add_get('/api/admin/access/users', api_admin_access_users); app.router.add_post('/api/admin/access/set', api_admin_access_set)
     app.router.add_get('/api/me', api_me); app.router.add_get('/api/admin/stats', api_admin_stats); app.router.add_get('/api/admin/keys', api_admin_keys); app.router.add_post('/api/admin/keys', api_admin_keys)
