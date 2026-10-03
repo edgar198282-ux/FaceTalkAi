@@ -226,7 +226,8 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   .tvMode:not(.nativeTv) .videoWrap{padding-right:0}
   .tvMode:not(.nativeTv) .channelRail{display:none}
 }
-.nativeTv .list{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important}
+.nativeTv .list{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important;visibility:visible!important;opacity:1!important}
+.nativeTv .channel{display:block!important;visibility:visible!important;opacity:1!important}
 .nativeTv.nativeList .list{display:block!important;padding-left:18px!important;padding-right:18px!important}
 .nativeTv.nativeList .channel{display:grid!important;grid-template-columns:120px minmax(0,1fr) auto!important;min-height:92px!important;margin-bottom:9px!important}
 .nativeTv.nativeList .channel .logoWrap{height:92px!important}
@@ -1163,12 +1164,22 @@ function scheduleStateSync(){
 }
 
 function applyUiMode(){
-  document.body.classList.toggle('nativeTv',nativeTv);
-  document.body.classList.toggle('nativeList',nativeTv&&layout==='list');
-  document.body.classList.toggle('mobileGrid',!nativeTv&&layout==='grid');
-  document.body.classList.toggle('mobileList',!nativeTv&&layout==='list');
-  document.getElementById('app').classList.toggle('gridMode',layout==='grid'&&!nativeTv);
-  document.getElementById('app').classList.toggle('tvMode',tvMode);
+  if(nativeTv){
+    tvMode=true;
+    document.body.classList.add('nativeTv');
+    document.body.classList.remove('mobileGrid','mobileList');
+    document.body.classList.toggle('nativeList',layout==='list');
+    const app=document.getElementById('app');
+    app.classList.remove('gridMode');
+    app.classList.add('tvMode');
+  }else{
+    document.body.classList.remove('nativeTv','nativeList');
+    document.body.classList.toggle('mobileGrid',layout==='grid');
+    document.body.classList.toggle('mobileList',layout==='list');
+    const app=document.getElementById('app');
+    app.classList.toggle('gridMode',layout==='grid');
+    app.classList.toggle('tvMode',tvMode);
+  }
   const listBtn=document.getElementById('listBtn');
   if(listBtn){
     listBtn.classList.toggle('active',layout==='list');
@@ -2605,6 +2616,17 @@ function channelQualityLabel(ch){
 function render(){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
   filteredNow=getFiltered();
+  if(nativeTv&&channels.length&&filteredNow.length===0){
+    modeFilter='all';
+    activeCategory='';
+    const search=document.getElementById('search');
+    if(search)search.value='';
+    const group=document.getElementById('group');
+    if(group)group.value='';
+    localStorage.setItem('abaj_tv_filter','all');
+    localStorage.setItem('abaj_tv_category','');
+    filteredNow=getFiltered();
+  }
   const channelNumberMap=new Map(filteredNow.map((x,i)=>[x.id,i+1]));
   const grouped={};
   filteredNow.forEach(x=>{
