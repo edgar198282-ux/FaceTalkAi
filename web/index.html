@@ -2896,6 +2896,21 @@ let tvDirectAttemptIndex=0;
 function tvDirectUrls(ch){
   return [String(ch&&ch.url||''),...(Array.isArray(ch&&ch.backups)?ch.backups:[])].filter(Boolean);
 }
+function reportTvStreamFailure(ch,reason){
+  if(!nativeTv||!ch||ch.personal)return;
+  const urls=tvDirectUrls(ch);
+  const failedUrl=urls[Math.min(tvDirectAttemptIndex,Math.max(0,urls.length-1))]||'';
+  if(!failedUrl)return;
+  try{
+    fetch('/api/iptv/client-stream-failure',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({channel_id:String(ch.id||''),url:failedUrl,reason:String(reason||'tv_playback_failed')}),
+      keepalive:true,
+      cache:'no-store'
+    }).catch(()=>{});
+  }catch(e){}
+}
 function tryNextTvDirect(ch){
   if(!nativeTv||!ch||ch.personal)return false;
   const urls=tvDirectUrls(ch);
@@ -2911,12 +2926,13 @@ function tryNextTvDirect(ch){
 function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
-  const waitMs=Number(ch.backup_count||0)>0?3500:6000;
+  const waitMs=Number(ch.backup_count||0)>0?2200:4000;
   firstFrameTimer=setTimeout(()=>{
     firstFrameTimer=null;
     if(token!==streamAttemptToken||!current||current.id!==ch.id)return;
     const v=document.getElementById('video');
     if(v&&v.readyState>=3&&!v.paused)return;
+    reportTvStreamFailure(ch,'first_frame_timeout');
     const err=document.getElementById('playerError');
     if(!preferBackup&&Number(ch.backup_count||0)>0){
       if(err)err.textContent='Медленный старт. Переключаю резерв…';
@@ -3167,6 +3183,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       }
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR && nativeTv&&!ch.personal){
         clearFirstFrameTimer();
+        reportTvStreamFailure(ch,'hls_network_error');
         if(tryNextTvDirect(ch)){
           err.textContent='Пробую следующий источник…';
           return;
@@ -3200,6 +3217,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       v.src=src;
       if(!(nativeTv&&tvPlayerMode==='system')){try{v.load()}catch(e){}}
       v.play().then(()=>{streamRetries=0;markFrameReady()}).catch(()=>{
+        reportTvStreamFailure(ch,'native_play_error');
         if(tryNextTvDirect(ch))return;
         scheduleReconnect(ch,true);
       });

@@ -2253,6 +2253,62 @@ async def api_play(request):
         },
     )
 
+async def api_client_stream_failure(request):
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    cid = str(payload.get("channel_id") or "").strip()
+    failed_url = str(payload.get("url") or "").strip()
+    reason = str(payload.get("reason") or "tv_playback_failed")[:120]
+    item = (_state.get("channels") or {}).get(cid)
+    if not item or not failed_url:
+        return web.json_response({"ok": False}, status=400)
+    known = [str(item.get("url") or ""), *[str(x or "") for x in (item.get("backups") or [])]]
+    if failed_url not in known:
+        return web.json_response({"ok": False}, status=400)
+
+    now = int(time.time())
+    h = dict(_stream_health.get(failed_url) or {})
+    h["failures"] = int(h.get("failures") or 0) + 1
+    h["consecutive_failures"] = int(h.get("consecutive_failures") or 0) + 1
+    h["last_fail"] = now
+    h["last_error"] = reason
+    total = int(h.get("successes") or 0) + int(h.get("failures") or 0)
+    h["uptime_pct"] = round((int(h.get("successes") or 0) * 100.0 / total), 2) if total else 0.0
+    _stream_health[failed_url] = h
+    h["score"] = _health_score(failed_url)
+    _stream_health[failed_url] = h
+
+    if failed_url == str(item.get("url") or ""):
+        backups = [str(x or "") for x in (item.get("backups") or []) if x and str(x) != failed_url]
+        usable = [x for x in backups if not _is_quarantined(x, now)]
+        if usable:
+            promoted = usable[0]
+            item["url"] = promoted
+            item["backups"] = [x for x in backups if x != promoted] + [failed_url]
+            item["backup_count"] = len(item["backups"])
+            item["last_failover"] = now
+            item["failed_url"] = failed_url
+            item["failover_count"] = int(item.get("failover_count") or 0) + 1
+        elif int(h.get("consecutive_failures") or 0) >= 3:
+            item["status"] = "OFFLINE"
+            item["error"] = reason
+
+    try:
+        _save_json(HEALTH_PATH, _stream_health)
+        _save_json(SNAPSHOT_PATH, {"saved_at": now, "state": public_state()})
+    except Exception:
+        pass
+    return web.json_response({
+        "ok": True,
+        "channel_id": cid,
+        "promoted_url": str(item.get("url") or ""),
+        "consecutive_failures": int(h.get("consecutive_failures") or 0),
+        "status": str(item.get("status") or ""),
+    }, headers={"Cache-Control": "no-store"})
+
+
 async def api_proxy(request):
     url = request.query.get("u", "")
     sig = request.query.get("s", "")
@@ -2388,6 +2444,7 @@ def install(app: web.Application):
     app.router.add_get("/api/iptv/diagnostics", api_diagnostics)
     app.router.add_post("/api/iptv/refresh", api_refresh)
     app.router.add_get("/api/iptv/play", api_play)
+    app.router.add_post("/api/iptv/client-stream-failure", api_client_stream_failure)
     app.router.add_post("/api/iptv/ad-viewing", api_ad_viewing)
     app.router.add_get("/api/iptv/ad-state", api_ad_state)
     app.router.add_post("/api/iptv/ad-visual-observe", api_ad_visual_observe)
