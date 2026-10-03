@@ -67,6 +67,36 @@ async def chat(role_key, history, user_text):
         raise RuntimeError("Не настроены GROQ_API_KEY и OPENAI_API_KEY")
     raise RuntimeError(" | ".join(errors)[-500:] or "AI недоступен")
 
+async def translate_text(text, target_lang):
+    text = (text or "").strip()
+    if not text:
+        return ""
+    target = {"ru":"Russian","hy":"Armenian","en":"English"}.get(str(target_lang or "").lower())
+    if not target:
+        raise RuntimeError("Unsupported translation language")
+    groq_client, openai_client = await _clients()
+    messages = [
+        {"role":"system","content":f"Translate spoken dialogue into {target}. Preserve meaning, tone, names and numbers. Return only the translated dialogue, no notes."},
+        {"role":"user","content":text[:5000]},
+    ]
+    errors = []
+    if groq_client:
+        try:
+            translated, _ = await _chat_with(groq_client, "groq", [GROQ_TEXT_MODEL, "openai/gpt-oss-20b"], messages)
+            if translated:
+                return translated
+        except Exception as e:
+            errors.append(str(e))
+    if openai_client:
+        try:
+            translated, _ = await _chat_with(openai_client, "openai", [TEXT_MODEL, "gpt-5-mini", "gpt-4o-mini"], messages)
+            if translated:
+                return translated
+        except Exception as e:
+            errors.append(str(e))
+    raise RuntimeError(" | ".join(errors)[-500:] or "Перевод недоступен")
+
+
 async def transcribe(path):
     groq_client, openai_client = await _clients()
     errors = []
