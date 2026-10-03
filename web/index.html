@@ -465,6 +465,54 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   }
 }
 
+/* Mobile landscape player controls */
+@media (orientation:landscape) and (max-height:520px){
+  body:not(.nativeTv) .playerView.open{
+    display:flex!important;position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;
+    max-width:none!important;transform:none!important;background:#000!important
+  }
+  body:not(.nativeTv) .playerView.open .playerTop{display:none!important}
+  body:not(.nativeTv) .playerView.open .videoWrap{
+    position:absolute!important;inset:0!important;width:100%!important;height:100%!important;padding:0!important
+  }
+  body:not(.nativeTv) .playerView.open video{
+    width:100%!important;height:100%!important;object-fit:contain!important
+  }
+  body:not(.nativeTv) .playerView.open .playerBottom,
+  body:not(.nativeTv) .playerView.open.appFullscreen .playerBottom{
+    display:block!important;position:absolute!important;left:0!important;right:0!important;bottom:0!important;z-index:220!important;
+    padding:34px 14px 10px!important;background:linear-gradient(0deg,rgba(0,0,0,.92),rgba(0,0,0,.62),rgba(0,0,0,0))!important;
+    border:0!important;pointer-events:auto!important
+  }
+  body:not(.nativeTv) .playerView.open .playerMeta{display:none!important}
+  body:not(.nativeTv) .playerView.open .playerTimeline{margin:0 4px 8px!important;height:4px!important}
+  body:not(.nativeTv) .playerView.open .playerPrimaryControls{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:12px!important;margin:0 auto!important;max-width:620px!important
+  }
+  body:not(.nativeTv) .playerView.open .playerCircleCtrl{
+    min-height:54px!important;gap:3px!important
+  }
+  body:not(.nativeTv) .playerView.open .playerCircleCtrl .playerCtrlIcon{
+    width:40px!important;height:40px!important;font-size:18px!important
+  }
+  body:not(.nativeTv) .playerView.open .playerPlayCtrl .playerCtrlIcon{
+    width:48px!important;height:48px!important;margin-top:-4px!important;font-size:22px!important
+  }
+  body:not(.nativeTv) .playerView.open .playerCircleCtrl small{
+    font-size:9px!important;color:#fff!important;text-shadow:0 1px 2px #000!important
+  }
+  body:not(.nativeTv) .playerView.open .playerUtilityControls{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;margin:6px auto 0!important;max-width:620px!important
+  }
+  body:not(.nativeTv) .playerView.open .playerUtilityCtrl{
+    min-height:38px!important;padding:5px 9px!important;border-radius:11px!important;background:rgba(10,20,32,.86)!important
+  }
+  body:not(.nativeTv) .playerView.open .playerUtilityCtrl b{font-size:10px!important}
+  body:not(.nativeTv) .playerView.open .playerUtilityCtrl small{font-size:8px!important}
+  body:not(.nativeTv) .playerView.open .playerUtilityIcon{font-size:15px!important}
+  body:not(.nativeTv) .playerView.open #playerError{display:none!important}
+}
+
 /* Light / dark appearance */
 body.darkMode{background:#07111b!important;color:#eaf5ff}
 body.darkMode .app{background:#08131e!important;border-color:#17293a!important}
@@ -4183,6 +4231,19 @@ function updatePlayerPlaybackUi(){
   if(label)label.textContent=paused?(appLang==='en'?'Play':'Включить'):(appLang==='en'?'Pause':'Пауза');
   if(btn)btn.title=paused?'Включить':'Пауза';
 }
+function syncMobileLandscapePlayerUi(){
+  if(nativeTv)return;
+  const v=document.getElementById('video');
+  const player=document.getElementById('playerView');
+  if(!v||!player)return;
+  const landscape=window.matchMedia&&window.matchMedia('(orientation: landscape)').matches&&window.innerHeight<=520;
+  const active=player.classList.contains('open');
+  v.controls=!(landscape&&active);
+  document.body.classList.toggle('mobileLandscapePlayer',!!(landscape&&active));
+}
+window.addEventListener('resize',()=>setTimeout(syncMobileLandscapePlayerUi,60),{passive:true});
+window.addEventListener('orientationchange',()=>setTimeout(syncMobileLandscapePlayerUi,180),{passive:true});
+
 function togglePlayerPlayback(){
   const v=document.getElementById('video');
   if(!v)return;
