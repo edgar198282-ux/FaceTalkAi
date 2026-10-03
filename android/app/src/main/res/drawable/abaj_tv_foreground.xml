@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:left="8dp"
-        android:top="8dp"
-        android:right="8dp"
-        android:bottom="8dp">
+    <item>
         <bitmap
-            android:src="@drawable/abaj_tv_logo"
-            android:gravity="fill" />
+            android:src="@drawable/abaj_tv_launcher_safe"
+            android:gravity="fill"
+            android:antialias="true"
+            android:filter="true" />
     </item>
 </layer-list>

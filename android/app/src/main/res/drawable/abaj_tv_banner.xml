@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/abaj_tv_blue" />
-    <item>
-        <bitmap
-            android:src="@drawable/abaj_tv_logo"
-            android:gravity="center"
-            android:antialias="true"
-            android:filter="true" />
-    </item>
-</layer-list>
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/abaj_tv_tv_banner"
+    android:gravity="fill"
+    android:antialias="true"
+    android:filter="true" />
