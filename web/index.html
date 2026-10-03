@@ -2888,6 +2888,10 @@ function sampleBurnedAdFrame(ch){
 function startBurnedAdObserver(ch){
   stopBurnedAdObserver();
   if(!ch||ch.personal)return;
+  // On Android TV, canvas drawImage/getImageData forces a GPU->CPU readback
+  // from the live video surface and causes visible micro-jank on older boxes.
+  // Server-side ffmpeg observation already covers free-channel ad detection.
+  if(nativeTv)return;
   reportBurnedAdObserverState(ch,'started');
   burnedAdStateTimer=setTimeout(()=>{
     if(!burnedAdFirstFrameSent&&current&&current.id===ch.id){
