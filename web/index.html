@@ -2898,7 +2898,7 @@ function tryNextTvDirect(ch){
 function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
-  const waitMs=Number(ch.backup_count||0)>0?2000:4500;
+  const waitMs=Number(ch.backup_count||0)>0?3500:6000;
   firstFrameTimer=setTimeout(()=>{
     firstFrameTimer=null;
     if(token!==streamAttemptToken||!current||current.id!==ch.id)return;
@@ -2915,36 +2915,6 @@ function armFirstFrameTimer(ch,preferBackup,token){
   },waitMs);
 }
 const tvPreconnectedOrigins=new Map();
-let tvPrimeTimer=null;
-let tvPrimedChannel='';
-let tvPrimedUrl='';
-function scheduleTvChannelPrime(ch){
-  if(!nativeTv||!ch||ch.personal||tvPlayerMode!=='system')return;
-  if(tvPrimeTimer){clearTimeout(tvPrimeTimer);tvPrimeTimer=null}
-  tvPrimeTimer=setTimeout(()=>{
-    tvPrimeTimer=null;
-    const player=document.getElementById('playerView');
-    if(player&&player.classList.contains('open'))return;
-    const url=tvDirectUrls(ch)[0]||'';
-    if(!url)return;
-    const v=document.getElementById('video');
-    if(!v)return;
-    try{
-      v.controls=false;
-      v.preload='auto';
-      if(tvPrimedUrl!==url){
-        v.pause();
-        v.src=url;
-        v.load();
-      }
-      tvPrimedChannel=String(ch.id||'');
-      tvPrimedUrl=url;
-    }catch(e){
-      tvPrimedChannel='';
-      tvPrimedUrl='';
-    }
-  },300);
-}
 function warmTvDirectConnection(ch){
   if(!nativeTv||!ch||ch.personal||!ch.url)return;
   try{
@@ -3084,6 +3054,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   const err=document.getElementById('playerError');
   err.textContent='';
   if(hls){hls.destroy();hls=null}
+  v.pause();v.removeAttribute('src');v.load();
   const basePath=ch.personal?'/api/iptv/edem/play':'/api/iptv/play';
   const auth=ch.personal?authHeaders():{};
   const directUrls=tvDirectUrls(ch);
@@ -3098,16 +3069,6 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   }
   const directSrc=directUrls[Math.min(tvDirectAttemptIndex,Math.max(0,directUrls.length-1))]||'';
   const src=(nativeTv&&!ch.personal&&directSrc)?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
-  const reusePrimed=nativeTv&&tvPlayerMode==='system'&&!ch.personal&&!preferBackup&&tvPrimedChannel===String(ch.id||'')&&tvPrimedUrl===directSrc;
-  if(!reusePrimed){
-    v.pause();
-    v.removeAttribute('src');
-    v.load();
-    if(nativeTv){
-      tvPrimedChannel='';
-      tvPrimedUrl='';
-    }
-  }
   resetQualityMenu();
 
   const useHlsJs=tvPlayerMode!=='system'&&window.Hls&&Hls.isSupported();
@@ -3217,8 +3178,8 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         .then(()=>{streamRetries=0;markFrameReady()})
         .catch(()=>scheduleReconnect(ch));
     }else{
-      if(!reusePrimed){v.src=src;v.load()}
-      v.play().then(()=>{streamRetries=0;tvPrimedChannel='';tvPrimedUrl='';markFrameReady()}).catch(()=>{
+      v.src=src;v.load();
+      v.play().then(()=>{streamRetries=0;markFrameReady()}).catch(()=>{
         if(tryNextTvDirect(ch))return;
         scheduleReconnect(ch,true);
       });
@@ -3586,19 +3547,13 @@ function tvNativeRemote(action){
 document.addEventListener('focusin',e=>{
   if(!nativeTv||!tvMode)return;
   const card=e.target&&e.target.closest?e.target.closest('.channel'):null;
-  if(!card){
-    if(tvPrimeTimer){clearTimeout(tvPrimeTimer);tvPrimeTimer=null}
-    return;
-  }
+  if(!card)return;
   const cards=[...document.querySelectorAll('.channel')];
   const idx=cards.indexOf(card);
   if(idx>=0){
     focusIndex=idx;
     const focusedChannel=channels.find(x=>String(x.id)===String(card.dataset.id));
-    if(focusedChannel){
-      warmTvDirectConnection(focusedChannel);
-      scheduleTvChannelPrime(focusedChannel);
-    }
+    if(focusedChannel)warmTvDirectConnection(focusedChannel);
     cards.forEach((x,i)=>x.classList.toggle('focused',i===idx));
     if(!tvHeaderCollapsed)setTvHeaderCollapsed(true,false);
     const content=document.getElementById('content');
