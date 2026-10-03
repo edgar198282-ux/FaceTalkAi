@@ -3129,6 +3129,10 @@ function tryNextTvDirect(ch){
     tvDirectAttemptIndex=0;
   }
   if(tvDirectAttemptIndex+1>=urls.length)return false;
+  // Avoid walking through long backup lists (some channels have 20+) and
+  // visibly reloading the player over and over. One verified backup is enough
+  // for an automatic recovery attempt; later health scans can reorder sources.
+  if(tvDirectAttemptIndex>=1)return false;
   tvDirectAttemptIndex++;
   startStream(ch,true,false);
   return true;
@@ -3154,7 +3158,9 @@ function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
   const usingHls=tvShouldUseHls(ch);
-  const waitMs=tvForceSystemForChannel(ch)?6500:(usingHls?(Number(ch.backup_count||0)>0?3200:5000):1800);
+  // Real TV telemetry shows normal HLS first frames commonly need 5-8s.
+  // Do not fail over before a healthy stream has had time to produce video.
+  const waitMs=tvForceSystemForChannel(ch)?18000:(usingHls?12000:10000);
   firstFrameTimer=setTimeout(()=>{
     firstFrameTimer=null;
     if(token!==streamAttemptToken||!current||current.id!==ch.id)return;
@@ -3555,7 +3561,8 @@ function scheduleReconnect(ch,preferBackup=false){
   clearFirstFrameTimer();
   const err=document.getElementById('playerError');
   if(reconnectTimer)return;
-  if(streamRetries>=5){
+  const retryLimit=nativeTv?1:5;
+  if(streamRetries>=retryLimit){
     err.textContent='Поток временно недоступен. Попробуйте следующий канал.';
     return;
   }
