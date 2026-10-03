@@ -250,6 +250,77 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
 .nativeTv .channel .next{font-size:10px!important}
 .nativeTv .channel .side{padding:0 7px 6px!important}
 
+/* TV home redesign */
+.nativeTv .top{
+  padding:16px 24px 12px!important;
+  background:linear-gradient(180deg,hsl(var(--theme-hue) 82% 61% / .98),hsl(var(--theme-hue) 78% 55% / .94))!important;
+  box-shadow:0 10px 28px rgba(0,42,92,.14)!important
+}
+.nativeTv .titleRow{min-height:56px}
+.nativeTv .brandLogo{width:58px;height:58px;border-radius:15px!important}
+.nativeTv .title{font-size:34px!important;letter-spacing:.6px}
+.nativeTv .icons{gap:10px}
+.nativeTv #listBtn,.nativeTv #refreshBtn{display:none!important}
+.nativeTv .tvTopAction{
+  width:auto!important;height:46px!important;min-width:142px!important;padding:0 18px!important;border-radius:14px!important;
+  gap:9px!important;background:rgba(5,55,104,.78)!important;border:1px solid rgba(255,255,255,.16)!important;
+  font-size:20px!important;font-weight:850!important
+}
+.nativeTv .tvTopAction span{display:inline!important;font-size:17px}
+.tvClock{display:none}
+.nativeTv .tvClock{display:flex;align-items:center;justify-content:center;min-width:74px;color:#fff;font-size:23px;font-weight:850}
+.nativeTv .toolbar{display:none!important}
+.nativeTv .modeChips{order:1;gap:10px!important;padding-top:10px!important}
+.nativeTv .modeChips .chip{height:42px!important;min-height:42px!important;padding:0 18px!important;font-size:16px!important;border-radius:13px!important}
+.nativeTv .modeChips .favOnly{width:auto!important;min-width:148px!important;gap:8px}
+.nativeTv .modeChips .favOnly::before{font-size:20px}
+.nativeTv .favText{display:inline!important;font-size:16px}
+.favText{display:none}
+.nativeTv .countryChips{
+  display:none!important;gap:9px!important;padding-top:8px!important;
+  animation:countryDrop .12s ease-out
+}
+.nativeTv.countryPanelOpen .countryChips{display:flex!important}
+.nativeTv .countryChips .chip{width:auto!important;min-width:56px!important;height:40px!important;border-radius:13px!important}
+.nativeTv .countriesBtn.active{background:#087fe1!important;color:#fff!important;border-color:#6ed0ff!important}
+@keyframes countryDrop{from{opacity:.3;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.nativeTv .quickCats{gap:10px!important;padding-top:9px!important}
+.nativeTv .quickCats .cat{height:40px!important;padding:0 19px!important;font-size:16px!important;border-radius:13px!important}
+.nativeTv .content{padding:0 20px 46px!important}
+.nativeTv .list{gap:14px!important;padding:14px 0 72px!important}
+.nativeTv .channel{min-height:168px!important;border-radius:18px!important}
+.nativeTv .channel .logoWrap{height:112px!important}
+.nativeTv .channel .logo{max-height:72px!important}
+.nativeTv .gridChannelName{min-height:38px!important;font-size:15px!important;padding:8px 10px!important}
+.nativeTv .channel.focused,.nativeTv .channel:focus{
+  transform:scale(1.012)!important;
+  border-color:#ffc629!important;
+  box-shadow:0 0 0 3px #ffc629,0 10px 24px rgba(0,40,80,.24)!important
+}
+.tvHelpBar{display:none}
+.nativeTv .tvHelpBar{
+  position:fixed;left:0;right:0;bottom:0;z-index:25;height:42px;display:flex;align-items:center;gap:28px;
+  padding:0 24px;background:rgba(3,20,36,.92);color:#eef8ff;font-size:13px;font-weight:750;
+  border-top:1px solid rgba(120,190,235,.18);backdrop-filter:blur(10px);pointer-events:none
+}
+
+/* TV settings as a right-side panel */
+.nativeTv #tvSettingsModal{
+  align-items:stretch!important;justify-content:flex-end!important;padding:0!important;background:rgba(0,10,20,.50)!important
+}
+.nativeTv #tvSettingsModal .settingsCard{
+  width:min(430px,42vw)!important;height:100vh!important;max-height:none!important;margin:0!important;
+  border-radius:20px 0 0 20px!important;padding:20px 18px 28px!important;
+  box-shadow:-20px 0 60px rgba(0,0,0,.30)!important
+}
+.nativeTv #tvSettingsModal .settingsTitle{font-size:25px!important;margin-bottom:14px!important}
+.nativeTv #tvSettingsModal .settingsAction,
+.nativeTv #tvSettingsModal .settingsClose,
+.nativeTv #tvSettingsModal .settingsLang button,
+.nativeTv #tvSettingsModal .appearanceToggle button{
+  min-height:46px!important;font-size:15px!important;border-radius:11px!important
+}
+
 /* Light / dark appearance */
 body.darkMode{background:#07111b!important;color:#eaf5ff}
 body.darkMode .app{background:#08131e!important;border-color:#17293a!important}
@@ -270,6 +341,10 @@ body.darkMode .adminRow,body.darkMode .themePicker,body.darkMode .deviceManager{
 body.darkMode .deviceRow{background:#0f1d2a!important;border-color:#28445a!important}
 body.darkMode .deviceName{color:#eef8ff!important}
 body.darkMode .deviceMeta,body.darkMode .themePickerHead,body.darkMode .deviceManagerHead{color:#9eb7c8!important}
+body.darkMode.nativeTv .top{background:linear-gradient(180deg,rgba(6,20,35,.98),rgba(7,27,45,.95))!important}
+body.darkMode.nativeTv .tvTopAction{background:#0e2941!important}
+body.darkMode.nativeTv .channel{background:#0d1c2b!important;border-color:#203a50!important}
+body.darkMode.nativeTv .channel.focused,body.darkMode.nativeTv .channel:focus{border-color:#ffc629!important;box-shadow:0 0 0 3px #ffc629,0 12px 28px rgba(0,0,0,.45)!important}
 .appearanceToggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 4px}
 .appearanceToggle button{border:1px solid #b9dff5;border-radius:12px;padding:11px 10px;background:#e8f5ff;color:#0b5f9e;font-weight:850}
 .appearanceToggle button.active{background:#087fe1;color:#fff;border-color:#087fe1}
@@ -342,8 +417,10 @@ body.darkMode .appearanceToggle button.active{background:#087fe1;color:#fff;bord
       </div>
       <div class="icons">
         <button id="listBtn" class="iconBtn active" onclick="toggleLayoutMode()" title="Список / Плитка">☷</button>
-        <button class="iconBtn" onclick="refreshChannels()" title="Обновить">↻</button>
-        <button id="tvSettingsBtn" class="iconBtn" onclick="openTvSettings()" title="Настройки">⚙</button>
+        <button id="refreshBtn" class="iconBtn" onclick="refreshChannels()" title="Обновить">↻</button>
+        <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск">⌕ <span>Поиск</span></button>
+        <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="openTvSettings()" title="Настройки">⚙ <span>Настройки</span></button>
+        <div id="tvClock" class="tvClock"></div>
       </div>
     </div>
     <div class="toolbar">
@@ -361,13 +438,14 @@ body.darkMode .appearanceToggle button.active{background:#087fe1;color:#fff;bord
       <button class="chip flagOnly" data-filter="MD" onclick="setModeFilter(this,'MD')" title="Молдова" aria-label="Молдова">🇲🇩</button>
     </div>
     <div class="modeChips" id="modeChips">
-      <button class="chip favOnly" data-filter="fav" onclick="setModeFilter(this,'fav')" title="Избранное" aria-label="Избранное"></button>
-      <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">ALL</button>
+      <button class="chip favOnly" data-filter="fav" onclick="setModeFilter(this,'fav')" title="Избранное" aria-label="Избранное"><span class="favText">Избранное</span></button>
+      <button class="chip active" data-filter="all" onclick="setModeFilter(this,'all')">Все</button>
       <button class="chip" data-filter="HD" onclick="setModeFilter(this,'HD')">HD</button>
-      <button class="chip" data-filter="4K" onclick="setModeFilter(this,'4K')">4K</button>
       <button class="chip" data-filter="FHD" onclick="setModeFilter(this,'FHD')">FHD</button>
+      <button class="chip" data-filter="4K" onclick="setModeFilter(this,'4K')">4K</button>
+      <button class="chip" data-filter="recent" onclick="setModeFilter(this,'recent')">Недавние</button>
+      <button id="countriesBtn" class="chip countriesBtn" onclick="toggleCountryFilters()">🌐 Страны</button>
       <button id="adultChip" class="chip adultChip" data-filter="adult" onclick="setModeFilter(this,'adult')">18+</button>
-      <button class="chip" data-filter="recent" onclick="setModeFilter(this,'recent')">↺ RECENT</button>
     </div>
     <div class="quickCats" id="quickCats"></div>
     <div class="status" id="status">Загрузка каналов…</div>
@@ -376,6 +454,9 @@ body.darkMode .appearanceToggle button.active{background:#087fe1;color:#fff;bord
   <main class="content" id="content">
     <div class="list" id="list"></div>
   </main>
+  <div class="tvHelpBar" id="tvHelpBar">
+    <span>◈ Выбор</span><span>OK Открыть</span><span>OK долго — Избранное</span><span>← Назад — шапка</span>
+  </div>
 </div>
 
 <div class="settingsModal" id="supportAdminModal" onclick="if(event.target===this)closeSupportAdmin()">
@@ -1839,6 +1920,7 @@ function setSourceFilter(btn,v){
   focusFirstChannelAfterFilter();
 }
 function setModeFilter(btn,v){
+  if(nativeTv&&value!=='country'){document.body.classList.remove('countryPanelOpen');const cb=document.getElementById('countriesBtn');if(cb)cb.classList.remove('active');}
   if(v==='adult'&&!adultEnabled)return;
   modeFilter=v;
   const isCountry=COUNTRY_FILTERS.has(v);
@@ -2185,6 +2267,27 @@ async function load(){
     if(!channels.length)document.getElementById('status').textContent=(UI_TEXT[appLang]||UI_TEXT.ru).loadError;
   }
 }
+function toggleCountryFilters(){
+  if(!nativeTv)return;
+  const open=!document.body.classList.contains('countryPanelOpen');
+  document.body.classList.toggle('countryPanelOpen',open);
+  const btn=document.getElementById('countriesBtn');
+  if(btn)btn.classList.toggle('active',open);
+  if(open){
+    setTimeout(()=>{
+      const first=document.querySelector('#countryChips .chip');
+      if(first){try{first.focus({preventScroll:true})}catch(_){}}
+    },40);
+  }
+}
+function updateTvClock(){
+  const el=document.getElementById('tvClock');
+  if(!el)return;
+  try{el.textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});}catch(e){}
+}
+updateTvClock();
+setInterval(updateTvClock,30000);
+
 function buildQuickCats(groups){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
   const preferred=['General','News','Sports','Movies','Kids','Music'];
