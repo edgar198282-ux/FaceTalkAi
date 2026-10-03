@@ -3071,7 +3071,13 @@ function reportPlaybackMetric(event,ch,extra={}){
   }).catch(()=>{});
 }
 function tvDirectUrls(ch){
-  return [String(ch&&ch.url||''),...(Array.isArray(ch&&ch.backups)?ch.backups:[])].filter(Boolean);
+  const urls=[String(ch&&ch.url||''),...(Array.isArray(ch&&ch.backups)?ch.backups:[])].filter(Boolean);
+  if(!nativeTv||!ch)return urls;
+  const isYerkir=String(ch.tvg_id||'').toLowerCase()==='yerkirmedia.am'||String(ch.name||'').trim().toLowerCase()==='yerkir media';
+  if(isYerkir)return urls;
+  const https=urls.filter(u=>/^https:\/\//i.test(u));
+  const other=urls.filter(u=>!/^https:\/\//i.test(u));
+  return https.length?[...https,...other]:urls;
 }
 function reportTvStreamFailure(ch,reason){
   if(!nativeTv||!ch||ch.personal)return;
@@ -3109,12 +3115,16 @@ function tryNextTvDirect(ch){
 }
 function tvUseHlsForChannel(ch){
   if(!nativeTv||!ch)return false;
-  if(String(ch.tvg_id||'').toLowerCase()==='yerkirmedia.am')return true;
-  if(String(ch.name||'').trim().toLowerCase()==='yerkir media')return true;
   return tvHlsFallbackChannels.has(String(ch.id||''));
+}
+function tvForceSystemForChannel(ch){
+  if(!nativeTv||!ch)return false;
+  return String(ch.tvg_id||'').toLowerCase()==='yerkirmedia.am'||
+    String(ch.name||'').trim().toLowerCase()==='yerkir media';
 }
 function tvShouldUseHls(ch){
   if(!nativeTv)return tvPlayerMode!=='system';
+  if(tvForceSystemForChannel(ch))return false;
   if(tvPlayerMode==='system')return false;
   return true;
 }
@@ -3122,7 +3132,7 @@ function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
   const usingHls=tvShouldUseHls(ch);
-  const waitMs=usingHls?(Number(ch.backup_count||0)>0?3200:5000):1800;
+  const waitMs=tvForceSystemForChannel(ch)?6500:(usingHls?(Number(ch.backup_count||0)>0?3200:5000):1800);
   firstFrameTimer=setTimeout(()=>{
     firstFrameTimer=null;
     if(token!==streamAttemptToken||!current||current.id!==ch.id)return;
@@ -3130,7 +3140,7 @@ function armFirstFrameTimer(ch,preferBackup,token){
     const wrap=document.querySelector('.videoWrap');
     if((wrap&&wrap.classList.contains('frameReady'))||(v&&v.readyState>=2&&!v.paused))return;
     const err=document.getElementById('playerError');
-    if(nativeTv&&tvPlayerMode!=='hls'&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
+    if(nativeTv&&tvPlayerMode!=='hls'&&!tvForceSystemForChannel(ch)&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
       playbackFallbackCount++;
       tvHlsFallbackChannels.add(String(ch.id||''));
       if(err)err.textContent='Пробую совместимый плеер…';
@@ -3457,7 +3467,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         v.addEventListener('canplay',confirmPlayback);
         setTimeout(confirmPlayback,120);
       }).catch(()=>{
-        if(nativeTv&&tvPlayerMode!=='hls'&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
+        if(nativeTv&&tvPlayerMode!=='hls'&&!tvForceSystemForChannel(ch)&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
           playbackFallbackCount++;
           tvHlsFallbackChannels.add(String(ch.id||''));
           err.textContent='Пробую совместимый плеер…';
