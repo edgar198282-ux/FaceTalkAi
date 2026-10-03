@@ -759,6 +759,10 @@ async function ensureTvPairing(){
 async function loadSyncedState(force=false){
   if(syncPullBusy)return;
   syncPullBusy=true;
+  const beforeFav=[...favs].sort().join('|');
+  const beforeRecent=recent.join('|');
+  const beforeLayout=layout;
+  const beforeTvMode=tvMode;
   try{
     const r=await fetch('/api/iptv/state',{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return;
@@ -791,7 +795,10 @@ async function loadSyncedState(force=false){
     syncUpdatedAt=Math.max(syncUpdatedAt,serverUpdated);
     syncReady=true;
     applyUiMode();
-    render();
+    const visualChanged=beforeFav!==[...favs].sort().join('|')||
+      (modeFilter==='recent'&&beforeRecent!==recent.join('|'))||
+      beforeLayout!==layout||beforeTvMode!==tvMode;
+    if(!nativeTv||force||visualChanged)render();
     if(nativeTv&&lastChannelId&&!current&&document.visibilityState==='visible'){
       const last=channels.find(x=>x.id===lastChannelId);
       if(last&&!document.getElementById('tvPair').classList.contains('open')){
