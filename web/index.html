@@ -3285,6 +3285,21 @@ function startTvWatchdog(ch){
   },4000);
 }
 
+function tvChannelTargetHeight(ch){
+  if(!ch)return 0;
+  const h=Number(ch.height||ch.reported_height||0);
+  if(h>=2000||String(ch.quality||'').toUpperCase()==='4K')return 2160;
+  if(h>=900||String(ch.quality||'').toUpperCase()==='FHD')return 1080;
+  if(h>=650||String(ch.quality||'').toUpperCase()==='HD')return 720;
+  return 0;
+}
+function tvInitialAbrEstimate(ch){
+  const h=tvChannelTargetHeight(ch);
+  if(h>=2000)return 14000000;
+  if(h>=900)return 6500000;
+  if(h>=650)return 3500000;
+  return 1800000;
+}
 function startStream(ch,preferBackup=false,forceProxy=false){
   stopTvWatchdog();
   clearFirstFrameTimer();
@@ -3375,7 +3390,8 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       manifestLoadingTimeOut:nativeTv?6000:10000,
       levelLoadingTimeOut:nativeTv?6000:10000,
       fragLoadingTimeOut:nativeTv?9000:14000,
-      capLevelToPlayerSize:true
+      capLevelToPlayerSize:true,
+      abrEwmaDefaultEstimate:nativeTv?tvInitialAbrEstimate(ch):500000
     });
     if(ch.personal){
       fetch(src,{headers:auth,cache:'no-store'})
@@ -3404,15 +3420,22 @@ function startStream(ch,preferBackup=false,forceProxy=false){
     hls.on(Hls.Events.MANIFEST_PARSED,()=>{
       streamRetries=0;
       updateQualityMenu();
-      if(tvPreferredQuality!=='auto'){
-        const target=parseInt(tvPreferredQuality,10);
-        if(Number.isFinite(target)&&hls&&Array.isArray(hls.levels)){
+      if(hls&&Array.isArray(hls.levels)){
+        const target=tvPreferredQuality!=='auto'?parseInt(tvPreferredQuality,10):(nativeTv?tvChannelTargetHeight(ch):0);
+        if(Number.isFinite(target)&&target>0){
           let best=-1,bestDiff=1e9;
           hls.levels.forEach((lvl,i)=>{
             const h=Number(lvl.height||0); if(!h)return;
-            const diff=Math.abs(h-target); if(diff<bestDiff){bestDiff=diff;best=i}
+            const diff=Math.abs(h-target);
+            if(diff<bestDiff){bestDiff=diff;best=i}
           });
-          if(best>=0)hls.currentLevel=best;
+          if(best>=0){
+            if(tvPreferredQuality!=='auto')hls.currentLevel=best;
+            else{
+              hls.nextAutoLevel=best;
+              hls.loadLevel=best;
+            }
+          }
         }
       }
       v.play().then(()=>{
