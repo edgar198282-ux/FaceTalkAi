@@ -136,7 +136,21 @@ button{cursor:pointer}
   align-items:center;justify-content:center;padding:0
 }
 .playerView.miniPlayer .miniPlayerClose{display:flex!important}
-.playerView.miniPlayer .videoWrap{touch-action:manipulation}
+.playerView.miniPlayer .videoWrap{touch-action:none}
+.playerView.nativePip{
+  position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;
+  z-index:2147483640!important;background:#000!important;display:flex!important
+}
+.playerView.nativePip .playerTop,
+.playerView.nativePip .playerBottom,
+.playerView.nativePip .playerChannelHud,
+.playerView.nativePip .channelRail,
+.playerView.nativePip .playerBrand,
+.playerView.nativePip #playerError,
+.playerView.nativePip .playerGestureHint,
+.playerView.nativePip .miniPlayerClose{display:none!important}
+.playerView.nativePip .videoWrap{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;background:#000!important}
+.playerView.nativePip video{width:100%!important;height:100%!important;object-fit:contain!important;background:#000!important}
 body.playerMiniActive{overflow:auto!important}
 .playerView.appFullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;transform:none!important;z-index:1000!important;background:#000!important}
 .playerView.appFullscreen .playerTop,.playerView.appFullscreen .playerBottom{display:none!important}
@@ -2437,7 +2451,7 @@ function installPlayerTouchGestures(){
     e.preventDefault();
     if(mode==='v'){
       const totalDy=p.clientY-sy;
-      if(totalDy>36&&Math.abs(totalDy)>Math.abs(dx)*1.15){
+      if(totalDy<-36&&Math.abs(totalDy)>Math.abs(dx)*1.15){
         miniCandidate=true;
         return;
       }
@@ -2462,7 +2476,7 @@ function installPlayerTouchGestures(){
       playerGestureSuppressClickUntil=Date.now()+450;
       if(dx<0){showPlayerGestureHint('Канал ▶');playNext();}
       else{showPlayerGestureHint('◀ Канал');playPrev();}
-    }else if(mode==='v'&&dy>=90&&Math.abs(dy)>Math.abs(dx)*1.15&&Date.now()-startedAt<1800){
+    }else if(mode==='v'&&dy<=-90&&Math.abs(dy)>Math.abs(dx)*1.15&&Date.now()-startedAt<1800){
       e.preventDefault();
       playerGestureSuppressClickUntil=Date.now()+500;
       minimizePlayer();
@@ -2552,7 +2566,7 @@ function installPlayerMinimizeGesture(){
     const p=e.changedTouches&&e.changedTouches[0];
     if(!p)return;
     const dx=p.clientX-sx,dy=p.clientY-sy;
-    if(dy>=70&&Math.abs(dy)>Math.abs(dx)*1.05&&Date.now()-startedAt<1800){
+    if(dy<=-70&&Math.abs(dy)>Math.abs(dx)*1.05&&Date.now()-startedAt<1800){
       e.preventDefault();
       e.stopPropagation();
       playerGestureSuppressClickUntil=Date.now()+650;
@@ -2562,6 +2576,61 @@ function installPlayerMinimizeGesture(){
   player.addEventListener('touchcancel',()=>{active=false},{passive:true,capture:true});
 }
 installPlayerMinimizeGesture();
+
+function installMiniPlayerDrag(){
+  const player=document.getElementById('playerView');
+  if(!player||player.dataset.miniDragReady==='1')return;
+  player.dataset.miniDragReady='1';
+  let active=false,moved=false,sx=0,sy=0,startLeft=0,startTop=0;
+  player.addEventListener('touchstart',e=>{
+    if(!player.classList.contains('miniPlayer')||e.touches.length!==1)return;
+    if(e.target&&e.target.closest&&e.target.closest('.miniPlayerClose'))return;
+    const p=e.touches[0],r=player.getBoundingClientRect();
+    active=true;moved=false;sx=p.clientX;sy=p.clientY;startLeft=r.left;startTop=r.top;
+  },{passive:true});
+  player.addEventListener('touchmove',e=>{
+    if(!active||e.touches.length!==1)return;
+    const p=e.touches[0],dx=p.clientX-sx,dy=p.clientY-sy;
+    if(Math.hypot(dx,dy)>5)moved=true;
+    if(!moved)return;
+    e.preventDefault();
+    const w=player.offsetWidth,h=player.offsetHeight;
+    const left=Math.max(6,Math.min(window.innerWidth-w-6,startLeft+dx));
+    const top=Math.max(6,Math.min(window.innerHeight-h-6,startTop+dy));
+    player.style.left=left+'px';player.style.top=top+'px';
+    player.style.right='auto';player.style.bottom='auto';
+  },{passive:false});
+  player.addEventListener('touchend',e=>{
+    if(!active)return;
+    active=false;
+    if(moved){
+      e.preventDefault();e.stopPropagation();
+      playerGestureSuppressClickUntil=Date.now()+500;
+    }
+  },{passive:false});
+  player.addEventListener('touchcancel',()=>{active=false},{passive:true});
+}
+installMiniPlayerDrag();
+
+function setNativePlaybackActive(active){
+  try{
+    if(window.AbajNative&&typeof window.AbajNative.setPlaybackActive==='function')window.AbajNative.setPlaybackActive(!!active);
+  }catch(e){}
+}
+function enterNativePipUi(){
+  const player=document.getElementById('playerView');
+  if(!player||!player.classList.contains('open'))return;
+  player.classList.remove('miniPlayer','pureFullscreen','showPureControls','appFullscreen','tvFullscreen','videoFill');
+  player.style.left='';player.style.top='';player.style.right='';player.style.bottom='';
+  player.classList.add('nativePip');
+  document.body.classList.remove('playerMiniActive','playerFullscreenActive','mobileLandscapePlayer','playerClean');
+}
+function exitNativePipUi(){
+  const player=document.getElementById('playerView');
+  if(!player)return;
+  player.classList.remove('nativePip');
+  if(player.classList.contains('open'))showTvPlayerUi(true);
+}
 
 function addRecent(id,deferSync=false){
   recent=[id,...recent.filter(x=>x!==id)].slice(0,30);
@@ -3770,6 +3839,7 @@ function openPlayer(id){
   const loadingBrand=playerView.querySelector('.playerBrand');
   if(loadingBrand)loadingBrand.style.display='flex';
   playerView.classList.add('open');
+  setNativePlaybackActive(true);
   document.body.classList.remove('playerClean');
   if(nativeTv){
     playerView.classList.add('tvFullscreen');
@@ -4470,6 +4540,9 @@ function closePlayer(){
   playerView.classList.remove('videoFill');
   playerView.classList.remove('pureFullscreen');
   playerView.classList.remove('miniPlayer');
+  playerView.classList.remove('nativePip');
+  playerView.style.left='';playerView.style.top='';playerView.style.right='';playerView.style.bottom='';
+  setNativePlaybackActive(false);
   document.body.classList.remove('playerFullscreenActive');
   document.body.classList.remove('mobileLandscapePlayer');
   document.body.classList.remove('playerMiniActive');
