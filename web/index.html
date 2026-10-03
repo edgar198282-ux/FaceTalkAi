@@ -443,7 +443,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   </div>
   <div class="videoWrap" onclick="handlePlayerSurfaceClick(event)">
     <div class="playerBrand"><img class="playerLoadingLogo" src="/static/abaj_tv_logo.jpg" alt="ABAJ TV"></div>
-    <video id="video" controls playsinline webkit-playsinline></video>
+    <video id="video" controls preload="auto" playsinline webkit-playsinline></video>
     <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:linear-gradient(145deg,#07131f,#0d2740 55%,#103a5f);align-items:center;justify-content:center;text-align:center;color:white;padding:18px;box-sizing:border-box;pointer-events:none">
       <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;gap:0">
         <img src="/static/abaj_tv_logo.svg" alt="ABAJ TV" style="width:min(28vw,220px);height:min(28vw,220px);max-width:58%;max-height:26vh;object-fit:contain;filter:drop-shadow(0 12px 28px rgba(0,0,0,.35))" onerror="this.onerror=null;this.src='/static/abaj_tv_logo.jpg'">
@@ -2815,14 +2815,16 @@ function openPlayer(id){
     localStorage.setItem('iptv_previous_channel',previousChannelId);
   }
   current=ch;
-  const hudNow=document.getElementById('playerChannelHud');
-  if(hudNow){hudNow.dataset.shownOnce='1';updatePlayerChannelHud();}
   lastChannelId=ch.id;
   localStorage.setItem('iptv_last_channel',ch.id);
-  syncDirtyLast=true;
-  scheduleStateSync();
   streamRetries=0;
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
+  warmTvDirectConnection(ch);
+  startStream(ch);
+  const hudNow=document.getElementById('playerChannelHud');
+  if(hudNow){hudNow.dataset.shownOnce='1';updatePlayerChannelHud();}
+  syncDirtyLast=true;
+  scheduleStateSync();
   addRecent(ch.id);
   filteredNow=getFiltered();
   currentIndex=Math.max(0,filteredNow.findIndex(x=>x.id===id));
@@ -2845,7 +2847,6 @@ function openPlayer(id){
   }
   showTvZap(ch);
   if(!nativeTv&&window.innerWidth>window.innerHeight)setAppFullscreen(true);
-  startStream(ch);
   startFreeAdWatch(ch);
   renderRail();
   if(nativeTv){
@@ -2879,6 +2880,30 @@ function armFirstFrameTimer(ch,preferBackup,token){
     if(err)err.textContent='Канал долго запускается. Переподключаю…';
     scheduleReconnect(ch,true);
   },waitMs);
+}
+const tvPreconnectedOrigins=new Map();
+function warmTvDirectConnection(ch){
+  if(!nativeTv||!ch||ch.personal||!ch.url)return;
+  try{
+    const origin=new URL(String(ch.url),location.href).origin;
+    if(!/^https?:/i.test(origin)||tvPreconnectedOrigins.has(origin))return;
+    const dns=document.createElement('link');
+    dns.rel='dns-prefetch';
+    dns.href=origin;
+    document.head.appendChild(dns);
+    const pre=document.createElement('link');
+    pre.rel='preconnect';
+    pre.href=origin;
+    pre.crossOrigin='anonymous';
+    document.head.appendChild(pre);
+    tvPreconnectedOrigins.set(origin,[dns,pre]);
+    if(tvPreconnectedOrigins.size>8){
+      const first=tvPreconnectedOrigins.keys().next().value;
+      const nodes=tvPreconnectedOrigins.get(first)||[];
+      nodes.forEach(node=>{try{node.remove()}catch(e){}});
+      tvPreconnectedOrigins.delete(first);
+    }
+  }catch(e){}
 }
 function streamWarmKey(ch,preferBackup=false){
   return (ch&&ch.personal?'edem:':'free:')+String(ch&&ch.id||'')+(preferBackup?':b':'');
@@ -3468,6 +3493,8 @@ document.addEventListener('focusin',e=>{
   const idx=cards.indexOf(card);
   if(idx>=0){
     focusIndex=idx;
+    const focusedChannel=channels.find(x=>String(x.id)===String(card.dataset.id));
+    if(focusedChannel)warmTvDirectConnection(focusedChannel);
     cards.forEach((x,i)=>x.classList.toggle('focused',i===idx));
     if(!tvHeaderCollapsed)setTvHeaderCollapsed(true,false);
     const content=document.getElementById('content');
