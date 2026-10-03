@@ -2419,8 +2419,9 @@ function installPlayerTouchGestures(){
       // directly here so controls always appear.
       e.preventDefault();
       playerGestureSuppressClickUntil=Date.now()+300;
-      pureTapHandledAt=Date.now();
-      playerGestureSuppressClickUntil=Date.now()+500;
+      const now=Date.now();
+      pureTapHandledAt=now;
+      playerGestureSuppressClickUntil=now+650;
       togglePureFullscreenControls();
     }
     mode='';
@@ -2448,19 +2449,6 @@ function handlePlayerSurfaceClick(event){
   showTvPlayerUi(true);
 }
 installPlayerTouchGestures();
-(()=>{
-  const wrap=document.querySelector('.videoWrap');
-  if(!wrap||wrap.dataset.pureTapReady==='1')return;
-  wrap.dataset.pureTapReady='1';
-  wrap.addEventListener('pointerup',e=>{
-    if(nativeTv||e.pointerType!=='touch')return;
-    const player=document.getElementById('playerView');
-    if(!player||!player.classList.contains('pureFullscreen'))return;
-    if(e.target&&e.target.closest&&e.target.closest('button,select,.channelRail'))return;
-    if(Date.now()-pureTapHandledAt<450)return;
-    togglePureFullscreenControls();
-  },{passive:true});
-})();
 function addRecent(id,deferSync=false){
   recent=[id,...recent.filter(x=>x!==id)].slice(0,30);
   saveRecent(deferSync);
