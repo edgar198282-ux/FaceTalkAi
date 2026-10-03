@@ -2543,27 +2543,17 @@ async def api_client_stream_failure(request):
     h["score"] = _health_score(failed_url)
     _stream_health[failed_url] = h
 
-    if failed_url == str(item.get("url") or ""):
-        backups = [str(x or "") for x in (item.get("backups") or []) if x and str(x) != failed_url]
-        usable = [x for x in backups if not _is_quarantined(x, now)]
-        if usable:
-            promoted = usable[0]
-            item["url"] = promoted
-            item["backups"] = [x for x in backups if x != promoted] + [failed_url]
-            item["backup_count"] = len(item["backups"])
-            item["last_failover"] = now
-            item["failed_url"] = failed_url
-            item["failover_count"] = int(item.get("failover_count") or 0) + 1
-        elif int(h.get("consecutive_failures") or 0) >= 3:
-            item["status"] = "OFFLINE"
-            item["error"] = reason
-
+    # A browser/TV playback failure can be client-specific (CORS, mixed content,
+    # decoder/WebView behavior). Record it for diagnostics, but do not reorder the
+    # global channel catalog or mark a stream offline from a single client report.
+    # The background IPTV scanner remains authoritative for source promotion/status.
     return web.json_response({
         "ok": True,
         "channel_id": cid,
         "promoted_url": str(item.get("url") or ""),
         "consecutive_failures": int(h.get("consecutive_failures") or 0),
         "status": str(item.get("status") or ""),
+        "catalog_unchanged": True,
     }, headers={"Cache-Control": "no-store"})
 
 
