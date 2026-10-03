@@ -141,6 +141,24 @@ button{cursor:pointer}
 .playerView.pureFullscreen #playerError{
   display:none!important;opacity:0!important;pointer-events:none!important
 }
+.playerView.pureFullscreen.showPureControls .playerBottom{
+  display:block!important;opacity:1!important;pointer-events:auto!important;
+  position:absolute!important;left:0!important;right:0!important;bottom:0!important;z-index:2147483600!important;
+  padding:24px 12px 8px!important;background:linear-gradient(0deg,rgba(0,0,0,.88),rgba(0,0,0,.48),rgba(0,0,0,0))!important
+}
+.playerView.pureFullscreen.showPureControls .playerTimeline,
+.playerView.pureFullscreen.showPureControls .playerPrimaryControls{
+  display:block!important;opacity:1!important;pointer-events:auto!important
+}
+.playerView.pureFullscreen.showPureControls .playerPrimaryControls{
+  display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px!important;max-width:560px!important;margin:0 auto!important
+}
+.playerView.pureFullscreen.showPureControls .playerMeta{
+  display:flex!important;opacity:1!important;pointer-events:none!important;
+  position:absolute!important;left:12px!important;top:10px!important;z-index:2147483601!important;
+  width:auto!important;max-width:58vw!important;min-height:0!important;padding:7px 10px!important;border-radius:13px!important;
+  background:rgba(3,14,25,.72)!important
+}
 body.playerFullscreenActive{overflow:hidden!important;background:#000!important}
 .playerTop{
   height:58px;display:flex;align-items:center;gap:12px;padding:0 12px;background:rgba(0,0,0,.86)
@@ -880,7 +898,7 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
       </div>
     </div>
     <div class="playerTimeline" aria-hidden="true"><span id="playerTimelineFill"></span></div>
-    <div class="playerPrimaryControls" onclick="event.stopPropagation();showTvPlayerUi(true)">
+    <div class="playerPrimaryControls" onclick="event.stopPropagation();if(document.getElementById('playerView').classList.contains('pureFullscreen'))showPureFullscreenControls();else showTvPlayerUi(true)">
       <button class="ctrl playerCircleCtrl" onclick="playPrev()" title="Предыдущий канал"><span class="playerCtrlIcon">◀|</span><small>Пред. канал</small></button>
       <button id="playerFavAction" class="ctrl playerCircleCtrl" onclick="togglePlayerFavorite()" title="Избранное"><span class="playerCtrlIcon">♡</span><small>Избранное</small></button>
       <button id="playerPlayPause" class="ctrl playerCircleCtrl playerPlayCtrl" onclick="togglePlayerPlayback()" title="Пауза"><span class="playerCtrlIcon" id="playerPlayPauseIcon">Ⅱ</span><small id="playerPlayPauseLabel">Пауза</small></button>
@@ -2397,11 +2415,11 @@ function dismissMobilePlayerLoading(event){
 function handlePlayerSurfaceClick(event){
   if(Date.now()<playerGestureSuppressClickUntil)return;
   const player=document.getElementById('playerView');
+  if(event&&event.target&&event.target.closest&&event.target.closest('button,select,.channelRail'))return;
   if(player&&player.classList.contains('pureFullscreen')){
-    exitPureFullscreen();
+    showPureFullscreenControls();
     return;
   }
-  if(event&&event.target&&event.target.closest&&event.target.closest('button,select,.channelRail'))return;
   showTvPlayerUi(true);
 }
 installPlayerTouchGestures();
@@ -4335,11 +4353,12 @@ window.addEventListener('resize',()=>setTimeout(syncMobileLandscapePlayerUi,60),
 window.addEventListener('orientationchange',()=>setTimeout(syncMobileLandscapePlayerUi,180),{passive:true});
 document.addEventListener('fullscreenchange',()=>{
   const player=document.getElementById('playerView');
-  if(player&&player.classList.contains('pureFullscreen')&&!document.fullscreenElement&&!nativeTv){
-    player.classList.remove('pureFullscreen');
-    document.body.classList.remove('playerClean');
-    syncMobileLandscapePlayerUi();
-    showTvPlayerUi(true);
+  if(!player||nativeTv)return;
+  // Keep app-level pure fullscreen even if the browser/WebView exits its own
+  // fullscreen layer. Only Back or the Screen button should leave pure mode.
+  if(player.classList.contains('pureFullscreen')&&!document.fullscreenElement){
+    player.classList.add('appFullscreen');
+    document.body.classList.add('playerFullscreenActive');
   }
 });
 
@@ -4373,11 +4392,23 @@ function setAppFullscreen(on){
   player.classList.toggle('appFullscreen',!!on);
   document.body.classList.toggle('playerFullscreenActive',!!on);
 }
+let pureFullscreenControlsTimer=null;
+function showPureFullscreenControls(){
+  const player=document.getElementById('playerView');
+  if(!player||!player.classList.contains('pureFullscreen'))return;
+  player.classList.add('showPureControls');
+  if(pureFullscreenControlsTimer)clearTimeout(pureFullscreenControlsTimer);
+  pureFullscreenControlsTimer=setTimeout(()=>{
+    player.classList.remove('showPureControls');
+    pureFullscreenControlsTimer=null;
+  },6000);
+}
 async function enterPureFullscreen(){
   const player=document.getElementById('playerView');
   if(!player)return;
   player.classList.add('pureFullscreen','appFullscreen');
-  player.classList.remove('videoFill');
+  player.classList.remove('videoFill','showPureControls');
+  if(pureFullscreenControlsTimer){clearTimeout(pureFullscreenControlsTimer);pureFullscreenControlsTimer=null}
   document.body.classList.add('playerFullscreenActive','playerClean');
   if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
   const v=document.getElementById('video');
@@ -4398,7 +4429,8 @@ async function enterPureFullscreen(){
 async function exitPureFullscreen(){
   const player=document.getElementById('playerView');
   if(!player)return;
-  player.classList.remove('pureFullscreen');
+  player.classList.remove('pureFullscreen','showPureControls');
+  if(pureFullscreenControlsTimer){clearTimeout(pureFullscreenControlsTimer);pureFullscreenControlsTimer=null}
   document.body.classList.remove('playerClean');
   if(!nativeTv){
     try{
