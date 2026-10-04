@@ -6047,48 +6047,48 @@ async function loadCinemaCatalog(force=false){
     renderCinemaCatalog([]);
   }
 }
+window.__abajOpenExternalMedia=function(url,title){
+  const raw=String(url||'').trim();
+  if(!(raw.toLowerCase().startsWith('http://')||raw.toLowerCase().startsWith('https://')||raw.toLowerCase().startsWith('content:')))return;
+  const ch={
+    id:'cinema:external:'+Date.now(),
+    name:String(title||'Кино'),
+    url:raw,
+    backups:[],
+    personal:false,
+    quality:'',
+    height:0
+  };
+  try{
+    cinemaMode=true;
+    localStorage.setItem('abaj_cinema_mode','1');
+    syncCinemaUi();
+  }catch(e){}
+  openChannel(ch);
+};
 async function openCinemaMovie(item){
   if(!item)return;
   const status=document.getElementById('cinemaStatus');
-  let url=String(item.url||'').trim();
-  if(!url){
-    if(status)status.textContent='Подбираю поток…';
-    try{
-      const r=await fetch('/api/cinema/resolve',{
-        method:'POST',
-        headers:{'Content-Type':'application/json',...authHeaders()},
-        body:JSON.stringify({
-          title:String(item.title||''),
-          year:String(item.year||''),
-          type:item.kind||cinemaType,
-          id:String(item.id||''),
-          source:String(item.source||'lazy'),
-          intent:String(item.intent||'')
-        })
-      });
-      const d=await r.json();
-      if(r.ok&&d.ok&&d.url)url=String(d.url);
-      else{
-        if(status)status.textContent=d.error==='provider_not_configured'
-          ?'Нужно настроить разрешённый источник воспроизведения в админке.'
-          :'Поток для этого фильма не найден.';
-        return;
-      }
-    }catch(e){
-      if(status)status.textContent='Источник воспроизведения сейчас недоступен.';
-      return;
-    }
+  const direct=String(item.url||'').trim();
+  if(direct){
+    window.__abajOpenExternalMedia(direct,String(item.title||'Кино'));
+    return;
   }
-  const ch={
-    id:'cinema:'+String(item.id||Date.now()),
-    name:String(item.title||'Кино'),
-    url,
-    backups:[],
-    personal:false,
-    quality:String(item.quality||''),
-    height:Number(item.height||0)
-  };
-  openChannel(ch);
+
+  if(item.intent&&getLazyMediaInfo().installed){
+    try{
+      if(status)status.textContent='Открываю источник фильма…';
+      if(window.AbajNative&&typeof AbajNative.openLazyMediaIntent==='function'){
+        const opened=AbajNative.openLazyMediaIntent(String(item.intent));
+        if(opened){
+          if(status)status.textContent='Выберите источник воспроизведения. Поток вернётся в плеер Abaj TV.';
+          return;
+        }
+      }
+    }catch(e){}
+  }
+
+  if(status)status.textContent='Для этого фильма пока нет доступного потока.';
 }
 function toggleCinemaMode(){
   cinemaMode=!cinemaMode;

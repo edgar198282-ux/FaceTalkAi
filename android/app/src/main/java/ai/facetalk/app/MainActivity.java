@@ -87,6 +87,8 @@ public class MainActivity extends Activity {
     private volatile boolean pipPlaybackActive=false;
     private volatile boolean tvRecoveryQueued=false;
     private volatile long tvRecoveryStartedAt=0L;
+    private volatile String pendingExternalMediaUrl="";
+    private volatile String pendingExternalMediaTitle="";
     public final class AbajNativeBridge {
         @JavascriptInterface public int adjustVolume(int delta){
             AudioManager am=(AudioManager)getSystemService(Context.AUDIO_SERVICE);
@@ -370,6 +372,10 @@ public class MainActivity extends Activity {
                 if(url.endsWith(".apk")||url.contains("/api/app-download")){if(!BuildConfig.PLAY_STORE_BUILD)downloadAndInstallApk(url);return true;}
                 if("tg".equals(scheme)||"t.me".equals(host)||"telegram.me".equals(host)){openExternal(uri);return true;}
                 if(!"http".equals(scheme)&&!"https".equals(scheme)){openExternal(uri);return true;} return false; }
+            @Override public void onPageFinished(WebView view,String url){
+                super.onPageFinished(view,url);
+                deliverPendingExternalMedia();
+            }
         });
         if(!BuildConfig.PLAY_STORE_BUILD)registerApkDownloadReceiver();
         startTvHangWatchdog();
@@ -530,7 +536,36 @@ public class MainActivity extends Activity {
         webView.loadUrl(b+sep+"app=1&source="+source+tv+"&device_name="+Uri.encode(deviceName)+"&app_version="+Uri.encode(BuildConfig.VERSION_NAME)+"&app_version_code="+BuildConfig.VERSION_CODE+signedAuth+"&ota="+System.currentTimeMillis()+fragment);
         webView.requestFocus();
     }
-    private void consumeAuthIntent(Intent i){if(i!=null)consumeAuthUri(i.getData());}
+    private boolean consumeExternalMediaIntent(Intent i){
+        if(i==null||!Intent.ACTION_VIEW.equals(i.getAction()))return false;
+        Uri data=i.getData();
+        if(data==null)return false;
+        String scheme=data.getScheme()==null?"":data.getScheme().toLowerCase();
+        if("facetalk".equals(scheme))return false;
+        String type=i.getType()==null?"":i.getType().toLowerCase();
+        boolean mediaType=type.startsWith("video/")||type.contains("mpegurl")||type.contains("dash+xml");
+        String raw=data.toString();
+        String low=raw.toLowerCase();
+        boolean mediaUrl=low.contains(".m3u8")||low.contains(".mp4")||low.contains(".mkv")||low.contains(".webm")||low.contains(".mpd");
+        if(!mediaType&&!mediaUrl)return false;
+        pendingExternalMediaUrl=raw;
+        String title=i.getStringExtra(Intent.EXTRA_TITLE);
+        pendingExternalMediaTitle=title==null?"":title;
+        if(webView!=null)runOnUiThread(this::deliverPendingExternalMedia);
+        return true;
+    }
+    private void deliverPendingExternalMedia(){
+        if(webView==null)return;
+        String url=pendingExternalMediaUrl;
+        if(url==null||url.isEmpty())return;
+        String title=pendingExternalMediaTitle==null?"":pendingExternalMediaTitle;
+        pendingExternalMediaUrl="";
+        pendingExternalMediaTitle="";
+        String js="window.__abajOpenExternalMedia&&window.__abajOpenExternalMedia("+
+            JSONObject.quote(url)+","+JSONObject.quote(title)+");";
+        try{webView.evaluateJavascript(js,null);}catch(Exception ignored){}
+    }
+    private void consumeAuthIntent(Intent i){if(i!=null){consumeAuthUri(i.getData());consumeExternalMediaIntent(i);}}
     private void saveSignedAuth(String uid,String ts,String sig){if(uid==null||ts==null||sig==null||uid.isEmpty()||ts.isEmpty()||sig.isEmpty())return;prefs.edit().putString("ft_uid",uid).putString("ft_ts",ts).putString("ft_sig",sig).remove("app_auth_nonce").apply();}
     private void checkPendingAppAuth(){
         if(isTv||hasSignedAuth())return;
@@ -553,7 +588,15 @@ public class MainActivity extends Activity {
         },"abajtv-auth-check").start();
     }
     private void consumeAuthUri(Uri u){if(u==null||!"facetalk".equalsIgnoreCase(u.getScheme())||!"auth".equalsIgnoreCase(u.getHost()))return; String init=u.getQueryParameter("init_data"); String uid=u.getQueryParameter("ft_uid"); String ts=u.getQueryParameter("ft_ts"); String sig=u.getQueryParameter("ft_sig"); if((init==null||init.trim().isEmpty())&&(uid==null||uid.trim().isEmpty()))return; android.content.SharedPreferences.Editor ed=prefs.edit(); if(init!=null&&!init.trim().isEmpty())ed.putString("telegram_init_data",init); ed.apply(); saveSignedAuth(uid,ts,sig); telegramLaunchAttempted=true;Toast.makeText(this,"Telegram подключён",Toast.LENGTH_SHORT).show();}
-    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);consumeAuthIntent(intent);loadOrAuthorize();}
+    @Override protected void onNewIntent(Intent intent){
+        super.onNewIntent(intent);
+        setIntent(intent);
+        boolean media=consumeExternalMediaIntent(intent);
+        if(!media){
+            consumeAuthUri(intent==null?null:intent.getData());
+            loadOrAuthorize();
+        }
+    }
 
     private void checkForAppUpdate(boolean force,boolean showResult){String b=baseUrl(); if(b.isEmpty()||updateCheckRunning||updateDownloadRunning)return; long n=System.currentTimeMillis(); if(!force&&n-lastUpdateCheckAt<60000L)return; lastUpdateCheckAt=n;updateCheckRunning=true; new Thread(()->{HttpURLConnection c=null;try{URL u=new URL(b+"/api/app-release?ts="+System.currentTimeMillis());c=(HttpURLConnection)u.openConnection();c.setConnectTimeout(10000);c.setReadTimeout(10000);c.setUseCaches(false);c.setRequestProperty("Cache-Control","no-cache");int http=c.getResponseCode();if(http!=200)throw new IllegalStateException("HTTP "+http);BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream()));StringBuilder sb=new StringBuilder();String line;while((line=br.readLine())!=null)sb.append(line);br.close();JSONObject j=new JSONObject(sb.toString());boolean available=j.optBoolean("available",false);int latest=j.optInt("version_code",0);String download=j.optString("download_url",""); if(!available||latest<=0||download.isEmpty()){if(showResult)runOnUiThread(()->Toast.makeText(this,"Новая APK ещё не опубликована на сервер обновлений",Toast.LENGTH_LONG).show());return;} if(latest<=BuildConfig.VERSION_CODE){if(showResult)runOnUiThread(()->Toast.makeText(this,"Установлена последняя версия",Toast.LENGTH_LONG).show());return;} if(!showResult){int lastCode=prefs.getInt("last_auto_update_code",0);long lastAt=prefs.getLong("last_auto_update_at",0L);if(lastCode==latest&&System.currentTimeMillis()-lastAt<24L*60L*60L*1000L)return;} final String url=download.startsWith("http")?download:b+download; if(!showResult)prefs.edit().putInt("last_auto_update_code",latest).putLong("last_auto_update_at",System.currentTimeMillis()).apply();runOnUiThread(()->{if(!isFinishing()&&!updateDownloadRunning){Toast.makeText(this,"Найдено обновление Abaj TV. Загружаю…",Toast.LENGTH_LONG).show();downloadAndInstallApk(url);}});}catch(Exception e){if(showResult)runOnUiThread(()->Toast.makeText(this,"Сервер обновлений недоступен",Toast.LENGTH_LONG).show());}finally{updateCheckRunning=false;if(c!=null)c.disconnect();}},"abajtv-update-check").start();}
 
