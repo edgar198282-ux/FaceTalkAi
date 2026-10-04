@@ -157,28 +157,6 @@ public class MainActivity extends Activity {
                 if(nativeProbePlayer.isPlaying())nativeProbePlayer.pause();else nativeProbePlayer.play();
             });
         }
-        @JavascriptInterface public boolean openTeamCinema(){
-            if(!isTv)return false;
-            try{
-                Intent launch=getPackageManager().getLaunchIntentForPackage("com.smart.teamtv");
-                if(launch==null)return false;
-                runOnUiThread(()->{
-                    try{
-                        Intent vodIntent=new Intent(Intent.ACTION_VIEW,Uri.parse("com.smart.teamtv://vod"));
-                        vodIntent.setPackage("com.smart.teamtv");
-                        startActivity(vodIntent);
-                    }catch(Exception first){
-                        try{
-                            Intent fallback=getPackageManager().getLaunchIntentForPackage("com.smart.teamtv");
-                            if(fallback!=null)startActivity(fallback);
-                        }catch(Exception ignored){}
-                    }
-                });
-                return true;
-            }catch(Exception e){
-                return false;
-            }
-        }
     }
     private final Runnable periodicUpdateCheck=new Runnable(){
         @Override public void run(){
