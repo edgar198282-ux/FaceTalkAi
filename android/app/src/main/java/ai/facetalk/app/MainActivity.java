@@ -211,6 +211,8 @@ public class MainActivity extends Activity {
                 SearchManager.SUGGEST_COLUMN_TEXT_1,
                 SearchManager.SUGGEST_COLUMN_TEXT_2,
                 SearchManager.SUGGEST_COLUMN_INTENT_DATA,
+                SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA,
+                SearchManager.SUGGEST_COLUMN_INTENT_DATA_ID,
                 SearchManager.SUGGEST_COLUMN_ICON_1
             };
             Cursor cur=null;
@@ -229,6 +231,8 @@ public class MainActivity extends Activity {
                 int t1Col=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_TEXT_1);
                 int t2Col=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_TEXT_2);
                 int dataCol=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_INTENT_DATA);
+                int extraCol=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA);
+                int dataIdCol=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_INTENT_DATA_ID);
                 int iconCol=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_ICON_1);
                 int count=0;
                 while(cur.moveToNext()&&count<80){
@@ -237,6 +241,15 @@ public class MainActivity extends Activity {
                     if(t1Col>=0)o.put("title",cur.getString(t1Col));
                     if(t2Col>=0)o.put("subtitle",cur.getString(t2Col));
                     if(dataCol>=0)o.put("intent",cur.getString(dataCol));
+                    if(dataIdCol>=0)o.put("data_id",cur.getString(dataIdCol));
+                    if(extraCol>=0){
+                        String extra=cur.getString(extraCol);
+                        o.put("extra",extra);
+                        if(extra!=null){
+                            String low=extra.toLowerCase();
+                            if((low.startsWith("http://")||low.startsWith("https://"))&&(low.contains(".m3u8")||low.contains(".mp4")||low.contains(".mkv")||low.contains(".webm")))o.put("url",extra);
+                        }
+                    }
                     if(iconCol>=0)o.put("poster",cur.getString(iconCol));
                     out.put(o); count++;
                 }
