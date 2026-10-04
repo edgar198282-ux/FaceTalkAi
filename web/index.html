@@ -6418,7 +6418,7 @@ async function renderFilmixVideoOptions(group){
   if(!rows.length){
     const empty=document.createElement('div');
     empty.className='cinemaSourceEmpty';
-    empty.textContent='FILMIX не вернул список вариантов ВИДЕО.';
+    empty.textContent='FILMIX пока не вернул реальные варианты ВИДЕО.';
     list.appendChild(empty);
   }else{
     rows.forEach((row,i)=>{
@@ -6431,7 +6431,19 @@ async function renderFilmixVideoOptions(group){
       btn.appendChild(label);
       btn.appendChild(meta);
       btn.onclick=()=>{
-        const next={...baseItem,title:String(row?.name||baseItem?.title||''),subtitle:String(row?.name||''),filmix_voice_id:row?.id??null,filmix_voice_name:String(row?.name||'')};
+        const realUrl=String(row?.url||'').trim();
+        const format=String(row?.format||'').trim();
+        const quality=String(row?.quality||'').trim();
+        const next={
+          ...baseItem,
+          title:String(row?.name||baseItem?.title||''),
+          subtitle:String(row?.name||''),
+          filmix_voice_id:row?.id??null,
+          filmix_voice_name:String(row?.name||''),
+          url:realUrl||String(baseItem?.url||''),
+          quality:quality||String(baseItem?.quality||''),
+          content_type:format||String(baseItem?.content_type||'')
+        };
         renderCinemaFormatOptions(group,next);
       };
       list.appendChild(btn);
@@ -6503,13 +6515,6 @@ function renderCinemaFormatOptions(group,item){
   if(!formats.length&&(provider==='ZONA'||provider==='ZONAFILM')){
     formats.push({item,transport:'HLS',quality:'AUTO',label:'HLS · AUTO'});
     formats.push({item,transport:'DASH',quality:'AUTO',label:'DASH · AUTO'});
-  }
-  if(!formats.length&&provider==='FILMIX'){
-    const voice=String(item?.filmix_voice_name||item?.subtitle||item?.title||'').toUpperCase();
-    if(/4K|2160/.test(voice))formats.push({item,transport:'MP4',quality:'2160',label:'MP4 · 2160'});
-    if(/4K|2160|1080/.test(voice))formats.push({item,transport:'MP4',quality:'1080',label:'MP4 · 1080'});
-    if(/4K|2160|1080|720/.test(voice))formats.push({item,transport:'MP4',quality:'720',label:'MP4 · 720'});
-    formats.push({item,transport:'MP4',quality:'480',label:'MP4 · 480'});
   }
 
   list.innerHTML='';
@@ -6591,6 +6596,10 @@ async function openCinemaSourceGroup(index){
   if(!group.items.length)return;
 
   const provider=normalizeLazyProviderName(group.name);
+  if(provider==='FILMIX'&&!group.items.some(x=>String(x.url||'').trim())){
+    renderFilmixVideoOptions(group);
+    return;
+  }
 
   if(title)title.textContent=group.name+' · ВИДЕО';
   if(!list)return;
