@@ -6190,6 +6190,7 @@ async function showCinemaSourcePicker(item){
     }
   }
   cinemaSourcePickerItems=[...byProvider.values()];
+  if(title)title.textContent=String(item?.title||'Кино')+' · '+cinemaSourcePickerItems.length+' ист.';
   if(!list)return;
   if(!cinemaSourcePickerItems.length){
     list.innerHTML='<div class="cinemaSourceEmpty">Источники для этого фильма не найдены.</div>';
@@ -6202,7 +6203,12 @@ async function showCinemaSourcePicker(item){
     btn.dataset.sourceIndex=String(i);
     const name=cinemaProviderName(x);
     const direct=!!String(x.url||'').trim();
-    btn.innerHTML='<span>'+escapeHtml(name)+'</span><small>'+(direct?'Готов к воспроизведению в Abaj TV':'Источник найден через LazyMedia')+'</small>';
+    const label=document.createElement('span');
+    label.textContent=name;
+    const meta=document.createElement('small');
+    meta.textContent=direct?'Готов к воспроизведению в Abaj TV':'Источник найден через LazyMedia';
+    btn.appendChild(label);
+    btn.appendChild(meta);
     btn.onclick=()=>playCinemaSource(i);
     list.appendChild(btn);
   });
