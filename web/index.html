@@ -859,16 +859,18 @@ body.cinemaMode .titleRow{margin-bottom:0}
 .cinemaGenreGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
 .cinemaGenre{min-height:150px;border-radius:18px;background:linear-gradient(145deg,#123b51,#0b2332);border:1px solid rgba(255,255,255,.08);display:flex;align-items:flex-end;padding:16px;font-size:20px;font-weight:900;box-shadow:0 10px 24px rgba(0,0,0,.22)}
 .cinemaStatus{margin-top:18px;color:#9fc5d8;font-size:15px}
-.cinemaPosterGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
-.cinemaPosterCard{border:0;padding:0;background:#102535;border-radius:18px;overflow:hidden;text-align:left;color:#fff;box-shadow:0 12px 28px rgba(0,0,0,.28);min-height:300px}
+.cinemaPosterGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;align-items:start}
+.cinemaPosterCard{border:0;padding:0;background:#102535;border-radius:18px;overflow:hidden;text-align:left;color:#fff;box-shadow:0 12px 28px rgba(0,0,0,.28);min-width:0;width:100%;height:auto;align-self:start}
 .cinemaPosterCard:focus{outline:none!important;box-shadow:0 0 0 4px #ffd400,0 14px 30px rgba(0,0,0,.34)!important;transform:scale(1.02)}
 .cinemaPosterImg{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:linear-gradient(145deg,#204d67,#0d2030)}
 .cinemaPosterFallback{width:100%;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;font-size:46px;background:linear-gradient(145deg,#1d5d7a,#102b3d)}
-.cinemaPosterMeta{padding:11px 12px 13px}
+.cinemaPosterMeta{padding:11px 12px 13px;min-height:58px;box-sizing:border-box}
 .cinemaPosterTitle{font-size:16px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cinemaPosterSub{font-size:12px;color:#9fc5d8;margin-top:5px}
+.cinemaPosterSub{font-size:12px;color:#9fc5d8;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:1200px){.cinemaPosterGrid{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media(max-width:900px){.cinemaPosterGrid{grid-template-columns:repeat(4,minmax(0,1fr))}.cinemaHeroTitle{font-size:34px}}
+@media(max-width:760px){.cinemaScreen{padding:14px 14px 72px}.cinemaPosterGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.cinemaPosterCard{border-radius:15px}.cinemaPosterMeta{padding:10px 10px 11px;min-height:56px}.cinemaPosterTitle{font-size:15px}.cinemaHero{min-height:190px;padding:24px}.cinemaHeroTitle{font-size:36px}.cinemaHeroSub{font-size:17px}}
+@media(max-width:430px){.cinemaPosterGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}}
 </style>
 </head>
 <body>
@@ -5631,12 +5633,19 @@ function openCinemaMovie(item){
   if(item.intent&&cinemaSource==='lazy'){
     try{
       if(window.AbajNative&&typeof AbajNative.openLazyMediaIntent==='function'){
-        AbajNative.openLazyMediaIntent(String(item.intent));
-        return;
+        const opened=AbajNative.openLazyMediaIntent(String(item.intent));
+        if(opened)return;
       }
     }catch(e){}
+    const status=document.getElementById('cinemaStatus');
+    if(status)status.textContent='Не удалось открыть фильм в LazyMedia.';
+    return;
   }
-  if(!item.url)return;
+  if(!item.url){
+    const status=document.getElementById('cinemaStatus');
+    if(status)status.textContent='Источник не вернул ссылку воспроизведения.';
+    return;
+  }
   const ch={id:'cinema:'+String(item.id||Date.now()),name:String(item.title||'Фильм'),url:String(item.url),backups:[],personal:false,quality:String(item.quality||''),height:Number(item.height||0)};
   openChannel(ch);
 }

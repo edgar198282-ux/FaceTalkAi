@@ -251,10 +251,27 @@ public class MainActivity extends Activity {
                 if(value.isEmpty())return false;
                 Uri uri=Uri.parse(value);
                 String scheme=uri.getScheme()==null?"":uri.getScheme().toLowerCase();
+                if(scheme.isEmpty()){
+                    String article=value.startsWith("/")?value.substring(1):value;
+                    if(article.startsWith("article/"))article=article.substring("article/".length());
+                    uri=Uri.parse("tvhomechannels://com.lazycatsoftware.lmd/article/"+Uri.encode(article));
+                    scheme="tvhomechannels";
+                }
                 if(!("tvhomechannels".equals(scheme)||"http".equals(scheme)||"https".equals(scheme)))return false;
                 Intent i=new Intent(Intent.ACTION_VIEW,uri);
                 i.setPackage("com.lazycatsoftware.lmd");
-                runOnUiThread(()->{try{startActivity(i);}catch(Exception ignored){}});
+                if(i.resolveActivity(getPackageManager())==null)return false;
+                final Intent target=i;
+                runOnUiThread(()->{
+                    try{
+                        startActivity(target);
+                    }catch(Exception ignored){
+                        try{
+                            Intent launch=getPackageManager().getLaunchIntentForPackage("com.lazycatsoftware.lmd");
+                            if(launch!=null)startActivity(launch);
+                        }catch(Exception ignored2){}
+                    }
+                });
                 return true;
             }catch(Exception e){return false;}
         }
