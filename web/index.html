@@ -2238,7 +2238,8 @@ function openTvSettings(){
   checkAdmin();
   const modal=document.getElementById('tvSettingsModal');
   if(modal){
-    modal.classList.add('open');
+    cinemaSourceIgnoreUntil=Date.now()+450;
+  modal.classList.add('open');
     if(nativeTv)setTimeout(()=>{
       const first=[...modal.querySelectorAll('button,select,input[type="range"]')].find(el=>{
         if(el.disabled)return false;
@@ -6084,6 +6085,8 @@ let cinemaSourcePickerItems=[];
 let cinemaSourceGroups=[];
 let cinemaSourcePickerMovie=null;
 let cinemaResolvePending=new Map();
+let cinemaSourceIgnoreUntil=0;
+let filmixVideoPending=new Map();
 let lazyProviderRegistry=[];
 let lazyProviderRegistryAt=0;
 const LAZYMEDIA_PROVIDER_ORDER=[
@@ -6326,6 +6329,14 @@ async function showCinemaSourcePicker(item){
   cinemaSourceGroups=sortLazyProviders(
     providerOrder.map(k=>byProvider.get(k)).filter(g=>g&&Array.isArray(g.items)&&g.items.length)
   );
+  const currentProvider=cinemaProviderKey(item);
+  if(currentProvider){
+    cinemaSourceGroups.sort((a,b)=>{
+      const av=a?.key===currentProvider?0:1;
+      const bv=b?.key===currentProvider?0:1;
+      return av-bv;
+    });
+  }
   cinemaSourcePickerItems=cinemaSourceGroups.map(g=>{
     const direct=g.items.find(x=>String(x.url||'').trim());
     return direct||g.items[0]||null;
@@ -6359,11 +6370,81 @@ function renderCinemaSourceGroups(){
       :(group.items.length?('Найдено вариантов: '+group.items.length):'Активен в LazyMedia · проверить');
     btn.appendChild(label);
     btn.appendChild(meta);
-    btn.onclick=()=>openCinemaSourceGroup(i);
+    btn.onclick=()=>{
+      if(Date.now()<cinemaSourceIgnoreUntil)return;
+      openCinemaSourceGroup(i);
+    };
     list.appendChild(btn);
   });
   setTimeout(()=>focusCinemaSourceButton(0),20);
 }
+function filmixVideoOptionsAsync(item){
+  return new Promise(resolve=>{
+    if(!item||!window.AbajNative||typeof AbajNative.filmixVideoOptionsAsync!=='function'){
+      resolve([]);
+      return;
+    }
+    const requestId='filmix_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    const timer=setTimeout(()=>{
+      filmixVideoPending.delete(requestId);
+      resolve([]);
+    },10000);
+    filmixVideoPending.set(requestId,{resolve,timer});
+    try{
+      AbajNative.filmixVideoOptionsAsync(String(item.intent||''),requestId);
+    }catch(e){
+      clearTimeout(timer);
+      filmixVideoPending.delete(requestId);
+      resolve([]);
+    }
+  });
+}
+window.__abajFilmixVideoOptions=function(requestId,rows){
+  const p=filmixVideoPending.get(String(requestId||''));
+  if(!p)return;
+  clearTimeout(p.timer);
+  filmixVideoPending.delete(String(requestId||''));
+  p.resolve(Array.isArray(rows)?rows:[]);
+};
+async function renderFilmixVideoOptions(group){
+  const list=document.getElementById('cinemaSourceList');
+  const title=document.getElementById('cinemaSourceTitle');
+  if(!list)return;
+  const baseItem=group.items[0];
+  if(title)title.textContent='FILMIX · ВИДЕО';
+  list.innerHTML='<div class="cinemaSourceBusy">Получаю варианты ВИДЕО FILMIX…</div>';
+  const rows=await filmixVideoOptionsAsync(baseItem);
+  list.innerHTML='';
+  if(!rows.length){
+    const empty=document.createElement('div');
+    empty.className='cinemaSourceEmpty';
+    empty.textContent='FILMIX не вернул список вариантов ВИДЕО.';
+    list.appendChild(empty);
+  }else{
+    rows.forEach((row,i)=>{
+      const btn=document.createElement('button');
+      btn.className='cinemaSourceBtn';
+      const label=document.createElement('span');
+      label.textContent=String(row?.name||('Вариант '+(i+1)));
+      const meta=document.createElement('small');
+      meta.textContent='Открыть форматы';
+      btn.appendChild(label);
+      btn.appendChild(meta);
+      btn.onclick=()=>{
+        const next={...baseItem,title:String(row?.name||baseItem?.title||''),subtitle:String(row?.name||''),filmix_voice_id:row?.id??null,filmix_voice_name:String(row?.name||'')};
+        renderCinemaFormatOptions(group,next);
+      };
+      list.appendChild(btn);
+    });
+  }
+  const back=document.createElement('button');
+  back.className='cinemaSourceClose';
+  back.textContent='← Источники';
+  back.onclick=renderCinemaSourceGroups;
+  list.appendChild(back);
+  setTimeout(()=>focusCinemaSourceButton(0),20);
+}
+
 function cinemaStreamFormat(item){
   const url=String(item?.url||'').toLowerCase();
   const text=(
@@ -6424,9 +6505,10 @@ function renderCinemaFormatOptions(group,item){
     formats.push({item,transport:'DASH',quality:'AUTO',label:'DASH · AUTO'});
   }
   if(!formats.length&&provider==='FILMIX'){
-    formats.push({item,transport:'MP4',quality:'2160',label:'MP4 · 2160'});
-    formats.push({item,transport:'MP4',quality:'1080',label:'MP4 · 1080'});
-    formats.push({item,transport:'MP4',quality:'720',label:'MP4 · 720'});
+    const voice=String(item?.filmix_voice_name||item?.subtitle||item?.title||'').toUpperCase();
+    if(/4K|2160/.test(voice))formats.push({item,transport:'MP4',quality:'2160',label:'MP4 · 2160'});
+    if(/4K|2160|1080/.test(voice))formats.push({item,transport:'MP4',quality:'1080',label:'MP4 · 1080'});
+    if(/4K|2160|1080|720/.test(voice))formats.push({item,transport:'MP4',quality:'720',label:'MP4 · 720'});
     formats.push({item,transport:'MP4',quality:'480',label:'MP4 · 480'});
   }
 
@@ -6507,6 +6589,12 @@ async function openCinemaSourceGroup(index){
   const title=document.getElementById('cinemaSourceTitle');
 
   if(!group.items.length)return;
+
+  const provider=normalizeLazyProviderName(group.name);
+  if(provider==='FILMIX'&&!group.items.some(x=>String(x.url||'').trim())){
+    renderFilmixVideoOptions(group);
+    return;
+  }
 
   if(title)title.textContent=group.name+' · ВИДЕО';
   if(!list)return;

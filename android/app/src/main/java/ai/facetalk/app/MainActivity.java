@@ -411,6 +411,49 @@ public class MainActivity extends Activity {
                 });
             },"abaj-lazy-search").start();
         }
+        @JavascriptInterface public void filmixVideoOptionsAsync(String rawIntent,String rawRequestId){
+            final String requestId=rawRequestId==null?"":rawRequestId.replaceAll("[^A-Za-z0-9_-]","");
+            final String filmixId=decodeCinemaIntentPart(rawIntent,1);
+            if(requestId.isEmpty()||filmixId.isEmpty()){
+                return;
+            }
+            new Thread(()->{
+                String payload="[]";
+                HttpURLConnection c=null;
+                BufferedReader br=null;
+                try{
+                    URL u=new URL("https://filmix.moe/api/v2/movie/p-links/"+Uri.encode(filmixId));
+                    c=(HttpURLConnection)u.openConnection();
+                    c.setConnectTimeout(7000);
+                    c.setReadTimeout(9000);
+                    c.setRequestMethod("GET");
+                    c.setRequestProperty("Accept","application/json");
+                    c.setRequestProperty("X-Requested-With","XMLHttpRequest");
+                    c.setRequestProperty("Referer","https://filmix.moe/");
+                    c.setRequestProperty("User-Agent",webView!=null?webView.getSettings().getUserAgentString():"Mozilla/5.0");
+                    int code=c.getResponseCode();
+                    InputStream in=code>=200&&code<400?c.getInputStream():c.getErrorStream();
+                    if(in!=null){
+                        br=new BufferedReader(new InputStreamReader(in,java.nio.charset.StandardCharsets.UTF_8));
+                        StringBuilder sb=new StringBuilder();
+                        String line;
+                        while((line=br.readLine())!=null)sb.append(line);
+                        String body=sb.toString().trim();
+                        if(body.startsWith("[")&&body.endsWith("]"))payload=body;
+                    }
+                }catch(Exception ignored){}finally{
+                    if(br!=null)try{br.close();}catch(Exception ignored){}
+                    if(c!=null)try{c.disconnect();}catch(Exception ignored){}
+                }
+                final String out=payload;
+                runOnUiThread(()->{
+                    if(webView==null)return;
+                    String js="window.__abajFilmixVideoOptions&&window.__abajFilmixVideoOptions("+
+                        JSONObject.quote(requestId)+","+out+");";
+                    try{webView.evaluateJavascript(js,null);}catch(Exception ignored){}
+                });
+            },"abaj-filmix-options").start();
+        }
         @JavascriptInterface public void resolveCinemaStream(String rawIntent,String rawTransport,String rawRequestId){
             final String requestId=(rawRequestId==null?"":rawRequestId).replaceAll("[^A-Za-z0-9_-]","");
             String raw=(rawTransport==null?"":rawTransport).trim().toUpperCase();
