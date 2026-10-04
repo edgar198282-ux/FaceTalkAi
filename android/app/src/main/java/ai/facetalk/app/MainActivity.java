@@ -26,6 +26,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.Rational;
+import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
@@ -44,6 +45,12 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
 
 import androidx.core.content.FileProvider;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.ui.PlayerView;
 
 import org.json.JSONObject;
 
@@ -64,6 +71,10 @@ public class MainActivity extends Activity {
     private WebView webView; private ValueCallback<Uri[]> fileCallback; private PermissionRequest pendingWebPermission;
     private View customView; private WebChromeClient.CustomViewCallback customViewCallback;
     private FrameLayout fullscreenContainer;
+    private PlayerView nativeProbeView;
+    private ExoPlayer nativeProbePlayer;
+    private volatile long nativeProbeStartedAt=0L;
+    private volatile String nativeProbeUrl="";
     private SharedPreferences prefs; private boolean telegramLaunchAttempted=false; private boolean isTv=false; private long lastTvBackAt=0L;
     private long pendingApkDownloadId=-1L; private Uri pendingApkUri; private BroadcastReceiver downloadReceiver;
     private volatile boolean updateCheckRunning=false, updateDownloadRunning=false; private long lastUpdateCheckAt=0L;
@@ -121,6 +132,16 @@ public class MainActivity extends Activity {
             if(isTv||!pipPlaybackActive)return;
             runOnUiThread(()->enterAbajPictureInPicture());
         }
+        @JavascriptInterface public void nativeProbeStart(String rawUrl){
+            if(!isTv||rawUrl==null)return;
+            String url=rawUrl.trim();
+            if(!(url.startsWith("http://")||url.startsWith("https://")))return;
+            runOnUiThread(()->startNativeProbe(url));
+        }
+        @JavascriptInterface public void nativeProbeStop(){
+            if(!isTv)return;
+            runOnUiThread(()->stopNativeProbe(false));
+        }
     }
     private final Runnable periodicUpdateCheck=new Runnable(){
         @Override public void run(){
@@ -145,6 +166,12 @@ public class MainActivity extends Activity {
         prefs=getSharedPreferences("facetalk_auth",MODE_PRIVATE); consumeAuthIntent(getIntent());
         fullscreenContainer=new FrameLayout(this);
         fullscreenContainer.setBackgroundColor(Color.BLACK);
+        if(isTv){
+            nativeProbeView=new PlayerView(this);
+            nativeProbeView.setUseController(false);
+            nativeProbeView.setBackgroundColor(Color.BLACK);
+            fullscreenContainer.addView(nativeProbeView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+        }
         webView=new WebView(this);
         webView.setBackgroundColor(Color.rgb(0,32,96));
         webView.setFocusable(true);
@@ -190,6 +217,60 @@ public class MainActivity extends Activity {
         if(!BuildConfig.PLAY_STORE_BUILD){
             updateHandler.postDelayed(()->checkForAppUpdate(true,false),2500L);
             updateHandler.postDelayed(periodicUpdateCheck,30L*60L*1000L);
+        }
+    }
+
+    private void ensureNativeProbePlayer(){
+        if(!isTv||nativeProbeView==null||nativeProbePlayer!=null)return;
+        DefaultLoadControl loadControl=new DefaultLoadControl.Builder()
+            .setBufferDurationsMs(500,4000,120,250)
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build();
+        nativeProbePlayer=new ExoPlayer.Builder(this).setLoadControl(loadControl).build();
+        nativeProbeView.setPlayer(nativeProbePlayer);
+        nativeProbePlayer.addListener(new Player.Listener(){
+            @Override public void onRenderedFirstFrame(){
+                long started=nativeProbeStartedAt;
+                if(started<=0L)return;
+                long elapsed=Math.max(0L,System.currentTimeMillis()-started);
+                Log.i("AbajTVNativeProbe","first_frame_ms="+elapsed+" url="+nativeProbeUrl);
+                nativeProbeStartedAt=0L;
+                try{nativeProbePlayer.pause();nativeProbePlayer.stop();nativeProbePlayer.clearMediaItems();}catch(Exception ignored){}
+            }
+            @Override public void onPlayerError(PlaybackException error){
+                long started=nativeProbeStartedAt;
+                long elapsed=started>0L?Math.max(0L,System.currentTimeMillis()-started):0L;
+                Log.w("AbajTVNativeProbe","error_ms="+elapsed+" code="+(error==null?"unknown":error.errorCodeName)+" url="+nativeProbeUrl);
+                nativeProbeStartedAt=0L;
+                try{nativeProbePlayer.stop();nativeProbePlayer.clearMediaItems();}catch(Exception ignored){}
+            }
+        });
+    }
+    private void startNativeProbe(String url){
+        if(!isTv||nativeProbeView==null)return;
+        try{
+            ensureNativeProbePlayer();
+            if(nativeProbePlayer==null)return;
+            nativeProbeUrl=url;
+            nativeProbeStartedAt=System.currentTimeMillis();
+            nativeProbePlayer.setMediaItem(MediaItem.fromUri(Uri.parse(url)),true);
+            nativeProbePlayer.prepare();
+            nativeProbePlayer.play();
+        }catch(Exception e){
+            Log.w("AbajTVNativeProbe","start_error "+e.getClass().getSimpleName());
+            nativeProbeStartedAt=0L;
+        }
+    }
+    private void stopNativeProbe(boolean release){
+        nativeProbeStartedAt=0L;
+        nativeProbeUrl="";
+        if(nativeProbePlayer!=null){
+            try{nativeProbePlayer.stop();nativeProbePlayer.clearMediaItems();}catch(Exception ignored){}
+            if(release){
+                try{nativeProbePlayer.release();}catch(Exception ignored){}
+                nativeProbePlayer=null;
+                if(nativeProbeView!=null)nativeProbeView.setPlayer(null);
+            }
         }
     }
 
@@ -531,7 +612,7 @@ public class MainActivity extends Activity {
     }
 
     private void openExternal(Uri uri){if(uri==null)return;try{String s=uri.getScheme()==null?"":uri.getScheme().toLowerCase(),h=uri.getHost()==null?"":uri.getHost().toLowerCase();if("tg".equals(s)||"t.me".equals(h)||"telegram.me".equals(h)){Intent t=new Intent(Intent.ACTION_VIEW,uri);t.setPackage("org.telegram.messenger");try{startActivity(t);return;}catch(Exception ignored){}}startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}}
-    @Override protected void onDestroy(){activityResumed=false;updateHandler.removeCallbacksAndMessages(null);try{tvWatchdogExecutor.shutdownNow();}catch(Exception ignored){}if(downloadReceiver!=null){try{unregisterReceiver(downloadReceiver);}catch(Exception ignored){}}if(webView!=null)webView.destroy();super.onDestroy();}
+    @Override protected void onDestroy(){activityResumed=false;updateHandler.removeCallbacksAndMessages(null);try{tvWatchdogExecutor.shutdownNow();}catch(Exception ignored){}if(downloadReceiver!=null){try{unregisterReceiver(downloadReceiver);}catch(Exception ignored){}}stopNativeProbe(true);if(webView!=null)webView.destroy();super.onDestroy();}
     @Override public void onBackPressed(){
         if(customView!=null){hideCustomView();return;}
         if(isTv&&webView!=null){
