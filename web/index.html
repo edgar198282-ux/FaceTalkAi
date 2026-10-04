@@ -4341,6 +4341,15 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   const src=(nativeTv&&!ch.personal&&directSrc)?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
+  // Safe native benchmark: ExoPlayer runs behind the existing WebView player.
+  // It never becomes visible and cannot blank the screen. We only log its
+  // first-frame time so we can compare it with HLS.js on this exact TV.
+  if(nativeTv&&tvIsTeamCloudChannel(ch)&&window.AbajNative&&typeof AbajNative.nativeProbeStart==='function'){
+    try{AbajNative.nativeProbeStart(src)}catch(e){}
+  }else if(nativeTv&&window.AbajNative&&typeof AbajNative.nativeProbeStop==='function'){
+    try{AbajNative.nativeProbeStop()}catch(e){}
+  }
+
   const useHlsJs=tvShouldUseHls(ch)&&window.Hls&&Hls.isSupported();
   const teamTvFast=tvIsTeamCloudChannel(ch);
   if(nativeTv)playbackPlayerMode=useHlsJs?'hls':'system';
@@ -4734,6 +4743,7 @@ function openTvRailFocused(){
 }
 function closePlayer(){
 
+  try{if(nativeTv&&window.AbajNative&&typeof AbajNative.nativeProbeStop==='function')AbajNative.nativeProbeStop()}catch(e){}
   stopAiDub(true);
   hidePlayerChannelHud();
   stopFreeAdWatch();
