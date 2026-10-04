@@ -357,13 +357,15 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
 .nativeTv .brandLogo{width:58px;height:58px;border-radius:15px!important}
 .nativeTv .title{font-size:34px!important;letter-spacing:.6px}
 .nativeTv .icons{gap:10px}
-.nativeTv #listBtn,.nativeTv #refreshBtn{display:none!important}
-.nativeTv .tvTopAction{
-  width:auto!important;height:46px!important;min-width:142px!important;padding:0 18px!important;border-radius:14px!important;
-  gap:9px!important;background:rgba(5,55,104,.78)!important;border:1px solid rgba(255,255,255,.16)!important;
-  font-size:20px!important;font-weight:850!important
+.nativeTv #refreshBtn{display:none!important}
+.nativeTv #listBtn,.nativeTv .tvTopAction{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  width:48px!important;height:46px!important;min-width:48px!important;padding:0!important;border-radius:14px!important;
+  background:rgba(5,55,104,.78)!important;border:1px solid rgba(255,255,255,.16)!important;
+  font-size:23px!important;font-weight:850!important;line-height:1!important
 }
-.nativeTv .tvTopAction span{display:inline!important;font-size:17px}
+.nativeTv #listBtn{font-size:25px!important}
+.nativeTv .tvTopAction span{display:none!important}
 .tvClock{display:none}
 .nativeTv .tvClock{display:flex;align-items:center;justify-content:center;min-width:74px;color:#fff;font-size:23px;font-weight:850}
 .nativeTv .toolbar{display:none!important}
@@ -830,10 +832,10 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
         </div>
       </div>
       <div class="icons">
-        <button id="listBtn" class="iconBtn active" onclick="toggleLayoutMode()" title="Список / Плитка">☷</button>
+        <button id="listBtn" class="iconBtn active" onclick="toggleLayoutMode()" title="Список / Плитка" aria-label="Список / Плитка">☷</button>
         <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
-        <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск">⌕ <span>Поиск</span></button>
-        <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="openTvSettings()" title="Настройки">⚙ <span>Настройки</span></button>
+        <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск" aria-label="Поиск">🔍</button>
+        <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="openTvSettings()" title="Настройки" aria-label="Настройки">⚙</button>
         <div id="tvClock" class="tvClock"></div>
       </div>
     </div>
