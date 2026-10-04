@@ -867,7 +867,7 @@ body.cinemaMode .titleRow{margin-bottom:0}
 .cinemaGenre{min-height:150px;border-radius:18px;background:linear-gradient(145deg,#123b51,#0b2332);border:1px solid rgba(255,255,255,.08);display:flex;align-items:flex-end;padding:16px;font-size:20px;font-weight:900;box-shadow:0 10px 24px rgba(0,0,0,.22)}
 .cinemaStatus{margin-top:18px;color:#9fc5d8;font-size:15px}
 .cinemaSearchStatus{margin:14px 0 0;color:#b9d7e8;font-size:14px}
-.cinemaSourceModal{position:fixed;inset:0;z-index:620;display:none;align-items:center;justify-content:center;background:rgba(0,7,14,.88);padding:22px;box-sizing:border-box}.cinemaSourceModal.open{display:flex}.cinemaSourceCard{width:min(760px,94vw);max-height:86vh;overflow:auto;background:linear-gradient(180deg,#0b2434,#081823);border:1px solid rgba(255,255,255,.14);border-radius:24px;padding:22px;color:#fff;box-shadow:0 24px 70px rgba(0,0,0,.55)}.cinemaSourceHead{display:flex;gap:16px;align-items:center;margin-bottom:18px}.cinemaSourcePoster{width:86px;aspect-ratio:2/3;object-fit:cover;border-radius:12px;background:#123}.cinemaSourceTitle{font-size:24px;font-weight:950;line-height:1.15}.cinemaSourceHint{margin-top:5px;color:#9fc5d8;font-size:14px}.cinemaSourceList{display:grid;gap:10px}.cinemaSourceBtn{width:100%;border:1px solid rgba(255,255,255,.14);border-radius:15px;background:#12364a;color:#fff;padding:14px 16px;text-align:left;font-weight:900;font-size:18px}.cinemaSourceBtn small{display:block;margin-top:4px;color:#9fc5d8;font-size:12px;font-weight:700}.cinemaSourceBtn:focus{outline:none!important;box-shadow:0 0 0 4px #ffd400!important;background:#185472}.cinemaSourceClose{width:100%;margin-top:12px;border:0;border-radius:14px;background:#274250;color:#fff;padding:13px;font-weight:900;font-size:16px}.cinemaSourceEmpty{padding:18px 6px;color:#9fc5d8}.cinemaSourceBusy{padding:12px 4px;color:#b9d7e8}
+.cinemaSourceModal{position:fixed;inset:0;z-index:620;display:none;align-items:center;justify-content:center;background:rgba(0,7,14,.88);padding:22px;box-sizing:border-box}.cinemaSourceModal.open{display:flex}.cinemaSourceCard{width:min(760px,94vw);max-height:86vh;overflow:auto;background:linear-gradient(180deg,#0b2434,#081823);border:1px solid rgba(255,255,255,.14);border-radius:24px;padding:22px;color:#fff;box-shadow:0 24px 70px rgba(0,0,0,.55)}.cinemaSourceHead{display:flex;gap:16px;align-items:center;margin-bottom:18px}.cinemaSourcePoster{width:86px;aspect-ratio:2/3;object-fit:cover;border-radius:12px;background:#123}.cinemaSourceTitle{font-size:24px;font-weight:950;line-height:1.15}.cinemaSourceHint{margin-top:5px;color:#9fc5d8;font-size:14px}.cinemaSourceList{display:grid;gap:10px}.cinemaSourceBtn{width:100%;border:1px solid rgba(255,255,255,.14);border-radius:15px;background:#12364a;color:#fff;padding:14px 16px;text-align:left;font-weight:900;font-size:18px}.cinemaSourceBtn small{display:block;margin-top:4px;color:#9fc5d8;font-size:12px;font-weight:700}.cinemaSourceBtn:focus{outline:none!important;box-shadow:0 0 0 4px #ffd400!important;background:#185472}.cinemaSourceBtn.selected{background:#185472;border-color:#ffd400}.cinemaSourceClose{width:100%;margin-top:12px;border:0;border-radius:14px;background:#274250;color:#fff;padding:13px;font-weight:900;font-size:16px}.cinemaSourceEmpty{padding:18px 6px;color:#9fc5d8}.cinemaSourceBusy{padding:12px 4px;color:#b9d7e8}
 .cinemaPosterGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;align-items:start}
 .cinemaPosterCard{border:0;padding:0;background:#102535;border-radius:18px;overflow:hidden;text-align:left;color:#fff;box-shadow:0 12px 28px rgba(0,0,0,.28);min-width:0;width:100%;height:auto;align-self:start}
 .cinemaPosterCard:focus{outline:none!important;box-shadow:0 0 0 4px #ffd400,0 14px 30px rgba(0,0,0,.34)!important;transform:scale(1.02)}
@@ -6218,14 +6218,44 @@ function playCinemaSource(index){
   const item=cinemaSourcePickerItems[Number(index)];
   if(!item)return;
   const url=String(item.url||'').trim();
+  const modal=document.getElementById('cinemaSourceModal');
+  const list=document.getElementById('cinemaSourceList');
+  const buttons=modal?[...modal.querySelectorAll('.cinemaSourceBtn')]:[];
+  const btn=buttons[Number(index)]||null;
+  buttons.forEach((x,i)=>{
+    x.classList.toggle('selected',i===Number(index));
+    const meta=x.querySelector('small');
+    if(meta&&i!==Number(index))meta.textContent=String(cinemaSourcePickerItems[i]?.url||'').trim()
+      ?'Готов к воспроизведению в Abaj TV'
+      :'Источник найден через LazyMedia';
+  });
   if(url){
-    closeCinemaSourcePicker();
-    window.__abajOpenExternalMedia(url,String(item.title||'Кино'));
+    if(btn){
+      const meta=btn.querySelector('small');
+      if(meta)meta.textContent='Открываю в плеере Abaj TV…';
+    }
+    setTimeout(()=>{
+      closeCinemaSourcePicker();
+      window.__abajOpenExternalMedia(url,String(item.title||'Кино'));
+    },120);
     return;
   }
+  if(btn){
+    const meta=btn.querySelector('small');
+    if(meta)meta.textContent='Источник выбран · ищу доступный поток…';
+  }
   const status=document.getElementById('cinemaStatus');
-  if(status)status.textContent=cinemaProviderName(item)+' найден, но LazyMedia не отдаёт прямой поток через Search API.';
-  closeCinemaSourcePicker();
+  if(status)status.textContent=cinemaProviderName(item)+' выбран';
+  if(list){
+    let note=document.getElementById('cinemaSourceNote');
+    if(!note){
+      note=document.createElement('div');
+      note.id='cinemaSourceNote';
+      note.className='cinemaSourceBusy';
+      list.appendChild(note);
+    }
+    note.textContent='Этот источник пока не отдал прямой поток. Окно не закрываю — можно выбрать другой источник.';
+  }
 }
 window.__abajOpenExternalMedia=function(url,title){
   const raw=String(url||'').trim();
