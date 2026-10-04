@@ -6411,7 +6411,7 @@ function renderCinemaFormatOptions(group,item){
     seen.add(key);
     formats.push({item:x,...f});
   }
-  if(!formats.length)formats.push({item,transport:'AUTO',quality:'',label:'AUTO'});
+  if(!formats.length)formats.push({item,transport:'AUTO',quality:'',label:'Открыть поток'});
 
   list.innerHTML='';
   formats.forEach((f,i)=>{
@@ -6438,6 +6438,20 @@ function renderCinemaFormatOptions(group,item){
       }
       [...list.querySelectorAll('.cinemaSourceBtn')].forEach(x=>x.classList.remove('selected'));
       btn.classList.add('selected');
+
+      const intent=String(f.item?.intent||'').trim();
+      if(intent&&window.AbajNative&&typeof AbajNative.openLazyMediaIntent==='function'){
+        meta.textContent='Получаю '+(f.transport==='AUTO'?'поток':f.transport)+'…';
+        try{
+          const opened=AbajNative.openLazyMediaIntent(intent);
+          if(opened){
+            const status=document.getElementById('cinemaStatus');
+            if(status)status.textContent='Ожидаю передачу потока в Abaj TV…';
+            return;
+          }
+        }catch(e){}
+      }
+
       meta.textContent=f.transport==='HLS'
         ?'HLS найден · источник не передал прямой URL'
         :'Формат выбран · источник не передал прямой URL';
