@@ -6085,6 +6085,47 @@ let cinemaSourceGroups=[];
 let cinemaSourcePickerMovie=null;
 let lazyProviderRegistry=[];
 let lazyProviderRegistryAt=0;
+const LAZYMEDIA_PROVIDER_ORDER=[
+  'ENCYCLOPEDIA',
+  'FILMIX',
+  'HDREZKA',
+  'KINODB',
+  'ZETFLIX',
+  'SEASONVAR',
+  'ZONA',
+  'ZOMBIE',
+  'OCTOPUS',
+  'ANILIBRIA(v1)',
+  'ANILIBRIA(v3)'
+];
+function normalizeLazyProviderName(name){
+  const raw=String(name||'').trim();
+  const up=raw.toUpperCase().replace(/\s+/g,' ');
+  if(up==='ZONA.MOBI'||up==='ZONA')return 'ZONA';
+  if(up.startsWith('ZONAFILM'))return 'ZONAFILM';
+  if(up.startsWith('ENCYCLOPEDIA'))return 'ENCYCLOPEDIA';
+  if(up.startsWith('FILMIX'))return 'FILMIX';
+  if(up.startsWith('HDREZKA'))return 'HDREZKA';
+  if(up.startsWith('KINODB'))return 'KINODB';
+  if(up.startsWith('ZETFLIX'))return 'ZETFLIX';
+  if(up.startsWith('SEASONVAR'))return 'SEASONVAR';
+  if(up.startsWith('ZOMBIE'))return 'ZOMBIE';
+  if(up.startsWith('OCTOPUS'))return 'OCTOPUS';
+  if(up.startsWith('ANILIBRIA')&&up.includes('V3'))return 'ANILIBRIA(v3)';
+  if(up.startsWith('ANILIBRIA'))return 'ANILIBRIA(v1)';
+  return raw;
+}
+function sortLazyProviders(items){
+  const rank=new Map(LAZYMEDIA_PROVIDER_ORDER.map((x,i)=>[x.toUpperCase(),i]));
+  return [...items].sort((a,b)=>{
+    const an=normalizeLazyProviderName(a?.name||'').toUpperCase();
+    const bn=normalizeLazyProviderName(b?.name||'').toUpperCase();
+    const ai=rank.has(an)?rank.get(an):999;
+    const bi=rank.has(bn)?rank.get(bn):999;
+    if(ai!==bi)return ai-bi;
+    return an.localeCompare(bn,'ru');
+  });
+}
 function lazyProviderCacheRead(){
   try{
     const x=JSON.parse(localStorage.getItem('abaj_lazy_provider_registry_v1')||'null');
@@ -6097,34 +6138,40 @@ function lazyProviderCacheWrite(items){
   try{localStorage.setItem('abaj_lazy_provider_registry_v1',JSON.stringify({ts:Date.now(),items}))}catch(e){}
 }
 async function loadLazyProviderRegistry(force=false){
-  if(!force&&lazyProviderRegistry.length&&Date.now()-lazyProviderRegistryAt<30*60*1000)return lazyProviderRegistry;
-  if(!force){
-    const cached=lazyProviderCacheRead();
-    if(cached.length){
-      lazyProviderRegistry=cached;
-      lazyProviderRegistryAt=Date.now();
-      return cached;
-    }
+  const canonical=LAZYMEDIA_PROVIDER_ORDER.map(name=>({
+    key:name.toLocaleLowerCase('ru'),
+    name
+  }));
+  if(!force&&lazyProviderRegistry.length&&Date.now()-lazyProviderRegistryAt<30*60*1000){
+    return lazyProviderRegistry;
   }
+
   const info=getLazyMediaInfo();
-  if(!info.installed)return [];
-  const probes=['','2025','фильм','сериал'];
-  const batches=await Promise.all(probes.map(q=>lazyMediaSearchAsync(q).catch(()=>[])));
-  const out=[],seen=new Set();
-  const add=(item)=>{
-    const name=cinemaProviderName(item);
-    const key=String(name||'').toLocaleLowerCase('ru').replace(/\s+/g,' ').trim();
-    if(!key||key==='источник'||seen.has(key))return;
-    seen.add(key);
-    out.push({key,name});
-  };
-  for(const rows of batches)for(const item of (Array.isArray(rows)?rows:[]))add(item);
-  for(const item of [...readCinemaCacheFor('movies'),...readCinemaCacheFor('series')])add(item);
-  lazyProviderRegistry=out;
+  const out=[...canonical];
+  const seen=new Set(canonical.map(x=>x.key));
+
+  if(info.installed){
+    const probes=['','2025','фильм','сериал'];
+    const batches=await Promise.all(probes.map(q=>lazyMediaSearchAsync(q).catch(()=>[])));
+    const add=(item)=>{
+      const name=normalizeLazyProviderName(cinemaProviderName(item));
+      const key=name.toLocaleLowerCase('ru').replace(/\s+/g,' ').trim();
+      if(!key||key==='источник'||seen.has(key))return;
+      seen.add(key);
+      out.push({key,name});
+    };
+    for(const rows of batches){
+      for(const item of (Array.isArray(rows)?rows:[]))add(item);
+    }
+    for(const item of [...readCinemaCacheFor('movies'),...readCinemaCacheFor('series')])add(item);
+  }
+
+  lazyProviderRegistry=sortLazyProviders(out);
   lazyProviderRegistryAt=Date.now();
-  if(out.length)lazyProviderCacheWrite(out);
-  return out;
+  lazyProviderCacheWrite(lazyProviderRegistry);
+  return lazyProviderRegistry;
 }
+
 function cinemaSearchVariants(item){
   const raw=String(item?.title||'').trim();
   const base=cinemaComparableTitle(raw);
@@ -6175,7 +6222,7 @@ function cinemaProviderName(item){
   return id?('Источник '+id):'Источник';
 }
 function cinemaProviderKey(item){
-  return cinemaProviderName(item).toLocaleLowerCase('ru').replace(/\s+/g,' ').trim();
+  return normalizeLazyProviderName(cinemaProviderName(item)).toLocaleLowerCase('ru').replace(/\s+/g,' ').trim();
 }
 function cinemaComparableTitle(value){
   return String(value||'')
@@ -6279,7 +6326,7 @@ async function showCinemaSourcePicker(item){
     group.items.push(x);
   }
 
-  cinemaSourceGroups=providerOrder.map(k=>byProvider.get(k)).filter(Boolean);
+  cinemaSourceGroups=sortLazyProviders(providerOrder.map(k=>byProvider.get(k)).filter(Boolean));
   cinemaSourcePickerItems=cinemaSourceGroups.map(g=>{
     const direct=g.items.find(x=>String(x.url||'').trim());
     return direct||g.items[0]||null;
