@@ -211,8 +211,6 @@ public class MainActivity extends Activity {
                 SearchManager.SUGGEST_COLUMN_TEXT_1,
                 SearchManager.SUGGEST_COLUMN_TEXT_2,
                 SearchManager.SUGGEST_COLUMN_INTENT_DATA,
-                SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA,
-                SearchManager.SUGGEST_COLUMN_INTENT_DATA_ID,
                 SearchManager.SUGGEST_COLUMN_ICON_1
             };
             Cursor cur=null;
@@ -224,7 +222,16 @@ public class MainActivity extends Activity {
                     try{
                         Uri path=base.buildUpon().appendPath(query).build();
                         cur=getContentResolver().query(path,projection,null,null,null);
-                    }catch(Exception ignored){}
+                    }catch(Exception second){
+                        try{
+                            cur=getContentResolver().query(base,null,null,new String[]{query},null);
+                        }catch(Exception third){
+                            try{
+                                Uri path=base.buildUpon().appendPath(query).build();
+                                cur=getContentResolver().query(path,null,null,null,null);
+                            }catch(Exception ignored){}
+                        }
+                    }
                 }
                 if(cur==null)return "[]";
                 int idCol=cur.getColumnIndex("_id");
