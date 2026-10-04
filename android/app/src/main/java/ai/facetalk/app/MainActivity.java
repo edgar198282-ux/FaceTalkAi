@@ -157,6 +157,51 @@ public class MainActivity extends Activity {
                 if(nativeProbePlayer.isPlaying())nativeProbePlayer.pause();else nativeProbePlayer.play();
             });
         }
+        @JavascriptInterface public String lazyMediaInfo(){
+            try{
+                android.content.pm.PackageInfo pi=getPackageManager().getPackageInfo("com.lazycatsoftware.lmd",0);
+                JSONObject o=new JSONObject();
+                o.put("installed",true);
+                o.put("version",pi.versionName==null?"":pi.versionName);
+                return o.toString();
+            }catch(Exception e){
+                try{
+                    JSONObject o=new JSONObject();
+                    o.put("installed",false);
+                    return o.toString();
+                }catch(Exception ignored){return "{\"installed\":false}";}
+            }
+        }
+        @JavascriptInterface public boolean openLazyMedia(){
+            try{
+                Intent launch=getPackageManager().getLaunchIntentForPackage("com.lazycatsoftware.lmd");
+                if(launch==null)return false;
+                runOnUiThread(()->{
+                    try{startActivity(launch);}catch(Exception ignored){}
+                });
+                return true;
+            }catch(Exception e){return false;}
+        }
+        @JavascriptInterface public boolean openLazyMediaSection(String section){
+            try{
+                String s=section==null?"":section.trim().toLowerCase();
+                Uri uri;
+                if("bookmarks".equals(s))uri=Uri.parse("tvhomechannels://com.lazycatsoftware.lmd/bookmarks");
+                else if("history".equals(s))uri=Uri.parse("tvhomechannels://com.lazycatsoftware.lmd/history");
+                else return openLazyMedia();
+                Intent i=new Intent(Intent.ACTION_VIEW,uri);
+                i.setPackage("com.lazycatsoftware.lmd");
+                runOnUiThread(()->{
+                    try{startActivity(i);}catch(Exception e){
+                        try{
+                            Intent launch=getPackageManager().getLaunchIntentForPackage("com.lazycatsoftware.lmd");
+                            if(launch!=null)startActivity(launch);
+                        }catch(Exception ignored){}
+                    }
+                });
+                return true;
+            }catch(Exception e){return false;}
+        }
     }
     private final Runnable periodicUpdateCheck=new Runnable(){
         @Override public void run(){
