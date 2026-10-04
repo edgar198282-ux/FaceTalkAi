@@ -4080,7 +4080,7 @@ function tvForceSystemForChannel(ch){
   return String(ch.tvg_id||'').toLowerCase()==='yerkirmedia.am'||
     String(ch.name||'').trim().toLowerCase()==='yerkir media';
 }
-function tvPreferSystemForChannel(ch){
+function tvIsTeamCloudChannel(ch){
   if(!nativeTv||!ch||ch.personal)return false;
   try{
     return tvDirectUrls(ch).some(u=>/^(?:https?:\/\/)?[^/]*teamcloud\.am(?:\/|$)/i.test(String(u||'')));
@@ -4091,10 +4091,9 @@ function tvShouldUseHls(ch){
   if(tvForceSystemForChannel(ch))return false;
   if(tvPlayerMode==='hls')return true;
   if(tvPlayerMode==='system')return false;
-  // Confirmed TeamTV HLS is already optimized for Android STBs. Prefer the
-  // WebView/system media pipeline first; if it fails, existing fallback logic
-  // remembers the channel and retries through HLS.js.
-  if(tvPreferSystemForChannel(ch)&&!tvHlsFallbackChannels.has(String(ch&&ch.id||'')))return false;
+  // Measured on Abaj TV: HLS.js currently reaches first frame faster than the
+  // WebView/system path. Keep confirmed TeamTV streams on the tuned HLS path.
+  if(tvIsTeamCloudChannel(ch))return true;
   if(tvSystemFallbackChannels.has(String(ch&&ch.id||'')))return false;
   return true;
 }
@@ -4102,7 +4101,7 @@ function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
   const usingHls=tvShouldUseHls(ch);
-  const teamTvFast=tvDirectUrls(ch).some(u=>/^(?:https?:\/\/)?[^/]*teamcloud\.am(?:\/|$)/i.test(String(u||'')));
+  const teamTvFast=tvIsTeamCloudChannel(ch);
   // Confirmed TeamTV CDN streams start much faster on the same ISP, so fail
   // over sooner there without making the timeout aggressive for public feeds.
   const waitMs=teamTvFast?(usingHls?5000:4500):(tvForceSystemForChannel(ch)?18000:(usingHls?12000:10000));
@@ -4338,20 +4337,28 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   resetQualityMenu();
 
   const useHlsJs=tvShouldUseHls(ch)&&window.Hls&&Hls.isSupported();
+  const teamTvFast=tvIsTeamCloudChannel(ch);
   if(nativeTv)playbackPlayerMode=useHlsJs?'hls':'system';
   if(useHlsJs){
     hls=new Hls({
       enableWorker:true,
       lowLatencyMode:false,
       startFragPrefetch:true,
-      maxBufferLength:nativeTv?6:20,
-      maxMaxBufferLength:nativeTv?12:30,
-      backBufferLength:nativeTv?3:10,
-      manifestLoadingTimeOut:nativeTv?6000:10000,
-      levelLoadingTimeOut:nativeTv?6000:10000,
-      fragLoadingTimeOut:nativeTv?9000:14000,
+      // TeamTV uses 4-second HLS segments. Starting its adaptive ladder at the
+      // smallest rendition gets a decodable first segment on screen much sooner;
+      // ABR can raise quality immediately after playback starts.
+      startLevel:teamTvFast?0:-1,
+      maxBufferLength:teamTvFast?4:(nativeTv?6:20),
+      maxMaxBufferLength:teamTvFast?8:(nativeTv?12:30),
+      backBufferLength:teamTvFast?0:(nativeTv?3:10),
+      liveSyncDurationCount:teamTvFast?1:3,
+      liveMaxLatencyDurationCount:teamTvFast?3:Infinity,
+      maxLiveSyncPlaybackRate:teamTvFast?1.5:1,
+      manifestLoadingTimeOut:teamTvFast?3500:(nativeTv?6000:10000),
+      levelLoadingTimeOut:teamTvFast?3500:(nativeTv?6000:10000),
+      fragLoadingTimeOut:teamTvFast?5000:(nativeTv?9000:14000),
       capLevelToPlayerSize:true,
-      abrEwmaDefaultEstimate:nativeTv?tvInitialAbrEstimate(ch):500000
+      abrEwmaDefaultEstimate:teamTvFast?1200000:(nativeTv?tvInitialAbrEstimate(ch):500000)
     });
     if(ch.personal){
       fetch(src,{headers:auth,cache:'no-store'})
@@ -4390,7 +4397,16 @@ function startStream(ch,preferBackup=false,forceProxy=false){
             if(diff<bestDiff){bestDiff=diff;best=i}
           });
           if(best>=0){
-            if(tvPreferredQuality!=='auto')hls.currentLevel=best;
+            if(teamTvFast){
+              // Do not replace the tiny first rendition before the first frame.
+              // Promote right after playback has started.
+              const promote=()=>{
+                if(!hls||attemptToken!==streamAttemptToken)return;
+                if(tvPreferredQuality!=='auto')hls.currentLevel=best;
+                else hls.nextAutoLevel=best;
+              };
+              v.addEventListener('playing',()=>setTimeout(promote,450),{once:true});
+            }else if(tvPreferredQuality!=='auto')hls.currentLevel=best;
             else{
               hls.nextAutoLevel=best;
               hls.loadLevel=best;
