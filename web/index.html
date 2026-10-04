@@ -767,7 +767,21 @@ body.darkMode .appearanceToggle button.active{background:#087fe1;color:#fff;bord
 .tvPair{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:linear-gradient(180deg,#0b2b7a,#168de8);padding:28px}.tvPair.open{display:flex}.tvPairCard{width:min(900px,92vw);background:white;border-radius:28px;padding:30px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.35)}.tvPairTitle{font-size:34px;font-weight:900;color:#0d4d86}.tvPairText{font-size:20px;color:#517087;margin-top:10px}.tvPairCode{font-size:64px;font-weight:900;letter-spacing:10px;color:#0b2b7a;margin:20px 0}.tvPairQr{width:220px;height:220px;border-radius:16px;background:#fff}.tvPairBot{font-size:21px;font-weight:900;color:#0b5f9e;margin-top:14px;word-break:break-all}.tvPairSteps{font-size:17px;line-height:1.45;color:#38586f;margin:10px auto 0;max-width:720px}.tvPairHint{font-size:18px;color:#4f6e82;margin-top:14px}.tvPairOk{font-size:22px;color:#16865b;font-weight:800}.tvPairRetry{border:0;border-radius:14px;background:#168de8;color:white;padding:13px 20px;font-size:18px;font-weight:800;margin-top:16px}
 .channelNumber{position:absolute;left:7px;top:7px;z-index:3;min-width:28px;height:24px;padding:0 6px;border-radius:7px;background:rgba(4,42,83,.82);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}.tvMode .channelNumber{font-size:14px;height:28px;min-width:32px}.nativeTv .channel.focused{border-color:#ffd84a!important;box-shadow:0 0 0 3px #ffd84a,0 9px 22px rgba(0,0,0,.24);transform:scale(1.025);z-index:6}.nativeTv .channel:focus{outline:none}.nativeTv .tvFavLeft{position:absolute;left:6px;top:6px;z-index:7;display:flex;align-items:center;justify-content:center;color:#e32636;font-size:15px;line-height:1;font-weight:900;text-shadow:0 1px 3px rgba(0,0,0,.2);pointer-events:none}.tvNumberOverlay{position:fixed;right:44px;top:34px;z-index:450;display:none;background:rgba(0,0,0,.78);color:#fff;border-radius:14px;padding:10px 18px;font-size:34px;font-weight:900;letter-spacing:4px}.tvNumberOverlay.show{display:block}
 html.nativeMedia3,body.nativeMedia3{background:transparent!important}
-body.nativeMedia3 #app{visibility:hidden!important}
+body.nativeMedia3>#tvSearch,
+body.nativeMedia3>#tvGuide,
+body.nativeMedia3>#tvShortcut,
+body.nativeMedia3>#netBanner,
+body.nativeMedia3>#tvNumberOverlay,
+body.nativeMedia3>#tvZap,
+body.nativeMedia3>#tvPair,
+body.nativeMedia3>#app,
+body.nativeMedia3>#supportAdminModal,
+body.nativeMedia3>#tvSettingPicker,
+body.nativeMedia3>#tvSettingsModal,
+body.nativeMedia3>#settingsModal,
+body.nativeMedia3>#adminPanel,
+body.nativeMedia3>#aiDubModal{display:none!important}
+body.nativeMedia3>#playerView{display:flex!important;visibility:visible!important;opacity:1!important;background:transparent!important}
 body.nativeMedia3 .playerView.open,
 body.nativeMedia3 .playerView.open.tvFullscreen,
 body.nativeMedia3 .playerView.open.appFullscreen,
