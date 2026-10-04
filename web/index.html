@@ -6326,10 +6326,17 @@ async function showCinemaSourcePicker(item){
     group.items.push(x);
   }
 
+  const zombieKey='zombie';
+  if(!byProvider.has(zombieKey)){
+    const hasZombie=Array.isArray(registry)&&registry.some(x=>normalizeLazyProviderName(x?.name)==='ZOMBIE');
+    if(hasZombie)ensureGroup('ZOMBIE',zombieKey);
+  }
+
   cinemaSourceGroups=sortLazyProviders(
     providerOrder
       .map(k=>byProvider.get(k))
-      .filter(g=>g&&Array.isArray(g.items)&&g.items.length)
+      .filter(g=>g&&Array.isArray(g.items))
+      .filter(g=>g.items.length||normalizeLazyProviderName(g.name)==='ZOMBIE')
       .filter(g=>normalizeLazyProviderName(g.name)!=='ENCYCLOPEDIA')
   );
   const currentProvider=cinemaProviderKey(item);
@@ -6368,9 +6375,12 @@ function renderCinemaSourceGroups(){
     label.textContent=group.name;
     const meta=document.createElement('small');
     const direct=group.items.some(x=>String(x.url||'').trim());
+    const providerName=normalizeLazyProviderName(group.name);
     meta.textContent=direct
       ?('Найдено вариантов: '+group.items.length+' · есть готовый поток')
-      :('Найдено вариантов: '+group.items.length);
+      :(group.items.length
+        ?('Найдено вариантов: '+group.items.length)
+        :(providerName==='ZOMBIE'?'Проверить в LazyMedia':'Нет вариантов'));
     btn.appendChild(label);
     btn.appendChild(meta);
     btn.onclick=()=>{
@@ -6592,9 +6602,28 @@ async function openCinemaSourceGroup(index){
   const list=document.getElementById('cinemaSourceList');
   const title=document.getElementById('cinemaSourceTitle');
 
-  if(!group.items.length)return;
-
   const provider=normalizeLazyProviderName(group.name);
+  if(!group.items.length&&provider==='ZOMBIE'){
+    if(title)title.textContent='ZOMBIE · ВИДЕО';
+    if(list)list.innerHTML='<div class="cinemaSourceBusy">Ищу варианты ZOMBIE в LazyMedia…</div>';
+    const found=await findCinemaItemsForProvider('ZOMBIE',cinemaSourcePickerMovie).catch(()=>[]);
+    group.items=Array.isArray(found)?found:[];
+    if(!group.items.length){
+      if(list){
+        list.innerHTML='<div class="cinemaSourceEmpty">ZOMBIE не вернул вариант для этого фильма.</div>';
+        const back=document.createElement('button');
+        back.className='cinemaSourceClose';
+        back.textContent='← Источники';
+        back.onclick=renderCinemaSourceGroups;
+        list.appendChild(back);
+        setTimeout(()=>focusCinemaSourceButton(0),20);
+      }
+      return;
+    }
+    cinemaSourcePickerItems=group.items;
+  }
+
+  if(!group.items.length)return;
   if(provider==='FILMIX'&&!group.items.some(x=>String(x.url||'').trim())){
     renderFilmixVideoOptions(group);
     return;
