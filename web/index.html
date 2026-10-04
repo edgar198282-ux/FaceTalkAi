@@ -5606,6 +5606,15 @@ function lazyMediaSearchAsync(query){
         AbajNative.lazyMediaSearchAsync(String(query||''),id);
         return;
       }
+      if(window.AbajNative&&typeof AbajNative.lazyMediaSearch==='function'){
+        setTimeout(()=>{
+          try{
+            const rows=JSON.parse(AbajNative.lazyMediaSearch(String(query||''))||'[]');
+            resolve(Array.isArray(rows)?rows:[]);
+          }catch(e){resolve([])}
+        },30);
+        return;
+      }
     }catch(e){}
     resolve([]);
   });
@@ -5636,6 +5645,14 @@ function setCinemaType(type){
   localStorage.setItem('abaj_cinema_type',cinemaType);
   cinemaLoaded=false;
   syncCinemaTypeUi();
+  const grid=document.getElementById('cinemaPosterGrid');
+  const cached=readCinemaCache();
+  if(cached.length){
+    renderCinemaCatalog(cached);
+    cinemaLoaded=true;
+  }else if(grid){
+    grid.innerHTML='<div style="grid-column:1/-1;padding:24px 8px;color:#9fc5d8;font-size:16px">Загрузка…</div>';
+  }
   loadCinemaCatalog(true);
 }
 function cinemaFocusable(){
@@ -5741,6 +5758,8 @@ async function loadCinemaCatalog(force=false){
       if(status)status.textContent='Найдено '+cached.length;
     }else{
       if(status)status.textContent='Загрузка новинок…';
+      const grid=document.getElementById('cinemaPosterGrid');
+      if(grid)grid.innerHTML='<div style="grid-column:1/-1;padding:24px 8px;color:#9fc5d8;font-size:16px">Загрузка каталога…</div>';
     }
 
     const q=cinemaType==='series'?'сериал':'фильм';
