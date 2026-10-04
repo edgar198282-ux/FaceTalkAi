@@ -5796,6 +5796,23 @@ async function searchCinemaLazyMedia(raw){
   const sectionTitle=document.getElementById('cinemaSectionTitle');
   if(sectionTitle)sectionTitle.textContent='Поиск · '+q;
 
+  const seen=new Set(), merged=[];
+  const needle=q.toLocaleLowerCase('ru');
+  const local=[...readCinemaCacheFor('movies'),...readCinemaCacheFor('series')];
+  for(const item of local){
+    const text=(String(item.title||'')+' '+String(item.year||'')+' '+String(item.subtitle||'')).toLocaleLowerCase('ru');
+    if(!text.includes(needle))continue;
+    const key=String(item.intent||item.id||item.title||'');
+    if(!key||seen.has(key))continue;
+    seen.add(key);
+    merged.push(item);
+  }
+  if(merged.length){
+    merged.sort((a,b)=>cinemaYear(b)-cinemaYear(a));
+    renderCinemaCatalog(merged.slice(0,100),{search:true});
+    if(status)status.textContent='Найдено '+merged.length+' · обновляю результаты…';
+  }
+
   const requests=[];
   const info=getLazyMediaInfo();
   if(info.installed)requests.push(lazyMediaSearchAsync(q).catch(()=>[]));
@@ -5804,7 +5821,6 @@ async function searchCinemaLazyMedia(raw){
   const batches=await Promise.all(requests);
   if(seq!==cinemaSearchSeq)return;
 
-  const seen=new Set(), merged=[];
   for(const rows of batches){
     for(const item of (Array.isArray(rows)?rows:[])){
       const key=String(item.intent||item.id||item.title||'');
