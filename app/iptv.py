@@ -2263,6 +2263,17 @@ def _playback_benchmark_summary():
     }
 
 
+async def api_cinema_catalog(request):
+    # Cinema stays inside Abaj TV. Provider-backed titles must come through an
+    # authorized integration; never copy session credentials from another app.
+    return web.json_response({
+        "ok": True,
+        "items": [],
+        "source": "abaj",
+        "provider_authorization_required": True,
+    })
+
+
 async def api_diagnostics(request):
     state = public_state()
     rows = state.get("channels") or []
@@ -3016,6 +3027,7 @@ def install(app: web.Application):
     app.router.add_get("/api/iptv/worker-bootstrap", api_worker_bootstrap)
     app.router.add_post("/api/iptv/worker-snapshot", api_worker_snapshot)
     app.router.add_get("/api/iptv/diagnostics", api_diagnostics)
+    app.router.add_get("/api/cinema/catalog", api_cinema_catalog)
     app.router.add_post("/api/iptv/refresh", api_refresh)
     app.router.add_get("/api/iptv/play", api_play)
     app.router.add_post("/api/iptv/client-stream-failure", api_client_stream_failure)
