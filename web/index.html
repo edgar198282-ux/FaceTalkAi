@@ -4022,14 +4022,19 @@ function tvDirectUrls(ch){
   if(!nativeTv||!ch)return urls;
   const isYerkir=String(ch.tvg_id||'').toLowerCase()==='yerkirmedia.am'||String(ch.name||'').trim().toLowerCase()==='yerkir media';
   if(isYerkir)return urls;
-  // Cinerama often injects its own startup promo. Prefer every verified
-  // non-Cinerama source before Cinerama, even when the alternative is HTTP.
-  const clean=urls.filter(u=>!isCineramaStreamUrl(u));
-  const cinerama=urls.filter(u=>isCineramaStreamUrl(u));
-  if(clean.length){
+  // On a Team Telecom home connection the operator CDN is the shortest path.
+  // Some merged Armenian channels kept a public HTTPS source as primary and the
+  // verified TeamTV stream only as backup, so the TV never used the faster ISP
+  // path. Prefer teamcloud.am first only on Android TV; other clients keep the
+  // normal catalog ordering.
+  const team=urls.filter(u=>/(?:^|\.)teamcloud\.am(?:\/|$)/i.test((()=>{try{return new URL(String(u),location.href).hostname}catch(e){return ''}})()));
+  const rest=urls.filter(u=>!team.includes(u));
+  const clean=rest.filter(u=>!isCineramaStreamUrl(u));
+  const cinerama=rest.filter(u=>isCineramaStreamUrl(u));
+  if(clean.length||team.length){
     const cleanHttps=clean.filter(u=>/^https:\/\//i.test(u));
     const cleanOther=clean.filter(u=>!/^https:\/\//i.test(u));
-    return [...cleanHttps,...cleanOther,...cinerama];
+    return [...team,...cleanHttps,...cleanOther,...cinerama];
   }
   return urls;
 }
