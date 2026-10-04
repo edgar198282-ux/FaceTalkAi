@@ -6420,8 +6420,14 @@ function renderCinemaFormatOptions(group,item){
 
   const provider=normalizeLazyProviderName(group.name);
   if(!formats.length&&(provider==='ZONA'||provider==='ZONAFILM')){
-    formats.push({item,transport:'HLS',quality:'',label:'HLS'});
-    formats.push({item,transport:'DASH',quality:'',label:'DASH'});
+    formats.push({item,transport:'HLS',quality:'AUTO',label:'HLS · AUTO'});
+    formats.push({item,transport:'DASH',quality:'AUTO',label:'DASH · AUTO'});
+  }
+  if(!formats.length&&provider==='FILMIX'){
+    formats.push({item,transport:'MP4',quality:'2160',label:'MP4 · 2160'});
+    formats.push({item,transport:'MP4',quality:'1080',label:'MP4 · 1080'});
+    formats.push({item,transport:'MP4',quality:'720',label:'MP4 · 720'});
+    formats.push({item,transport:'MP4',quality:'480',label:'MP4 · 480'});
   }
 
   list.innerHTML='';
@@ -6465,7 +6471,7 @@ function renderCinemaFormatOptions(group,item){
         transport:f.transport
       });
       try{
-        AbajNative.resolveCinemaStream(intent,f.transport,requestId);
+        AbajNative.resolveCinemaStream(intent,f.transport+'|'+String(f.quality||''),requestId);
       }catch(e){
         cinemaResolvePending.delete(requestId);
         meta.textContent='Не удалось получить '+f.transport;
@@ -6476,7 +6482,7 @@ function renderCinemaFormatOptions(group,item){
 
   const back=document.createElement('button');
   back.className='cinemaSourceClose';
-  back.textContent='← Варианты';
+  back.textContent='← ВИДЕО';
   back.onclick=()=>openCinemaSourceGroup(cinemaSourceGroups.indexOf(group));
   list.appendChild(back);
   setTimeout(()=>focusCinemaSourceButton(0),20);
@@ -6502,7 +6508,7 @@ async function openCinemaSourceGroup(index){
 
   if(!group.items.length)return;
 
-  if(title)title.textContent=group.name+' · варианты';
+  if(title)title.textContent=group.name+' · ВИДЕО';
   if(!list)return;
   list.innerHTML='';
   group.items.forEach((item,i)=>{
@@ -6511,7 +6517,7 @@ async function openCinemaSourceGroup(index){
     const label=document.createElement('span');
     label.textContent=String(item.title||item.subtitle||('Вариант '+(i+1)));
     const meta=document.createElement('small');
-    meta.textContent=String(item.url||'').trim()?'Готов к воспроизведению':'Открыть вариант';
+    meta.textContent=String(item.url||'').trim()?'Готов к воспроизведению':'Открыть ВИДЕО';
     btn.appendChild(label);
     btn.appendChild(meta);
     btn.onclick=()=>{

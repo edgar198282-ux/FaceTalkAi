@@ -413,7 +413,8 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void resolveCinemaStream(String rawIntent,String rawTransport,String rawRequestId){
             final String requestId=(rawRequestId==null?"":rawRequestId).replaceAll("[^A-Za-z0-9_-]","");
-            final String transport=(rawTransport==null?"":rawTransport).trim().toUpperCase();
+            String raw=(rawTransport==null?"":rawTransport).trim().toUpperCase();
+            final String transport=raw.contains("|")?raw.substring(0,raw.indexOf('|')):raw;
             if(requestId.isEmpty())return;
             resolveCinemaStreamInternal(rawIntent,transport,requestId);
         }
