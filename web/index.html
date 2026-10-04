@@ -813,6 +813,23 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
 .tvSettingPickerList{display:grid;gap:9px;max-height:58vh;overflow:auto}
 .tvSettingPickerItem{border:0;border-radius:12px;padding:13px 15px;background:#dff2ff;color:#174b6d;font-size:20px;font-weight:800;text-align:left}
 .tvSettingPickerItem.focused{background:#168de8;color:#fff;box-shadow:0 0 0 4px #ffd400 inset}
+.cinemaSwitchBtn{width:auto!important;min-width:96px!important;padding:0 14px!important;font-size:16px!important;font-weight:900!important;letter-spacing:.1px}
+.nativeTv .cinemaSwitchBtn{height:42px!important;min-height:42px!important;border-radius:12px!important}
+.cinemaScreen{display:none;flex:1;min-height:0;overflow:auto;padding:18px 18px 78px;box-sizing:border-box;background:radial-gradient(circle at 78% 10%,rgba(18,92,150,.28),transparent 30%),linear-gradient(180deg,#061521,#0a2333 58%,#071722);color:#fff}
+body.cinemaMode .toolbar,body.cinemaMode .countryChips,body.cinemaMode .modeChips,body.cinemaMode .quickCats,body.cinemaMode .status,body.cinemaMode #content,body.cinemaMode #tvHelpBar{display:none!important}
+body.cinemaMode .cinemaScreen{display:block}
+body.cinemaMode .top{background:linear-gradient(180deg,#07131f,#0b2132)!important;border-bottom:1px solid rgba(255,255,255,.08)}
+body.cinemaMode .titleRow{margin-bottom:0}
+.cinemaHero{min-height:240px;border-radius:24px;padding:30px 34px;box-sizing:border-box;display:flex;align-items:flex-end;background:linear-gradient(90deg,rgba(2,12,22,.94),rgba(2,12,22,.55) 55%,rgba(2,12,22,.2)),radial-gradient(circle at 82% 30%,#1b6b8f,#102a3c 48%,#07131f 72%);box-shadow:0 20px 50px rgba(0,0,0,.3);overflow:hidden}
+.cinemaHeroTitle{font-size:42px;font-weight:950;line-height:1.02;letter-spacing:-.6px}
+.cinemaHeroSub{margin-top:10px;font-size:18px;color:#b9d7e8;max-width:720px;line-height:1.4}
+.cinemaOpenBtn{margin-top:18px;border:0;border-radius:14px;padding:13px 20px;background:#25b9d7;color:#06202a;font-size:18px;font-weight:950;box-shadow:0 8px 22px rgba(37,185,215,.24)}
+.cinemaOpenBtn:focus{outline:none!important;box-shadow:0 0 0 4px #ffd400,0 8px 22px rgba(37,185,215,.28)!important}
+.cinemaSectionTitle{font-size:24px;font-weight:900;margin:24px 0 14px}
+.cinemaGenreGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.cinemaGenre{min-height:150px;border-radius:18px;background:linear-gradient(145deg,#123b51,#0b2332);border:1px solid rgba(255,255,255,.08);display:flex;align-items:flex-end;padding:16px;font-size:20px;font-weight:900;box-shadow:0 10px 24px rgba(0,0,0,.22)}
+.cinemaStatus{margin-top:18px;color:#9fc5d8;font-size:15px}
+@media(max-width:900px){.cinemaGenreGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.cinemaHeroTitle{font-size:34px}}
 </style>
 </head>
 <body>
@@ -858,6 +875,7 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
         </div>
       </div>
       <div class="icons">
+        <button id="cinemaToggleBtn" class="iconBtn tvTopAction cinemaSwitchBtn" onclick="toggleCinemaMode()" title="Кино" aria-label="Кино">🎬 <span id="cinemaToggleText">Кино</span></button>
         <button id="listBtn" class="iconBtn active" onclick="toggleLayoutMode()" title="Список / Плитка" aria-label="Список / Плитка">☷</button>
         <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
         <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск" aria-label="Поиск">🔍</button>
@@ -892,6 +910,25 @@ body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-even
     <div class="quickCats" id="quickCats"></div>
     <div class="status" id="status">Загрузка каналов…</div>
   </header>
+
+  <section class="cinemaScreen" id="cinemaScreen">
+    <div class="cinemaHero">
+      <div>
+        <div class="cinemaHeroTitle">TeamTV Кино</div>
+        <div class="cinemaHeroSub">Фильмы, мультфильмы и сериалы из официальной медиатеки TeamTV. Открывается ваш установленный TeamTV с уже активной подпиской.</div>
+        <button id="cinemaOpenBtn" class="cinemaOpenBtn" onclick="openTeamCinema()">Открыть TeamTV Кино</button>
+        <div id="cinemaStatus" class="cinemaStatus">Источник: TeamTV</div>
+      </div>
+    </div>
+    <div class="cinemaSectionTitle">Разделы</div>
+    <div class="cinemaGenreGrid">
+      <div class="cinemaGenre">Новинки</div>
+      <div class="cinemaGenre">Фильмы</div>
+      <div class="cinemaGenre">Мультфильмы</div>
+      <div class="cinemaGenre">Сериалы</div>
+      <div class="cinemaGenre">Мой список</div>
+    </div>
+  </section>
 
   <main class="content" id="content">
     <div class="list" id="list"></div>
@@ -5404,6 +5441,51 @@ document.addEventListener('keyup',e=>{
   e.preventDefault();
   endTvChannelOk();
 });
+
+let cinemaMode=localStorage.getItem('abaj_cinema_mode')==='1';
+function syncCinemaUi(){
+  document.body.classList.toggle('cinemaMode',cinemaMode);
+  const txt=document.getElementById('cinemaToggleText');
+  const btn=document.getElementById('cinemaToggleBtn');
+  if(txt)txt.textContent=cinemaMode?'ТВ':'Кино';
+  if(btn){
+    btn.title=cinemaMode?'ТВ':'Кино';
+    btn.setAttribute('aria-label',cinemaMode?'ТВ':'Кино');
+  }
+}
+function openTeamCinema(){
+  const status=document.getElementById('cinemaStatus');
+  let opened=false;
+  try{
+    if(window.AbajNative&&typeof AbajNative.openTeamCinema==='function'){
+      opened=AbajNative.openTeamCinema()!==false;
+    }
+  }catch(e){opened=false}
+  if(status){
+    status.textContent=opened?'TeamTV Кино открыто. Нажмите Back, чтобы вернуться в Abaj TV.':'TeamTV не найден на этом устройстве.';
+  }
+  return opened;
+}
+function toggleCinemaMode(){
+  cinemaMode=!cinemaMode;
+  localStorage.setItem('abaj_cinema_mode',cinemaMode?'1':'0');
+  syncCinemaUi();
+  if(cinemaMode){
+    try{closeTvSearch(false)}catch(e){}
+    try{closeTvSettings()}catch(e){}
+    setTimeout(()=>{
+      const btn=document.getElementById('cinemaToggleBtn');
+      if(btn&&nativeTv)btn.focus();
+      openTeamCinema();
+    },120);
+  }else{
+    setTimeout(()=>{
+      const btn=document.getElementById('listBtn');
+      if(btn&&nativeTv)btn.focus();
+    },60);
+  }
+}
+syncCinemaUi();
 
 document.getElementById('app').classList.toggle('tvMode',tvMode);
 applyThemeHue();
