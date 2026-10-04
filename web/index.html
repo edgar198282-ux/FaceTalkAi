@@ -6622,11 +6622,11 @@ window.__abajCinemaResolved=function(requestId,url){
   cinemaResolvePending.delete(String(requestId||''));
   const stream=String(url||'').trim();
   if(stream){
-    closeCinemaSourcePicker();
+    if(pending.meta)pending.meta.textContent='Поток найден · открываю…';
     window.__abajOpenExternalMedia(stream,pending.title||'Кино');
     return;
   }
-  if(pending.meta)pending.meta.textContent=pending.transport+' не получен';
+  if(pending.meta)pending.meta.textContent='Поток не найден';
 };
 
 async function openCinemaSourceGroup(index){
