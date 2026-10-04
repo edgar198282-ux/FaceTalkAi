@@ -6366,8 +6366,8 @@ function renderCinemaSourceGroups(){
     const meta=document.createElement('small');
     const direct=group.items.some(x=>String(x.url||'').trim());
     meta.textContent=direct
-      ?'Есть поток · открыть'
-      :(group.items.length?('Найдено вариантов: '+group.items.length):'Активен в LazyMedia · проверить');
+      ?('Найдено вариантов: '+group.items.length+' · есть готовый поток')
+      :('Найдено вариантов: '+group.items.length);
     btn.appendChild(label);
     btn.appendChild(meta);
     btn.onclick=()=>{
@@ -6591,10 +6591,6 @@ async function openCinemaSourceGroup(index){
   if(!group.items.length)return;
 
   const provider=normalizeLazyProviderName(group.name);
-  if(provider==='FILMIX'&&!group.items.some(x=>String(x.url||'').trim())){
-    renderFilmixVideoOptions(group);
-    return;
-  }
 
   if(title)title.textContent=group.name+' · ВИДЕО';
   if(!list)return;
@@ -6605,7 +6601,10 @@ async function openCinemaSourceGroup(index){
     const label=document.createElement('span');
     label.textContent=String(item.title||item.subtitle||('Вариант '+(i+1)));
     const meta=document.createElement('small');
-    meta.textContent=String(item.url||'').trim()?'Готов к воспроизведению':'Открыть ВИДЕО';
+    const providerName=normalizeLazyProviderName(group.name);
+    meta.textContent=String(item.url||'').trim()
+      ?'Готово к воспроизведению'
+      :('Вариант '+providerName+' · открыть');
     btn.appendChild(label);
     btn.appendChild(meta);
     btn.onclick=()=>{
