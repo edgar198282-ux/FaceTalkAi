@@ -6365,12 +6365,18 @@ function renderCinemaSourceGroups(){
 }
 function cinemaStreamFormat(item){
   const url=String(item?.url||'').toLowerCase();
-  const text=(String(item?.quality||'')+' '+String(item?.subtitle||'')+' '+String(item?.title||'')).toUpperCase();
+  const text=(
+    String(item?.quality||'')+' '+
+    String(item?.subtitle||'')+' '+
+    String(item?.duration||'')+' '+
+    String(item?.content_type||'')+' '+
+    String(item?.title||'')
+  ).toUpperCase();
   let transport='AUTO';
-  if(url.includes('.m3u8')||text.includes('HLS'))transport='HLS';
+  if(url.includes('.m3u8')||text.includes('HLS')||text.includes('M3U8'))transport='HLS';
   else if(url.includes('.mpd')||text.includes('DASH'))transport='DASH';
-  else if(url.includes('.mp4'))transport='MP4';
-  else if(url.includes('.mkv'))transport='MKV';
+  else if(url.includes('.mp4')||text.includes('MP4'))transport='MP4';
+  else if(url.includes('.mkv')||text.includes('MKV'))transport='MKV';
   let quality='';
   const h=Number(item?.height||0);
   if(h>=2160)quality='4K';
@@ -6415,9 +6421,13 @@ function renderCinemaFormatOptions(group,item){
     label.textContent=f.label||('Формат '+(i+1));
     const meta=document.createElement('small');
     const url=String(f.item?.url||'').trim();
+    const exposedMeta=[
+      String(f.item?.subtitle||'').trim(),
+      String(f.item?.duration||'').trim()
+    ].filter(Boolean).join(' · ');
     meta.textContent=url
       ?'Открыть в плеере Abaj TV'
-      :(String(f.item?.subtitle||'').trim()||'Формат найден в LazyMedia');
+      :(exposedMeta||'Формат найден в LazyMedia');
     btn.appendChild(label);
     btn.appendChild(meta);
     btn.onclick=()=>{
@@ -6428,7 +6438,9 @@ function renderCinemaFormatOptions(group,item){
       }
       [...list.querySelectorAll('.cinemaSourceBtn')].forEach(x=>x.classList.remove('selected'));
       btn.classList.add('selected');
-      meta.textContent='Формат выбран · ожидаю прямой поток от источника';
+      meta.textContent=f.transport==='HLS'
+        ?'HLS найден · источник не передал прямой URL'
+        :'Формат выбран · источник не передал прямой URL';
     };
     list.appendChild(btn);
   });
