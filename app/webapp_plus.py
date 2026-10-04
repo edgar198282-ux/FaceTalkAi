@@ -849,6 +849,142 @@ async def api_cinema_catalog_cache(request):
     return web.json_response({"ok": True, "count": len(clean), "type": kind}, headers={"Cache-Control": "no-store"})
 
 
+async def api_cinema_search(request):
+    q = str(request.query.get("q") or "").strip().casefold()
+    if not q:
+        return web.json_response({"ok": True, "items": []}, headers={"Cache-Control": "no-store"})
+    merged = []
+    seen = set()
+    for kind in ("movies", "series"):
+        raw = await get_setting(f"cinema_catalog:{kind}", "[]")
+        try:
+            rows = json.loads(raw or "[]")
+        except Exception:
+            rows = []
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            text = " ".join([
+                str(row.get("title") or ""),
+                str(row.get("year") or ""),
+                str(row.get("source") or ""),
+            ]).casefold()
+            if q not in text:
+                continue
+            key = str(row.get("intent") or row.get("id") or row.get("title") or "")
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            item = dict(row)
+            item["kind"] = kind
+            merged.append(item)
+            if len(merged) >= 100:
+                break
+        if len(merged) >= 100:
+            break
+    return web.json_response({"ok": True, "items": merged}, headers={"Cache-Control": "no-store"})
+
+
+async def api_admin_cinema_playback_provider(request):
+    user = await _user_from_request(request)
+    if not user or not _is_admin_user(user):
+        return web.json_response({"ok": False, "error": "forbidden"}, status=403)
+
+    if request.method == "GET":
+        endpoint = str(await get_setting("cinema_playback_endpoint", "") or "").strip()
+        auth_mode = str(await get_setting("cinema_playback_auth_mode", "none") or "none").strip()
+        username = str(await get_setting("cinema_playback_username", "") or "").strip()
+        token = str(await get_setting("cinema_playback_token", "") or "").strip()
+        password = str(await get_setting("cinema_playback_password", "") or "").strip()
+        return web.json_response({
+            "ok": True,
+            "endpoint": endpoint,
+            "auth_mode": auth_mode,
+            "username": username,
+            "has_token": bool(token),
+            "has_password": bool(password),
+            "configured": bool(endpoint),
+        }, headers={"Cache-Control": "no-store"})
+
+    body = await request.json()
+    endpoint = str(body.get("endpoint") or "").strip()[:2000]
+    auth_mode = str(body.get("auth_mode") or "none").strip().lower()
+    username = str(body.get("username") or "").strip()[:240]
+    if auth_mode not in ("none", "bearer", "basic"):
+        auth_mode = "none"
+    if endpoint:
+        parsed = urlparse(endpoint)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            return web.json_response({"ok": False, "error": "invalid_endpoint"}, status=400)
+    await set_setting("cinema_playback_endpoint", endpoint)
+    await set_setting("cinema_playback_auth_mode", auth_mode)
+    await set_setting("cinema_playback_username", username)
+    if "token" in body:
+        await set_setting("cinema_playback_token", str(body.get("token") or "")[:1000])
+    if "password" in body:
+        await set_setting("cinema_playback_password", str(body.get("password") or "")[:1000])
+    return web.json_response({"ok": True, "configured": bool(endpoint)}, headers={"Cache-Control": "no-store"})
+
+
+async def api_cinema_resolve(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+
+    body = await request.json()
+    endpoint = str(await get_setting("cinema_playback_endpoint", "") or "").strip()
+    if not endpoint:
+        return web.json_response({"ok": False, "error": "provider_not_configured"}, status=503)
+
+    payload = {
+        "title": str(body.get("title") or "")[:240],
+        "year": str(body.get("year") or "")[:20],
+        "type": "series" if str(body.get("type") or "").lower() == "series" else "movie",
+        "provider_id": str(body.get("id") or "")[:1000],
+        "source": str(body.get("source") or "")[:120],
+        "article": str(body.get("intent") or "")[:3000],
+    }
+
+    headers = {"Accept": "application/json", "Content-Type": "application/json", "User-Agent": "AbajTV/1.0"}
+    auth = None
+    auth_mode = str(await get_setting("cinema_playback_auth_mode", "none") or "none").strip().lower()
+    if auth_mode == "bearer":
+        token = str(await get_setting("cinema_playback_token", "") or "").strip()
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+    elif auth_mode == "basic":
+        username = str(await get_setting("cinema_playback_username", "") or "").strip()
+        password = str(await get_setting("cinema_playback_password", "") or "").strip()
+        auth = aiohttp.BasicAuth(username, password)
+
+    timeout = aiohttp.ClientTimeout(total=18, connect=7, sock_read=12)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout, headers=headers, auth=auth) as session:
+            async with session.post(endpoint, json=payload, allow_redirects=True) as resp:
+                data = await resp.json(content_type=None)
+                if resp.status >= 400:
+                    return web.json_response({"ok": False, "error": f"provider_http_{resp.status}"}, status=502)
+    except Exception as exc:
+        return web.json_response({"ok": False, "error": "provider_unavailable", "detail": str(exc)[:180]}, status=502)
+
+    if not isinstance(data, dict):
+        return web.json_response({"ok": False, "error": "bad_provider_response"}, status=502)
+
+    url = str(data.get("url") or data.get("stream_url") or data.get("play_url") or "").strip()
+    parsed = urlparse(url) if url else None
+    if not url or not parsed or parsed.scheme not in ("http", "https"):
+        return web.json_response({"ok": False, "error": "no_stream"}, status=404)
+
+    return web.json_response({
+        "ok": True,
+        "url": url,
+        "quality": str(data.get("quality") or ""),
+        "headers": data.get("headers") if isinstance(data.get("headers"), dict) else {},
+    }, headers={"Cache-Control": "no-store"})
+
+
 async def api_support_message(request):
     user = await _user_from_request(request)
     if not user:
@@ -1500,6 +1636,9 @@ async def start_webapp(bot):
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
     app.router.add_post('/api/iptv/ai-dub/chunk', api_iptv_ai_dub_chunk)
     app.router.add_post('/api/cinema/catalog-cache', api_cinema_catalog_cache)
+    app.router.add_get('/api/cinema/search', api_cinema_search)
+    app.router.add_post('/api/cinema/resolve', api_cinema_resolve)
+    app.router.add_get('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider); app.router.add_post('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider)
     app.router.add_post('/api/support/message', api_support_message)
     app.router.add_get('/api/admin/iptv/edem', api_admin_iptv_edem_list); app.router.add_post('/api/admin/iptv/edem/assign', api_admin_iptv_edem_assign); app.router.add_post('/api/admin/iptv/edem/limit', api_admin_iptv_edem_limit); app.router.add_post('/api/admin/iptv/edem/subscription', api_admin_iptv_edem_subscription); app.router.add_post('/api/admin/iptv/edem/payment', api_admin_iptv_edem_payment); app.router.add_get('/api/admin/access/users', api_admin_access_users); app.router.add_post('/api/admin/access/set', api_admin_access_set)
     app.router.add_get('/api/me', api_me); app.router.add_get('/api/admin/stats', api_admin_stats); app.router.add_get('/api/admin/keys', api_admin_keys); app.router.add_post('/api/admin/keys', api_admin_keys)

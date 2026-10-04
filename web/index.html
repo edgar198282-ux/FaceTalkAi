@@ -1109,6 +1109,21 @@ body.cinemaMode .titleRow{margin-bottom:0}
       </div>
     </div>
 
+    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Кино · воспроизведение</div>
+    <div class="adminRow" style="display:block">
+      <div class="adminMeta" style="margin-bottom:8px">Разрешённый API, который по названию/году возвращает прямой URL потока для плеера Abaj TV.</div>
+      <input id="cinemaPlaybackEndpoint" placeholder="https://provider.example/api/resolve" style="width:100%;height:42px;box-sizing:border-box;border:1px solid #b9dff5;border-radius:11px;padding:0 12px;margin-bottom:8px">
+      <select id="cinemaPlaybackAuthMode" style="width:100%;height:42px;box-sizing:border-box;border:1px solid #b9dff5;border-radius:11px;padding:0 12px;margin-bottom:8px">
+        <option value="none">Без авторизации</option>
+        <option value="bearer">Bearer token</option>
+        <option value="basic">Логин / пароль</option>
+      </select>
+      <input id="cinemaPlaybackUsername" placeholder="Логин (для Basic)" style="width:100%;height:42px;box-sizing:border-box;border:1px solid #b9dff5;border-radius:11px;padding:0 12px;margin-bottom:8px">
+      <input id="cinemaPlaybackSecret" type="password" placeholder="Token или пароль — пусто = не менять" style="width:100%;height:42px;box-sizing:border-box;border:1px solid #b9dff5;border-radius:11px;padding:0 12px;margin-bottom:8px">
+      <button onclick="saveCinemaPlaybackProvider()" style="width:100%;height:42px;border:0;border-radius:11px;background:#16a05d;color:#fff;font-weight:900">Сохранить источник воспроизведения</button>
+      <div id="cinemaPlaybackProviderStatus" class="adminMeta" style="margin-top:8px">—</div>
+    </div>
+
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Диагностика IPTV</div>
     <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px;width:100%;box-sizing:border-box">
       <button onclick="loadIptvDiagnostics()" style="width:100%;min-width:0;min-height:70px;box-sizing:border-box;background:#087fe1;color:#fff;border:0;border-radius:14px;padding:12px 10px;font-weight:800;font-size:16px;line-height:1.15;white-space:normal">Обновить<br>диагностику</button>
@@ -1755,6 +1770,7 @@ function openAdmin(){
   document.getElementById('adminPanel').classList.add('open');
   loadAdminAccess();
   loadAdminEdem();
+  loadCinemaPlaybackProvider();
   loadIptvDiagnostics();
   loadOtaInfo();
   refreshLazyMediaAdminStatus();
@@ -1812,6 +1828,49 @@ async function grantAccessById(){
   if(!Number.isInteger(uid)||uid<=0)return;
   await setUserAccess(uid,'grant');
   if(el)el.value='';
+}
+async function loadCinemaPlaybackProvider(){
+  const status=document.getElementById('cinemaPlaybackProviderStatus');
+  try{
+    const r=await fetch('/api/admin/cinema/playback-provider',{headers:authHeaders(),cache:'no-store'});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||('HTTP '+r.status));
+    const endpoint=document.getElementById('cinemaPlaybackEndpoint');
+    const mode=document.getElementById('cinemaPlaybackAuthMode');
+    const username=document.getElementById('cinemaPlaybackUsername');
+    const secret=document.getElementById('cinemaPlaybackSecret');
+    if(endpoint)endpoint.value=d.endpoint||'';
+    if(mode)mode.value=d.auth_mode||'none';
+    if(username)username.value=d.username||'';
+    if(secret)secret.value='';
+    if(status)status.textContent=d.configured?'Источник настроен':'Источник ещё не настроен';
+  }catch(e){
+    if(status)status.textContent='Ошибка загрузки настроек';
+  }
+}
+async function saveCinemaPlaybackProvider(){
+  const status=document.getElementById('cinemaPlaybackProviderStatus');
+  const mode=String(document.getElementById('cinemaPlaybackAuthMode')?.value||'none');
+  const body={
+    endpoint:String(document.getElementById('cinemaPlaybackEndpoint')?.value||'').trim(),
+    auth_mode:mode,
+    username:String(document.getElementById('cinemaPlaybackUsername')?.value||'').trim()
+  };
+  const secret=String(document.getElementById('cinemaPlaybackSecret')?.value||'');
+  if(secret){
+    if(mode==='bearer')body.token=secret;
+    if(mode==='basic')body.password=secret;
+  }
+  if(status)status.textContent='Сохраняю…';
+  try{
+    const r=await fetch('/api/admin/cinema/playback-provider',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||('HTTP '+r.status));
+    document.getElementById('cinemaPlaybackSecret').value='';
+    if(status)status.textContent=d.configured?'Готово':'Источник отключён';
+  }catch(e){
+    if(status)status.textContent='Ошибка: '+String(e.message||e);
+  }
 }
 async function loadAdminEdem(){
   const box=document.getElementById('adminRows');
@@ -5749,21 +5808,30 @@ async function searchCinemaLazyMedia(raw){
     await loadCinemaCatalog(true);
     return;
   }
-  if(status)status.textContent='Поиск в LazyMedia: '+q+'…';
+  if(status)status.textContent='Поиск: '+q+'…';
   const sectionTitle=document.getElementById('cinemaSectionTitle');
   if(sectionTitle)sectionTitle.textContent='Поиск · '+q;
-  const rows=await lazyMediaSearchAsync(q);
+
+  const requests=[];
+  const info=getLazyMediaInfo();
+  if(info.installed)requests.push(lazyMediaSearchAsync(q).catch(()=>[]));
+  requests.push(fetch('/api/cinema/search?q='+encodeURIComponent(q),{cache:'no-store'}).then(r=>r.json()).then(d=>Array.isArray(d.items)?d.items:[]).catch(()=>[]));
+
+  const batches=await Promise.all(requests);
   if(seq!==cinemaSearchSeq)return;
+
   const seen=new Set(), merged=[];
-  for(const item of (Array.isArray(rows)?rows:[])){
-    const key=String(item.intent||item.id||item.title||'');
-    if(!key||seen.has(key))continue;
-    seen.add(key);
-    merged.push(item);
+  for(const rows of batches){
+    for(const item of (Array.isArray(rows)?rows:[])){
+      const key=String(item.intent||item.id||item.title||'');
+      if(!key||seen.has(key))continue;
+      seen.add(key);
+      merged.push(item);
+    }
   }
   merged.sort((a,b)=>cinemaYear(b)-cinemaYear(a));
-  renderCinemaCatalog(merged.slice(0,80),{search:true});
-  if(status)status.textContent=merged.length?('Найдено '+merged.length+' · LazyMedia'):'Ничего не найдено в LazyMedia';
+  renderCinemaCatalog(merged.slice(0,100),{search:true});
+  if(status)status.textContent=merged.length?('Найдено '+merged.length):'Ничего не найдено';
 }
 function handleUnifiedSearchInput(value){
   if(!cinemaMode){
@@ -5995,19 +6063,47 @@ async function loadCinemaCatalog(force=false){
     renderCinemaCatalog([]);
   }
 }
-function openCinemaMovie(item){
+async function openCinemaMovie(item){
   if(!item)return;
-  if(item.intent&&cinemaSource==='lazy'&&!item.url){
-    const status=document.getElementById('cinemaStatus');
-    if(status)status.textContent='Фильм найден. Внутреннее воспроизведение этого источника пока недоступно.';
-    return;
+  const status=document.getElementById('cinemaStatus');
+  let url=String(item.url||'').trim();
+  if(!url){
+    if(status)status.textContent='Подбираю поток…';
+    try{
+      const r=await fetch('/api/cinema/resolve',{
+        method:'POST',
+        headers:{'Content-Type':'application/json',...authHeaders()},
+        body:JSON.stringify({
+          title:String(item.title||''),
+          year:String(item.year||''),
+          type:item.kind||cinemaType,
+          id:String(item.id||''),
+          source:String(item.source||'lazy'),
+          intent:String(item.intent||'')
+        })
+      });
+      const d=await r.json();
+      if(r.ok&&d.ok&&d.url)url=String(d.url);
+      else{
+        if(status)status.textContent=d.error==='provider_not_configured'
+          ?'Нужно настроить разрешённый источник воспроизведения в админке.'
+          :'Поток для этого фильма не найден.';
+        return;
+      }
+    }catch(e){
+      if(status)status.textContent='Источник воспроизведения сейчас недоступен.';
+      return;
+    }
   }
-  if(!item.url){
-    const status=document.getElementById('cinemaStatus');
-    if(status)status.textContent='Источник не вернул ссылку воспроизведения.';
-    return;
-  }
-  const ch={id:'cinema:'+String(item.id||Date.now()),name:String(item.title||'Фильм'),url:String(item.url),backups:[],personal:false,quality:String(item.quality||''),height:Number(item.height||0)};
+  const ch={
+    id:'cinema:'+String(item.id||Date.now()),
+    name:String(item.title||'Кино'),
+    url,
+    backups:[],
+    personal:false,
+    quality:String(item.quality||''),
+    height:Number(item.height||0)
+  };
   openChannel(ch);
 }
 function toggleCinemaMode(){
