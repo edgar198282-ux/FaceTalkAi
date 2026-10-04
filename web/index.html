@@ -1076,6 +1076,19 @@ body.cinemaMode .titleRow{margin-bottom:0}
 
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Edem пользователи</div>
     <div class="adminRows" id="adminRows"><div class="adminEmpty">Загрузка…</div></div>
+    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Кино · LazyMedia</div>
+    <div class="adminRow" style="display:block">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <b>Локальный источник фильмов</b>
+        <span id="lazyMediaAdminStatus" class="adminMeta">Проверка…</span>
+      </div>
+      <div class="adminMeta" id="lazyMediaAdminMeta" style="margin-top:6px">Подключается к установленному LazyMedia на этом ТВ-боксе. Данные авторизации не отправляются на наш сервер.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+        <button onclick="connectLazyMediaFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#16a05d;color:#fff;font-weight:900">Подключить / авторизация</button>
+        <button onclick="disconnectLazyMediaFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Отключить</button>
+      </div>
+    </div>
+
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Диагностика IPTV</div>
     <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px;width:100%;box-sizing:border-box">
       <button onclick="loadIptvDiagnostics()" style="width:100%;min-width:0;min-height:70px;box-sizing:border-box;background:#087fe1;color:#fff;border:0;border-radius:14px;padding:12px 10px;font-weight:800;font-size:16px;line-height:1.15;white-space:normal">Обновить<br>диагностику</button>
@@ -1722,6 +1735,7 @@ function openAdmin(){
   loadAdminEdem();
   loadIptvDiagnostics();
   loadOtaInfo();
+  refreshLazyMediaAdminStatus();
 }
 function closeAdmin(){document.getElementById('adminPanel').classList.remove('open')}
 function backFromAdmin(){
@@ -5483,6 +5497,55 @@ document.addEventListener('keyup',e=>{
 
 let cinemaMode=localStorage.getItem('abaj_cinema_mode')==='1';
 let cinemaLoaded=false;
+let cinemaSource=localStorage.getItem('abaj_cinema_source')||'abaj';
+
+function getLazyMediaInfo(){
+  try{
+    if(window.AbajNative&&typeof AbajNative.lazyMediaInfo==='function'){
+      return JSON.parse(AbajNative.lazyMediaInfo()||'{}');
+    }
+  }catch(e){}
+  return {installed:false};
+}
+function refreshLazyMediaAdminStatus(){
+  const s=document.getElementById('lazyMediaAdminStatus');
+  const m=document.getElementById('lazyMediaAdminMeta');
+  const info=getLazyMediaInfo();
+  const active=cinemaSource==='lazy'&&!!info.installed;
+  if(s){
+    s.textContent=active?'Подключено':(info.installed?'Установлено':'Не найдено');
+    s.style.color=active?'#16865b':(info.installed?'#0b5f9e':'#a33');
+  }
+  if(m){
+    m.textContent=info.installed
+      ?('LazyMedia '+(info.version||'')+(active?' используется как источник Кино.':' найден на устройстве.'))
+      :'LazyMedia не найден на этом устройстве.';
+  }
+}
+function connectLazyMediaFromAdmin(){
+  const info=getLazyMediaInfo();
+  if(!info.installed){refreshLazyMediaAdminStatus();return}
+  cinemaSource='lazy';
+  localStorage.setItem('abaj_cinema_source','lazy');
+  cinemaLoaded=false;
+  refreshLazyMediaAdminStatus();
+  try{if(window.AbajNative&&typeof AbajNative.openLazyMedia==='function')AbajNative.openLazyMedia()}catch(e){}
+}
+function disconnectLazyMediaFromAdmin(){
+  cinemaSource='abaj';
+  localStorage.setItem('abaj_cinema_source','abaj');
+  cinemaLoaded=false;
+  refreshLazyMediaAdminStatus();
+}
+function lazyMediaSearch(query){
+  try{
+    if(window.AbajNative&&typeof AbajNative.lazyMediaSearch==='function'){
+      const rows=JSON.parse(AbajNative.lazyMediaSearch(String(query||''))||'[]');
+      return Array.isArray(rows)?rows:[];
+    }
+  }catch(e){}
+  return [];
+}
 function syncCinemaUi(){
   document.body.classList.toggle('cinemaMode',cinemaMode);
   const icon=document.getElementById('cinemaToggleIcon');
@@ -5514,9 +5577,10 @@ function renderCinemaCatalog(items){
     const card=document.createElement('button');
     card.className='cinemaPosterCard';
     const poster=String(item.poster||'');
+    const sub=String(item.subtitle||item.year||'')+(item.quality?' · '+String(item.quality):'');
     card.innerHTML=(poster?'<img class="cinemaPosterImg" loading="lazy" src="'+poster.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaPosterFallback">🎞️</div>')+
       '<div class="cinemaPosterMeta"><div class="cinemaPosterTitle">'+String(item.title||'Фильм').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
-      '<div class="cinemaPosterSub">'+String(item.year||'')+(item.quality?' · '+String(item.quality):'')+'</div></div>';
+      '<div class="cinemaPosterSub">'+sub.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div></div>';
     card.onclick=()=>openCinemaMovie(item);
     grid.appendChild(card);
   });
@@ -5525,6 +5589,33 @@ async function loadCinemaCatalog(force=false){
   if(cinemaLoaded&&!force)return;
   const status=document.getElementById('cinemaStatus');
   if(status)status.textContent='Загрузка фильмов…';
+
+  if(cinemaSource==='lazy'){
+    const info=getLazyMediaInfo();
+    if(!info.installed){
+      cinemaLoaded=false;
+      renderCinemaCatalog([]);
+      if(status)status.textContent='LazyMedia не найден на этом устройстве.';
+      return;
+    }
+    const seeds=['','фильм','кино','сериал','4k'];
+    const merged=[]; const seen=new Set();
+    for(const q of seeds){
+      const rows=lazyMediaSearch(q);
+      for(const item of rows){
+        const key=String(item.intent||item.id||item.title||'');
+        if(!key||seen.has(key))continue;
+        seen.add(key); merged.push(item);
+        if(merged.length>=80)break;
+      }
+      if(merged.length>=80)break;
+    }
+    cinemaLoaded=true;
+    renderCinemaCatalog(merged);
+    if(status)status.textContent=merged.length?('Найдено '+merged.length):'Откройте LazyMedia один раз и завершите авторизацию.';
+    return;
+  }
+
   try{
     const r=await fetch('/api/cinema/catalog',{cache:'no-store'});
     if(!r.ok)throw new Error('HTTP '+r.status);
@@ -5536,7 +5627,16 @@ async function loadCinemaCatalog(force=false){
   }
 }
 function openCinemaMovie(item){
-  if(!item||!item.url)return;
+  if(!item)return;
+  if(item.intent&&cinemaSource==='lazy'){
+    try{
+      if(window.AbajNative&&typeof AbajNative.openLazyMediaIntent==='function'){
+        AbajNative.openLazyMediaIntent(String(item.intent));
+        return;
+      }
+    }catch(e){}
+  }
+  if(!item.url)return;
   const ch={id:'cinema:'+String(item.id||Date.now()),name:String(item.title||'Фильм'),url:String(item.url),backups:[],personal:false,quality:String(item.quality||''),height:Number(item.height||0)};
   openChannel(ch);
 }
