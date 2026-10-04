@@ -6600,7 +6600,7 @@ function renderCinemaFormatOptions(group,item){
         transport:f.transport
       });
       try{
-        AbajNative.resolveCinemaStream(intent,f.transport+'|'+String(f.quality||''),requestId);
+        AbajNative.resolveCinemaStream(intent,normalizeLazyProviderName(group.name)+'|'+f.transport+'|'+String(f.quality||''),requestId);
       }catch(e){
         cinemaResolvePending.delete(requestId);
         meta.textContent='Не удалось получить '+f.transport;
@@ -6680,7 +6680,7 @@ async function openCinemaSourceGroup(index){
           transport:'AUTO'
         });
         try{
-          AbajNative.resolveCinemaStream(intent,'AUTO',requestId);
+          AbajNative.resolveCinemaStream(intent,providerName+'|AUTO|',requestId);
           return;
         }catch(e){
           cinemaResolvePending.delete(requestId);
