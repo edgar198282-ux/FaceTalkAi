@@ -6516,6 +6516,11 @@ function renderCinemaFormatOptions(group,item){
     formats.push({item,transport:'HLS',quality:'AUTO',label:'HLS · AUTO'});
     formats.push({item,transport:'DASH',quality:'AUTO',label:'DASH · AUTO'});
   }
+  if(!formats.length&&provider!=='FILMIX'){
+    formats.push({item,transport:'HLS',quality:'AUTO',label:'HLS · AUTO'});
+    formats.push({item,transport:'DASH',quality:'AUTO',label:'DASH · AUTO'});
+    formats.push({item,transport:'MP4',quality:'AUTO',label:'MP4 · AUTO'});
+  }
 
   list.innerHTML='';
   if(!formats.length){

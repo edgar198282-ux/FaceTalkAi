@@ -105,13 +105,19 @@ public class MainActivity extends Activity {
             return new String(data,java.nio.charset.StandardCharsets.UTF_8).trim();
         }catch(Exception e){return "";}
     }
-    private String cinemaArticleUrl(String rawIntent){
+    private String cinemaSourceId(String rawIntent){
         try{
             String[] parts=(rawIntent==null?"":rawIntent).split(",",-1);
-            if(parts.length<2)return "";
-            String source=parts[0].trim();
+            return parts.length>0?parts[0].trim():"";
+        }catch(Exception e){return "";}
+    }
+    private String cinemaArticleUrl(String rawIntent){
+        try{
+            String source=cinemaSourceId(rawIntent);
             String article=decodeCinemaIntentPart(rawIntent,1);
             if(article.isEmpty())return "";
+            String low=article.toLowerCase(java.util.Locale.US);
+            if(low.startsWith("http://")||low.startsWith("https://"))return article;
             if("4".equals(source)){
                 if(article.startsWith("/"))article=article.substring(1);
                 if(article.startsWith("movies/"))article=article.substring("movies/".length());
@@ -130,7 +136,8 @@ public class MainActivity extends Activity {
         if(!(u.startsWith("http://")||u.startsWith("https://")))return false;
         if("HLS".equals(transport))return u.contains(".m3u8")||u.contains("hls=")||u.contains("/hls/");
         if("DASH".equals(transport))return u.contains(".mpd")||u.contains("dash=")||u.contains("/dash/");
-        return u.contains(".m3u8")||u.contains(".mpd")||u.contains("/hls/")||u.contains("/dash/");
+        if("MP4".equals(transport))return u.contains(".mp4")||u.contains("format=mp4")||u.contains("type=video/mp4");
+        return u.contains(".m3u8")||u.contains(".mpd")||u.contains(".mp4")||u.contains("/hls/")||u.contains("/dash/");
     }
     private void finishCinemaResolve(String requestId,String url){
         if(requestId==null||!requestId.equals(cinemaResolverRequestId)||cinemaResolverDone)return;
@@ -314,7 +321,7 @@ public class MainActivity extends Activity {
                                 "(function(){try{"+
                                 "var els=[...document.querySelectorAll('video,video source,source,a,button,[class*=play],[id*=play]')];"+
                                 "for(var i=0;i<els.length;i++){var e=els[i],u=e.src||e.href||e.getAttribute('src')||e.getAttribute('data-src')||'';"+
-                                "if(u&&(/m3u8|\\.mpd/i).test(u))return u;}"+
+                                "if(u&&(/m3u8|\\.mpd|\\.mp4/i).test(u))return u;}"+
                                 "var b=document.querySelector('button,[class*=play],[id*=play]');if(b){try{b.click()}catch(e){}}"+
                                 "document.querySelectorAll('video').forEach(function(v){try{v.muted=true;v.play()}catch(e){}});"+
                                 "}catch(e){}return '';})()",
