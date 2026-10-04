@@ -6512,21 +6512,12 @@ function renderCinemaFormatOptions(group,item){
   }
 
   const provider=normalizeLazyProviderName(group.name);
-  if(!formats.length&&(provider==='ZONA'||provider==='ZONAFILM')){
-    formats.push({item,transport:'HLS',quality:'AUTO',label:'HLS · AUTO'});
-    formats.push({item,transport:'DASH',quality:'AUTO',label:'DASH · AUTO'});
-  }
-  if(!formats.length&&provider!=='FILMIX'){
-    formats.push({item,transport:'HLS',quality:'AUTO',label:'HLS · AUTO'});
-    formats.push({item,transport:'DASH',quality:'AUTO',label:'DASH · AUTO'});
-    formats.push({item,transport:'MP4',quality:'AUTO',label:'MP4 · AUTO'});
-  }
 
   list.innerHTML='';
   if(!formats.length){
     const empty=document.createElement('div');
     empty.className='cinemaSourceEmpty';
-    empty.textContent='Форматы этого варианта пока не получены.';
+    empty.textContent='Этот источник пока не вернул реальные варианты видео.';
     list.appendChild(empty);
   }
 
