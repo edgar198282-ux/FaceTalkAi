@@ -4087,7 +4087,8 @@ function openPlayer(id){
 
   const hud=document.getElementById('playerChannelHud');
   if(hud){hud.dataset.shownOnce='';hidePlayerChannelHud();}
-  const ch=channels.find(x=>x.id===id);
+  const ch=channels.find(x=>x.id===id)||
+    (cinemaExternalChannel&&cinemaExternalChannel.id===id?cinemaExternalChannel:null);
   if(!ch)return;
   if(nativeTv){
     playbackOpenStartedAt=performance.now();
@@ -5015,6 +5016,7 @@ function closePlayer(){
   const wrap=document.querySelector('.videoWrap');
   if(wrap)wrap.classList.remove('playing');
   const closingId=current&&current.id;
+  const closingCinemaExternal=!!(cinemaExternalChannel&&closingId===cinemaExternalChannel.id);
   const playerView=document.getElementById('playerView');
   playerView.classList.remove('open');
   playerView.classList.remove('tvFullscreen');
@@ -5031,6 +5033,7 @@ function closePlayer(){
   }
   toggleTvRail(false);
   current=null;currentIndex=-1;
+  if(closingCinemaExternal)cinemaExternalChannel=null;
   if(nativeTv&&closingId){
     const cards=[...document.querySelectorAll('.channel')];
     const idx=cards.findIndex(x=>x.dataset.id===closingId);
@@ -6084,6 +6087,7 @@ async function loadCinemaCatalog(force=false){
 let cinemaSourcePickerItems=[];
 let cinemaSourceGroups=[];
 let cinemaSourcePickerMovie=null;
+let cinemaExternalChannel=null;
 let cinemaResolvePending=new Map();
 let cinemaSourceIgnoreUntil=0;
 let filmixVideoPending=new Map();
@@ -6761,7 +6765,8 @@ window.__abajOpenExternalMedia=function(url,title){
     localStorage.setItem('abaj_cinema_mode','1');
     syncCinemaUi();
   }catch(e){}
-  openChannel(ch);
+  cinemaExternalChannel=ch;
+  openPlayer(ch.id);
 };
 async function openCinemaMovie(item){
   if(!item)return;
