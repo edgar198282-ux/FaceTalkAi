@@ -829,7 +829,16 @@ body.cinemaMode .titleRow{margin-bottom:0}
 .cinemaGenreGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
 .cinemaGenre{min-height:150px;border-radius:18px;background:linear-gradient(145deg,#123b51,#0b2332);border:1px solid rgba(255,255,255,.08);display:flex;align-items:flex-end;padding:16px;font-size:20px;font-weight:900;box-shadow:0 10px 24px rgba(0,0,0,.22)}
 .cinemaStatus{margin-top:18px;color:#9fc5d8;font-size:15px}
-@media(max-width:900px){.cinemaGenreGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.cinemaHeroTitle{font-size:34px}}
+.cinemaPosterGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
+.cinemaPosterCard{border:0;padding:0;background:#102535;border-radius:18px;overflow:hidden;text-align:left;color:#fff;box-shadow:0 12px 28px rgba(0,0,0,.28);min-height:300px}
+.cinemaPosterCard:focus{outline:none!important;box-shadow:0 0 0 4px #ffd400,0 14px 30px rgba(0,0,0,.34)!important;transform:scale(1.02)}
+.cinemaPosterImg{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:linear-gradient(145deg,#204d67,#0d2030)}
+.cinemaPosterFallback{width:100%;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;font-size:46px;background:linear-gradient(145deg,#1d5d7a,#102b3d)}
+.cinemaPosterMeta{padding:11px 12px 13px}
+.cinemaPosterTitle{font-size:16px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cinemaPosterSub{font-size:12px;color:#9fc5d8;margin-top:5px}
+@media(max-width:1200px){.cinemaPosterGrid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:900px){.cinemaPosterGrid{grid-template-columns:repeat(4,minmax(0,1fr))}.cinemaHeroTitle{font-size:34px}}
 </style>
 </head>
 <body>
@@ -875,7 +884,7 @@ body.cinemaMode .titleRow{margin-bottom:0}
         </div>
       </div>
       <div class="icons">
-        <button id="cinemaToggleBtn" class="iconBtn tvTopAction cinemaSwitchBtn" onclick="toggleCinemaMode()" title="Кино" aria-label="Кино">🎬 <span id="cinemaToggleText">Кино</span></button>
+        <button id="cinemaToggleBtn" class="iconBtn tvTopAction cinemaSwitchBtn" onclick="toggleCinemaMode()" title="Кино" aria-label="Кино"><span id="cinemaToggleIcon">🎬</span></button>
         <button id="listBtn" class="iconBtn active" onclick="toggleLayoutMode()" title="Список / Плитка" aria-label="Список / Плитка">☷</button>
         <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
         <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск" aria-label="Поиск">🔍</button>
@@ -914,20 +923,13 @@ body.cinemaMode .titleRow{margin-bottom:0}
   <section class="cinemaScreen" id="cinemaScreen">
     <div class="cinemaHero">
       <div>
-        <div class="cinemaHeroTitle">TeamTV Кино</div>
-        <div class="cinemaHeroSub">Фильмы, мультфильмы и сериалы из официальной медиатеки TeamTV. Открывается ваш установленный TeamTV с уже активной подпиской.</div>
-        <button id="cinemaOpenBtn" class="cinemaOpenBtn" onclick="openTeamCinema()">Открыть TeamTV Кино</button>
-        <div id="cinemaStatus" class="cinemaStatus">Источник: TeamTV</div>
+        <div class="cinemaHeroTitle">Кино</div>
+        <div class="cinemaHeroSub">Фильмы, мультфильмы и сериалы прямо внутри Abaj TV.</div>
+        <div id="cinemaStatus" class="cinemaStatus">Каталог загружается…</div>
       </div>
     </div>
-    <div class="cinemaSectionTitle">Разделы</div>
-    <div class="cinemaGenreGrid">
-      <div class="cinemaGenre">Новинки</div>
-      <div class="cinemaGenre">Фильмы</div>
-      <div class="cinemaGenre">Мультфильмы</div>
-      <div class="cinemaGenre">Сериалы</div>
-      <div class="cinemaGenre">Мой список</div>
-    </div>
+    <div class="cinemaSectionTitle">Новинки</div>
+    <div class="cinemaPosterGrid" id="cinemaPosterGrid"></div>
   </section>
 
   <main class="content" id="content">
@@ -5450,28 +5452,63 @@ document.addEventListener('keyup',e=>{
 });
 
 let cinemaMode=localStorage.getItem('abaj_cinema_mode')==='1';
+let cinemaLoaded=false;
 function syncCinemaUi(){
   document.body.classList.toggle('cinemaMode',cinemaMode);
-  const txt=document.getElementById('cinemaToggleText');
+  const icon=document.getElementById('cinemaToggleIcon');
   const btn=document.getElementById('cinemaToggleBtn');
-  if(txt)txt.textContent=cinemaMode?'ТВ':'Кино';
+  if(icon)icon.textContent=cinemaMode?'📺':'🎬';
   if(btn){
     btn.title=cinemaMode?'ТВ':'Кино';
     btn.setAttribute('aria-label',cinemaMode?'ТВ':'Кино');
   }
 }
-function openTeamCinema(){
+function renderCinemaCatalog(items){
+  const grid=document.getElementById('cinemaPosterGrid');
   const status=document.getElementById('cinemaStatus');
-  let opened=false;
-  try{
-    if(window.AbajNative&&typeof AbajNative.openTeamCinema==='function'){
-      opened=AbajNative.openTeamCinema()!==false;
+  if(!grid)return;
+  grid.innerHTML='';
+  const rows=Array.isArray(items)?items:[];
+  if(!rows.length){
+    if(status)status.textContent='Каталог пока недоступен.';
+    for(let i=0;i<12;i++){
+      const card=document.createElement('div');
+      card.className='cinemaPosterCard';
+      card.innerHTML='<div class="cinemaPosterFallback">🎞️</div><div class="cinemaPosterMeta"><div class="cinemaPosterTitle">Скоро</div><div class="cinemaPosterSub">Кино</div></div>';
+      grid.appendChild(card);
     }
-  }catch(e){opened=false}
-  if(status){
-    status.textContent=opened?'TeamTV Кино открыто. Нажмите Back, чтобы вернуться в Abaj TV.':'TeamTV не найден на этом устройстве.';
+    return;
   }
-  return opened;
+  if(status)status.textContent=rows.length+' фильмов';
+  rows.forEach(item=>{
+    const card=document.createElement('button');
+    card.className='cinemaPosterCard';
+    const poster=String(item.poster||'');
+    card.innerHTML=(poster?'<img class="cinemaPosterImg" loading="lazy" src="'+poster.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaPosterFallback">🎞️</div>')+
+      '<div class="cinemaPosterMeta"><div class="cinemaPosterTitle">'+String(item.title||'Фильм').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
+      '<div class="cinemaPosterSub">'+String(item.year||'')+(item.quality?' · '+String(item.quality):'')+'</div></div>';
+    card.onclick=()=>openCinemaMovie(item);
+    grid.appendChild(card);
+  });
+}
+async function loadCinemaCatalog(force=false){
+  if(cinemaLoaded&&!force)return;
+  const status=document.getElementById('cinemaStatus');
+  if(status)status.textContent='Загрузка фильмов…';
+  try{
+    const r=await fetch('/api/cinema/catalog',{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    cinemaLoaded=true;
+    renderCinemaCatalog(data.items||data.movies||[]);
+  }catch(e){
+    renderCinemaCatalog([]);
+  }
+}
+function openCinemaMovie(item){
+  if(!item||!item.url)return;
+  const ch={id:'cinema:'+String(item.id||Date.now()),name:String(item.title||'Фильм'),url:String(item.url),backups:[],personal:false,quality:String(item.quality||''),height:Number(item.height||0)};
+  openChannel(ch);
 }
 function toggleCinemaMode(){
   cinemaMode=!cinemaMode;
@@ -5480,11 +5517,11 @@ function toggleCinemaMode(){
   if(cinemaMode){
     try{closeTvSearch(false)}catch(e){}
     try{closeTvSettings()}catch(e){}
+    loadCinemaCatalog();
     setTimeout(()=>{
       const btn=document.getElementById('cinemaToggleBtn');
       if(btn&&nativeTv)btn.focus();
-      openTeamCinema();
-    },120);
+    },80);
   }else{
     setTimeout(()=>{
       const btn=document.getElementById('listBtn');
@@ -5493,6 +5530,7 @@ function toggleCinemaMode(){
   }
 }
 syncCinemaUi();
+if(cinemaMode)loadCinemaCatalog();
 
 document.getElementById('app').classList.toggle('tvMode',tvMode);
 applyThemeHue();
