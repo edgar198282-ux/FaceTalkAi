@@ -850,22 +850,23 @@ body.cinemaMode .toolbar,body.cinemaMode .countryChips,body.cinemaMode .modeChip
 body.cinemaMode .cinemaScreen{display:block}
 body.cinemaMode .top{background:linear-gradient(180deg,#07131f,#0b2132)!important;border-bottom:1px solid rgba(255,255,255,.08)}
 body.cinemaMode .titleRow{margin-bottom:0}
-.cinemaHero{min-height:240px;border-radius:24px;padding:30px 34px;box-sizing:border-box;display:flex;align-items:flex-end;background:linear-gradient(90deg,rgba(2,12,22,.94),rgba(2,12,22,.55) 55%,rgba(2,12,22,.2)),radial-gradient(circle at 82% 30%,#1b6b8f,#102a3c 48%,#07131f 72%);box-shadow:0 20px 50px rgba(0,0,0,.3);overflow:hidden}
+.cinemaHero{min-height:240px;border-radius:24px;padding:30px 34px;box-sizing:border-box;display:flex;align-items:flex-end;background-image:linear-gradient(90deg,rgba(2,12,22,.94),rgba(2,12,22,.62) 52%,rgba(2,12,22,.24)),var(--cinema-hero-poster,radial-gradient(circle at 82% 30%,#1b6b8f,#102a3c 48%,#07131f 72%));background-size:cover;background-position:center 22%;box-shadow:0 20px 50px rgba(0,0,0,.3);overflow:hidden;transition:background-image .2s ease}
 .cinemaHeroTitle{font-size:42px;font-weight:950;line-height:1.02;letter-spacing:-.6px}
 .cinemaHeroSub{margin-top:10px;font-size:18px;color:#b9d7e8;max-width:720px;line-height:1.4}
 .cinemaOpenBtn{margin-top:18px;border:0;border-radius:14px;padding:13px 20px;background:#25b9d7;color:#06202a;font-size:18px;font-weight:950;box-shadow:0 8px 22px rgba(37,185,215,.24)}
 .cinemaOpenBtn:focus{outline:none!important;box-shadow:0 0 0 4px #ffd400,0 8px 22px rgba(37,185,215,.28)!important}
 .cinemaSectionTitle{font-size:24px;font-weight:900;margin:24px 0 14px}
 .cinemaTypeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:20px}
-.cinemaTypeCard{display:flex;align-items:center;gap:16px;min-height:108px;padding:18px 20px;border:1px solid rgba(255,255,255,.12);border-radius:20px;background:linear-gradient(145deg,#123b51,#0b2332);color:#fff;text-align:left;box-shadow:0 12px 28px rgba(0,0,0,.24)}
+.cinemaTypeCard{position:relative;display:flex;align-items:flex-end;gap:16px;min-height:128px;padding:18px 20px;border:1px solid rgba(255,255,255,.12);border-radius:20px;background-image:linear-gradient(90deg,rgba(7,26,39,.96),rgba(7,26,39,.70) 58%,rgba(7,26,39,.26)),var(--cinema-type-poster,linear-gradient(145deg,#123b51,#0b2332));background-size:cover;background-position:center 22%;color:#fff;text-align:left;box-shadow:0 12px 28px rgba(0,0,0,.24);overflow:hidden}
 .cinemaTypeCard .cinemaTypeIcon{font-size:38px;line-height:1}
 .cinemaTypeCard b{display:block;font-size:23px;font-weight:950}
 .cinemaTypeCard small{display:block;margin-top:5px;font-size:14px;color:#9fc5d8}
-.cinemaTypeCard.active{background:linear-gradient(145deg,#176a90,#10354d);border-color:rgba(120,220,255,.72)}
+.cinemaTypeCard.active{border-color:rgba(120,220,255,.88);box-shadow:inset 0 0 0 1px rgba(110,220,255,.28),0 12px 28px rgba(0,0,0,.24)}
 .cinemaTypeCard:focus{outline:none!important;box-shadow:0 0 0 4px #ffd400,0 14px 30px rgba(0,0,0,.34)!important;transform:scale(1.015)}
 .cinemaGenreGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
 .cinemaGenre{min-height:150px;border-radius:18px;background:linear-gradient(145deg,#123b51,#0b2332);border:1px solid rgba(255,255,255,.08);display:flex;align-items:flex-end;padding:16px;font-size:20px;font-weight:900;box-shadow:0 10px 24px rgba(0,0,0,.22)}
 .cinemaStatus{margin-top:18px;color:#9fc5d8;font-size:15px}
+.cinemaSearchStatus{margin:14px 0 0;color:#b9d7e8;font-size:14px}
 .cinemaPosterGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;align-items:start}
 .cinemaPosterCard{border:0;padding:0;background:#102535;border-radius:18px;overflow:hidden;text-align:left;color:#fff;box-shadow:0 12px 28px rgba(0,0,0,.28);min-width:0;width:100%;height:auto;align-self:start}
 .cinemaPosterCard:focus{outline:none!important;box-shadow:0 0 0 4px #ffd400,0 14px 30px rgba(0,0,0,.34)!important;transform:scale(1.02)}
@@ -884,7 +885,7 @@ body.cinemaMode .titleRow{margin-bottom:0}
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
   <div class="tvSearchCard">
     <div class="tvSearchTitle">Поиск канала</div>
-    <input id="tvSearchInput" class="tvSearchInput" placeholder="Введите название канала" oninput="syncTopChannelSearch(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();closeTvSearch(true)}">
+    <input id="tvSearchInput" class="tvSearchInput" placeholder="Введите название канала" oninput="handleUnifiedSearchInput(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();handleUnifiedSearchEnter()}">
     <div class="tvSearchHint">Введите название · OK применить · Back отменить</div>
   </div>
 </div>
@@ -968,11 +969,11 @@ body.cinemaMode .titleRow{margin-bottom:0}
       </div>
     </div>
     <div class="cinemaTypeGrid" id="cinemaTypeGrid">
-      <button class="cinemaTypeCard active" data-cinema-type="movies" onclick="setCinemaType('movies')">
+      <button id="cinemaMoviesCard" class="cinemaTypeCard active" data-cinema-type="movies" onclick="setCinemaType('movies')">
         <span class="cinemaTypeIcon">🎬</span>
         <span><b>Фильмы</b><small>Новинки и популярные фильмы</small></span>
       </button>
-      <button class="cinemaTypeCard" data-cinema-type="series" onclick="setCinemaType('series')">
+      <button id="cinemaSeriesCard" class="cinemaTypeCard" data-cinema-type="series" onclick="setCinemaType('series')">
         <span class="cinemaTypeIcon">📺</span>
         <span><b>Сериалы</b><small>Новые сезоны и серии</small></span>
       </button>
@@ -2353,9 +2354,21 @@ function syncTopChannelSearch(value){
 function openTvSearch(){
   const box=document.getElementById('tvSearch');
   const input=document.getElementById('tvSearchInput');
+  const title=document.querySelector('#tvSearch .tvSearchTitle');
+  const hint=document.querySelector('#tvSearch .tvSearchHint');
   if(!box||!input)return;
-  const hidden=document.getElementById('search');
-  input.value=hidden?hidden.value||'':'';
+  if(cinemaMode){
+    if(title)title.textContent='Поиск фильмов и сериалов';
+    if(hint)hint.textContent='Поиск по всем активным источникам LazyMedia';
+    input.placeholder='Название фильма или сериала';
+    input.value='';
+  }else{
+    if(title)title.textContent='Поиск канала';
+    if(hint)hint.textContent='Введите название · OK применить · Back закрыть';
+    input.placeholder='Введите название канала';
+    const hidden=document.getElementById('search');
+    input.value=hidden?hidden.value||'':'';
+  }
   box.classList.add('open');
   setTimeout(()=>{
     input.focus();
@@ -5655,7 +5668,7 @@ function lazyMediaSearchAsync(query){
   });
 }
 function cinemaCacheKey(){
-  return 'abaj_cinema_cache_v2_'+cinemaType;
+  return 'abaj_cinema_cache_v3_'+cinemaType;
 }
 function readCinemaCache(){
   try{
@@ -5668,12 +5681,113 @@ function readCinemaCache(){
 function writeCinemaCache(items){
   try{localStorage.setItem(cinemaCacheKey(),JSON.stringify({ts:Date.now(),items:(items||[]).slice(0,80)}))}catch(e){}
 }
+function cinemaItemLooksSeries(item){
+  const t=(String(item?.content_type||'')+' '+String(item?.subtitle||'')+' '+String(item?.title||'')).toLowerCase();
+  return /(сериал|series|serial|tv[\s_-]*series|season|сезон|episode|эпизод)/i.test(t);
+}
+function cinemaYear(item){
+  const direct=Number(item?.year||0);
+  if(direct>=1900&&direct<=2100)return direct;
+  const text=(String(item?.title||'')+' '+String(item?.subtitle||'')).match(/(?:^|\D)(20\d{2}|19\d{2})(?:\D|$)/);
+  return text?Number(text[1]):0;
+}
+function cinemaRank(items,type){
+  const rows=(Array.isArray(items)?items:[]).filter(item=>{
+    const series=cinemaItemLooksSeries(item);
+    return type==='series'?series:!series;
+  });
+  rows.forEach((item,i)=>item.__order=i);
+  rows.sort((a,b)=>{
+    const ay=cinemaYear(a),by=cinemaYear(b);
+    if(ay!==by)return by-ay;
+    return Number(a.__order||0)-Number(b.__order||0);
+  });
+  return rows.slice(0,50);
+}
+function posterUrl(item){
+  const p=String(item?.poster||'').trim();
+  return /^https?:\/\//i.test(p)?p:'';
+}
+function setCinemaBackgrounds(currentItems){
+  const current=(Array.isArray(currentItems)?currentItems:[]);
+  const currentPoster=current.map(posterUrl).find(Boolean)||'';
+  const hero=document.querySelector('.cinemaHero');
+  if(hero){
+    if(currentPoster)hero.style.setProperty('--cinema-hero-poster','url("'+currentPoster.replace(/"/g,'%22')+'")');
+    else hero.style.removeProperty('--cinema-hero-poster');
+  }
+  const movieCard=document.getElementById('cinemaMoviesCard');
+  const seriesCard=document.getElementById('cinemaSeriesCard');
+  const moviePoster=readCinemaCacheFor('movies').map(posterUrl).find(Boolean)||current.filter(x=>!cinemaItemLooksSeries(x)).map(posterUrl).find(Boolean)||'';
+  const seriesPoster=readCinemaCacheFor('series').map(posterUrl).find(Boolean)||current.filter(cinemaItemLooksSeries).map(posterUrl).find(Boolean)||'';
+  if(movieCard){
+    if(moviePoster)movieCard.style.setProperty('--cinema-type-poster','url("'+moviePoster.replace(/"/g,'%22')+'")');
+    else movieCard.style.removeProperty('--cinema-type-poster');
+  }
+  if(seriesCard){
+    if(seriesPoster)seriesCard.style.setProperty('--cinema-type-poster','url("'+seriesPoster.replace(/"/g,'%22')+'")');
+    else seriesCard.style.removeProperty('--cinema-type-poster');
+  }
+}
+function readCinemaCacheFor(type){
+  try{
+    const x=JSON.parse(localStorage.getItem('abaj_cinema_cache_v3_'+type)||'null');
+    if(!x||!Array.isArray(x.items)||!x.items.length)return [];
+    if(Date.now()-Number(x.ts||0)>6*60*60*1000)return [];
+    return x.items;
+  }catch(e){return []}
+}
+let cinemaSearchTimer=0;
+let cinemaSearchSeq=0;
+async function searchCinemaLazyMedia(raw){
+  const q=String(raw||'').trim();
+  const seq=++cinemaSearchSeq;
+  const status=document.getElementById('cinemaStatus');
+  if(!q){
+    cinemaLoaded=false;
+    syncCinemaTypeUi();
+    await loadCinemaCatalog(true);
+    return;
+  }
+  if(status)status.textContent='Поиск в LazyMedia: '+q+'…';
+  const sectionTitle=document.getElementById('cinemaSectionTitle');
+  if(sectionTitle)sectionTitle.textContent='Поиск · '+q;
+  const rows=await lazyMediaSearchAsync(q);
+  if(seq!==cinemaSearchSeq)return;
+  const seen=new Set(), merged=[];
+  for(const item of (Array.isArray(rows)?rows:[])){
+    const key=String(item.intent||item.id||item.title||'');
+    if(!key||seen.has(key))continue;
+    seen.add(key);
+    merged.push(item);
+  }
+  merged.sort((a,b)=>cinemaYear(b)-cinemaYear(a));
+  renderCinemaCatalog(merged.slice(0,80),{search:true});
+  if(status)status.textContent=merged.length?('Найдено '+merged.length+' · LazyMedia'):'Ничего не найдено в LazyMedia';
+}
+function handleUnifiedSearchInput(value){
+  if(!cinemaMode){
+    syncTopChannelSearch(value);
+    return;
+  }
+  clearTimeout(cinemaSearchTimer);
+  cinemaSearchTimer=setTimeout(()=>searchCinemaLazyMedia(value),350);
+}
+function handleUnifiedSearchEnter(){
+  if(cinemaMode){
+    const input=document.getElementById('tvSearchInput');
+    searchCinemaLazyMedia(input?input.value:'');
+    closeTvSearch(false);
+    return;
+  }
+  closeTvSearch(true);
+}
 function syncCinemaTypeUi(){
   document.querySelectorAll('.cinemaTypeCard').forEach(btn=>{
     btn.classList.toggle('active',btn.dataset.cinemaType===cinemaType);
   });
   const title=document.getElementById('cinemaSectionTitle');
-  if(title)title.textContent=cinemaType==='series'?'Новинки · Сериалы':'Новинки · Фильмы';
+  if(title)title.textContent=cinemaType==='series'?'Последние 50 · Сериалы':'Последние 50 · Фильмы';
 }
 function setCinemaType(type){
   cinemaType=type==='series'?'series':'movies';
@@ -5749,18 +5863,19 @@ function syncCinemaUi(){
     btn.setAttribute('aria-label',cinemaMode?'ТВ':'Кино');
   }
 }
-function renderCinemaCatalog(items){
+function renderCinemaCatalog(items,options={}){
   const grid=document.getElementById('cinemaPosterGrid');
   const status=document.getElementById('cinemaStatus');
   if(!grid)return;
   grid.innerHTML='';
   const rows=Array.isArray(items)?items:[];
+  setCinemaBackgrounds(rows);
   if(!rows.length){
     if(status)status.textContent='Каталог пока недоступен.';
     grid.innerHTML='<div style="grid-column:1/-1;padding:24px 8px;color:#9fc5d8;font-size:16px">Нет данных для показа</div>';
     return;
   }
-  if(status)status.textContent=rows.length+' фильмов';
+  if(status&&!options.search)status.textContent=rows.length+(cinemaType==='series'?' сериалов':' фильмов');
   rows.forEach(item=>{
     const card=document.createElement('button');
     card.className='cinemaPosterCard';
@@ -5776,9 +5891,14 @@ function renderCinemaCatalog(items){
 async function loadCinemaCatalog(force=false){
   if(cinemaLoaded&&!force)return;
   const status=document.getElementById('cinemaStatus');
+  const localLazyInfo=getLazyMediaInfo();
+  if(localLazyInfo.installed&&cinemaSource!=='lazy'){
+    cinemaSource='lazy';
+    localStorage.setItem('abaj_cinema_source','lazy');
+  }
 
   if(cinemaSource==='lazy'){
-    const info=getLazyMediaInfo();
+    const info=localLazyInfo;
     if(!info.installed){
       try{
         const r=await fetch('/api/cinema/catalog?type='+encodeURIComponent(cinemaType),{cache:'no-store'});
@@ -5813,37 +5933,28 @@ async function loadCinemaCatalog(force=false){
       if(grid)grid.innerHTML='<div style="grid-column:1/-1;padding:24px 8px;color:#9fc5d8;font-size:16px">Загрузка каталога…</div>';
     }
 
-    const merged=[]; const seen=new Set();
-    const queries=['',cinemaType==='series'?'2026':'2026',cinemaType==='series'?'сериал':'фильм'];
+    const all=[]; const seen=new Set();
+    const y=new Date().getFullYear();
+    const queries=cinemaType==='series'
+      ? ['',String(y)+' сериал',String(y-1)+' сериал','новинки сериал','сериал']
+      : ['',String(y)+' фильм',String(y-1)+' фильм','новинки фильм','фильм'];
     for(const q of queries){
       const rows=await lazyMediaSearchAsync(q);
       for(const item of (Array.isArray(rows)?rows:[])){
-        const contentType=String(item.content_type||'').toLowerCase();
-        const looksSeries=/serial|series|tv|сериал/.test(contentType);
-        if(cinemaType==='series'&&contentType&&!looksSeries)continue;
-        if(cinemaType==='movies'&&contentType&&looksSeries)continue;
-        item.kind=cinemaType;
-        const text=(String(item.title||'')+' '+String(item.subtitle||'')+' '+String(item.year||'')).trim();
-        const ym=text.match(/(?:^|\D)(20\d{2})(?:\D|$)/);
-        if(ym)item.year=Number(ym[1]);
         const key=String(item.intent||item.id||item.title||'');
         if(!key||seen.has(key))continue;
         seen.add(key);
-        merged.push(item);
-        if(merged.length>=120)break;
+        item.kind=cinemaItemLooksSeries(item)?'series':'movies';
+        all.push(item);
       }
-      if(merged.length>=40)break;
+      if(cinemaRank(all,cinemaType).length>=50)break;
     }
-    merged.sort((a,b)=>{
-      const ay=Number(a.year||0),by=Number(b.year||0);
-      if(ay!==by)return by-ay;
-      return String(a.title||'').localeCompare(String(b.title||''),'ru');
-    });
+    const merged=cinemaRank(all,cinemaType);
     if(merged.length){
       cinemaLoaded=true;
       writeCinemaCache(merged);
       renderCinemaCatalog(merged);
-      if(status)status.textContent='Найдено '+merged.length;
+      if(status)status.textContent='Последние '+merged.length+(cinemaType==='series'?' сериалов':' фильмов');
       fetch('/api/cinema/catalog-cache',{
         method:'POST',
         headers:{'Content-Type':'application/json',...authHeaders()},
