@@ -87,8 +87,148 @@ public class MainActivity extends Activity {
     private volatile boolean pipPlaybackActive=false;
     private volatile boolean tvRecoveryQueued=false;
     private volatile long tvRecoveryStartedAt=0L;
+    private WebView cinemaResolverWebView;
+    private final Handler cinemaResolverHandler=new Handler(Looper.getMainLooper());
+    private volatile String cinemaResolverRequestId="";
+    private volatile String cinemaResolverTransport="";
+    private volatile boolean cinemaResolverDone=false;
     private volatile String pendingExternalMediaUrl="";
     private volatile String pendingExternalMediaTitle="";
+    private String decodeCinemaIntentPart(String raw,int index){
+        try{
+            String[] parts=(raw==null?"":raw).split(",",-1);
+            if(index<0||index>=parts.length)return "";
+            String value=parts[index].replace("\n","").trim();
+            if(value.isEmpty())return "";
+            byte[] data=android.util.Base64.decode(value,android.util.Base64.DEFAULT);
+            return new String(data,java.nio.charset.StandardCharsets.UTF_8).trim();
+        }catch(Exception e){return "";}
+    }
+    private String cinemaArticleUrl(String rawIntent){
+        try{
+            String[] parts=(rawIntent==null?"":rawIntent).split(",",-1);
+            if(parts.length<2)return "";
+            String source=parts[0].trim();
+            String article=decodeCinemaIntentPart(rawIntent,1);
+            if(article.isEmpty())return "";
+            if("4".equals(source)){
+                if(article.startsWith("/"))article=article.substring(1);
+                if(article.startsWith("movies/"))return "https://zona.mobi/"+article;
+                return "https://zona.mobi/movies/"+article;
+            }
+            if("13".equals(source)){
+                if(!article.startsWith("/"))article="/"+article;
+                return "https://zonafilm.ru"+article;
+            }
+            return "";
+        }catch(Exception e){return "";}
+    }
+    private boolean cinemaStreamMatches(String url,String transport){
+        if(url==null)return false;
+        String u=url.toLowerCase();
+        if(!(u.startsWith("http://")||u.startsWith("https://")))return false;
+        if("HLS".equals(transport))return u.contains(".m3u8")||u.contains("hls=");
+        if("DASH".equals(transport))return u.contains(".mpd")||u.contains("dash=");
+        return u.contains(".m3u8")||u.contains(".mpd");
+    }
+    private void finishCinemaResolve(String requestId,String url){
+        if(requestId==null||!requestId.equals(cinemaResolverRequestId)||cinemaResolverDone)return;
+        cinemaResolverDone=true;
+        final String resolved=url==null?"":url.trim();
+        cinemaResolverHandler.removeCallbacksAndMessages(null);
+        runOnUiThread(()->{
+            try{
+                if(cinemaResolverWebView!=null){
+                    try{cinemaResolverWebView.stopLoading();}catch(Exception ignored){}
+                    try{fullscreenContainer.removeView(cinemaResolverWebView);}catch(Exception ignored){}
+                    try{cinemaResolverWebView.destroy();}catch(Exception ignored){}
+                    cinemaResolverWebView=null;
+                }
+                if(webView!=null){
+                    String js="window.__abajCinemaResolved&&window.__abajCinemaResolved("+
+                        JSONObject.quote(requestId)+","+JSONObject.quote(resolved)+");";
+                    webView.evaluateJavascript(js,null);
+                }
+            }catch(Exception ignored){}
+        });
+    }
+    private void resolveCinemaStreamInternal(String rawIntent,String transport,String requestId){
+        final String articleUrl=cinemaArticleUrl(rawIntent);
+        if(articleUrl.isEmpty()){
+            finishCinemaResolve(requestId,"");
+            return;
+        }
+        runOnUiThread(()->{
+            try{
+                if(cinemaResolverWebView!=null){
+                    try{fullscreenContainer.removeView(cinemaResolverWebView);}catch(Exception ignored){}
+                    try{cinemaResolverWebView.destroy();}catch(Exception ignored){}
+                }
+                cinemaResolverRequestId=requestId;
+                cinemaResolverTransport=transport;
+                cinemaResolverDone=false;
+                WebView resolver=new WebView(MainActivity.this);
+                cinemaResolverWebView=resolver;
+                WebSettings ws=resolver.getSettings();
+                ws.setJavaScriptEnabled(true);
+                ws.setDomStorageEnabled(true);
+                ws.setMediaPlaybackRequiresUserGesture(false);
+                ws.setLoadsImagesAutomatically(false);
+                if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP)ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                try{ws.setUserAgentString(webView!=null?webView.getSettings().getUserAgentString():ws.getUserAgentString());}catch(Exception ignored){}
+                resolver.setBackgroundColor(Color.TRANSPARENT);
+                resolver.setAlpha(0.01f);
+                FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(2,2);
+                lp.leftMargin=-10;lp.topMargin=-10;
+                fullscreenContainer.addView(resolver,lp);
+                resolver.setWebChromeClient(new WebChromeClient());
+                resolver.setWebViewClient(new WebViewClient(){
+                    private void inspect(String u){
+                        if(!cinemaResolverDone&&cinemaStreamMatches(u,cinemaResolverTransport)){
+                            finishCinemaResolve(requestId,u);
+                        }
+                    }
+                    @Override public void onLoadResource(WebView view,String url){
+                        inspect(url);
+                        super.onLoadResource(view,url);
+                    }
+                    @Override public WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){
+                        try{if(request!=null&&request.getUrl()!=null)inspect(request.getUrl().toString());}catch(Exception ignored){}
+                        return super.shouldInterceptRequest(view,request);
+                    }
+                    @Override public void onPageFinished(WebView view,String url){
+                        super.onPageFinished(view,url);
+                        try{
+                            view.evaluateJavascript(
+                                "(function(){try{"+
+                                "var els=[...document.querySelectorAll('video,video source,source,a,button,[class*=play],[id*=play]')];"+
+                                "for(var i=0;i<els.length;i++){var e=els[i],u=e.src||e.href||e.getAttribute('src')||e.getAttribute('data-src')||'';"+
+                                "if(u&&(/m3u8|\\.mpd/i).test(u))return u;}"+
+                                "var b=document.querySelector('button,[class*=play],[id*=play]');if(b){try{b.click()}catch(e){}}"+
+                                "document.querySelectorAll('video').forEach(function(v){try{v.muted=true;v.play()}catch(e){}});"+
+                                "}catch(e){}return '';})()",
+                                value->{
+                                    try{
+                                        if(value!=null&&value.length()>2){
+                                            String u=value;
+                                            if(u.startsWith(""")&&u.endsWith("""))u=u.substring(1,u.length()-1);
+                                            u=u.replace("\\/","/").replace("\u0026","&");
+                                            if(cinemaStreamMatches(u,cinemaResolverTransport))finishCinemaResolve(requestId,u);
+                                        }
+                                    }catch(Exception ignored){}
+                                }
+                            );
+                        }catch(Exception ignored){}
+                    }
+                });
+                resolver.loadUrl(articleUrl);
+                cinemaResolverHandler.postDelayed(()->finishCinemaResolve(requestId,""),18000);
+            }catch(Exception e){
+                finishCinemaResolve(requestId,"");
+            }
+        });
+    }
+
     public final class AbajNativeBridge {
         @JavascriptInterface public int adjustVolume(int delta){
             AudioManager am=(AudioManager)getSystemService(Context.AUDIO_SERVICE);
@@ -270,6 +410,12 @@ public class MainActivity extends Activity {
                     try{webView.evaluateJavascript(js,null);}catch(Exception ignored){}
                 });
             },"abaj-lazy-search").start();
+        }
+        @JavascriptInterface public void resolveCinemaStream(String rawIntent,String rawTransport,String rawRequestId){
+            final String requestId=(rawRequestId==null?"":rawRequestId).replaceAll("[^A-Za-z0-9_-]","");
+            final String transport=(rawTransport==null?"":rawTransport).trim().toUpperCase();
+            if(requestId.isEmpty())return;
+            resolveCinemaStreamInternal(rawIntent,transport,requestId);
         }
         @JavascriptInterface public boolean openLazyMediaIntent(String raw){
             try{
