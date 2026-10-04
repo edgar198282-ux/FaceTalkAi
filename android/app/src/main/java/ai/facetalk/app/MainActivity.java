@@ -451,6 +451,83 @@ public class MainActivity extends Activity {
         }catch(Throwable ignored){}
     }
 
+    private void setLazyModelString(Object model,String method,String value){
+        try{
+            java.lang.reflect.Method m=model.getClass().getMethod(method,String.class);
+            m.invoke(model,value==null?"":value);
+        }catch(Throwable ignored){}
+    }
+
+    private org.json.JSONArray lazyProviderReflectOptions(String rawIntent,String provider){
+        org.json.JSONArray out=new org.json.JSONArray();
+        try{
+            String source=cinemaSourceId(rawIntent);
+            if(source.isEmpty())return out;
+            int idx=Integer.parseInt(source);
+            Context lazy=createPackageContext(
+                "com.lazycatsoftware.lmd",
+                Context.CONTEXT_INCLUDE_CODE|Context.CONTEXT_IGNORE_SECURITY
+            );
+            ClassLoader cl=lazy.getClassLoader();
+
+            Class<?> bv=Class.forName("obf.bv",true,cl);
+            Object[] servers=(Object[])bv.getMethod("values").invoke(null);
+            if(idx<0||idx>=servers.length)return out;
+            Object server=servers[idx];
+
+            Class<?> modelClass=Class.forName(
+                "com.lazycatsoftware.lazymediadeluxe.models.service.OooO0O0",true,cl
+            );
+            Object model=modelClass.getDeclaredConstructor().newInstance();
+
+            try{
+                java.lang.reflect.Field f=modelClass.getDeclaredField("mIdServer");
+                f.setAccessible(true);
+                f.set(model,server);
+            }catch(Throwable ignored){}
+
+            String article=decodeCinemaIntentPart(rawIntent,1);
+            String title=decodeCinemaIntentPart(rawIntent,2);
+            String thumb=decodeCinemaIntentPart(rawIntent,4);
+            setLazyModelString(model,"setID",article);
+            setLazyModelString(model,"setArticleUrl",article);
+            setLazyModelString(model,"setContentUrl",article);
+            setLazyModelString(model,"setTitle",title);
+            setLazyModelString(model,"setThumbUrl",thumb);
+
+            String p=provider==null?"":provider.trim().toUpperCase(java.util.Locale.US);
+            String className="";
+            if("FILMIX".equals(p))className="com.lazycatsoftware.mediaservices.content.FILMIX_Article";
+            else if("ZONA".equals(p))className="com.lazycatsoftware.mediaservices.content.ZONA_Article";
+            else if("ZONAFILM".equals(p))className="com.lazycatsoftware.mediaservices.content.ZONAFILM_Article";
+            else return out;
+
+            Class<?> articleClass=Class.forName(className,true,cl);
+            Object articleObj=articleClass.getConstructor(modelClass).newInstance(model);
+            java.lang.reflect.Method parse=articleClass.getMethod("parseCustom");
+            Object parsed=parse.invoke(articleObj);
+            if(parsed==null)return out;
+
+            collectLazyMediaUrls(parsed,"",0,new java.util.HashSet<Integer>(),out);
+
+            java.util.HashSet<String> seenUrls=new java.util.HashSet<>();
+            org.json.JSONArray dedup=new org.json.JSONArray();
+            for(int i=0;i<out.length();i++){
+                org.json.JSONObject row=out.optJSONObject(i);
+                if(row==null)continue;
+                String u=row.optString("url","");
+                if(u.isEmpty()||seenUrls.contains(u))continue;
+                seenUrls.add(u);
+                dedup.put(row);
+            }
+            Log.i("AbajCinema",p+" reflected streams="+dedup.length()+" source="+source);
+            return dedup;
+        }catch(Throwable e){
+            Log.w("AbajCinema","provider reflection failed: "+provider+" "+e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            return out;
+        }
+    }
+
     private org.json.JSONArray lazyFilmixReflectOptions(String rawIntent){
         org.json.JSONArray out=new org.json.JSONArray();
         try{
@@ -716,6 +793,23 @@ public class MainActivity extends Activity {
                 });
             },"abaj-lazy-search").start();
         }
+        @JavascriptInterface public void cinemaProviderOptionsAsync(String rawIntent,String provider,String rawRequestId){
+            final String requestId=rawRequestId==null?"":rawRequestId.replaceAll("[^A-Za-z0-9_-]","");
+            final String intent=rawIntent==null?"":rawIntent;
+            final String p=provider==null?"":provider.trim().toUpperCase(java.util.Locale.US);
+            if(requestId.isEmpty()||intent.isEmpty())return;
+            new Thread(()->{
+                org.json.JSONArray rows=lazyProviderReflectOptions(intent,p);
+                final String payload=rows==null?"[]":rows.toString();
+                runOnUiThread(()->{
+                    if(webView==null)return;
+                    String js="window.__abajCinemaProviderOptions&&window.__abajCinemaProviderOptions("+
+                        JSONObject.quote(requestId)+","+JSONObject.quote(p)+","+payload+");";
+                    try{webView.evaluateJavascript(js,null);}catch(Exception ignored){}
+                });
+            },"abaj-cinema-provider").start();
+        }
+
         @JavascriptInterface public void filmixVideoOptionsAsync(String rawIntent,String rawRequestId){
             final String requestId=rawRequestId==null?"":rawRequestId.replaceAll("[^A-Za-z0-9_-]","");
             final String filmixId=decodeCinemaIntentPart(rawIntent,1);

@@ -6091,6 +6091,7 @@ let cinemaExternalChannel=null;
 let cinemaResolvePending=new Map();
 let cinemaSourceIgnoreUntil=0;
 let filmixVideoPending=new Map();
+let cinemaProviderOptionsPending=new Map();
 let lazyProviderRegistry=[];
 let lazyProviderRegistryAt=0;
 let lazyProviderIdMap={};
@@ -6413,11 +6414,12 @@ function renderCinemaSourceGroups(){
     const meta=document.createElement('small');
     const direct=group.items.some(x=>String(x.url||'').trim());
     const providerName=normalizeLazyProviderName(group.name);
-    meta.textContent=direct
-      ?('Найдено вариантов: '+group.items.length+' · есть готовый поток')
-      :(group.items.length
-        ?('Найдено вариантов: '+group.items.length)
-        :(providerName==='ZOMBIE'?'Проверить в LazyMedia':'Нет вариантов'));
+    const qSummary=cinemaQualitySummary(group.resolvedOptions||[]);
+    meta.textContent=qSummary
+      ?('Найдено вариантов: '+group.items.length+' · '+qSummary)
+      :(direct
+        ?('Найдено вариантов: '+group.items.length+' · поток готов')
+        :('Найдено вариантов: '+group.items.length));
     btn.appendChild(label);
     btn.appendChild(meta);
     btn.onclick=()=>{
@@ -6425,9 +6427,104 @@ function renderCinemaSourceGroups(){
       openCinemaSourceGroup(i);
     };
     list.appendChild(btn);
+
+    if(['FILMIX','ZONA','ZONAFILM'].includes(providerName)&&!group.resolvedOptions&&group.items[0]){
+      cinemaProviderOptionsAsync(group.items[0],providerName).then(rows=>{
+        if(!Array.isArray(rows)||!rows.length)return;
+        group.resolvedOptions=rows;
+        const q=cinemaQualitySummary(rows);
+        if(q&&meta&&meta.isConnected){
+          meta.textContent='Найдено вариантов: '+group.items.length+' · '+q;
+        }
+      }).catch(()=>{});
+    }
   });
   setTimeout(()=>focusCinemaSourceButton(0),20);
 }
+
+function cinemaProviderOptionsAsync(item,provider){
+  return new Promise(resolve=>{
+    const p=normalizeLazyProviderName(provider);
+    if(!item||!window.AbajNative||typeof AbajNative.cinemaProviderOptionsAsync!=='function'){
+      resolve([]);
+      return;
+    }
+    const requestId='provider_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    const timer=setTimeout(()=>{
+      cinemaProviderOptionsPending.delete(requestId);
+      resolve([]);
+    },12000);
+    cinemaProviderOptionsPending.set(requestId,{resolve,timer,provider:p});
+    try{
+      AbajNative.cinemaProviderOptionsAsync(String(item.intent||''),p,requestId);
+    }catch(e){
+      clearTimeout(timer);
+      cinemaProviderOptionsPending.delete(requestId);
+      resolve([]);
+    }
+  });
+}
+window.__abajCinemaProviderOptions=function(requestId,provider,rows){
+  const p=cinemaProviderOptionsPending.get(String(requestId||''));
+  if(!p)return;
+  clearTimeout(p.timer);
+  cinemaProviderOptionsPending.delete(String(requestId||''));
+  p.resolve(Array.isArray(rows)?rows:[]);
+};
+function cinemaQualitySummary(rows){
+  const labels=[];
+  for(const row of (Array.isArray(rows)?rows:[])){
+    let q=String(row?.quality||'').trim();
+    const f=String(row?.format||'').trim().toUpperCase();
+    if(q&&/^\d+$/.test(q))q=q+'p';
+    const label=q||(f&&f!=='AUTO'?f:'');
+    if(label&&!labels.includes(label))labels.push(label);
+  }
+  return labels.slice(0,4).join(' / ');
+}
+function renderResolvedProviderOptions(group,rows){
+  const list=document.getElementById('cinemaSourceList');
+  const title=document.getElementById('cinemaSourceTitle');
+  if(!list)return;
+  const provider=normalizeLazyProviderName(group.name);
+  if(title)title.textContent=provider+' · ВИДЕО';
+  list.innerHTML='';
+  if(!rows.length){
+    const empty=document.createElement('div');
+    empty.className='cinemaSourceEmpty';
+    empty.textContent=provider+' не вернул реальные варианты видео.';
+    list.appendChild(empty);
+  }else{
+    rows.forEach((row,i)=>{
+      const btn=document.createElement('button');
+      btn.className='cinemaSourceBtn';
+      const label=document.createElement('span');
+      label.textContent=String(row?.name||('Вариант '+(i+1)));
+      const meta=document.createElement('small');
+      let quality=String(row?.quality||'').trim();
+      if(quality&&/^\d+$/.test(quality))quality=quality+'p';
+      const format=String(row?.format||'').trim().toUpperCase();
+      meta.textContent=[quality,format].filter(Boolean).join(' · ')||'Готово к воспроизведению';
+      btn.appendChild(label);
+      btn.appendChild(meta);
+      btn.onclick=()=>{
+        const realUrl=String(row?.url||'').trim();
+        if(!realUrl){meta.textContent='Поток недоступен';return}
+        meta.textContent='Открываю…';
+        window.__abajOpenExternalMedia(realUrl,String(cinemaSourcePickerMovie?.title||label.textContent||'Кино'));
+        setTimeout(()=>closeCinemaSourcePicker(),120);
+      };
+      list.appendChild(btn);
+    });
+  }
+  const back=document.createElement('button');
+  back.className='cinemaSourceClose';
+  back.textContent='← Источники';
+  back.onclick=renderCinemaSourceGroups;
+  list.appendChild(back);
+  setTimeout(()=>focusCinemaSourceButton(0),20);
+}
+
 function filmixVideoOptionsAsync(item){
   return new Promise(resolve=>{
     if(!item||!window.AbajNative||typeof AbajNative.filmixVideoOptionsAsync!=='function'){
@@ -6462,49 +6559,12 @@ async function renderFilmixVideoOptions(group){
   if(!list)return;
   const baseItem=group.items[0];
   if(title)title.textContent='FILMIX · ВИДЕО';
-  list.innerHTML='<div class="cinemaSourceBusy">Получаю варианты ВИДЕО FILMIX…</div>';
-  const rows=await filmixVideoOptionsAsync(baseItem);
-  list.innerHTML='';
-  if(!rows.length){
-    const empty=document.createElement('div');
-    empty.className='cinemaSourceEmpty';
-    empty.textContent='FILMIX пока не вернул реальные варианты ВИДЕО.';
-    list.appendChild(empty);
-  }else{
-    rows.forEach((row,i)=>{
-      const btn=document.createElement('button');
-      btn.className='cinemaSourceBtn';
-      const label=document.createElement('span');
-      label.textContent=String(row?.name||('Вариант '+(i+1)));
-      const meta=document.createElement('small');
-      meta.textContent='Открыть форматы';
-      btn.appendChild(label);
-      btn.appendChild(meta);
-      btn.onclick=()=>{
-        const realUrl=String(row?.url||'').trim();
-        const format=String(row?.format||'').trim();
-        const quality=String(row?.quality||'').trim();
-        const next={
-          ...baseItem,
-          title:String(row?.name||baseItem?.title||''),
-          subtitle:String(row?.name||''),
-          filmix_voice_id:row?.id??null,
-          filmix_voice_name:String(row?.name||''),
-          url:realUrl||String(baseItem?.url||''),
-          quality:quality||String(baseItem?.quality||''),
-          content_type:format||String(baseItem?.content_type||'')
-        };
-        renderCinemaFormatOptions(group,next);
-      };
-      list.appendChild(btn);
-    });
-  }
-  const back=document.createElement('button');
-  back.className='cinemaSourceClose';
-  back.textContent='← Источники';
-  back.onclick=renderCinemaSourceGroups;
-  list.appendChild(back);
-  setTimeout(()=>focusCinemaSourceButton(0),20);
+  list.innerHTML='<div class="cinemaSourceBusy">Ищу реальные варианты FILMIX…</div>';
+  let rows=Array.isArray(group.resolvedOptions)?group.resolvedOptions:[];
+  if(!rows.length)rows=await cinemaProviderOptionsAsync(baseItem,'FILMIX');
+  if(!rows.length)rows=await filmixVideoOptionsAsync(baseItem);
+  if(rows.length)group.resolvedOptions=rows;
+  renderResolvedProviderOptions(group,rows);
 }
 
 function cinemaStreamFormat(item){
@@ -6639,12 +6699,23 @@ async function openCinemaSourceGroup(index){
   if(!group)return;
   const list=document.getElementById('cinemaSourceList');
   const title=document.getElementById('cinemaSourceTitle');
-
   const provider=normalizeLazyProviderName(group.name);
   if(!group.items.length)return;
-  if(provider==='FILMIX'&&!group.items.some(x=>String(x.url||'').trim())){
-    renderFilmixVideoOptions(group);
-    return;
+
+  if(['FILMIX','ZONA','ZONAFILM'].includes(provider)&&!group.items.some(x=>String(x.url||'').trim())){
+    if(provider==='FILMIX'){
+      renderFilmixVideoOptions(group);
+      return;
+    }
+    if(title)title.textContent=provider+' · ВИДЕО';
+    if(list)list.innerHTML='<div class="cinemaSourceBusy">Ищу реальные варианты '+provider+'…</div>';
+    let rows=Array.isArray(group.resolvedOptions)?group.resolvedOptions:[];
+    if(!rows.length)rows=await cinemaProviderOptionsAsync(group.items[0],provider);
+    if(rows.length){
+      group.resolvedOptions=rows;
+      renderResolvedProviderOptions(group,rows);
+      return;
+    }
   }
 
   if(title)title.textContent=group.name+' · ВИДЕО';
@@ -6657,24 +6728,25 @@ async function openCinemaSourceGroup(index){
     label.textContent=String(item.title||item.subtitle||('Вариант '+(i+1)));
     const meta=document.createElement('small');
     const providerName=normalizeLazyProviderName(group.name);
+    const f=cinemaStreamFormat(item);
+    const q=f.quality||'';
     meta.textContent=String(item.url||'').trim()
-      ?'Готово к воспроизведению'
+      ?([q,f.transport].filter(Boolean).join(' · ')||'Готово к воспроизведению')
       :('Вариант '+providerName+' · открыть');
     btn.appendChild(label);
     btn.appendChild(meta);
     btn.onclick=()=>{
       cinemaSourcePickerItems=group.items;
-      const providerName=normalizeLazyProviderName(group.name);
       const url=String(item?.url||'').trim();
       const intent=String(item?.intent||'').trim();
 
       if(url){
-        closeCinemaSourcePicker();
         window.__abajOpenExternalMedia(url,String(item?.title||cinemaSourcePickerMovie?.title||'Кино'));
+        setTimeout(()=>closeCinemaSourcePicker(),120);
         return;
       }
 
-      if(providerName!=='FILMIX'&&intent&&window.AbajNative&&typeof AbajNative.resolveCinemaStream==='function'){
+      if(intent&&window.AbajNative&&typeof AbajNative.resolveCinemaStream==='function'){
         [...list.querySelectorAll('.cinemaSourceBtn')].forEach(x=>x.classList.remove('selected'));
         btn.classList.add('selected');
         meta.textContent='Ищу реальный поток…';
