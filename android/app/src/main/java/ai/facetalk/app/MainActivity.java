@@ -271,9 +271,14 @@ public class MainActivity extends Activity {
         },"abaj-filmix-stream").start();
     }
     private void resolveCinemaStreamInternal(String rawIntent,String transport,String quality,String requestId){
+        final String source=cinemaSourceId(rawIntent);
         final String articleUrl=cinemaArticleUrl(rawIntent);
         if(articleUrl.isEmpty()){
-            resolveFilmixStreamInternal(rawIntent,transport,quality,requestId);
+            if("1".equals(source)){
+                resolveFilmixStreamInternal(rawIntent,transport,quality,requestId);
+            }else{
+                finishCinemaResolve(requestId,"");
+            }
             return;
         }
         runOnUiThread(()->{
