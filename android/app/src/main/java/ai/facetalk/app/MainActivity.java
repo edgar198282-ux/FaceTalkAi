@@ -535,6 +535,47 @@ public class MainActivity extends Activity {
                 if(nativeProbePlayer.isPlaying())nativeProbePlayer.pause();else nativeProbePlayer.play();
             });
         }
+        @JavascriptInterface public String lazyMediaProviderMap(){
+            org.json.JSONArray out=new org.json.JSONArray();
+            try{
+                Context lazy=createPackageContext(
+                    "com.lazycatsoftware.lmd",
+                    Context.CONTEXT_INCLUDE_CODE|Context.CONTEXT_IGNORE_SECURITY
+                );
+                ClassLoader cl=lazy.getClassLoader();
+                Class<?> bv=Class.forName("obf.bv",true,cl);
+                java.lang.reflect.Method values=bv.getMethod("values");
+                Object[] all=(Object[])values.invoke(null);
+                java.lang.reflect.Method mName=null,mAlt=null,mUrl=null,mCode=null;
+                for(java.lang.reflect.Method m:bv.getDeclaredMethods()){
+                    String n=m.getName();
+                    if(m.getParameterTypes().length!=0)continue;
+                    if("OooO0OO".equals(n))mName=m;
+                    else if("OooO0Oo".equals(n))mAlt=m;
+                    else if("OooO0oo".equals(n))mUrl=m;
+                    else if("OooO0oO".equals(n))mCode=m;
+                }
+                if(mName!=null)mName.setAccessible(true);
+                if(mAlt!=null)mAlt.setAccessible(true);
+                if(mUrl!=null)mUrl.setAccessible(true);
+                if(mCode!=null)mCode.setAccessible(true);
+                for(int i=0;i<all.length;i++){
+                    Object v=all[i];
+                    org.json.JSONObject o=new org.json.JSONObject();
+                    o.put("id",i);
+                    o.put("enum",String.valueOf(v));
+                    try{if(mName!=null)o.put("name",String.valueOf(mName.invoke(v)));}catch(Throwable ignored){}
+                    try{if(mAlt!=null)o.put("alt",String.valueOf(mAlt.invoke(v)));}catch(Throwable ignored){}
+                    try{if(mUrl!=null)o.put("url",String.valueOf(mUrl.invoke(v)));}catch(Throwable ignored){}
+                    try{if(mCode!=null)o.put("code",String.valueOf(mCode.invoke(v)));}catch(Throwable ignored){}
+                    out.put(o);
+                }
+            }catch(Throwable e){
+                Log.w("AbajCinema","provider map failed: "+e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            }
+            return out.toString();
+        }
+
         @JavascriptInterface public String lazyMediaInfo(){
             try{
                 android.content.pm.PackageInfo pi=getPackageManager().getPackageInfo("com.lazycatsoftware.lmd",0);

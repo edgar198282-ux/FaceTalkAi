@@ -6089,6 +6089,42 @@ let cinemaSourceIgnoreUntil=0;
 let filmixVideoPending=new Map();
 let lazyProviderRegistry=[];
 let lazyProviderRegistryAt=0;
+let lazyProviderIdMap={};
+async function loadLazyProviderIdMap(){
+  if(Object.keys(lazyProviderIdMap).length)return lazyProviderIdMap;
+  try{
+    if(window.AbajNative&&typeof AbajNative.lazyMediaProviderMap==='function'){
+      const raw=AbajNative.lazyMediaProviderMap();
+      const rows=JSON.parse(String(raw||'[]'));
+      const out={};
+      for(const row of (Array.isArray(rows)?rows:[])){
+        const id=String(row?.id??'').trim();
+        const candidates=[row?.name,row?.alt,row?.enum,row?.url]
+          .map(x=>String(x||'').trim())
+          .filter(Boolean);
+        let name='';
+        for(const c of candidates){
+          const up=c.toUpperCase();
+          if(up.includes('FILMIX')){name='FILMIX';break}
+          if(up.includes('HDREZKA')||up.includes('REZKA')){name='HDREZKA';break}
+          if(up.includes('ZOMBIE')){name='ZOMBIE';break}
+          if(up.includes('ZETFLIX')||up.includes('ZET-FLIX')){name='ZETFLIX';break}
+          if(up.includes('KINODB')){name='KINODB';break}
+          if(up.includes('SEASONVAR')){name='SEASONVAR';break}
+          if(up.includes('OCTOPUS')){name='OCTOPUS';break}
+          if(up.includes('ANILIBRIA')&&up.includes('V3')){name='ANILIBRIA(v3)';break}
+          if(up.includes('ANILIBRIA')){name='ANILIBRIA(v1)';break}
+          if(up.includes('ZONAFILM')){name='ZONAFILM';break}
+          if(up.includes('ZONA')){name='ZONA';break}
+          if(up.includes('ENCYCLOPEDIA')){name='ENCYCLOPEDIA';break}
+        }
+        if(id&&name)out[id]=name;
+      }
+      lazyProviderIdMap=out;
+    }
+  }catch(e){}
+  return lazyProviderIdMap;
+}
 const LAZYMEDIA_PROVIDER_ORDER=[
   'ENCYCLOPEDIA',
   'FILMIX',
@@ -6207,13 +6243,15 @@ async function findCinemaItemsForProvider(providerName,movie){
   return out;
 }
 function cinemaProviderName(item){
+  const raw=String(item?.intent||'');
+  const sourceId=(raw.split(',')[0]||'').trim();
+  if(sourceId&&lazyProviderIdMap[sourceId])return lazyProviderIdMap[sourceId];
   const subtitle=String(item?.subtitle||'').trim();
   const title=String(item?.title||'').trim();
   if(subtitle&&subtitle.toLocaleLowerCase('ru')!==title.toLocaleLowerCase('ru')){
     return subtitle.replace(/\s+/g,' ').trim();
   }
-  const raw=String(item?.intent||'');
-  const id=(raw.split(',')[0]||'').trim();
+  const id=sourceId;
   if(id==='4')return 'ZONA.MOBI';
   if(id==='13')return 'ZONAFILM';
   try{
@@ -6283,6 +6321,7 @@ async function showCinemaSourcePicker(item){
   if(list)list.innerHTML='<div class="cinemaSourceBusy">Ищу все активные источники LazyMedia…</div>';
 
   cinemaSourcePickerMovie=item;
+  await loadLazyProviderIdMap();
   const rows=[],seenRows=new Set();
   const push=(x)=>{
     if(!x)return;
