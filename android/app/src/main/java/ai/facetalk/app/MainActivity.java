@@ -240,7 +240,7 @@ public class MainActivity extends Activity {
             @Override public void onPlayerError(PlaybackException error){
                 long started=nativeProbeStartedAt;
                 long elapsed=started>0L?Math.max(0L,System.currentTimeMillis()-started):0L;
-                Log.w("AbajTVNativeProbe","error_ms="+elapsed+" code="+(error==null?"unknown":error.errorCodeName)+" url="+nativeProbeUrl);
+                Log.w("AbajTVNativeProbe","error_ms="+elapsed+" code="+(error==null?"unknown":error.getErrorCodeName())+" url="+nativeProbeUrl);
                 nativeProbeStartedAt=0L;
                 try{nativeProbePlayer.stop();nativeProbePlayer.clearMediaItems();}catch(Exception ignored){}
             }
