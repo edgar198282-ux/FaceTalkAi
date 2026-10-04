@@ -4137,6 +4137,15 @@ function tvIsTeamCloudChannel(ch){
     return tvDirectUrls(ch).some(u=>/^(?:https?:\/\/)?[^/]*teamcloud\.am(?:\/|$)/i.test(String(u||'')));
   }catch(e){return false}
 }
+function tvNativeRaceEligible(ch,src){
+  if(!nativeTv||!ch||ch.personal)return false;
+  const u=String(src||'').trim();
+  if(!/^https?:\/\//i.test(u))return false;
+  // Media3 is enabled as a safe race for every direct HLS stream regardless
+  // of country/category. HLS.js stays visible until Media3 renders a real
+  // frame, so unsupported/bad streams automatically remain on the old player.
+  return /\.m3u8(?:$|[?#])/i.test(u);
+}
 function tvShouldUseHls(ch){
   if(!nativeTv)return tvPlayerMode!=='system';
   if(tvForceSystemForChannel(ch))return false;
@@ -4398,12 +4407,11 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   const src=(nativeTv&&!ch.personal&&directSrc)?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
-  // Race the native Media3 decoder against the existing HLS.js player for
-  // verified TeamTV streams. The WebView player remains visible while Media3
-  // starts underneath. Only after Media3 has rendered a real first frame do we
-  // reveal it, so a native failure can never create a black/blank screen.
+  // Race Media3 against HLS.js for every direct HLS channel (AM/RU/other,
+  // sports/HD/FHD/4K alike). The current player remains visible until Media3
+  // renders a real frame, so failed native attempts never create a blank screen.
   const teamTvFast=tvIsTeamCloudChannel(ch);
-  const nativeRace=!!(nativeTv&&teamTvFast&&window.AbajNative&&typeof AbajNative.nativeProbeStart==='function');
+  const nativeRace=!!(tvNativeRaceEligible(ch,src)&&window.AbajNative&&typeof AbajNative.nativeProbeStart==='function');
   if(nativeRace){
     nativeMedia3FirstFrameHandler=()=>{
       if(attemptToken!==streamAttemptToken||!current||current.id!==ch.id)return;
