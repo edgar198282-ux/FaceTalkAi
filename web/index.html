@@ -6327,7 +6327,10 @@ async function showCinemaSourcePicker(item){
   }
 
   cinemaSourceGroups=sortLazyProviders(
-    providerOrder.map(k=>byProvider.get(k)).filter(g=>g&&Array.isArray(g.items)&&g.items.length)
+    providerOrder
+      .map(k=>byProvider.get(k))
+      .filter(g=>g&&Array.isArray(g.items)&&g.items.length)
+      .filter(g=>normalizeLazyProviderName(g.name)!=='ENCYCLOPEDIA')
   );
   const currentProvider=cinemaProviderKey(item);
   if(currentProvider){
@@ -6614,6 +6617,35 @@ async function openCinemaSourceGroup(index){
     btn.appendChild(meta);
     btn.onclick=()=>{
       cinemaSourcePickerItems=group.items;
+      const providerName=normalizeLazyProviderName(group.name);
+      const url=String(item?.url||'').trim();
+      const intent=String(item?.intent||'').trim();
+
+      if(url){
+        closeCinemaSourcePicker();
+        window.__abajOpenExternalMedia(url,String(item?.title||cinemaSourcePickerMovie?.title||'Кино'));
+        return;
+      }
+
+      if(providerName!=='FILMIX'&&intent&&window.AbajNative&&typeof AbajNative.resolveCinemaStream==='function'){
+        [...list.querySelectorAll('.cinemaSourceBtn')].forEach(x=>x.classList.remove('selected'));
+        btn.classList.add('selected');
+        meta.textContent='Ищу реальный поток…';
+        const requestId='cinema_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+        cinemaResolvePending.set(requestId,{
+          title:String(item?.title||cinemaSourcePickerMovie?.title||'Кино'),
+          meta,
+          transport:'AUTO'
+        });
+        try{
+          AbajNative.resolveCinemaStream(intent,'AUTO',requestId);
+          return;
+        }catch(e){
+          cinemaResolvePending.delete(requestId);
+          meta.textContent='Источник не ответил';
+        }
+      }
+
       renderCinemaFormatOptions(group,item);
     };
     list.appendChild(btn);
