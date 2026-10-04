@@ -153,10 +153,120 @@ public class MainActivity extends Activity {
             }catch(Exception ignored){}
         });
     }
-    private void resolveCinemaStreamInternal(String rawIntent,String transport,String requestId){
+    private String jsonText(org.json.JSONObject o,String... keys){
+        if(o==null||keys==null)return "";
+        for(String k:keys){
+            try{
+                if(!o.has(k)||o.isNull(k))continue;
+                String v=String.valueOf(o.opt(k)).trim();
+                if(!v.isEmpty()&&!"null".equalsIgnoreCase(v))return v;
+            }catch(Exception ignored){}
+        }
+        return "";
+    }
+    private void collectFilmixStreams(Object node,String inherited,java.util.ArrayList<String[]> out){
+        if(node==null||out==null)return;
+        try{
+            if(node instanceof org.json.JSONArray){
+                org.json.JSONArray a=(org.json.JSONArray)node;
+                for(int i=0;i<a.length();i++)collectFilmixStreams(a.opt(i),inherited,out);
+                return;
+            }
+            if(node instanceof org.json.JSONObject){
+                org.json.JSONObject o=(org.json.JSONObject)node;
+                String own=jsonText(o,"name","title","translation","translator","quality","label");
+                String label=own.isEmpty()?inherited:(inherited.isEmpty()?own:inherited+" "+own);
+                java.util.Iterator<String> it=o.keys();
+                while(it.hasNext()){
+                    String k=it.next();
+                    Object v=o.opt(k);
+                    if(v instanceof org.json.JSONObject||v instanceof org.json.JSONArray){
+                        collectFilmixStreams(v,label,out);
+                    }else if(v instanceof String){
+                        String u=((String)v).trim().replace("\\/","/");
+                        String low=u.toLowerCase();
+                        if((low.startsWith("http://")||low.startsWith("https://"))&&
+                           (low.contains(".mp4")||low.contains(".m3u8")||low.contains(".mpd")||
+                            low.contains("/hls/")||low.contains("/dash/"))){
+                            out.add(new String[]{u,label+" "+k});
+                        }else if((u.startsWith("{")&&u.endsWith("}"))||(u.startsWith("[")&&u.endsWith("]"))){
+                            try{
+                                Object nested=u.startsWith("{")?new org.json.JSONObject(u):new org.json.JSONArray(u);
+                                collectFilmixStreams(nested,label,out);
+                            }catch(Exception ignored){}
+                        }
+                    }
+                }
+            }
+        }catch(Exception ignored){}
+    }
+    private String pickFilmixStream(java.util.ArrayList<String[]> rows,String transport,String quality){
+        if(rows==null||rows.isEmpty())return "";
+        String tr=transport==null?"":transport.toUpperCase();
+        String q=quality==null?"":quality.toUpperCase().replace("P","");
+        int best=-9999; String bestUrl="";
+        for(String[] r:rows){
+            if(r==null||r.length<1)continue;
+            String u=r[0]==null?"":r[0].trim();
+            if(u.isEmpty())continue;
+            String low=u.toLowerCase();
+            String meta=(r.length>1&&r[1]!=null?r[1]:"").toUpperCase()+" "+u.toUpperCase();
+            int score=0;
+            if("MP4".equals(tr)&&low.contains(".mp4"))score+=80;
+            if("HLS".equals(tr)&&(low.contains(".m3u8")||low.contains("/hls/")))score+=80;
+            if("DASH".equals(tr)&&(low.contains(".mpd")||low.contains("/dash/")))score+=80;
+            if(!q.isEmpty()&&meta.contains(q))score+=60;
+            if(meta.contains("2160")||meta.contains("4K"))score+=4;
+            else if(meta.contains("1080"))score+=3;
+            else if(meta.contains("720"))score+=2;
+            else if(meta.contains("480"))score+=1;
+            if(score>best){best=score;bestUrl=u;}
+        }
+        return bestUrl;
+    }
+    private void resolveFilmixStreamInternal(String rawIntent,String transport,String quality,String requestId){
+        final String filmixId=decodeCinemaIntentPart(rawIntent,1);
+        if(filmixId.isEmpty()){finishCinemaResolve(requestId,"");return;}
+        cinemaResolverRequestId=requestId;
+        cinemaResolverTransport=transport;
+        cinemaResolverDone=false;
+        new Thread(()->{
+            HttpURLConnection c=null; BufferedReader br=null;
+            String resolved="";
+            try{
+                URL u=new URL("https://filmix.moe/api/v2/movie/p-links/"+Uri.encode(filmixId));
+                c=(HttpURLConnection)u.openConnection();
+                c.setConnectTimeout(7000); c.setReadTimeout(10000); c.setRequestMethod("GET");
+                c.setRequestProperty("Accept","application/json");
+                c.setRequestProperty("X-Requested-With","XMLHttpRequest");
+                c.setRequestProperty("Referer","https://filmix.moe/");
+                c.setRequestProperty("User-Agent",webView!=null?webView.getSettings().getUserAgentString():"Mozilla/5.0");
+                String cookie=CookieManager.getInstance().getCookie("https://filmix.moe/");
+                if(cookie!=null&&!cookie.trim().isEmpty())c.setRequestProperty("Cookie",cookie);
+                InputStream in=(c.getResponseCode()>=200&&c.getResponseCode()<400)?c.getInputStream():c.getErrorStream();
+                if(in!=null){
+                    br=new BufferedReader(new InputStreamReader(in,java.nio.charset.StandardCharsets.UTF_8));
+                    StringBuilder sb=new StringBuilder(); String line;
+                    while((line=br.readLine())!=null)sb.append(line);
+                    String body=sb.toString().trim();
+                    Object root=body.startsWith("[")?new org.json.JSONArray(body):new org.json.JSONObject(body);
+                    java.util.ArrayList<String[]> streams=new java.util.ArrayList<>();
+                    collectFilmixStreams(root,"",streams);
+                    resolved=pickFilmixStream(streams,transport,quality);
+                }
+            }catch(Exception e){Log.w("AbajCinema","filmix resolve "+e.getClass().getSimpleName());}
+            finally{
+                if(br!=null)try{br.close();}catch(Exception ignored){}
+                if(c!=null)try{c.disconnect();}catch(Exception ignored){}
+            }
+            final String out=resolved;
+            runOnUiThread(()->finishCinemaResolve(requestId,out));
+        },"abaj-filmix-stream").start();
+    }
+    private void resolveCinemaStreamInternal(String rawIntent,String transport,String quality,String requestId){
         final String articleUrl=cinemaArticleUrl(rawIntent);
         if(articleUrl.isEmpty()){
-            finishCinemaResolve(requestId,"");
+            resolveFilmixStreamInternal(rawIntent,transport,quality,requestId);
             return;
         }
         runOnUiThread(()->{
@@ -458,9 +568,11 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void resolveCinemaStream(String rawIntent,String rawTransport,String rawRequestId){
             final String requestId=(rawRequestId==null?"":rawRequestId).replaceAll("[^A-Za-z0-9_-]","");
             String raw=(rawTransport==null?"":rawTransport).trim().toUpperCase();
-            final String transport=raw.contains("|")?raw.substring(0,raw.indexOf('|')):raw;
+            String[] parts=raw.split("\\|",-1);
+            final String transport=parts.length>0?parts[0]:"";
+            final String quality=parts.length>1?parts[1]:"";
             if(requestId.isEmpty())return;
-            resolveCinemaStreamInternal(rawIntent,transport,requestId);
+            resolveCinemaStreamInternal(rawIntent,transport,quality,requestId);
         }
         @JavascriptInterface public boolean openLazyMediaIntent(String raw){
             try{
