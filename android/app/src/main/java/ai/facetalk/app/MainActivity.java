@@ -273,7 +273,7 @@ public class MainActivity extends Activity {
         String deviceName=isTv?(android.os.Build.MANUFACTURER+" "+android.os.Build.MODEL).trim():"Android";
         String uid=prefs.getString("ft_uid",""); String ts=prefs.getString("ft_ts",""); String sig=prefs.getString("ft_sig","");
         String signedAuth=(!uid.isEmpty()&&!ts.isEmpty()&&!sig.isEmpty())?("&ft_uid="+Uri.encode(uid)+"&ft_ts="+Uri.encode(ts)+"&ft_sig="+Uri.encode(sig)):"";
-        webView.loadUrl(b+sep+"app=1&source="+source+tv+"&device_name="+Uri.encode(deviceName)+"&app_version="+Uri.encode(BuildConfig.VERSION_NAME)+"&app_version_code="+BuildConfig.VERSION_CODE+signedAuth+"&ota="+BuildConfig.VERSION_CODE+fragment);
+        webView.loadUrl(b+sep+"app=1&source="+source+tv+"&device_name="+Uri.encode(deviceName)+"&app_version="+Uri.encode(BuildConfig.VERSION_NAME)+"&app_version_code="+BuildConfig.VERSION_CODE+signedAuth+"&ota="+System.currentTimeMillis()+fragment);
         webView.requestFocus();
     }
     private void consumeAuthIntent(Intent i){if(i!=null)consumeAuthUri(i.getData());}
