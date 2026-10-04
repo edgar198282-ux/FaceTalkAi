@@ -6081,6 +6081,8 @@ async function loadCinemaCatalog(force=false){
   }
 }
 let cinemaSourcePickerItems=[];
+let cinemaSourceGroups=[];
+let cinemaSourcePickerMovie=null;
 function cinemaProviderKey(item){
   const raw=String(item?.intent||'');
   const first=(raw.split(',')[0]||'').trim();
@@ -6132,6 +6134,8 @@ function closeCinemaSourcePicker(){
   const modal=document.getElementById('cinemaSourceModal');
   if(modal)modal.classList.remove('open');
   cinemaSourcePickerItems=[];
+  cinemaSourceGroups=[];
+  cinemaSourcePickerMovie=null;
 }
 function focusCinemaSourceButton(step=0){
   const modal=document.getElementById('cinemaSourceModal');
@@ -6180,39 +6184,115 @@ async function showCinemaSourcePicker(item){
     }
   }catch(e){}
 
+  cinemaSourcePickerMovie=item;
   const byProvider=new Map();
+  const providerOrder=[];
   for(const x of rows){
     const k=cinemaProviderKey(x);
-    if(!byProvider.has(k))byProvider.set(k,x);
-    else{
-      const prev=byProvider.get(k);
-      if(!String(prev.url||'').trim()&&String(x.url||'').trim())byProvider.set(k,x);
+    if(!byProvider.has(k)){
+      byProvider.set(k,[]);
+      providerOrder.push(k);
     }
+    byProvider.get(k).push(x);
   }
-  cinemaSourcePickerItems=[...byProvider.values()];
-  if(title)title.textContent=String(item?.title||'Кино')+' · '+cinemaSourcePickerItems.length+' ист.';
+  cinemaSourceGroups=providerOrder.map(k=>({
+    key:k,
+    name:cinemaProviderName((byProvider.get(k)||[])[0]),
+    items:byProvider.get(k)||[]
+  }));
+  cinemaSourcePickerItems=cinemaSourceGroups.map(g=>{
+    const direct=g.items.find(x=>String(x.url||'').trim());
+    return direct||g.items[0];
+  }).filter(Boolean);
+  if(title)title.textContent=String(item?.title||'Кино')+' · '+cinemaSourceGroups.length+' ист.';
   if(!list)return;
-  if(!cinemaSourcePickerItems.length){
+  if(!cinemaSourceGroups.length){
     list.innerHTML='<div class="cinemaSourceEmpty">Источники для этого фильма не найдены.</div>';
     return;
   }
   list.innerHTML='';
-  cinemaSourcePickerItems.forEach((x,i)=>{
+  cinemaSourceGroups.forEach((group,i)=>{
     const btn=document.createElement('button');
     btn.className='cinemaSourceBtn';
     btn.dataset.sourceIndex=String(i);
-    const name=cinemaProviderName(x);
-    const direct=!!String(x.url||'').trim();
+    const direct=group.items.some(x=>String(x.url||'').trim());
     const label=document.createElement('span');
-    label.textContent=name;
+    label.textContent=group.name;
     const meta=document.createElement('small');
-    meta.textContent=direct?'Готов к воспроизведению в Abaj TV':'Источник найден через LazyMedia';
+    meta.textContent=direct
+      ?'Есть поток · открыть'
+      :(group.items.length>1?('Найдено вариантов: '+group.items.length):'Открыть источник');
     btn.appendChild(label);
     btn.appendChild(meta);
-    btn.onclick=()=>playCinemaSource(i);
+    btn.onclick=()=>openCinemaSourceGroup(i);
     list.appendChild(btn);
   });
   setTimeout(()=>focusCinemaSourceButton(0),30);
+}
+function renderCinemaSourceGroups(){
+  const list=document.getElementById('cinemaSourceList');
+  const title=document.getElementById('cinemaSourceTitle');
+  if(title)title.textContent=String(cinemaSourcePickerMovie?.title||'Кино')+' · '+cinemaSourceGroups.length+' ист.';
+  if(!list)return;
+  list.innerHTML='';
+  cinemaSourceGroups.forEach((group,i)=>{
+    const btn=document.createElement('button');
+    btn.className='cinemaSourceBtn';
+    btn.dataset.sourceIndex=String(i);
+    const label=document.createElement('span');
+    label.textContent=group.name;
+    const meta=document.createElement('small');
+    const direct=group.items.some(x=>String(x.url||'').trim());
+    meta.textContent=direct?'Есть поток · открыть':(group.items.length>1?('Найдено вариантов: '+group.items.length):'Открыть источник');
+    btn.appendChild(label);
+    btn.appendChild(meta);
+    btn.onclick=()=>openCinemaSourceGroup(i);
+    list.appendChild(btn);
+  });
+  setTimeout(()=>focusCinemaSourceButton(0),20);
+}
+function openCinemaSourceGroup(index){
+  const group=cinemaSourceGroups[Number(index)];
+  if(!group)return;
+  const direct=group.items.find(x=>String(x.url||'').trim());
+  if(direct){
+    const i=cinemaSourcePickerItems.indexOf(direct);
+    if(i>=0){playCinemaSource(i);return}
+    closeCinemaSourcePicker();
+    window.__abajOpenExternalMedia(String(direct.url||''),String(direct.title||cinemaSourcePickerMovie?.title||'Кино'));
+    return;
+  }
+  if(group.items.length<=1){
+    cinemaSourcePickerItems=[group.items[0]];
+    playCinemaSource(0);
+    return;
+  }
+  const list=document.getElementById('cinemaSourceList');
+  const title=document.getElementById('cinemaSourceTitle');
+  if(title)title.textContent=group.name+' · варианты';
+  if(!list)return;
+  list.innerHTML='';
+  group.items.forEach((item,i)=>{
+    const btn=document.createElement('button');
+    btn.className='cinemaSourceBtn';
+    const label=document.createElement('span');
+    label.textContent=String(item.subtitle||item.title||('Вариант '+(i+1)));
+    const meta=document.createElement('small');
+    meta.textContent=String(item.url||'').trim()?'Готов к воспроизведению':'Вариант LazyMedia';
+    btn.appendChild(label);
+    btn.appendChild(meta);
+    btn.onclick=()=>{
+      cinemaSourcePickerItems=group.items;
+      playCinemaSource(i);
+    };
+    list.appendChild(btn);
+  });
+  const back=document.createElement('button');
+  back.className='cinemaSourceClose';
+  back.textContent='← Источники';
+  back.onclick=renderCinemaSourceGroups;
+  list.appendChild(back);
+  setTimeout(()=>focusCinemaSourceButton(0),20);
 }
 function playCinemaSource(index){
   const item=cinemaSourcePickerItems[Number(index)];
