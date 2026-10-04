@@ -499,6 +499,7 @@ public class MainActivity extends Activity {
                         String intent=cur.getString(dataCol);
                         o.put("intent",intent);
                         o.put("id",intent);
+                        Log.i("AbajCinemaIntent","title="+(t1Col>=0?cur.getString(t1Col):"")+" intent="+intent);
                     }
                     out.put(o); count++;
                 }
