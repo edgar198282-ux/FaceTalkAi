@@ -466,7 +466,7 @@ public class MainActivity extends Activity {
                     if(code==KeyEvent.KEYCODE_DPAD_LEFT||code==KeyEvent.KEYCODE_DPAD_RIGHT){
                         if(event.getRepeatCount()>0)return true;
                         long now=System.currentTimeMillis();
-                        if(now-lastTvChannelKeyAt<320L)return true;
+                        if(now-lastTvChannelKeyAt<180L)return true;
                         lastTvChannelKeyAt=now;
                     }
                     webView.evaluateJavascript("if(typeof tvNativeRemote==='function')tvNativeRemote('"+action+"')",null);
