@@ -142,6 +142,21 @@ public class MainActivity extends Activity {
             if(!isTv)return;
             runOnUiThread(()->stopNativeProbe(false));
         }
+        @JavascriptInterface public void nativeProbePause(){
+            if(!isTv)return;
+            runOnUiThread(()->{if(nativeProbePlayer!=null)nativeProbePlayer.pause();});
+        }
+        @JavascriptInterface public void nativeProbeResume(){
+            if(!isTv)return;
+            runOnUiThread(()->{if(nativeProbePlayer!=null)nativeProbePlayer.play();});
+        }
+        @JavascriptInterface public void nativeProbeToggle(){
+            if(!isTv)return;
+            runOnUiThread(()->{
+                if(nativeProbePlayer==null)return;
+                if(nativeProbePlayer.isPlaying())nativeProbePlayer.pause();else nativeProbePlayer.play();
+            });
+        }
     }
     private final Runnable periodicUpdateCheck=new Runnable(){
         @Override public void run(){
@@ -173,7 +188,10 @@ public class MainActivity extends Activity {
             fullscreenContainer.addView(nativeProbeView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
         }
         webView=new WebView(this);
-        webView.setBackgroundColor(Color.rgb(0,32,96));
+        // Keep the WebView transparent at the Android layer so the native
+        // Media3 surface underneath can be revealed without recreating views.
+        // Normal pages remain opaque because their HTML/CSS paints the blue UI.
+        webView.setBackgroundColor(Color.TRANSPARENT);
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);
         fullscreenContainer.addView(webView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
@@ -235,13 +253,26 @@ public class MainActivity extends Activity {
                 long elapsed=Math.max(0L,System.currentTimeMillis()-started);
                 Log.i("AbajTVNativeProbe","first_frame_ms="+elapsed+" url="+nativeProbeUrl);
                 nativeProbeStartedAt=0L;
-                try{nativeProbePlayer.pause();nativeProbePlayer.stop();nativeProbePlayer.clearMediaItems();}catch(Exception ignored){}
+                if(webView!=null){
+                    webView.evaluateJavascript(
+                        "if(typeof nativeProbeFirstFrame==='function')nativeProbeFirstFrame("+elapsed+")",
+                        null
+                    );
+                }
             }
             @Override public void onPlayerError(PlaybackException error){
                 long started=nativeProbeStartedAt;
                 long elapsed=started>0L?Math.max(0L,System.currentTimeMillis()-started):0L;
-                Log.w("AbajTVNativeProbe","error_ms="+elapsed+" code="+(error==null?"unknown":error.getErrorCodeName())+" url="+nativeProbeUrl);
+                String code=error==null?"unknown":error.getErrorCodeName();
+                Log.w("AbajTVNativeProbe","error_ms="+elapsed+" code="+code+" url="+nativeProbeUrl);
                 nativeProbeStartedAt=0L;
+                if(webView!=null){
+                    String safe=code.replace("\\","\\\\").replace("'","\\'");
+                    webView.evaluateJavascript(
+                        "if(typeof nativeProbeError==='function')nativeProbeError('"+safe+"')",
+                        null
+                    );
+                }
                 try{nativeProbePlayer.stop();nativeProbePlayer.clearMediaItems();}catch(Exception ignored){}
             }
         });
