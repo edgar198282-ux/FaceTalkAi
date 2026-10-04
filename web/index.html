@@ -2409,14 +2409,13 @@ function setModeFilter(btn,v){
   const isCountry=COUNTRY_FILTERS.has(v);
   if(!isCountry)activeCategory='';
   if(isCountry){
+    activeCategory='';
+    localStorage.setItem('abaj_tv_category','');
     sourceFilter='all';
     localStorage.setItem('abaj_tv_source_filter','all');
     document.querySelectorAll('#sourceChips .chip').forEach(x=>x.classList.toggle('active',x.dataset.source==='all'));
     const group=document.getElementById('group');
-    if(group){
-      if(activeCategory&&[...group.options].some(o=>o.value===activeCategory))group.value=activeCategory;
-      else group.value='';
-    }
+    if(group)group.value='';
     const search=document.getElementById('search');
     if(search)search.value='';
   }
