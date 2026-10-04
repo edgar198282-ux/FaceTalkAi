@@ -4080,11 +4080,21 @@ function tvForceSystemForChannel(ch){
   return String(ch.tvg_id||'').toLowerCase()==='yerkirmedia.am'||
     String(ch.name||'').trim().toLowerCase()==='yerkir media';
 }
+function tvPreferSystemForChannel(ch){
+  if(!nativeTv||!ch||ch.personal)return false;
+  try{
+    return tvDirectUrls(ch).some(u=>/^(?:https?:\/\/)?[^/]*teamcloud\.am(?:\/|$)/i.test(String(u||'')));
+  }catch(e){return false}
+}
 function tvShouldUseHls(ch){
   if(!nativeTv)return tvPlayerMode!=='system';
   if(tvForceSystemForChannel(ch))return false;
   if(tvPlayerMode==='hls')return true;
   if(tvPlayerMode==='system')return false;
+  // Confirmed TeamTV HLS is already optimized for Android STBs. Prefer the
+  // WebView/system media pipeline first; if it fails, existing fallback logic
+  // remembers the channel and retries through HLS.js.
+  if(tvPreferSystemForChannel(ch)&&!tvHlsFallbackChannels.has(String(ch&&ch.id||'')))return false;
   if(tvSystemFallbackChannels.has(String(ch&&ch.id||'')))return false;
   return true;
 }
@@ -4767,7 +4777,7 @@ function queueTvChannelStep(delta){
     if(ch){
       // TeamTV uses a ~500 ms channel-switch delay. Keep a small guard so
       // repeated remote presses stay responsive without starting parallel players.
-      tvChannelSwitchBusyUntil=Date.now()+700;
+      tvChannelSwitchBusyUntil=Date.now()+600;
       openPlayer(ch.id);
     }
   },220);
