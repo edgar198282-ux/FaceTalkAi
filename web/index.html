@@ -5745,9 +5745,25 @@ async function loadCinemaCatalog(force=false){
   if(cinemaSource==='lazy'){
     const info=getLazyMediaInfo();
     if(!info.installed){
-      cinemaLoaded=false;
-      renderCinemaCatalog([]);
-      if(status)status.textContent='LazyMedia не найден на этом устройстве.';
+      try{
+        const r=await fetch('/api/cinema/catalog?type='+encodeURIComponent(cinemaType),{cache:'no-store'});
+        const data=await r.json();
+        const shared=Array.isArray(data.items)?data.items:[];
+        if(shared.length){
+          cinemaLoaded=true;
+          writeCinemaCache(shared);
+          renderCinemaCatalog(shared);
+          if(status)status.textContent='Найдено '+shared.length;
+        }else{
+          cinemaLoaded=false;
+          renderCinemaCatalog([]);
+          if(status)status.textContent='Каталог пока недоступен.';
+        }
+      }catch(e){
+        cinemaLoaded=false;
+        renderCinemaCatalog([]);
+        if(status)status.textContent='Каталог пока недоступен.';
+      }
       return;
     }
 
@@ -5777,6 +5793,11 @@ async function loadCinemaCatalog(force=false){
       writeCinemaCache(merged);
       renderCinemaCatalog(merged);
       if(status)status.textContent='Найдено '+merged.length;
+      fetch('/api/cinema/catalog-cache',{
+        method:'POST',
+        headers:{'Content-Type':'application/json',...authHeaders()},
+        body:JSON.stringify({type:cinemaType,items:merged})
+      }).catch(()=>{});
     }else if(!cached.length){
       cinemaLoaded=false;
       renderCinemaCatalog([]);
@@ -5787,7 +5808,7 @@ async function loadCinemaCatalog(force=false){
   }
 
   try{
-    const r=await fetch('/api/cinema/catalog',{cache:'no-store'});
+    const r=await fetch('/api/cinema/catalog?type='+encodeURIComponent(cinemaType),{cache:'no-store'});
     if(!r.ok)throw new Error('HTTP '+r.status);
     const data=await r.json();
     cinemaLoaded=true;

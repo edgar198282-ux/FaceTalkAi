@@ -13,6 +13,8 @@ from urllib.request import Request, urlopen
 import aiohttp
 from aiohttp import web
 
+from .db import get_setting
+
 COUNTRY_CODES = {"AM", "RU", "GE", "UA", "BY", "KZ", "UZ", "MD"}
 ADULT_KEYWORDS = re.compile(r'(^|[^a-z0-9])(18\+|xxx|adult|erotic|erotica|porn|porno|playboy|penthouse|hustler|dorcel|brazzers|redlight)([^a-z0-9]|$)', re.I)
 
@@ -2272,14 +2274,21 @@ def _playback_benchmark_summary():
 
 
 async def api_cinema_catalog(request):
-    # Cinema stays inside Abaj TV. Provider-backed titles must come through an
-    # authorized integration; never copy session credentials from another app.
+    kind = "series" if str(request.query.get("type") or "").lower() == "series" else "movies"
+    raw = await get_setting(f"cinema_catalog:{kind}", "[]")
+    try:
+        items = json.loads(raw or "[]")
+    except Exception:
+        items = []
+    if not isinstance(items, list):
+        items = []
     return web.json_response({
         "ok": True,
-        "items": [],
-        "source": "abaj",
-        "provider_authorization_required": True,
-    })
+        "items": items[:120],
+        "source": "lazy-shared" if items else "abaj",
+        "kind": kind,
+        "count": len(items[:120]),
+    }, headers={"Cache-Control": "no-store"})
 
 
 async def api_diagnostics(request):

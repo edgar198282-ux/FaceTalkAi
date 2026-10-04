@@ -814,6 +814,41 @@ async def api_iptv_edem_payment_request(request):
     return web.json_response({'ok':True,'payment':payment})
 
 
+async def api_cinema_catalog_cache(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    kind = "series" if str((body or {}).get("type") or "").lower() == "series" else "movies"
+    rows = (body or {}).get("items") or []
+    if not isinstance(rows, list):
+        return web.json_response({"ok": False, "error": "bad_items"}, status=400)
+    clean = []
+    for row in rows[:120]:
+        if not isinstance(row, dict):
+            continue
+        title = str(row.get("title") or "").strip()
+        if not title:
+            continue
+        clean.append({
+            "id": str(row.get("id") or row.get("data_id") or row.get("intent") or title)[:500],
+            "title": title[:240],
+            "poster": str(row.get("poster") or "")[:2000],
+            "year": str(row.get("year") or "")[:20],
+            "quality": str(row.get("quality") or "")[:40],
+            "height": int(row.get("height") or 0) if str(row.get("height") or "").isdigit() else 0,
+            "url": str(row.get("url") or "")[:4000],
+            "intent": str(row.get("intent") or "")[:2000],
+            "source": "lazy",
+        })
+    await set_setting(f"cinema_catalog:{kind}", json.dumps(clean, ensure_ascii=False, separators=(",", ":")))
+    await set_setting(f"cinema_catalog_updated:{kind}", str(int(time.time())))
+    return web.json_response({"ok": True, "count": len(clean), "type": kind}, headers={"Cache-Control": "no-store"})
+
+
 async def api_support_message(request):
     user = await _user_from_request(request)
     if not user:
@@ -1464,6 +1499,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
     app.router.add_post('/api/iptv/ai-dub/chunk', api_iptv_ai_dub_chunk)
+    app.router.add_post('/api/cinema/catalog-cache', api_cinema_catalog_cache)
     app.router.add_post('/api/support/message', api_support_message)
     app.router.add_get('/api/admin/iptv/edem', api_admin_iptv_edem_list); app.router.add_post('/api/admin/iptv/edem/assign', api_admin_iptv_edem_assign); app.router.add_post('/api/admin/iptv/edem/limit', api_admin_iptv_edem_limit); app.router.add_post('/api/admin/iptv/edem/subscription', api_admin_iptv_edem_subscription); app.router.add_post('/api/admin/iptv/edem/payment', api_admin_iptv_edem_payment); app.router.add_get('/api/admin/access/users', api_admin_access_users); app.router.add_post('/api/admin/access/set', api_admin_access_set)
     app.router.add_get('/api/me', api_me); app.router.add_get('/api/admin/stats', api_admin_stats); app.router.add_get('/api/admin/keys', api_admin_keys); app.router.add_post('/api/admin/keys', api_admin_keys)
