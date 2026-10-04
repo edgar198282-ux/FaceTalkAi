@@ -130,6 +130,20 @@ public class MainActivity extends Activity {
             return "";
         }catch(Exception e){return "";}
     }
+    private String cinemaArticleUrl(String rawIntent,String provider){
+        String direct=cinemaArticleUrl(rawIntent);
+        if(direct!=null&&!direct.trim().isEmpty())return direct;
+        try{
+            String article=decodeCinemaIntentPart(rawIntent,1);
+            if(article.isEmpty())return "";
+            String p=provider==null?"":provider.trim().toUpperCase(java.util.Locale.US);
+            if("ZOMBIE".equals(p)){
+                return "https://api.zombie-film.live/v2/franchise/view/?findBy=init&slug="+
+                    Uri.encode(article)+"&ref=https:%2F%2Fzombie-film.live";
+            }
+        }catch(Exception ignored){}
+        return "";
+    }
     private boolean cinemaStreamMatches(String url,String transport){
         if(url==null)return false;
         String u=url.toLowerCase();
@@ -270,11 +284,11 @@ public class MainActivity extends Activity {
             runOnUiThread(()->finishCinemaResolve(requestId,out));
         },"abaj-filmix-stream").start();
     }
-    private void resolveCinemaStreamInternal(String rawIntent,String transport,String quality,String requestId){
+    private void resolveCinemaStreamInternal(String rawIntent,String provider,String transport,String quality,String requestId){
         final String source=cinemaSourceId(rawIntent);
-        final String articleUrl=cinemaArticleUrl(rawIntent);
+        final String articleUrl=cinemaArticleUrl(rawIntent,provider);
         if(articleUrl.isEmpty()){
-            if("1".equals(source)){
+            if("1".equals(source)||"FILMIX".equals(provider)){
                 resolveFilmixStreamInternal(rawIntent,transport,quality,requestId);
             }else{
                 finishCinemaResolve(requestId,"");
@@ -306,6 +320,7 @@ public class MainActivity extends Activity {
                 fullscreenContainer.addView(resolver,lp);
                 resolver.setWebChromeClient(new WebChromeClient());
                 resolver.setWebViewClient(new WebViewClient(){
+                    private int followHops=0;
                     private void inspect(String u){
                         if(!cinemaResolverDone&&cinemaStreamMatches(u,cinemaResolverTransport)){
                             finishCinemaResolve(requestId,u);
@@ -326,7 +341,11 @@ public class MainActivity extends Activity {
                                 "(function(){try{"+
                                 "var els=[...document.querySelectorAll('video,video source,source,a,button,[class*=play],[id*=play]')];"+
                                 "for(var i=0;i<els.length;i++){var e=els[i],u=e.src||e.href||e.getAttribute('src')||e.getAttribute('data-src')||'';"+
-                                "if(u&&(/m3u8|\\.mpd|\\.mp4/i).test(u))return u;}"+
+                                "if(u&&(/m3u8|\\.mpd|\\.mp4/i).test(u))return 'MEDIA:'+u;}"+
+                                "var txt=(document.body&&document.body.innerText)||'';"+
+                                "var m=txt.match(/https?:\\/\\/[^\\s\\\"'<>]+(?:m3u8|mpd|mp4)[^\\s\\\"'<>]*/i);if(m)return 'MEDIA:'+m[0];"+
+                                "var links=txt.match(/https?:\\/\\/[^\\s\\\"'<>]+/ig)||[];"+
+                                "for(var j=0;j<links.length;j++){if(/embed|player|iframe|kinogram/i.test(links[j]))return 'FOLLOW:'+links[j];}"+
                                 "var b=document.querySelector('button,[class*=play],[id*=play]');if(b){try{b.click()}catch(e){}}"+
                                 "document.querySelectorAll('video').forEach(function(v){try{v.muted=true;v.play()}catch(e){}});"+
                                 "}catch(e){}return '';})()",
@@ -336,7 +355,16 @@ public class MainActivity extends Activity {
                                             String u=value;
                                             if(u.startsWith("\"")&&u.endsWith("\""))u=u.substring(1,u.length()-1);
                                             u=u.replace("\\/","/").replace("\u0026","&");
-                                            if(cinemaStreamMatches(u,cinemaResolverTransport))finishCinemaResolve(requestId,u);
+                                            if(u.startsWith("MEDIA:"))u=u.substring(6);
+                                            if(cinemaStreamMatches(u,cinemaResolverTransport)){
+                                                finishCinemaResolve(requestId,u);
+                                            }else if(u.startsWith("FOLLOW:")&&followHops<2){
+                                                String next=u.substring(7).trim();
+                                                if(next.startsWith("http://")||next.startsWith("https://")){
+                                                    followHops++;
+                                                    try{view.loadUrl(next);}catch(Exception ignored){}
+                                                }
+                                            }
                                         }
                                     }catch(Exception ignored){}
                                 }
@@ -742,10 +770,11 @@ public class MainActivity extends Activity {
             final String requestId=(rawRequestId==null?"":rawRequestId).replaceAll("[^A-Za-z0-9_-]","");
             String raw=(rawTransport==null?"":rawTransport).trim().toUpperCase();
             String[] parts=raw.split("\\|",-1);
-            final String transport=parts.length>0?parts[0]:"";
-            final String quality=parts.length>1?parts[1]:"";
+            final String provider=parts.length>=3?parts[0]:"";
+            final String transport=parts.length>=3?parts[1]:(parts.length>0?parts[0]:"");
+            final String quality=parts.length>=3?parts[2]:(parts.length>1?parts[1]:"");
             if(requestId.isEmpty())return;
-            resolveCinemaStreamInternal(rawIntent,transport,quality,requestId);
+            resolveCinemaStreamInternal(rawIntent,provider,transport,quality,requestId);
         }
         @JavascriptInterface public boolean openLazyMediaIntent(String raw){
             try{
