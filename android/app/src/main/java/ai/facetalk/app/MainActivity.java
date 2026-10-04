@@ -113,8 +113,8 @@ public class MainActivity extends Activity {
             if(article.isEmpty())return "";
             if("4".equals(source)){
                 if(article.startsWith("/"))article=article.substring(1);
-                if(article.startsWith("movies/"))return "https://zona.mobi/"+article;
-                return "https://zona.mobi/movies/"+article;
+                if(article.startsWith("movies/"))article=article.substring("movies/".length());
+                return "https://w127.zona.plus/movies/embed/"+article;
             }
             if("13".equals(source)){
                 if(!article.startsWith("/"))article="/"+article;
@@ -127,9 +127,9 @@ public class MainActivity extends Activity {
         if(url==null)return false;
         String u=url.toLowerCase();
         if(!(u.startsWith("http://")||u.startsWith("https://")))return false;
-        if("HLS".equals(transport))return u.contains(".m3u8")||u.contains("hls=");
-        if("DASH".equals(transport))return u.contains(".mpd")||u.contains("dash=");
-        return u.contains(".m3u8")||u.contains(".mpd");
+        if("HLS".equals(transport))return u.contains(".m3u8")||u.contains("hls=")||u.contains("/hls/");
+        if("DASH".equals(transport))return u.contains(".mpd")||u.contains("dash=")||u.contains("/dash/");
+        return u.contains(".m3u8")||u.contains(".mpd")||u.contains("/hls/")||u.contains("/dash/");
     }
     private void finishCinemaResolve(String requestId,String url){
         if(requestId==null||!requestId.equals(cinemaResolverRequestId)||cinemaResolverDone)return;
