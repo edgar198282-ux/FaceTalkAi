@@ -6624,6 +6624,7 @@ window.__abajCinemaResolved=function(requestId,url){
   if(stream){
     if(pending.meta)pending.meta.textContent='Поток найден · открываю…';
     window.__abajOpenExternalMedia(stream,pending.title||'Кино');
+    setTimeout(()=>closeCinemaSourcePicker(),120);
     return;
   }
   if(pending.meta)pending.meta.textContent='Поток не найден';
