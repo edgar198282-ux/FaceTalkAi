@@ -7,6 +7,7 @@ import android.app.DownloadManager;
 import android.app.PendingIntent;
 import android.app.PictureInPictureParams;
 import android.app.UiModeManager;
+import android.app.SearchManager;
 import android.media.AudioManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -199,6 +200,61 @@ public class MainActivity extends Activity {
                         }catch(Exception ignored){}
                     }
                 });
+                return true;
+            }catch(Exception e){return false;}
+        }
+        @JavascriptInterface public String lazyMediaSearch(String rawQuery){
+            String query=rawQuery==null?"":rawQuery.trim();
+            org.json.JSONArray out=new org.json.JSONArray();
+            String[] projection=new String[]{
+                "_id",
+                SearchManager.SUGGEST_COLUMN_TEXT_1,
+                SearchManager.SUGGEST_COLUMN_TEXT_2,
+                SearchManager.SUGGEST_COLUMN_INTENT_DATA,
+                SearchManager.SUGGEST_COLUMN_ICON_1
+            };
+            Cursor cur=null;
+            try{
+                Uri base=Uri.parse("content://com.lazycatsoftware.lmd.tvsearch/search_suggest_query");
+                try{
+                    cur=getContentResolver().query(base,projection,null,new String[]{query},null);
+                }catch(Exception first){
+                    try{
+                        Uri path=base.buildUpon().appendPath(query).build();
+                        cur=getContentResolver().query(path,projection,null,null,null);
+                    }catch(Exception ignored){}
+                }
+                if(cur==null)return "[]";
+                int idCol=cur.getColumnIndex("_id");
+                int t1Col=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_TEXT_1);
+                int t2Col=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_TEXT_2);
+                int dataCol=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_INTENT_DATA);
+                int iconCol=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_ICON_1);
+                int count=0;
+                while(cur.moveToNext()&&count<80){
+                    JSONObject o=new JSONObject();
+                    if(idCol>=0)o.put("id",cur.getString(idCol));
+                    if(t1Col>=0)o.put("title",cur.getString(t1Col));
+                    if(t2Col>=0)o.put("subtitle",cur.getString(t2Col));
+                    if(dataCol>=0)o.put("intent",cur.getString(dataCol));
+                    if(iconCol>=0)o.put("poster",cur.getString(iconCol));
+                    out.put(o); count++;
+                }
+            }catch(Exception ignored){}finally{
+                if(cur!=null)try{cur.close();}catch(Exception ignored){}
+            }
+            return out.toString();
+        }
+        @JavascriptInterface public boolean openLazyMediaIntent(String raw){
+            try{
+                String value=raw==null?"":raw.trim();
+                if(value.isEmpty())return false;
+                Uri uri=Uri.parse(value);
+                String scheme=uri.getScheme()==null?"":uri.getScheme().toLowerCase();
+                if(!("tvhomechannels".equals(scheme)||"http".equals(scheme)||"https".equals(scheme)))return false;
+                Intent i=new Intent(Intent.ACTION_VIEW,uri);
+                i.setPackage("com.lazycatsoftware.lmd");
+                runOnUiThread(()->{try{startActivity(i);}catch(Exception ignored){}});
                 return true;
             }catch(Exception e){return false;}
         }
