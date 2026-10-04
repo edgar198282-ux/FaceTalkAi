@@ -4441,7 +4441,12 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   if(nativeTv&&!ch.personal&&isCineramaStreamUrl(directSrc)){
     if(freeAdShieldChannel!==String(ch.id||''))armInstantCineramaShield(ch);
   }
-  const src=(nativeTv&&!ch.personal&&directSrc)?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
+  // Direct-first on phone too. Until now mobile always went through our
+  // /api/iptv/play proxy, adding an extra server hop before HLS could start.
+  // If a source blocks CORS/mixed-content, the existing mobile NETWORK_ERROR
+  // path immediately retries through the proxy.
+  const useDirectClient=!ch.personal&&!!directSrc&&!forceProxy;
+  const src=useDirectClient?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
   // Race Media3 against HLS.js for every direct HLS channel (AM/RU/other,
@@ -4471,27 +4476,29 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   }
 
   const useHlsJs=tvShouldUseHls(ch)&&window.Hls&&Hls.isSupported();
+  const mobileFast=!nativeTv&&!ch.personal;
+  const fastStart=teamTvFast||mobileFast;
   if(nativeTv)playbackPlayerMode=useHlsJs?'hls':'system';
   if(useHlsJs){
     hls=new Hls({
       enableWorker:true,
       lowLatencyMode:false,
       startFragPrefetch:true,
-      // TeamTV uses 4-second HLS segments. Starting its adaptive ladder at the
-      // smallest rendition gets a decodable first segment on screen much sooner;
-      // ABR can raise quality immediately after playback starts.
-      startLevel:teamTvFast?0:-1,
-      maxBufferLength:teamTvFast?4:(nativeTv?6:20),
-      maxMaxBufferLength:teamTvFast?8:(nativeTv?12:30),
-      backBufferLength:teamTvFast?0:(nativeTv?3:10),
-      liveSyncDurationCount:teamTvFast?1:3,
-      liveMaxLatencyDurationCount:teamTvFast?3:Infinity,
-      maxLiveSyncPlaybackRate:teamTvFast?1.5:1,
-      manifestLoadingTimeOut:teamTvFast?3500:(nativeTv?6000:10000),
-      levelLoadingTimeOut:teamTvFast?3500:(nativeTv?6000:10000),
-      fragLoadingTimeOut:teamTvFast?5000:(nativeTv?9000:14000),
+      // Fast-start on TV and phone: decode the smallest rendition first, then
+      // let ABR climb after the first frame instead of waiting on a large FHD/4K
+      // fragment before showing anything.
+      startLevel:fastStart?0:-1,
+      maxBufferLength:teamTvFast?4:(mobileFast?6:(nativeTv?6:20)),
+      maxMaxBufferLength:teamTvFast?8:(mobileFast?12:(nativeTv?12:30)),
+      backBufferLength:teamTvFast?0:(mobileFast?2:(nativeTv?3:10)),
+      liveSyncDurationCount:teamTvFast?1:(mobileFast?2:3),
+      liveMaxLatencyDurationCount:teamTvFast?3:(mobileFast?4:Infinity),
+      maxLiveSyncPlaybackRate:fastStart?1.5:1,
+      manifestLoadingTimeOut:teamTvFast?3500:(mobileFast?4500:(nativeTv?6000:10000)),
+      levelLoadingTimeOut:teamTvFast?3500:(mobileFast?4500:(nativeTv?6000:10000)),
+      fragLoadingTimeOut:teamTvFast?5000:(mobileFast?7000:(nativeTv?9000:14000)),
       capLevelToPlayerSize:true,
-      abrEwmaDefaultEstimate:teamTvFast?1200000:(nativeTv?tvInitialAbrEstimate(ch):500000)
+      abrEwmaDefaultEstimate:teamTvFast?1200000:(mobileFast?1500000:(nativeTv?tvInitialAbrEstimate(ch):500000))
     });
     if(ch.personal){
       fetch(src,{headers:auth,cache:'no-store'})
@@ -4530,15 +4537,15 @@ function startStream(ch,preferBackup=false,forceProxy=false){
             if(diff<bestDiff){bestDiff=diff;best=i}
           });
           if(best>=0){
-            if(teamTvFast){
-              // Do not replace the tiny first rendition before the first frame.
-              // Promote right after playback has started.
+            if(fastStart){
+              // Keep the tiny first rendition until playback begins, then promote
+              // without delaying the first visible frame.
               const promote=()=>{
                 if(!hls||attemptToken!==streamAttemptToken)return;
                 if(tvPreferredQuality!=='auto')hls.currentLevel=best;
                 else hls.nextAutoLevel=best;
               };
-              v.addEventListener('playing',()=>setTimeout(promote,450),{once:true});
+              v.addEventListener('playing',()=>setTimeout(promote,mobileFast?250:450),{once:true});
             }else if(tvPreferredQuality!=='auto')hls.currentLevel=best;
             else{
               hls.nextAutoLevel=best;
