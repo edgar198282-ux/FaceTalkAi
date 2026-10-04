@@ -2142,7 +2142,7 @@ async def refresh_channels(force: bool = False):
             _state["running"] = False
 
 
-def public_state(compact: bool = False):
+def public_state(compact: bool = False, fast: bool = False):
     rows = []
     compact_keys = {
         "id", "name", "group", "country", "logo", "status", "tvg_id",
@@ -2162,15 +2162,23 @@ def public_state(compact: bool = False):
         ):
             continue
         row = dict(source)
-        current, nxt = _epg_for_channel(row)
-        row["epg_now"] = current if current is not None else row.get("epg_now")
-        row["epg_next"] = nxt if nxt is not None else row.get("epg_next")
+        if not fast:
+            current, nxt = _epg_for_channel(row)
+            row["epg_now"] = current if current is not None else row.get("epg_now")
+            row["epg_next"] = nxt if nxt is not None else row.get("epg_next")
+        else:
+            row.pop("epg_now", None)
+            row.pop("epg_next", None)
         if not str(row.get("logo") or "").strip():
             epg_logo = _epg_logo_for_channel(row)
             if epg_logo:
                 row["logo"] = epg_logo
         if compact:
             row = {k: row.get(k) for k in compact_keys if k in row}
+            if fast:
+                row.pop("epg_now", None)
+                row.pop("epg_next", None)
+                row.pop("backups", None)
             for epg_key in ("epg_now", "epg_next"):
                 epg = row.get(epg_key)
                 if isinstance(epg, dict):
@@ -2501,13 +2509,15 @@ async def api_channels(request):
         else:
             await refresh_channels()
     compact = request.query.get("compact") == "1"
+    fast = request.query.get("fast") == "1"
     if compact:
         now = time.monotonic()
         cache_key = (
             int(_state.get("last_refresh") or 0),
-            int(_state.get("epg_last_refresh") or 0),
+            0 if fast else int(_state.get("epg_last_refresh") or 0),
             str(_state.get("error") or ""),
             str(_state.get("epg_error") or ""),
+            bool(fast),
         )
         if _compact_response_cache["key"] == cache_key and now < float(_compact_response_cache["expires_at"] or 0) and _compact_response_cache["body"]:
             return web.Response(
@@ -2516,7 +2526,7 @@ async def api_channels(request):
                 charset="utf-8",
                 headers={"Cache-Control": "no-store"},
             )
-        payload = public_state(compact=True)
+        payload = public_state(compact=True, fast=fast)
         body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
         _compact_response_cache.update({"key": cache_key, "body": body, "expires_at": now + 5.0})
         return web.Response(body=body, content_type="application/json", charset="utf-8", headers={"Cache-Control": "no-store"})

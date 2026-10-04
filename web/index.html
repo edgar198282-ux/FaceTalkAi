@@ -2846,7 +2846,7 @@ async function load(){
     const edemStatusPromise=fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'})
       .then(async r=>r.ok?await r.json():{active:false,configured:false})
       .catch(()=>({active:false,configured:false}));
-    const mainPromise=fetch('/api/iptv/channels?compact=1',{cache:'no-store'}).then(async r=>{
+    const mainPromise=fetch('/api/iptv/channels?compact=1&fast=1',{cache:'no-store'}).then(async r=>{
       if(!r.ok)throw new Error('channels '+r.status);
       return await r.json();
     });
@@ -5584,14 +5584,45 @@ function disconnectLazyMediaFromAdmin(){
   cinemaLoaded=false;
   refreshLazyMediaAdminStatus();
 }
-function lazyMediaSearch(query){
+const lazySearchPending=new Map();
+let lazySearchSeq=0;
+window.__abajLazyMediaResult=function(requestId,rows){
+  const pending=lazySearchPending.get(String(requestId||''));
+  if(!pending)return;
+  lazySearchPending.delete(String(requestId||''));
+  clearTimeout(pending.timer);
+  pending.resolve(Array.isArray(rows)?rows:[]);
+};
+function lazyMediaSearchAsync(query){
+  return new Promise(resolve=>{
+    try{
+      if(window.AbajNative&&typeof AbajNative.lazyMediaSearchAsync==='function'){
+        const id='lm'+(++lazySearchSeq);
+        const timer=setTimeout(()=>{
+          lazySearchPending.delete(id);
+          resolve([]);
+        },2600);
+        lazySearchPending.set(id,{resolve,timer});
+        AbajNative.lazyMediaSearchAsync(String(query||''),id);
+        return;
+      }
+    }catch(e){}
+    resolve([]);
+  });
+}
+function cinemaCacheKey(){
+  return 'abaj_cinema_cache_v2_'+cinemaType;
+}
+function readCinemaCache(){
   try{
-    if(window.AbajNative&&typeof AbajNative.lazyMediaSearch==='function'){
-      const rows=JSON.parse(AbajNative.lazyMediaSearch(String(query||''))||'[]');
-      return Array.isArray(rows)?rows:[];
-    }
-  }catch(e){}
-  return [];
+    const x=JSON.parse(localStorage.getItem(cinemaCacheKey())||'null');
+    if(!x||!Array.isArray(x.items)||!x.items.length)return [];
+    if(Date.now()-Number(x.ts||0)>6*60*60*1000)return [];
+    return x.items;
+  }catch(e){return []}
+}
+function writeCinemaCache(items){
+  try{localStorage.setItem(cinemaCacheKey(),JSON.stringify({ts:Date.now(),items:(items||[]).slice(0,80)}))}catch(e){}
 }
 function syncCinemaTypeUi(){
   document.querySelectorAll('.cinemaTypeCard').forEach(btn=>{
@@ -5674,12 +5705,7 @@ function renderCinemaCatalog(items){
   const rows=Array.isArray(items)?items:[];
   if(!rows.length){
     if(status)status.textContent='Каталог пока недоступен.';
-    for(let i=0;i<12;i++){
-      const card=document.createElement('div');
-      card.className='cinemaPosterCard';
-      card.innerHTML='<div class="cinemaPosterFallback">🎞️</div><div class="cinemaPosterMeta"><div class="cinemaPosterTitle">Скоро</div><div class="cinemaPosterSub">Кино</div></div>';
-      grid.appendChild(card);
-    }
+    grid.innerHTML='<div style="grid-column:1/-1;padding:24px 8px;color:#9fc5d8;font-size:16px">Нет данных для показа</div>';
     return;
   }
   if(status)status.textContent=rows.length+' фильмов';
@@ -5698,7 +5724,6 @@ function renderCinemaCatalog(items){
 async function loadCinemaCatalog(force=false){
   if(cinemaLoaded&&!force)return;
   const status=document.getElementById('cinemaStatus');
-  if(status)status.textContent='Загрузка фильмов…';
 
   if(cinemaSource==='lazy'){
     const info=getLazyMediaInfo();
@@ -5708,25 +5733,37 @@ async function loadCinemaCatalog(force=false){
       if(status)status.textContent='LazyMedia не найден на этом устройстве.';
       return;
     }
-    const seeds=cinemaType==='series'
-      ? ['новинки сериал','сериал 2026','сериал','сезон']
-      : ['новинки фильм','фильм 2026','фильм','кино'];
+
+    const cached=readCinemaCache();
+    if(cached.length){
+      cinemaLoaded=true;
+      renderCinemaCatalog(cached);
+      if(status)status.textContent='Найдено '+cached.length;
+    }else{
+      if(status)status.textContent='Загрузка новинок…';
+    }
+
+    const q=cinemaType==='series'?'сериал':'фильм';
+    const rows=await lazyMediaSearchAsync(q);
     const merged=[]; const seen=new Set();
-    for(const q of seeds){
-      const rows=lazyMediaSearch(q);
-      for(const item of rows){
-        item.kind=cinemaType;
-        const key=String(item.intent||item.id||item.title||'');
-        if(!key||seen.has(key))continue;
-        seen.add(key); merged.push(item);
-        if(merged.length>=80)break;
-      }
+    for(const item of rows){
+      item.kind=cinemaType;
+      const key=String(item.intent||item.id||item.title||'');
+      if(!key||seen.has(key))continue;
+      seen.add(key); merged.push(item);
       if(merged.length>=80)break;
     }
-    cinemaLoaded=true;
-    renderCinemaCatalog(merged);
-    if(status)status.textContent=merged.length?('Найдено '+merged.length):'Каталог LazyMedia пока пуст.';
-    setTimeout(()=>{if(nativeTv&&cinemaMode&&!cinemaFocusable().includes(document.activeElement))focusCinemaElement(document.querySelector('.cinemaTypeCard.active')||document.querySelector('.cinemaTypeCard'))},50);
+    if(merged.length){
+      cinemaLoaded=true;
+      writeCinemaCache(merged);
+      renderCinemaCatalog(merged);
+      if(status)status.textContent='Найдено '+merged.length;
+    }else if(!cached.length){
+      cinemaLoaded=false;
+      renderCinemaCatalog([]);
+      if(status)status.textContent='Каталог пока не ответил.';
+    }
+    setTimeout(()=>{if(nativeTv&&cinemaMode&&!cinemaFocusable().includes(document.activeElement))focusCinemaElement(document.querySelector('.cinemaTypeCard.active')||document.querySelector('.cinemaTypeCard'))},30);
     return;
   }
 

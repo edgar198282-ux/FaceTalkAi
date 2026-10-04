@@ -258,6 +258,21 @@ public class MainActivity extends Activity {
             }
             return out.toString();
         }
+        @JavascriptInterface public void lazyMediaSearchAsync(String rawQuery,String rawRequestId){
+            final String query=rawQuery==null?"":rawQuery;
+            final String requestId=rawRequestId==null?"":rawRequestId.replaceAll("[^A-Za-z0-9_-]","");
+            new Thread(()->{
+                String result;
+                try{result=lazyMediaSearch(query);}catch(Exception e){result="[]";}
+                final String payload=result==null?"[]":result;
+                runOnUiThread(()->{
+                    if(webView==null)return;
+                    String js="window.__abajLazyMediaResult&&window.__abajLazyMediaResult("+
+                        JSONObject.quote(requestId)+","+payload+");";
+                    try{webView.evaluateJavascript(js,null);}catch(Exception ignored){}
+                });
+            },"abaj-lazy-search").start();
+        }
         @JavascriptInterface public boolean openLazyMediaIntent(String raw){
             try{
                 String value=raw==null?"":raw.trim();
