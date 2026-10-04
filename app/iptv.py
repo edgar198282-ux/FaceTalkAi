@@ -2247,6 +2247,7 @@ def _playback_benchmark_summary():
         "stalls": len(stalls),
         "system": group_stats("system"),
         "hls": group_stats("hls"),
+        "native": group_stats("native"),
         "recent": rows[-40:],
     }
 
@@ -2784,7 +2785,7 @@ async def api_playback_metric(request):
     if not item:
         return web.json_response({"ok": False}, status=404)
     player = str(payload.get("player") or "").strip().lower()
-    if player not in {"system", "hls"}:
+    if player not in {"system", "hls", "native"}:
         player = "unknown"
     row = {
         "ts": int(time.time()),
