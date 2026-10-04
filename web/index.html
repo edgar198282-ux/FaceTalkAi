@@ -5269,6 +5269,10 @@ function tvNativeOkDown(){
     tvNativeRemote('ok');
     return;
   }
+  if(cinemaMode){
+    tvNativeRemote('ok');
+    return;
+  }
   const player=document.getElementById('playerView');
   if((player&&player.classList.contains('open'))||!tvHeaderCollapsed){
     tvNativeRemote('ok');
@@ -5279,6 +5283,7 @@ function tvNativeOkDown(){
 function tvNativeOkUp(){
   if(!nativeTv)return;
   if(tvSettingsOpen()||tvSettingPickerOpen()||tvGuideOpen()||tvSearchOpen())return;
+  if(cinemaMode)return;
   const player=document.getElementById('playerView');
   if(player&&player.classList.contains('open'))return;
   if(!tvHeaderCollapsed)return;
@@ -5360,6 +5365,36 @@ function tvNativeRemote(action){
     if(action==='ok'){
       showTvPlayerUi(true);
       if(!activatePlayerControl())focusPlayerControl();
+      return;
+    }
+    return;
+  }
+  if(cinemaMode){
+    const active=document.activeElement;
+    const inCinema=!!(active&&active.closest&&active.closest('#cinemaScreen'));
+    if(!tvHeaderCollapsed&&!inCinema){
+      if(action==='down'){
+        setTvHeaderCollapsed(true,false);
+        requestAnimationFrame(()=>focusCinemaElement(document.querySelector('.cinemaTypeCard.active')||document.querySelector('.cinemaTypeCard')));
+        return;
+      }
+      if(action==='left'||action==='right'||action==='up'){
+        moveTvTopSpatial(action);
+        return;
+      }
+      if(action==='ok'){
+        if(active&&typeof active.click==='function')active.click();
+        return;
+      }
+      return;
+    }
+    if(action==='left'||action==='right'||action==='up'||action==='down'){
+      moveCinemaFocus(action);
+      return;
+    }
+    if(action==='ok'){
+      const el=document.activeElement;
+      if(el&&typeof el.click==='function')el.click();
       return;
     }
     return;
@@ -5778,16 +5813,29 @@ async function loadCinemaCatalog(force=false){
       if(grid)grid.innerHTML='<div style="grid-column:1/-1;padding:24px 8px;color:#9fc5d8;font-size:16px">Загрузка каталога…</div>';
     }
 
-    const q=cinemaType==='series'?'сериал':'фильм';
-    const rows=await lazyMediaSearchAsync(q);
+    const queries=cinemaType==='series'
+      ? ['2026 сериал','новинки сериал','сериал','2025 сериал']
+      : ['2026 фильм','новинки фильм','фильм','2025 фильм'];
+    const batches=await Promise.all(queries.map(q=>lazyMediaSearchAsync(q)));
     const merged=[]; const seen=new Set();
-    for(const item of rows){
-      item.kind=cinemaType;
-      const key=String(item.intent||item.id||item.title||'');
-      if(!key||seen.has(key))continue;
-      seen.add(key); merged.push(item);
-      if(merged.length>=80)break;
+    for(const rows of batches){
+      for(const item of (Array.isArray(rows)?rows:[])){
+        item.kind=cinemaType;
+        const text=(String(item.title||'')+' '+String(item.subtitle||'')+' '+String(item.extra||'')).trim();
+        const ym=text.match(/(?:^|\D)(20\d{2})(?:\D|$)/);
+        if(ym)item.year=Number(ym[1]);
+        const key=String(item.intent||item.data_id||item.id||item.title||'');
+        if(!key||seen.has(key))continue;
+        seen.add(key); merged.push(item);
+        if(merged.length>=120)break;
+      }
+      if(merged.length>=120)break;
     }
+    merged.sort((a,b)=>{
+      const ay=Number(a.year||0),by=Number(b.year||0);
+      if(ay!==by)return by-ay;
+      return String(a.title||'').localeCompare(String(b.title||''),'ru');
+    });
     if(merged.length){
       cinemaLoaded=true;
       writeCinemaCache(merged);
