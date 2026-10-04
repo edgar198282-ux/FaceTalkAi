@@ -340,6 +340,118 @@ public class MainActivity extends Activity {
         });
     }
 
+    private void collectLazyMediaUrls(Object node,String path,int depth,java.util.Set<Integer> seen,org.json.JSONArray out){
+        if(node==null||depth>7||out==null||out.length()>=120)return;
+        try{
+            if(node instanceof String){
+                String u=((String)node).trim().replace("\\/","/");
+                String low=u.toLowerCase();
+                if((low.startsWith("http://")||low.startsWith("https://"))&&
+                   (low.contains(".mp4")||low.contains(".m3u8")||low.contains(".mpd")||
+                    low.contains("/hls/")||low.contains("/dash/"))){
+                    org.json.JSONObject row=new org.json.JSONObject();
+                    row.put("name",path==null||path.trim().isEmpty()?"Видео":path.trim());
+                    row.put("url",u);
+                    String format=low.contains(".m3u8")||low.contains("/hls/")?"HLS":
+                                  low.contains(".mpd")||low.contains("/dash/")?"DASH":
+                                  low.contains(".mp4")?"MP4":"AUTO";
+                    row.put("format",format);
+                    java.util.regex.Matcher qm=java.util.regex.Pattern.compile("(2160|1440|1080|720|480|360)").matcher((path+" "+u));
+                    if(qm.find())row.put("quality",qm.group(1));
+                    out.put(row);
+                }
+                return;
+            }
+            if(node instanceof Number||node instanceof Boolean||node.getClass().isEnum())return;
+            int identity=System.identityHashCode(node);
+            if(seen.contains(identity))return;
+            seen.add(identity);
+
+            if(node instanceof java.util.Map){
+                for(Object e0:((java.util.Map<?,?>)node).entrySet()){
+                    java.util.Map.Entry<?,?> e=(java.util.Map.Entry<?,?>)e0;
+                    String p=(path==null?"":path)+" "+String.valueOf(e.getKey());
+                    collectLazyMediaUrls(e.getValue(),p,depth+1,seen,out);
+                }
+                return;
+            }
+            if(node instanceof java.util.List){
+                java.util.List<?> list=(java.util.List<?>)node;
+                int lim=Math.min(list.size(),120);
+                for(int i=0;i<lim;i++)collectLazyMediaUrls(list.get(i),path,depth+1,seen,out);
+                return;
+            }
+            Class<?> c=node.getClass();
+            while(c!=null&&c!=Object.class){
+                for(java.lang.reflect.Field fld:c.getDeclaredFields()){
+                    try{
+                        if(java.lang.reflect.Modifier.isStatic(fld.getModifiers()))continue;
+                        fld.setAccessible(true);
+                        Object v=fld.get(node);
+                        if(v==null)continue;
+                        String next=path;
+                        if(v instanceof String){
+                            String sv=((String)v).trim();
+                            if(!sv.isEmpty()&&!sv.startsWith("http://")&&!sv.startsWith("https://")&&sv.length()<120){
+                                String n=fld.getName();
+                                if(n.contains("Ooo")||n.startsWith("m")){
+                                    if(sv.matches(".*[A-Za-zА-Яа-я0-9].*")) next=((path==null?"":path)+" "+sv).trim();
+                                }
+                            }
+                        }
+                        String cn=v.getClass().getName();
+                        if(v instanceof String||v instanceof java.util.List||v instanceof java.util.Map||
+                           cn.startsWith("obf.")||cn.startsWith("com.lazycatsoftware.")){
+                            collectLazyMediaUrls(v,next,depth+1,seen,out);
+                        }
+                    }catch(Throwable ignored){}
+                }
+                c=c.getSuperclass();
+            }
+        }catch(Throwable ignored){}
+    }
+
+    private org.json.JSONArray lazyFilmixReflectOptions(String rawIntent){
+        org.json.JSONArray out=new org.json.JSONArray();
+        try{
+            String movieId=decodeCinemaIntentPart(rawIntent,1);
+            if(movieId.isEmpty())return out;
+            Context lazy=createPackageContext(
+                "com.lazycatsoftware.lmd",
+                Context.CONTEXT_INCLUDE_CODE|Context.CONTEXT_IGNORE_SECURITY
+            );
+            ClassLoader cl=lazy.getClassLoader();
+            Class<?> qi=Class.forName("obf.qi",true,cl);
+            java.lang.reflect.Method target=null;
+            for(java.lang.reflect.Method m:qi.getDeclaredMethods()){
+                if(!"OooOOO".equals(m.getName()))continue;
+                Class<?>[] pt=m.getParameterTypes();
+                if(pt.length==1&&pt[0]==String.class){target=m;break;}
+            }
+            if(target==null)return out;
+            target.setAccessible(true);
+            Object tree=target.invoke(null,movieId);
+            if(tree==null)return out;
+            collectLazyMediaUrls(tree,"",0,new java.util.HashSet<Integer>(),out);
+
+            java.util.HashSet<String> seenUrls=new java.util.HashSet<>();
+            org.json.JSONArray dedup=new org.json.JSONArray();
+            for(int i=0;i<out.length();i++){
+                org.json.JSONObject row=out.optJSONObject(i);
+                if(row==null)continue;
+                String u=row.optString("url","");
+                if(u.isEmpty()||seenUrls.contains(u))continue;
+                seenUrls.add(u);
+                dedup.put(row);
+            }
+            Log.i("AbajCinema","FILMIX reflected streams="+dedup.length()+" id="+movieId);
+            return dedup;
+        }catch(Throwable e){
+            Log.w("AbajCinema","FILMIX reflection failed: "+e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            return out;
+        }
+    }
+
     public final class AbajNativeBridge {
         @JavascriptInterface public int adjustVolume(int delta){
             AudioManager am=(AudioManager)getSystemService(Context.AUDIO_SERVICE);
@@ -526,36 +638,42 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void filmixVideoOptionsAsync(String rawIntent,String rawRequestId){
             final String requestId=rawRequestId==null?"":rawRequestId.replaceAll("[^A-Za-z0-9_-]","");
             final String filmixId=decodeCinemaIntentPart(rawIntent,1);
-            if(requestId.isEmpty()||filmixId.isEmpty()){
-                return;
-            }
+            if(requestId.isEmpty()||filmixId.isEmpty())return;
             new Thread(()->{
                 String payload="[]";
-                HttpURLConnection c=null;
-                BufferedReader br=null;
                 try{
-                    URL u=new URL("https://filmix.moe/api/v2/movie/p-links/"+Uri.encode(filmixId));
-                    c=(HttpURLConnection)u.openConnection();
-                    c.setConnectTimeout(7000);
-                    c.setReadTimeout(9000);
-                    c.setRequestMethod("GET");
-                    c.setRequestProperty("Accept","application/json");
-                    c.setRequestProperty("X-Requested-With","XMLHttpRequest");
-                    c.setRequestProperty("Referer","https://filmix.moe/");
-                    c.setRequestProperty("User-Agent",webView!=null?webView.getSettings().getUserAgentString():"Mozilla/5.0");
-                    int code=c.getResponseCode();
-                    InputStream in=code>=200&&code<400?c.getInputStream():c.getErrorStream();
-                    if(in!=null){
-                        br=new BufferedReader(new InputStreamReader(in,java.nio.charset.StandardCharsets.UTF_8));
-                        StringBuilder sb=new StringBuilder();
-                        String line;
-                        while((line=br.readLine())!=null)sb.append(line);
-                        String body=sb.toString().trim();
-                        if(body.startsWith("[")&&body.endsWith("]"))payload=body;
+                    org.json.JSONArray reflected=lazyFilmixReflectOptions(rawIntent);
+                    if(reflected!=null&&reflected.length()>0){
+                        payload=reflected.toString();
                     }
-                }catch(Exception ignored){}finally{
-                    if(br!=null)try{br.close();}catch(Exception ignored){}
-                    if(c!=null)try{c.disconnect();}catch(Exception ignored){}
+                }catch(Throwable ignored){}
+                if("[]".equals(payload)){
+                    HttpURLConnection c=null;
+                    BufferedReader br=null;
+                    try{
+                        URL u=new URL("https://filmix.moe/api/v2/movie/p-links/"+Uri.encode(filmixId));
+                        c=(HttpURLConnection)u.openConnection();
+                        c.setConnectTimeout(7000);
+                        c.setReadTimeout(9000);
+                        c.setRequestMethod("GET");
+                        c.setRequestProperty("Accept","application/json");
+                        c.setRequestProperty("X-Requested-With","XMLHttpRequest");
+                        c.setRequestProperty("Referer","https://filmix.moe/");
+                        c.setRequestProperty("User-Agent",webView!=null?webView.getSettings().getUserAgentString():"Mozilla/5.0");
+                        int code=c.getResponseCode();
+                        InputStream in=code>=200&&code<400?c.getInputStream():c.getErrorStream();
+                        if(in!=null){
+                            br=new BufferedReader(new InputStreamReader(in,java.nio.charset.StandardCharsets.UTF_8));
+                            StringBuilder sb=new StringBuilder();
+                            String line;
+                            while((line=br.readLine())!=null)sb.append(line);
+                            String body=sb.toString().trim();
+                            if(body.startsWith("[")&&body.endsWith("]"))payload=body;
+                        }
+                    }catch(Exception ignored){}finally{
+                        if(br!=null)try{br.close();}catch(Exception ignored){}
+                        if(c!=null)try{c.disconnect();}catch(Exception ignored){}
+                    }
                 }
                 final String out=payload;
                 runOnUiThread(()->{
@@ -566,6 +684,7 @@ public class MainActivity extends Activity {
                 });
             },"abaj-filmix-options").start();
         }
+
         @JavascriptInterface public void resolveCinemaStream(String rawIntent,String rawTransport,String rawRequestId){
             final String requestId=(rawRequestId==null?"":rawRequestId).replaceAll("[^A-Za-z0-9_-]","");
             String raw=(rawTransport==null?"":rawTransport).trim().toUpperCase();
