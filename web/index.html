@@ -1109,21 +1109,6 @@ body.cinemaMode .titleRow{margin-bottom:0}
       </div>
     </div>
 
-    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Кино · воспроизведение</div>
-    <div class="adminRow" style="display:block">
-      <div class="adminMeta" style="margin-bottom:8px">Разрешённый API, который по названию/году возвращает прямой URL потока для плеера Abaj TV.</div>
-      <input id="cinemaPlaybackEndpoint" placeholder="https://provider.example/api/resolve" style="width:100%;height:42px;box-sizing:border-box;border:1px solid #b9dff5;border-radius:11px;padding:0 12px;margin-bottom:8px">
-      <select id="cinemaPlaybackAuthMode" style="width:100%;height:42px;box-sizing:border-box;border:1px solid #b9dff5;border-radius:11px;padding:0 12px;margin-bottom:8px">
-        <option value="none">Без авторизации</option>
-        <option value="bearer">Bearer token</option>
-        <option value="basic">Логин / пароль</option>
-      </select>
-      <input id="cinemaPlaybackUsername" placeholder="Логин (для Basic)" style="width:100%;height:42px;box-sizing:border-box;border:1px solid #b9dff5;border-radius:11px;padding:0 12px;margin-bottom:8px">
-      <input id="cinemaPlaybackSecret" type="password" placeholder="Token или пароль — пусто = не менять" style="width:100%;height:42px;box-sizing:border-box;border:1px solid #b9dff5;border-radius:11px;padding:0 12px;margin-bottom:8px">
-      <button onclick="saveCinemaPlaybackProvider()" style="width:100%;height:42px;border:0;border-radius:11px;background:#16a05d;color:#fff;font-weight:900">Сохранить источник воспроизведения</button>
-      <div id="cinemaPlaybackProviderStatus" class="adminMeta" style="margin-top:8px">—</div>
-    </div>
-
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Диагностика IPTV</div>
     <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px;width:100%;box-sizing:border-box">
       <button onclick="loadIptvDiagnostics()" style="width:100%;min-width:0;min-height:70px;box-sizing:border-box;background:#087fe1;color:#fff;border:0;border-radius:14px;padding:12px 10px;font-weight:800;font-size:16px;line-height:1.15;white-space:normal">Обновить<br>диагностику</button>
@@ -1770,7 +1755,6 @@ function openAdmin(){
   document.getElementById('adminPanel').classList.add('open');
   loadAdminAccess();
   loadAdminEdem();
-  loadCinemaPlaybackProvider();
   loadIptvDiagnostics();
   loadOtaInfo();
   refreshLazyMediaAdminStatus();
