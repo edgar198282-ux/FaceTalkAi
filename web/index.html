@@ -4092,9 +4092,10 @@ function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
   const usingHls=tvShouldUseHls(ch);
-  // Real TV telemetry shows normal HLS first frames commonly need 5-8s.
-  // Do not fail over before a healthy stream has had time to produce video.
-  const waitMs=tvForceSystemForChannel(ch)?18000:(usingHls?12000:10000);
+  const teamTvFast=tvDirectUrls(ch).some(u=>/^(?:https?:\/\/)?[^/]*teamcloud\.am(?:\/|$)/i.test(String(u||'')));
+  // Confirmed TeamTV CDN streams start much faster on the same ISP, so fail
+  // over sooner there without making the timeout aggressive for public feeds.
+  const waitMs=teamTvFast?(usingHls?5000:4500):(tvForceSystemForChannel(ch)?18000:(usingHls?12000:10000));
   firstFrameTimer=setTimeout(()=>{
     firstFrameTimer=null;
     if(token!==streamAttemptToken||!current||current.id!==ch.id)return;
@@ -4176,7 +4177,6 @@ async function prefetchStreamManifest(ch,signal){
   }catch(e){}
 }
 function scheduleAdjacentPrefetch(ch){
-  if(nativeTv)return;
   if(!ch)return;
   if(streamWarmTimer){clearTimeout(streamWarmTimer);streamWarmTimer=null}
   if(streamWarmController){try{streamWarmController.abort()}catch(e){} streamWarmController=null}
@@ -4188,10 +4188,17 @@ function scheduleAdjacentPrefetch(ch){
     if(i<0||rows.length<2)return;
     const next=rows[(i+1)%rows.length];
     const prev=rows[(i-1+rows.length)%rows.length];
+    const adjacent=[next,prev].filter((x,j,a)=>x&&a.findIndex(y=>y.id===x.id)===j);
+    if(nativeTv){
+      // TV: warm DNS/TCP/TLS for the neighboring direct CDNs without
+      // downloading video segments or touching the active player.
+      adjacent.forEach(warmTvDirectConnection);
+      return;
+    }
     streamWarmController=new AbortController();
     const signal=streamWarmController.signal;
-    Promise.allSettled([next,prev].filter((x,j,a)=>x&&a.findIndex(y=>y.id===x.id)===j).map(x=>prefetchStreamManifest(x,signal)));
-  },700);
+    Promise.allSettled(adjacent.map(x=>prefetchStreamManifest(x,signal)));
+  },nativeTv?180:700);
 }
 
 function startTvWatchdog(ch){
@@ -4758,10 +4765,12 @@ function queueTvChannelStep(delta){
     tvZapStepTimer=null;
     tvZapStepOffset=0;
     if(ch){
-      tvChannelSwitchBusyUntil=Date.now()+2500;
+      // TeamTV uses a ~500 ms channel-switch delay. Keep a small guard so
+      // repeated remote presses stay responsive without starting parallel players.
+      tvChannelSwitchBusyUntil=Date.now()+700;
       openPlayer(ch.id);
     }
-  },320);
+  },220);
 }
 function updatePlayerPlaybackUi(){
   const v=document.getElementById('video');
