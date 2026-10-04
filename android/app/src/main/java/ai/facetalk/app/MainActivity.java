@@ -206,58 +206,47 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String lazyMediaSearch(String rawQuery){
             String query=rawQuery==null?"":rawQuery.trim();
             org.json.JSONArray out=new org.json.JSONArray();
-            String[] projection=new String[]{
-                "_id",
-                SearchManager.SUGGEST_COLUMN_TEXT_1,
-                SearchManager.SUGGEST_COLUMN_TEXT_2,
-                SearchManager.SUGGEST_COLUMN_INTENT_DATA,
-                SearchManager.SUGGEST_COLUMN_ICON_1
-            };
             Cursor cur=null;
             try{
                 Uri base=Uri.parse("content://com.lazycatsoftware.lmd.tvsearch/search_suggest_query");
                 try{
-                    cur=getContentResolver().query(base,projection,null,new String[]{query},null);
+                    cur=getContentResolver().query(base,null,null,new String[]{query},null);
                 }catch(Exception first){
                     try{
-                        Uri path=base.buildUpon().appendPath(query).build();
-                        cur=getContentResolver().query(path,projection,null,null,null);
-                    }catch(Exception second){
-                        try{
-                            cur=getContentResolver().query(base,null,null,new String[]{query},null);
-                        }catch(Exception third){
-                            try{
-                                Uri path=base.buildUpon().appendPath(query).build();
-                                cur=getContentResolver().query(path,null,null,null,null);
-                            }catch(Exception ignored){}
-                        }
-                    }
+                        String[] projection=new String[]{
+                            SearchManager.SUGGEST_COLUMN_TEXT_1,
+                            "suggest_content_type",
+                            "suggest_production_year",
+                            "suggest_result_card_image",
+                            SearchManager.SUGGEST_COLUMN_TEXT_2,
+                            "suggest_duration",
+                            SearchManager.SUGGEST_COLUMN_INTENT_DATA
+                        };
+                        cur=getContentResolver().query(base,projection,null,new String[]{query},null);
+                    }catch(Exception ignored){}
                 }
                 if(cur==null)return "[]";
-                int idCol=cur.getColumnIndex("_id");
                 int t1Col=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_TEXT_1);
+                int typeCol=cur.getColumnIndex("suggest_content_type");
+                int yearCol=cur.getColumnIndex("suggest_production_year");
+                int posterCol=cur.getColumnIndex("suggest_result_card_image");
                 int t2Col=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_TEXT_2);
+                int durationCol=cur.getColumnIndex("suggest_duration");
                 int dataCol=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_INTENT_DATA);
-                int extraCol=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA);
-                int dataIdCol=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_INTENT_DATA_ID);
-                int iconCol=cur.getColumnIndex(SearchManager.SUGGEST_COLUMN_ICON_1);
                 int count=0;
-                while(cur.moveToNext()&&count<80){
+                while(cur.moveToNext()&&count<180){
                     JSONObject o=new JSONObject();
-                    if(idCol>=0)o.put("id",cur.getString(idCol));
                     if(t1Col>=0)o.put("title",cur.getString(t1Col));
+                    if(typeCol>=0)o.put("content_type",cur.getString(typeCol));
+                    if(yearCol>=0)o.put("year",cur.getString(yearCol));
+                    if(posterCol>=0)o.put("poster",cur.getString(posterCol));
                     if(t2Col>=0)o.put("subtitle",cur.getString(t2Col));
-                    if(dataCol>=0)o.put("intent",cur.getString(dataCol));
-                    if(dataIdCol>=0)o.put("data_id",cur.getString(dataIdCol));
-                    if(extraCol>=0){
-                        String extra=cur.getString(extraCol);
-                        o.put("extra",extra);
-                        if(extra!=null){
-                            String low=extra.toLowerCase();
-                            if((low.startsWith("http://")||low.startsWith("https://"))&&(low.contains(".m3u8")||low.contains(".mp4")||low.contains(".mkv")||low.contains(".webm")))o.put("url",extra);
-                        }
+                    if(durationCol>=0)o.put("duration",cur.getString(durationCol));
+                    if(dataCol>=0){
+                        String intent=cur.getString(dataCol);
+                        o.put("intent",intent);
+                        o.put("id",intent);
                     }
-                    if(iconCol>=0)o.put("poster",cur.getString(iconCol));
                     out.put(o); count++;
                 }
             }catch(Exception ignored){}finally{

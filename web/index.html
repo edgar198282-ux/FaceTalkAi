@@ -5636,7 +5636,7 @@ function lazyMediaSearchAsync(query){
         const timer=setTimeout(()=>{
           lazySearchPending.delete(id);
           resolve([]);
-        },2600);
+        },15000);
         lazySearchPending.set(id,{resolve,timer});
         AbajNative.lazyMediaSearchAsync(String(query||''),id);
         return;
@@ -5813,23 +5813,26 @@ async function loadCinemaCatalog(force=false){
       if(grid)grid.innerHTML='<div style="grid-column:1/-1;padding:24px 8px;color:#9fc5d8;font-size:16px">Загрузка каталога…</div>';
     }
 
-    const queries=cinemaType==='series'
-      ? ['2026 сериал','новинки сериал','сериал','2025 сериал']
-      : ['2026 фильм','новинки фильм','фильм','2025 фильм'];
-    const batches=await Promise.all(queries.map(q=>lazyMediaSearchAsync(q)));
     const merged=[]; const seen=new Set();
-    for(const rows of batches){
+    const queries=['',cinemaType==='series'?'2026':'2026',cinemaType==='series'?'сериал':'фильм'];
+    for(const q of queries){
+      const rows=await lazyMediaSearchAsync(q);
       for(const item of (Array.isArray(rows)?rows:[])){
+        const contentType=String(item.content_type||'').toLowerCase();
+        const looksSeries=/serial|series|tv|сериал/.test(contentType);
+        if(cinemaType==='series'&&contentType&&!looksSeries)continue;
+        if(cinemaType==='movies'&&contentType&&looksSeries)continue;
         item.kind=cinemaType;
-        const text=(String(item.title||'')+' '+String(item.subtitle||'')+' '+String(item.extra||'')).trim();
+        const text=(String(item.title||'')+' '+String(item.subtitle||'')+' '+String(item.year||'')).trim();
         const ym=text.match(/(?:^|\D)(20\d{2})(?:\D|$)/);
         if(ym)item.year=Number(ym[1]);
-        const key=String(item.intent||item.data_id||item.id||item.title||'');
+        const key=String(item.intent||item.id||item.title||'');
         if(!key||seen.has(key))continue;
-        seen.add(key); merged.push(item);
+        seen.add(key);
+        merged.push(item);
         if(merged.length>=120)break;
       }
-      if(merged.length>=120)break;
+      if(merged.length>=40)break;
     }
     merged.sort((a,b)=>{
       const ay=Number(a.year||0),by=Number(b.year||0);
@@ -5847,9 +5850,25 @@ async function loadCinemaCatalog(force=false){
         body:JSON.stringify({type:cinemaType,items:merged})
       }).catch(()=>{});
     }else if(!cached.length){
-      cinemaLoaded=false;
-      renderCinemaCatalog([]);
-      if(status)status.textContent='Каталог пока не ответил.';
+      try{
+        const r=await fetch('/api/cinema/catalog?type='+encodeURIComponent(cinemaType),{cache:'no-store'});
+        const data=await r.json();
+        const shared=Array.isArray(data.items)?data.items:[];
+        if(shared.length){
+          cinemaLoaded=true;
+          writeCinemaCache(shared);
+          renderCinemaCatalog(shared);
+          if(status)status.textContent='Найдено '+shared.length;
+        }else{
+          cinemaLoaded=false;
+          renderCinemaCatalog([]);
+          if(status)status.textContent='Источники LazyMedia сейчас не вернули каталог.';
+        }
+      }catch(e){
+        cinemaLoaded=false;
+        renderCinemaCatalog([]);
+        if(status)status.textContent='Источники LazyMedia сейчас не ответили.';
+      }
     }
     setTimeout(()=>{if(nativeTv&&cinemaMode&&!cinemaFocusable().includes(document.activeElement))focusCinemaElement(document.querySelector('.cinemaTypeCard.active')||document.querySelector('.cinemaTypeCard'))},30);
     return;
