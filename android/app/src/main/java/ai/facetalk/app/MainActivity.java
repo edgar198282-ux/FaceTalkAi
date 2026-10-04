@@ -211,7 +211,7 @@ public class MainActivity extends Activity {
                                     try{
                                         if(value!=null&&value.length()>2){
                                             String u=value;
-                                            if(u.startsWith(""")&&u.endsWith("""))u=u.substring(1,u.length()-1);
+                                            if(u.startsWith("\"")&&u.endsWith("\""))u=u.substring(1,u.length()-1);
                                             u=u.replace("\\/","/").replace("\u0026","&");
                                             if(cinemaStreamMatches(u,cinemaResolverTransport))finishCinemaResolve(requestId,u);
                                         }
