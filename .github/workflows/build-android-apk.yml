@@ -60,8 +60,12 @@ jobs:
         id: version
         shell: bash
         run: |
-          echo "name=1.1.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          # Keep Android versionCode monotonic. Older stable builds used a Unix
+          # timestamp (~1.79B), so GitHub run numbers such as 618 are rejected
+          # by installed TVs as INSTALL_FAILED_VERSION_DOWNGRADE.
+          CODE="$(date +%s)"
+          echo "name=1.2.$CODE" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
 
       - name: Validate Abaj TV branding
         shell: bash
