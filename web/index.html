@@ -1281,7 +1281,9 @@ function isFreePreviewChannel(ch){
 function applyChannelAccessGate(rows){
   const list=Array.isArray(rows)?rows:[];
   if(hasFullChannelAccess())return list;
-  return list.filter(ch=>!ch.personal&&isFreePreviewChannel(ch));
+  const preview=list.filter(ch=>!ch.personal&&isFreePreviewChannel(ch));
+  if(preview.length)return preview;
+  return list.filter(ch=>!ch.personal&&['AM','RU'].includes(String(ch.country||''))).slice(0,8);
 }
 const deviceId=localStorage.getItem('abaj_device_id')||(
   (crypto&&crypto.randomUUID)?crypto.randomUUID():('abaj-'+Date.now()+'-'+Math.random().toString(36).slice(2))
@@ -2838,11 +2840,11 @@ async function load(){
     const d=await mainPromise;
     edemStatus=await Promise.race([
       edemStatusPromise,
-      new Promise(resolve=>setTimeout(()=>resolve({active:false,configured:false}),500))
+      new Promise(resolve=>setTimeout(()=>resolve({active:false,configured:false}),2500))
     ]);
     const ed=await Promise.race([
       edemPromise,
-      new Promise(resolve=>setTimeout(()=>resolve({channels:[]}),500))
+      new Promise(resolve=>setTimeout(()=>resolve({channels:[]}),2500))
     ]);
     let base=(d.channels||[]).filter(x=>{
       const key=(String(x&&x.name||'')+' '+String(x&&x.tvg_id||'')).toLowerCase();
@@ -5531,7 +5533,7 @@ function connectLazyMediaFromAdmin(){
   localStorage.setItem('abaj_cinema_source','lazy');
   cinemaLoaded=false;
   refreshLazyMediaAdminStatus();
-  try{if(window.AbajNative&&typeof AbajNative.openLazyMedia==='function')AbajNative.openLazyMedia()}catch(e){}
+  if(cinemaMode)loadCinemaCatalog(true);
 }
 function disconnectLazyMediaFromAdmin(){
   cinemaSource='abaj';
@@ -5550,6 +5552,10 @@ function lazyMediaSearch(query){
 }
 function syncCinemaUi(){
   document.body.classList.toggle('cinemaMode',cinemaMode);
+  const screen=document.getElementById('cinemaScreen');
+  const content=document.getElementById('content');
+  if(screen)screen.style.display=cinemaMode?'block':'none';
+  if(content)content.style.display=cinemaMode?'none':'';
   const icon=document.getElementById('cinemaToggleIcon');
   const btn=document.getElementById('cinemaToggleBtn');
   if(icon)icon.textContent=cinemaMode?'📺':'🎬';
@@ -5630,15 +5636,9 @@ async function loadCinemaCatalog(force=false){
 }
 function openCinemaMovie(item){
   if(!item)return;
-  if(item.intent&&cinemaSource==='lazy'){
-    try{
-      if(window.AbajNative&&typeof AbajNative.openLazyMediaIntent==='function'){
-        const opened=AbajNative.openLazyMediaIntent(String(item.intent));
-        if(opened)return;
-      }
-    }catch(e){}
+  if(item.intent&&cinemaSource==='lazy'&&!item.url){
     const status=document.getElementById('cinemaStatus');
-    if(status)status.textContent='Не удалось открыть фильм в LazyMedia.';
+    if(status)status.textContent='Фильм найден. Внутреннее воспроизведение этого источника пока недоступно.';
     return;
   }
   if(!item.url){
