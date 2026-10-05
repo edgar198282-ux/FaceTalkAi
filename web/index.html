@@ -4446,6 +4446,7 @@ function openPlayer(id){
   if(!nativeTv&&window.innerWidth>window.innerHeight)setAppFullscreen(true);
 }
 function retryCinemaPlayback(reason=''){
+  clearCinemaStartupTimer();
   if(!current||!String(current.id||'').startsWith('cinema:external:'))return false;
   const list=Array.isArray(current.cinemaFallbacks)?current.cinemaFallbacks:[];
   const tried=new Set(Array.isArray(current.cinemaTriedUrls)?current.cinemaTriedUrls:[]);
@@ -4497,6 +4498,10 @@ let playbackMetricSent=false;
 let playbackPlayerMode='';
 let playbackFallbackCount=0;
 let nativeMedia3Active=false;
+let cinemaStartupTimer=null;
+function clearCinemaStartupTimer(){
+  if(cinemaStartupTimer){clearTimeout(cinemaStartupTimer);cinemaStartupTimer=null}
+}
 let nativeMedia3FirstFrameHandler=null;
 let nativeMedia3ErrorHandler=null;
 function setNativeMedia3Visible(on){
@@ -4884,10 +4889,29 @@ function startStream(ch,preferBackup=false,forceProxy=false){
     ch.cinemaProvider&&window.AbajNative&&typeof AbajNative.cinemaNativeStart==='function');
   if(cinemaNative){
     playbackPlayerMode='native';
+    clearCinemaStartupTimer();
+    cinemaStartupTimer=setTimeout(()=>{
+      cinemaStartupTimer=null;
+      if(attemptToken!==streamAttemptToken||!current||current.id!==ch.id)return;
+      cinemaDiag('playback_timeout',{
+        title:ch.name,
+        provider:ch.cinemaProvider||'',
+        playable:false,
+        message:'no first frame within 8000ms'
+      });
+      nativeMedia3FirstFrameHandler=null;
+      nativeMedia3ErrorHandler=null;
+      setNativeMedia3Visible(false);
+      try{if(window.AbajNative&&typeof AbajNative.nativeProbeStop==='function')AbajNative.nativeProbeStop()}catch(e){}
+      if(!retryCinemaPlayback('startup timeout')){
+        err.textContent='Видео не запустилось';
+      }
+    },8000);
     nativeMedia3FirstFrameHandler=()=>{
       if(attemptToken!==streamAttemptToken||!current||current.id!==ch.id)return;
       nativeMedia3FirstFrameHandler=null;
       nativeMedia3ErrorHandler=null;
+      clearCinemaStartupTimer();
       // Cinema is already playing in the native Media3 PlayerView.
       // Mark it active so play/pause, seek and progress controls target Media3
       // instead of the now-empty HTML <video>.
@@ -4908,6 +4932,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       if(attemptToken!==streamAttemptToken)return;
       nativeMedia3FirstFrameHandler=null;
       nativeMedia3ErrorHandler=null;
+      clearCinemaStartupTimer();
       setNativeMedia3Visible(false);
       cinemaDiag('playback_error',{
         title:ch.name,
@@ -5362,6 +5387,7 @@ function openTvRailFocused(){
 }
 function closePlayer(){
 
+  clearCinemaStartupTimer();
   nativeMedia3FirstFrameHandler=null;
   nativeMedia3ErrorHandler=null;
   setNativeMedia3Visible(false);
