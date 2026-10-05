@@ -1029,7 +1029,14 @@ body.cinemaMode .top{display:none!important}
   border:1px solid #75c6ef;border-radius:6px;padding:3px 8px;color:#d7f3ff;font-size:12px;font-weight:650
 }
 .cinemaDetailDescription{font-size:16px;line-height:1.45;margin-bottom:13px;color:#e4f5ff;max-width:980px}
-.cinemaDetailTools{display:flex;justify-content:flex-end;gap:14px;font-size:23px;color:#7fd7ff;margin:-24px 6px 8px}
+.cinemaDetailTools{display:flex;justify-content:flex-end;gap:10px;margin:-24px 6px 8px}
+.cinemaDetailTools button{
+  width:40px;height:40px;border:1px solid rgba(127,215,255,.26);border-radius:50%;
+  background:rgba(4,35,54,.62);color:#7fd7ff;font-size:23px;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;padding:0
+}
+.cinemaDetailTools button.on{color:#ffd44d;border-color:rgba(255,212,77,.62);background:rgba(90,67,8,.34)}
+.cinemaDetailTools button:focus{outline:none;box-shadow:0 0 0 3px #38b9ff}
 .cinemaDetailFacts{display:grid;grid-template-columns:104px minmax(0,1fr);gap:7px 16px;max-width:980px;font-size:14px;line-height:1.35}
 .cinemaDetailFacts .k{color:#7ec6e9}.cinemaDetailFacts .v{color:#e9f8ff}
 .cinemaDetailFacts a{color:#dff6ff;text-decoration:underline}
@@ -1044,7 +1051,8 @@ body.cinemaMode .top{display:none!important}
   .cinemaDetailBadges{gap:6px;margin-bottom:10px}
   .cinemaDetailBadge{font-size:10.5px;padding:2px 6px}
   .cinemaDetailDescription{font-size:13px;line-height:1.4;margin-bottom:11px;max-width:none}
-  .cinemaDetailTools{font-size:20px;gap:12px;margin:-14px 4px 6px}
+  .cinemaDetailTools{gap:8px;margin:-12px 4px 6px}
+  .cinemaDetailTools button{width:34px;height:34px;font-size:19px}
   .cinemaDetailFacts{grid-template-columns:76px 1fr;font-size:12px;gap:5px 8px}
 }
 @media(max-width:430px){
@@ -1193,7 +1201,9 @@ body.cinemaMode .top{display:none!important}
     <div class="cinemaDetailBody">
       <h1 class="cinemaDetailTitle" id="cinemaDetailTitle">Фильм</h1>
       <div class="cinemaDetailBadges" id="cinemaDetailBadges"></div>
-      <div class="cinemaDetailTools"><span>◉</span><span>▢</span></div>
+      <div class="cinemaDetailTools">
+        <button id="cinemaBookmarkBtn" type="button" onclick="toggleCinemaBookmark()" aria-label="Добавить в закладки">☆</button>
+      </div>
       <div class="cinemaDetailDescription" id="cinemaDetailDescription"></div>
       <div class="cinemaDetailFacts" id="cinemaDetailFacts"></div>
     </div>
@@ -6648,6 +6658,73 @@ function setCinemaShellCategory(category){
   const q=cinemaShellCategory==='popular'?'популярные фильмы':cinemaShellCategory==='hot'?'горячие фильмы':'4K фильм';
   searchCinemaLazyMedia(q);
 }
+const CINEMA_BOOKMARKS_KEY='abaj_cinema_bookmarks_v1';
+const CINEMA_HISTORY_KEY='abaj_cinema_history_v1';
+
+function cinemaSavedKey(item){
+  return String(item?.id||item?.intent||item?.url||((item?.title||'')+'|'+(item?.year||''))).trim();
+}
+function readCinemaSaved(key){
+  try{
+    const rows=JSON.parse(localStorage.getItem(key)||'[]');
+    return Array.isArray(rows)?rows:[];
+  }catch(e){return []}
+}
+function writeCinemaSaved(key,rows){
+  try{localStorage.setItem(key,JSON.stringify((Array.isArray(rows)?rows:[]).slice(0,100)))}catch(e){}
+}
+function cloneCinemaSavedItem(item){
+  if(!item)return null;
+  try{
+    const copy=JSON.parse(JSON.stringify(item));
+    delete copy.headers;
+    return copy;
+  }catch(e){
+    return {
+      id:item?.id||'',title:item?.title||'',year:item?.year||'',poster:item?.poster||'',
+      subtitle:item?.subtitle||'',quality:item?.quality||'',intent:item?.intent||'',url:item?.url||''
+    };
+  }
+}
+function cinemaIsBookmarked(item){
+  const key=cinemaSavedKey(item);
+  return !!key&&readCinemaSaved(CINEMA_BOOKMARKS_KEY).some(x=>cinemaSavedKey(x)===key);
+}
+function syncCinemaBookmarkButton(){
+  const btn=document.getElementById('cinemaBookmarkBtn');
+  if(!btn)return;
+  const on=cinemaIsBookmarked(cinemaDetailMovie);
+  btn.textContent=on?'★':'☆';
+  btn.classList.toggle('on',on);
+  btn.title=on?'Убрать из закладок':'Добавить в закладки';
+  btn.setAttribute('aria-label',btn.title);
+}
+function toggleCinemaBookmark(){
+  const item=cinemaDetailMovie;
+  const key=cinemaSavedKey(item);
+  if(!item||!key)return;
+  let rows=readCinemaSaved(CINEMA_BOOKMARKS_KEY);
+  const exists=rows.some(x=>cinemaSavedKey(x)===key);
+  rows=exists?rows.filter(x=>cinemaSavedKey(x)!==key):[cloneCinemaSavedItem(item),...rows.filter(x=>cinemaSavedKey(x)!==key)];
+  writeCinemaSaved(CINEMA_BOOKMARKS_KEY,rows);
+  syncCinemaBookmarkButton();
+}
+function addCinemaHistory(item){
+  const saved=cloneCinemaSavedItem(item);
+  const key=cinemaSavedKey(saved);
+  if(!saved||!key)return;
+  const rows=readCinemaSaved(CINEMA_HISTORY_KEY);
+  writeCinemaSaved(CINEMA_HISTORY_KEY,[saved,...rows.filter(x=>cinemaSavedKey(x)!==key)].slice(0,60));
+}
+function showCinemaSaved(section){
+  const isBookmarks=section==='bookmarks';
+  const rows=readCinemaSaved(isBookmarks?CINEMA_BOOKMARKS_KEY:CINEMA_HISTORY_KEY);
+  setCinemaShellTitle(isBookmarks?'ЗАКЛАДКИ':'ИСТОРИЯ');
+  renderCinemaCatalog(rows,{search:true});
+  const status=document.getElementById('cinemaStatus');
+  if(status)status.textContent=rows.length?(isBookmarks?('В закладках: '+rows.length):('В истории: '+rows.length)):(isBookmarks?'Закладок пока нет':'История пока пуста');
+}
+
 function cinemaSideAction(action){
   closeCinemaShellMenus();
   document.querySelectorAll('.cinemaMenuItem[data-cinema-main]').forEach(x=>x.classList.toggle('active',x.dataset.cinemaMain===action));
@@ -6658,9 +6735,9 @@ function cinemaSideAction(action){
   if(action==='docs'){setCinemaShellTitle('ДОК.ФИЛЬМЫ');searchCinemaLazyMedia('документальный фильм');return}
   if(action==='docseries'){setCinemaShellTitle('ДОК.СЕРИАЛЫ');searchCinemaLazyMedia('документальный сериал');return}
   if(action==='collections'){setCinemaShellTitle('ПОДБОРКИ');searchCinemaLazyMedia('подборка фильмов');return}
-  if(action==='bookmarks'&&window.AbajNative&&typeof AbajNative.openLazyMediaSection==='function'){AbajNative.openLazyMediaSection('bookmarks');return}
-  if(action==='history'&&window.AbajNative&&typeof AbajNative.openLazyMediaSection==='function'){AbajNative.openLazyMediaSection('history');return}
-  if(action==='watching'){setCinemaShellTitle('Я СМОТРЮ');searchCinemaLazyMedia('');}
+  if(action==='bookmarks'){showCinemaSaved('bookmarks');return}
+  if(action==='history'){showCinemaSaved('history');return}
+  if(action==='watching'){setCinemaShellTitle('Я СМОТРЮ');showCinemaSaved('history');return}
 }
 
 function setCinemaType(type){
@@ -6773,7 +6850,7 @@ function renderCinemaCatalog(items,options={}){
     const poster=String(item.poster||'');
     const sub=cinemaPublicText(item.subtitle||item.year||'')+(item.quality?' · '+cinemaPublicText(item.quality):'');
     card.innerHTML=(poster?'<img class="cinemaPosterImg" loading="lazy" src="'+poster.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaPosterFallback">🎞️</div>')+
-      '<div class="cinemaPosterMeta"><div class="cinemaPosterTitle">'+String(item.title||'Фильм').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
+      '<div class="cinemaPosterMeta"><div class="cinemaPosterTitle">'+cinemaPublicText(item.title||'Фильм').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
       '<div class="cinemaPosterSub">'+sub.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div></div>';
     card.onclick=()=>{
       document.querySelectorAll('.cinemaPosterCard').forEach(x=>{if(x.dataset)x.dataset.cinemaSelected='0'});
@@ -8072,6 +8149,7 @@ function playCinemaSource(index){
 }
 window.__abajOpenExternalMedia=function(url,title,provider='',headers={},fallbacks=[]){
   const raw=String(url||'').trim();
+  addCinemaHistory(cinemaSourcePickerMovie||cinemaDetailMovie);
   if(!(raw.toLowerCase().startsWith('http://')||raw.toLowerCase().startsWith('https://')||raw.toLowerCase().startsWith('content:')))return;
   const uniqueFallbacks=[];
   const seenFallbacks=new Set([raw]);
@@ -8502,6 +8580,7 @@ function renderCinemaDetail(item){
     cinemaDetailFact('Режиссер',director)+
     cinemaDetailFact('В ролях',cast);
 
+  syncCinemaBookmarkButton();
   detail.classList.add('open');
   document.getElementById('cinemaScreen')?.style.setProperty('display','none');
   requestAnimationFrame(()=>{
