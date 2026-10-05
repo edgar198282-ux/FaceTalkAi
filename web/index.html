@@ -7222,14 +7222,14 @@ async function showCinemaSourcePicker(item){
   modal.classList.add('open');
   cinemaSourcePickerMovie=item;
   if(cinemaSource==='kinopub'){
-    if(list)list.innerHTML='<div class="cinemaSourceBusy">KinoPub подключён. Открываю фильм через KinoPub…</div>';
-    try{
-      if(window.AbajNative&&typeof AbajNative.openKinoPubItem==='function'){
-        const ok=AbajNative.openKinoPubItem(String(item?.intent||item?.url||item?.id||''),String(item?.title||''));
-        if(ok){closeCinemaSourcePicker(false);return}
-      }
-    }catch(e){}
-    if(list)list.innerHTML='<div class="cinemaSourceEmpty">Для KinoPub нужен новый APK Abaj TV с локальным мостом KinoPub. LazyMedia не будет подставляться вместо него.</div>';
+    if(list)list.innerHTML='<div class="cinemaSourceBusy">Получаю поток KinoPub для внутреннего плеера…</div>';
+    const resolved=await resolveKinoPubInternalStream(item);
+    if(resolved&&resolved.url){
+      closeCinemaSourcePicker(false);
+      window.__abajOpenExternalMedia(resolved.url,String(item?.title||'Кино'),'KINOPUB',resolved.headers||{});
+      return;
+    }
+    if(list)list.innerHTML='<div class="cinemaSourceEmpty">Поток KinoPub для внутреннего плеера не получен. LazyMedia вместо него не используется.</div>';
     return;
   }
   if(list)list.innerHTML='<div class="cinemaSourceBusy">Ищу варианты во всех видеосервисах LazyMedia…</div>';
@@ -8558,23 +8558,34 @@ function closeCinemaDetail(){
     if(target)target.focus();
   },20);
 }
+async function resolveKinoPubInternalStream(item){
+  const direct=String(item?.url||item?.stream||item?.stream_url||'').trim();
+  if(/^https?:\/\//i.test(direct))return {url:direct,provider:'KINOPUB'};
+  const id=String(item?.id||'').trim();
+  if(!id)return null;
+  try{
+    const r=await fetch('/api/kinopub/play?id='+encodeURIComponent(id),{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)return null;
+    const d=await r.json();
+    if(d&&d.ok&&/^https?:\/\//i.test(String(d.url||'')))return d;
+  }catch(e){}
+  return null;
+}
+
 async function watchCinemaDetail(){
   const item=cinemaDetailMovie;
   if(!item)return;
   const watchBtn=document.getElementById('cinemaDetailWatch');
   if(cinemaSource==='kinopub'||String(item.source||'').toUpperCase()==='KINOPUB'){
-    try{
-      if(window.AbajNative&&typeof AbajNative.openKinoPubItem==='function'){
-        const ok=AbajNative.openKinoPubItem(String(item.intent||item.url||item.id||''),String(item.title||''));
-        if(ok)return;
-      }
-      if(window.AbajNative&&typeof AbajNative.openKinoPub==='function'){
-        const ok=AbajNative.openKinoPub();
-        if(ok)return;
-      }
-    }catch(e){}
-    const detail=document.getElementById('cinemaDetail');
-    if(detail)detail.classList.remove('open');
+    if(watchBtn){watchBtn.disabled=true;watchBtn.textContent='ОТКРЫВАЮ KINOPUB…'}
+    const resolved=await resolveKinoPubInternalStream(item);
+    if(watchBtn){watchBtn.disabled=false;watchBtn.textContent='СМОТРЕТЬ ФИЛЬМ'}
+    if(resolved&&resolved.url){
+      const detail=document.getElementById('cinemaDetail');
+      if(detail)detail.classList.remove('open');
+      window.__abajOpenExternalMedia(resolved.url,String(item.title||'Кино'),'KINOPUB',resolved.headers||{});
+      return;
+    }
     const modal=ensureCinemaSourceModal();
     const list=document.getElementById('cinemaSourceList');
     const title=document.getElementById('cinemaSourceTitle');
@@ -8582,8 +8593,7 @@ async function watchCinemaDetail(){
     if(title)title.textContent=String(item?.title||'Кино');
     if(hint)hint.textContent='KinoPub';
     modal.classList.add('open');
-    if(list)list.innerHTML='<div class="cinemaSourceEmpty">KinoPub выбран. Эта установленная версия Abaj TV ещё без локального моста KinoPub. Обновите APK — LazyMedia вместо KinoPub больше не запускается.</div>';
-    if(watchBtn){watchBtn.disabled=false;watchBtn.textContent='СМОТРЕТЬ ФИЛЬМ'}
+    if(list)list.innerHTML='<div class="cinemaSourceEmpty">Поток KinoPub не удалось получить для внутреннего плеера. Внешнее приложение KinoPub больше не открывается автоматически.</div>';
     return;
   }
   if(watchBtn){
