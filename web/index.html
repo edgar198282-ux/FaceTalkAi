@@ -6550,13 +6550,23 @@ async function loadLazyProviderIdMap(){
           if(up.includes('ENCYCLOPEDIA')){name='ENCYCLOPEDIA';break}
         }
         if(id&&name)out[id]=name;
+        if(id&&!name){
+          const fallback=candidates
+            .map(x=>String(x||'').trim())
+            .find(x=>x&&!/^https?:\/\//i.test(x)&&x.length<48);
+          if(fallback)out[id]=normalizeLazyProviderName(fallback);
+        }
       }
       lazyProviderIdMap=out;
+      const discovered=[...new Set(Object.values(out).map(normalizeLazyProviderName).filter(Boolean))];
+      for(const name of discovered){
+        if(!LAZYMEDIA_PROVIDER_ORDER.includes(name))LAZYMEDIA_PROVIDER_ORDER.push(name);
+      }
     }
   }catch(e){}
   return lazyProviderIdMap;
 }
-const LAZYMEDIA_PROVIDER_ORDER=[
+let LAZYMEDIA_PROVIDER_ORDER=[
   'ENCYCLOPEDIA',
   'FILMIX',
   'HDREZKA',
@@ -6681,9 +6691,6 @@ function cinemaProviderName(item){
     if(up.includes('ZONA'))return 'ZONA';
   }
 
-  if(sourceId==='4')return 'ZONA';
-  if(sourceId==='21')return 'HDREZKA';
-  if(sourceId==='1')return 'FILMIX';
   return '';
 }
 function cinemaProviderKey(item){
@@ -6792,7 +6799,7 @@ async function showCinemaSourcePicker(item){
 
   for(const x of rows){
     const name=normalizeLazyProviderName(cinemaProviderName(x));
-    if(!LAZYMEDIA_PROVIDER_ORDER.includes(name))continue;
+    if(!name)continue;
     const key=name.toLocaleLowerCase('ru');
     const group=byCanonical.get(key);
     if(group)group.items.push(x);
@@ -7598,9 +7605,11 @@ function cinemaV2ProviderName(item){
 function cinemaV2MatchMovie(item,movie){
   const a=cinemaComparableTitle(item?.title||'');
   const b=cinemaComparableTitle(movie?.title||'');
-  if(!a||!b||a!==b)return false;
+  if(!a||!b)return false;
+  const titleMatch=a===b||a.includes(b)||b.includes(a);
+  if(!titleMatch)return false;
   const ay=cinemaYear(item),by=cinemaYear(movie);
-  if(ay&&by&&ay!==by)return false;
+  if(ay&&by&&Math.abs(ay-by)>1)return false;
   return true;
 }
 function cinemaIsDirectStreamUrl(value){
