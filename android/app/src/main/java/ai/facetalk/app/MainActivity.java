@@ -1300,7 +1300,7 @@ public class MainActivity extends Activity {
             final String p=provider==null?"":provider.trim().toUpperCase(java.util.Locale.US);
             if(requestId.isEmpty()||intent.isEmpty())return;
             new Thread(()->{
-                org.json.JSONArray rows=lazyProviderReflectOptions(intent,p);
+                org.json.JSONArray rows="FILMIX".equals(p)?lazyFilmixReflectOptions(intent):lazyProviderReflectOptions(intent,p);
                 final String payload=rows==null?"[]":rows.toString();
                 runOnUiThread(()->{
                     if(webView==null)return;
