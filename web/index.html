@@ -4414,9 +4414,9 @@ function setNativeMedia3Visible(on){
   document.documentElement.classList.toggle('nativeMedia3',nativeMedia3Active);
   document.body.classList.toggle('nativeMedia3',nativeMedia3Active);
 }
-window.nativeProbeFirstFrame=function(elapsed){
+window.nativeProbeFirstFrame=function(elapsed,hasAudio){
   const fn=nativeMedia3FirstFrameHandler;
-  if(fn)fn(Math.max(0,Number(elapsed||0)));
+  if(fn)fn(Math.max(0,Number(elapsed||0)),hasAudio!==false);
 };
 window.nativeProbeError=function(reason){
   const fn=nativeMedia3ErrorHandler;
@@ -4828,8 +4828,19 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   const teamTvFast=tvIsTeamCloudChannel(ch);
   const nativeRace=!!(tvNativeRaceEligible(ch,src)&&window.AbajNative&&typeof AbajNative.nativeProbeStart==='function');
   if(nativeRace){
-    nativeMedia3FirstFrameHandler=()=>{
+    nativeMedia3FirstFrameHandler=(elapsed,hasAudio)=>{
       if(attemptToken!==streamAttemptToken||!current||current.id!==ch.id)return;
+      if(hasAudio===false){
+        // Native Media3 rendered video but has no supported audio track on this TV.
+        // Keep HLS.js alive and abandon only the native race candidate.
+        playbackFallbackCount++;
+        nativeMedia3FirstFrameHandler=null;
+        nativeMedia3ErrorHandler=null;
+        try{if(window.AbajNative&&typeof AbajNative.nativeProbeStop==='function')AbajNative.nativeProbeStop()}catch(e){}
+        setNativeMedia3Visible(false);
+        playbackPlayerMode='hls';
+        return;
+      }
       playbackPlayerMode='native';
       nativeMedia3FirstFrameHandler=null;
       nativeMedia3ErrorHandler=null;
