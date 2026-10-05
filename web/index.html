@@ -1333,10 +1333,7 @@ body.cinemaMode .top{display:none!important}
   <div class="videoWrap" onclick="handlePlayerSurfaceClick(event)">
     <div class="playerBrand" onclick="dismissMobilePlayerLoading(event)"><img class="playerLoadingLogo" src="/static/abaj_tv_logo.jpg" alt="ABAJ TV"></div>
     <video id="video" preload="auto" playsinline webkit-playsinline disablepictureinpicture controlslist="nofullscreen nodownload noremoteplayback"></video>
-    <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:#020817;align-items:center;justify-content:center;text-align:center;color:white;padding:0;box-sizing:border-box;pointer-events:none;overflow:hidden">
-      <img src="/static/abaj_tv_ad_banner.svg" alt="ABAJ TV" style="width:100%;height:100%;object-fit:contain;background:#020817">
-      <div id="freeAdCountdown" style="position:absolute;right:14px;bottom:12px;padding:7px 11px;border-radius:10px;background:rgba(0,0,0,.66);font-size:clamp(14px,1.8vw,20px);font-weight:900;color:#9fe6ff;box-shadow:0 4px 16px rgba(0,0,0,.32)">Осталось: 30 сек</div>
-    </div>
+    <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:#020817 url('/static/abaj_tv_ad_banner.svg') center center/cover no-repeat;align-items:center;justify-content:center;text-align:center;color:white;padding:0;box-sizing:border-box;pointer-events:none;overflow:hidden"></div>
     <div id="playerChannelHud" class="playerChannelHud">
       <img id="playerChannelHudLogo" class="playerChannelHudLogo" alt="">
       <div id="playerChannelHudFallback" class="playerChannelHudFallback" style="display:none">TV</div>
@@ -3914,11 +3911,7 @@ let freeAdAudioCtx=null;
 let freeAdAudioNodes=[];
 let freeAdMusicTimer=null;
 
-function updateFreeAdCountdown(seconds){
-  const el=document.getElementById('freeAdCountdown');
-  if(!el)return;
-  el.textContent='Осталось: '+Math.max(0,Math.ceil(Number(seconds)||0))+' сек';
-}
+function updateFreeAdCountdown(seconds){ /* hidden: no countdown in branded ad */ }
 function startFreeAdCountdown(seconds=30){
   if(freeAdCountdownTimer){clearInterval(freeAdCountdownTimer);freeAdCountdownTimer=null}
   const safe=Math.max(1,Math.min(90,Number(seconds)||30));
@@ -3992,12 +3985,12 @@ function setFreeAdOverlay(active,seconds){
     if(v)v.muted=true;
     if(overlay)overlay.style.display='flex';
     startFreeAdCountdown(Number(seconds)>0?seconds:30);
-    startFreeAdMusic();
+    // No internal ad sound. Provider audio remains muted while our banner is visible.
   }else{
     if(overlay)overlay.style.display='none';
     if(v)v.muted=freeAdMuteBefore;
     stopFreeAdCountdown();
-    stopFreeAdMusic();
+    // No internal ad sound to stop.
   }
 }
 function stopQrAdObserver(){
