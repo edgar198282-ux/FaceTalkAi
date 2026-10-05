@@ -973,6 +973,12 @@ body.cinemaKinopub .cinemaKpNav{display:flex}
   padding:0 18px;font-size:19px
 }
 .cinemaCategoryItem:focus,.cinemaCategoryItem.active{outline:none;background:#15364d;color:#fff}
+.cinemaKpFilterBtn{
+  border:1px solid rgba(126,205,247,.32);border-radius:18px;background:#102d43;color:#cfeeff;
+  padding:8px 14px;min-height:38px;white-space:nowrap;font-size:13px;font-weight:800
+}
+.cinemaKpFilterBtn.active,.cinemaKpFilterBtn:focus{outline:none;background:#18aee0;color:#fff;border-color:#75d8ff}
+body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMoreBtn{display:none!important}
 @media(max-width:1100px){.cinemaPosterGrid{grid-template-columns:repeat(5,minmax(0,1fr))!important}}
 @media(max-width:760px){
   .cinemaShellBar{height:58px;padding:0 10px;gap:8px}
@@ -1169,12 +1175,14 @@ body.cinemaKinopub .cinemaKpNav{display:flex}
     </aside>
     <div class="cinemaShellBody">
       <div id="cinemaStatus" class="cinemaStatus">Каталог загружается…</div>
+      <div id="cinemaKpFilters" style="display:none;gap:8px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none"></div>
       <div class="cinemaTypeGrid" id="cinemaTypeGrid" style="display:none">
         <button id="cinemaMoviesCard" class="cinemaTypeCard active" data-cinema-type="movies"></button>
         <button id="cinemaSeriesCard" class="cinemaTypeCard" data-cinema-type="series"></button>
       </div>
       <div class="cinemaSectionTitle" id="cinemaSectionTitle">Новинки · Фильмы</div>
       <div class="cinemaPosterGrid" id="cinemaPosterGrid"></div>
+      <button id="cinemaLoadMoreBtn" class="cinemaKpFilterBtn" onclick="loadMoreKinoPubCatalog()" style="display:none;margin:20px auto 8px;padding:11px 24px;border:1px solid #4a7896;border-radius:18px;background:#103a55;color:#eaf8ff;font-weight:800">ЕЩЁ</button>
     </div>
   </section>
 
@@ -2122,25 +2130,37 @@ async function disconnectKinoPubFromAdmin(){
   refreshKinoPubAdminStatus();
   if(cinemaMode)loadCinemaCatalog(true);
 }
-async function kinoPubCatalogAsync(query=''){
-  let localRows=[];
+async function kinoPubCatalogAsync(query='',opts={}){
+  const page=Math.max(0,Number(opts.page||0));
+  const genre=String(opts.genre??kinopubGenre??'');
+  try{
+    const st=await fetch('/api/kinopub/status',{headers:authHeaders(),cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
+    if(st&&st.authenticated){
+      const params=new URLSearchParams({
+        type:String(cinemaType||'movies'),
+        q:String(query||''),
+        page:String(page),
+        perpage:'30'
+      });
+      if(genre)params.set('genre',genre);
+      const r=await fetch('/api/kinopub/catalog?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
+      if(r.ok){
+        const d=await r.json();
+        kinopubCatalogTotal=Number.isFinite(Number(d.total))?Number(d.total):null;
+        kinopubCatalogHasMore=!!d.has_more;
+        return Array.isArray(d.items)?d.items:[];
+      }
+    }
+  }catch(e){}
+  if(page>0||genre)return [];
   try{
     if(window.AbajNative&&typeof AbajNative.kinoPubCatalog==='function'){
       const rows=JSON.parse(AbajNative.kinoPubCatalog(String(query||''))||'[]');
-      if(Array.isArray(rows))localRows=rows;
+      kinopubCatalogHasMore=false;
+      return Array.isArray(rows)?rows:[];
     }
   }catch(e){}
-  if(localRows.length)return localRows;
-  try{
-    const st=await fetch('/api/kinopub/status',{headers:authHeaders(),cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
-    if(!st||!st.authenticated)return [];
-    const url='/api/kinopub/catalog?type='+encodeURIComponent(cinemaType||'movies')+'&q='+encodeURIComponent(String(query||''));
-    const r=await fetch(url,{headers:authHeaders(),cache:'no-store'});
-    if(!r.ok)return [];
-    const d=await r.json();
-    kinopubCatalogTotal=Number.isFinite(Number(d.total))?Number(d.total):null;
-    return Array.isArray(d.items)?d.items:[];
-  }catch(e){return []}
+  return [];
 }
 function backFromAdmin(){
   closeAdmin();
@@ -6708,12 +6728,82 @@ function setCinemaShellCategory(category){
   searchCinemaLazyMedia(q);
 }
 function syncCinemaSourceUi(){
-  document.body.classList.toggle('cinemaKinopub',cinemaMode&&cinemaSource==='kinopub');
+  const kp=cinemaMode&&cinemaSource==='kinopub';
+  document.body.classList.toggle('cinemaKinopub',kp);
+  const filters=document.getElementById('cinemaKpFilters');
+  if(filters)filters.style.display=kp?'flex':'none';
+  if(!kp){
+    const more=document.getElementById('cinemaLoadMoreBtn');
+    if(more)more.style.display='none';
+  }
   document.querySelectorAll('.cinemaKpNavBtn').forEach(btn=>btn.classList.toggle('active',btn.dataset.kpNav==='home'&&cinemaSource==='kinopub'));
 }
 let kinoPubOverview=null;
 let kinopubCatalogTotal=null;
+let kinopubCatalogPage=0;
+let kinopubCatalogHasMore=false;
+let kinopubCatalogItems=[];
+let kinopubGenre='';
+let kinopubFiltersLoadedFor='';
 
+async function loadKinoPubFilters(force=false){
+  if(cinemaSource!=='kinopub')return;
+  const host=document.getElementById('cinemaKpFilters');
+  if(!host)return;
+  host.style.display='flex';
+  const key=cinemaType;
+  if(!force&&kinopubFiltersLoadedFor===key&&host.children.length)return;
+  try{
+    const r=await fetch('/api/kinopub/filters?type='+encodeURIComponent(cinemaType),{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const genres=Array.isArray(d.genres)?d.genres:[];
+    host.innerHTML='';
+    const buttons=[
+      {id:'',title:'Все жанры'},
+      ...genres.slice(0,24)
+    ];
+    buttons.forEach(g=>{
+      const b=document.createElement('button');
+      b.className='cinemaKpFilterBtn'+(String(g.id||'')===kinopubGenre?' active':'');
+      b.textContent=String(g.title||g.name||g.id||'Жанр');
+      b.onclick=()=>{
+        kinopubGenre=String(g.id||'');
+        [...host.querySelectorAll('.cinemaKpFilterBtn')].forEach(x=>x.classList.toggle('active',x===b));
+        cinemaLoaded=false;
+        loadCinemaCatalog(true);
+      };
+      host.appendChild(b);
+    });
+    kinopubFiltersLoadedFor=key;
+  }catch(e){
+    host.innerHTML='';
+  }
+}
+function updateKinoPubLoadMore(){
+  const btn=document.getElementById('cinemaLoadMoreBtn');
+  if(!btn)return;
+  btn.style.display=(cinemaSource==='kinopub'&&kinopubCatalogHasMore)?'block':'none';
+  btn.disabled=false;
+  btn.textContent='ЕЩЁ';
+}
+async function loadMoreKinoPubCatalog(){
+  if(cinemaSource!=='kinopub'||!kinopubCatalogHasMore)return;
+  const btn=document.getElementById('cinemaLoadMoreBtn');
+  if(btn){btn.disabled=true;btn.textContent='ЗАГРУЗКА…'}
+  const next=kinopubCatalogPage+1;
+  const rows=await kinoPubCatalogAsync('',{page:next,genre:kinopubGenre});
+  if(rows.length){
+    const seen=new Set(kinopubCatalogItems.map(x=>String(x.id||x.title||'')));
+    for(const item of rows){
+      const key=String(item.id||item.title||'');
+      if(key&&!seen.has(key)){seen.add(key);kinopubCatalogItems.push(item)}
+    }
+    kinopubCatalogPage=next;
+    renderCinemaCatalog(kinopubCatalogItems);
+  }
+  updateKinoPubLoadMore();
+}
 async function loadKinoPubOverview(){
   if(cinemaSource!=='kinopub'||!cinemaAccessEnabled)return;
   try{
@@ -6796,6 +6886,7 @@ function cinemaKpNav(action){
   if(action==='search'){openTvSearch();return}
   if(action==='browse'){
     setCinemaShellTitle(cinemaType==='series'?'СЕРИАЛЫ':'КАТАЛОГ');
+    loadKinoPubFilters(true);
     loadCinemaCatalog(true);
     return;
   }
@@ -6835,6 +6926,12 @@ function cinemaSideAction(action){
 function setCinemaType(type){
   cinemaType=type==='series'?'series':'movies';
   localStorage.setItem('abaj_cinema_type',cinemaType);
+  if(cinemaSource==='kinopub'){
+    kinopubGenre='';
+    kinopubCatalogPage=0;
+    kinopubCatalogItems=[];
+    kinopubFiltersLoadedFor='';
+  }
   cinemaLoaded=false;
   syncCinemaTypeUi();
   const grid=document.getElementById('cinemaPosterGrid');
@@ -6858,7 +6955,7 @@ function cinemaFocusable(){
     ?'#cinemaSideMenu .cinemaMenuItem'
     :(cinemaCategoryMenuOpen()
       ?'#cinemaCategoryMenu .cinemaCategoryItem'
-      :'#cinemaScreen .cinemaShellBtn,#cinemaScreen .cinemaPosterCard');
+      :'#cinemaScreen .cinemaShellBtn,#cinemaScreen .cinemaKpFilterBtn,#cinemaScreen .cinemaPosterCard');
   return [...document.querySelectorAll(selector)].filter(el=>{
     if(el.offsetParent===null)return false;
     const r=el.getBoundingClientRect();
@@ -6980,16 +7077,21 @@ async function loadCinemaCatalog(force=false){
       return;
     }
     if(status)status.textContent='KinoPub · загрузка каталога…';
-    const rows=await kinoPubCatalogAsync('');
+    await loadKinoPubFilters();
+    kinopubCatalogPage=0;
+    kinopubCatalogItems=[];
+    const rows=await kinoPubCatalogAsync('',{page:0,genre:kinopubGenre});
+    kinopubCatalogItems=[...rows];
     cinemaLoaded=rows.length>0;
     if(rows.length){
       writeCinemaCache(rows);
       renderCinemaCatalog(rows);
-      if(status)status.textContent='KinoPub · найдено '+rows.length;
+      if(status)status.textContent=kinopubCatalogTotal!==null?('Показано '+rows.length+' из '+kinopubCatalogTotal):('KinoPub · найдено '+rows.length);
     }else{
       renderCinemaCatalog([]);
       if(status)status.textContent='KinoPub подключён, но каталог пуст.';
     }
+    updateKinoPubLoadMore();
     return;
   }
 
