@@ -650,7 +650,10 @@ public class MainActivity extends Activity {
                         break;
                     }
                 }catch(Throwable e){
-                    lastError=e;
+                    if(e instanceof java.lang.reflect.InvocationTargetException){
+                        Throwable t=((java.lang.reflect.InvocationTargetException)e).getTargetException();
+                        lastError=t!=null?t:e;
+                    }else lastError=e;
                 }
             }
 
@@ -809,8 +812,13 @@ public class MainActivity extends Activity {
                     out.put("parser",className);
                     break;
                 }catch(Throwable e){
+                    Throwable root=e;
+                    if(e instanceof java.lang.reflect.InvocationTargetException){
+                        Throwable t=((java.lang.reflect.InvocationTargetException)e).getTargetException();
+                        if(t!=null)root=t;
+                    }
                     Log.w("AbajCinema","details parser "+className+" "+
-                        e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+                        root.getClass().getName()+" "+String.valueOf(root.getMessage()),root);
                 }
             }
         }catch(Throwable e){
