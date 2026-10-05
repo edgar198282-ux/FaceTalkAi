@@ -9732,6 +9732,7 @@ async function watchCinemaDetail(){
 function cinemaTrailerEmbedUrl(raw){
   const url=String(raw||'').trim();
   if(!url)return '';
+  if(/^[A-Za-z0-9_-]{6,}$/.test(url))return 'https://www.youtube.com/embed/'+url+'?autoplay=1&playsinline=1&rel=0';
   let m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i);
   if(m)return 'https://www.youtube.com/embed/'+m[1]+'?autoplay=1&playsinline=1&rel=0';
   m=url.match(/(?:vimeo\.com\/(?:video\/)?)(\d+)/i);
