@@ -590,7 +590,6 @@ public class MainActivity extends Activity {
             String thumb=decodeCinemaIntentPart(rawIntent,4);
             setLazyModelString(model,"setID",article);
             setLazyModelString(model,"setArticleUrl",article);
-            setLazyModelString(model,"setContentUrl",article);
             setLazyModelString(model,"setTitle",title);
             setLazyModelString(model,"setThumbUrl",thumb);
 
@@ -725,7 +724,6 @@ public class MainActivity extends Activity {
             String thumb=decodeCinemaIntentPart(rawIntent,4);
             setLazyModelString(model,"setID",article);
             setLazyModelString(model,"setArticleUrl",article);
-            setLazyModelString(model,"setContentUrl",article);
             setLazyModelString(model,"setTitle",title);
             setLazyModelString(model,"setThumbUrl",thumb);
             try{out.put("title",title);}catch(Throwable ignored){}
