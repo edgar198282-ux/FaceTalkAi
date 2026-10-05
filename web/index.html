@@ -7394,7 +7394,8 @@ function renderCinemaFormatOptions(group,item){
       cinemaResolvePending.set(requestId,{
         title:String(f.item?.title||cinemaSourcePickerMovie?.title||'Кино'),
         meta,
-        transport:f.transport
+        transport:f.transport,
+        provider:normalizeLazyProviderName(group.name)
       });
       try{
         AbajNative.resolveCinemaStream(intent,normalizeLazyProviderName(group.name)+'|'+f.transport+'|'+String(f.quality||''),requestId);
@@ -7413,7 +7414,7 @@ function renderCinemaFormatOptions(group,item){
   list.appendChild(back);
   setTimeout(()=>focusCinemaSourceButton(0),20);
 }
-window.__abajCinemaResolved=function(requestId,url){
+window.__abajCinemaResolved=function(requestId,url,headers={}){
   const pending=cinemaResolvePending.get(String(requestId||''));
   if(!pending)return;
   cinemaResolvePending.delete(String(requestId||''));
@@ -7421,7 +7422,12 @@ window.__abajCinemaResolved=function(requestId,url){
   if(stream){
     if(pending.meta)pending.meta.textContent='Поток найден · открываю…';
     closeCinemaSourcePicker(false);
-    window.__abajOpenExternalMedia(stream,pending.title||'Кино');
+    window.__abajOpenExternalMedia(
+      stream,
+      pending.title||'Кино',
+      pending.provider||'',
+      (headers&&typeof headers==='object')?headers:{}
+    );
     return;
   }
   if(pending.meta)pending.meta.textContent='Поток не найден';
@@ -7511,7 +7517,8 @@ async function openCinemaSourceGroup(index){
         cinemaResolvePending.set(requestId,{
           title:String(item?.title||cinemaSourcePickerMovie?.title||'Кино'),
           meta,
-          transport:'AUTO'
+          transport:'AUTO',
+          provider:providerName
         });
         try{
           AbajNative.resolveCinemaStream(intent,providerName+'|AUTO|',requestId);
