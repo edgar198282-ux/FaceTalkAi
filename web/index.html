@@ -1017,6 +1017,37 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaKpEpisodeBtn small{display:block;margin-top:3px;color:#9fc3d8;font-size:11px;font-weight:600}
 .cinemaKpEpisodeBtn.active,.cinemaKpEpisodeBtn:focus{outline:none;background:#18aee0;color:#fff;border-color:#7edfff}
 .cinemaKpEpisodeBtn.active small,.cinemaKpEpisodeBtn:focus small{color:#eaffff}
+
+.cinemaSeasons{
+  position:fixed;inset:0;z-index:625;display:none;background:#161616;color:#e8e8e8;overflow:auto
+}
+.cinemaSeasons.open{display:block}
+.cinemaSeasonsBar{
+  height:72px;display:flex;align-items:center;gap:14px;padding:0 18px;
+  background:#1b1b1b;border-bottom:1px solid rgba(255,255,255,.06);position:sticky;top:0;z-index:2
+}
+.cinemaSeasonsBack{
+  width:44px;height:44px;border:0;background:transparent;color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center
+}
+.cinemaSeasonsTitle{font-size:22px;color:#d2d2d2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cinemaSeasonsList{display:flex;flex-direction:column}
+.cinemaSeasonRow{
+  min-height:86px;width:100%;border:0;border-bottom:1px solid rgba(255,255,255,.10);
+  background:#161616;color:#d8d8d8;padding:0 20px;display:flex;align-items:center;justify-content:space-between;
+  font-size:22px;text-align:left
+}
+.cinemaSeasonRow:focus{outline:none;background:#222}
+.cinemaSeasonCount{
+  min-width:70px;padding:8px 12px;border-radius:16px;background:#809bb6;color:#fff;text-align:center;font-size:18px;font-weight:700
+}
+.cinemaEpisodesPane{padding:8px 0 22px}
+.cinemaEpisodeRow{
+  width:100%;min-height:68px;border:0;border-bottom:1px solid rgba(255,255,255,.08);
+  background:#171717;color:#e6e6e6;padding:10px 22px;display:flex;align-items:center;justify-content:space-between;text-align:left
+}
+.cinemaEpisodeRow small{color:#929292;font-size:13px}
+.cinemaEpisodeRow.active{background:#202020}
+
 /* Cinema movie detail */
 .cinemaDetail{
   position:fixed;inset:0;z-index:610;display:none;overflow:auto;
@@ -1228,6 +1259,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
       <button class="cinemaDetailBack" id="cinemaDetailBack" onclick="closeCinemaDetail()" aria-label="Назад">←</button>
       <div class="cinemaDetailActions">
         <button class="cinemaDetailAction" id="cinemaDetailWatch" onclick="watchCinemaDetail()">СМОТРЕТЬ ФИЛЬМ</button>
+        <button class="cinemaDetailAction" id="cinemaDetailSeasons" onclick="openCinemaSeasons()" style="display:none">СЕЗОНЫ</button>
         <button class="cinemaDetailAction" id="cinemaDetailTrailer" onclick="playCinemaTrailer()">ТРЕЙЛЕР</button>
       </div>
     </div>
@@ -1242,6 +1274,14 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
       <div class="cinemaDetailFacts" id="cinemaDetailFacts"></div>
       <div id="cinemaKpMediaRows" class="cinemaKpMediaRows" style="display:none"></div>
     </div>
+  </section>
+
+  <section class="cinemaSeasons" id="cinemaSeasons">
+    <div class="cinemaSeasonsBar">
+      <button class="cinemaSeasonsBack" onclick="closeCinemaSeasons()" aria-label="Назад">←</button>
+      <div class="cinemaSeasonsTitle" id="cinemaSeasonsTitle">СЕЗОНЫ</div>
+    </div>
+    <div class="cinemaSeasonsList" id="cinemaSeasonsList"></div>
   </section>
 
   <main class="content" id="content">
@@ -9222,6 +9262,83 @@ function renderKinoPubMediaRows(item){
     if(all[idx])all[idx].classList.add('active');
   }
 }
+function cinemaEpisodeWatched(media){
+  const w=media?.watching;
+  if(!w)return false;
+  if(w===true)return true;
+  if(typeof w==='object'){
+    if(w.completed||w.watched)return true;
+    const p=Number(w.percent||w.progress||0);
+    if(p>=90)return true;
+    if(Number(w.time||0)>0&&Number(media?.duration||0)>0&&Number(w.time)/Number(media.duration)>=.9)return true;
+  }
+  return false;
+}
+function cinemaSeasonRows(item){
+  return (Array.isArray(item?.media_rows)?item.media_rows:[])
+    .map((row,index)=>({
+      title:String(row?.title||('Сезон '+(index+1))),
+      season:row?.season??(index+1),
+      items:Array.isArray(row?.items)?row.items:[]
+    }))
+    .filter(row=>row.items.length);
+}
+function closeCinemaSeasons(){
+  const screen=document.getElementById('cinemaSeasons');
+  if(screen)screen.classList.remove('open');
+  const detail=document.getElementById('cinemaDetail');
+  if(detail)detail.classList.add('open');
+}
+function renderCinemaSeasonEpisodes(row){
+  const list=document.getElementById('cinemaSeasonsList');
+  const title=document.getElementById('cinemaSeasonsTitle');
+  if(!list||!row)return;
+  if(title)title.textContent='СЕЗОН '+String(row.season||'');
+  list.innerHTML='';
+  const back=document.createElement('button');
+  back.className='cinemaSeasonRow';
+  back.innerHTML='<span>← СЕЗОНЫ</span>';
+  back.onclick=()=>openCinemaSeasons();
+  list.appendChild(back);
+  row.items.forEach((media,index)=>{
+    const btn=document.createElement('button');
+    btn.className='cinemaEpisodeRow'+(kinoMediaId(media)===kinoMediaId(cinemaSelectedKinoMedia)?' active':'');
+    const label=kinoMediaLabel(media,index);
+    const duration=Number(media?.duration||0);
+    const min=duration>60?Math.round(duration/60):0;
+    btn.innerHTML='<span>'+String(label).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>'+
+      '<small>'+(cinemaEpisodeWatched(media)?'Просмотрено':(min?min+' мин.':''))+'</small>';
+    btn.onclick=()=>{
+      cinemaSelectedKinoMedia=media;
+      closeCinemaSeasons();
+      const watchBtn=document.getElementById('cinemaDetailWatch');
+      if(watchBtn)watchBtn.textContent='СМОТРЕТЬ '+kinoMediaLabel(media,index);
+    };
+    list.appendChild(btn);
+  });
+}
+function openCinemaSeasons(){
+  const item=cinemaDetailMovie;
+  const rows=cinemaSeasonRows(item);
+  if(!rows.length)return;
+  const screen=document.getElementById('cinemaSeasons');
+  const list=document.getElementById('cinemaSeasonsList');
+  const title=document.getElementById('cinemaSeasonsTitle');
+  if(!screen||!list)return;
+  document.getElementById('cinemaDetail')?.classList.remove('open');
+  screen.classList.add('open');
+  if(title)title.textContent='СЕЗОНЫ '+cinemaDisplayTitle(item);
+  list.innerHTML='';
+  rows.forEach((row,index)=>{
+    const watched=row.items.filter(cinemaEpisodeWatched).length;
+    const btn=document.createElement('button');
+    btn.className='cinemaSeasonRow';
+    btn.innerHTML='<span>'+(index+1)+'. СЕЗОН</span><span class="cinemaSeasonCount">'+watched+'/'+row.items.length+'</span>';
+    btn.onclick=()=>renderCinemaSeasonEpisodes(row);
+    list.appendChild(btn);
+  });
+}
+
 async function loadKinoPubItemDetails(item){
   if(cinemaSource!=='kinopub'||!item?.id)return item;
   try{
@@ -9305,8 +9422,19 @@ function renderCinemaDetail(item){
 
   renderKinoPubMediaRows(item);
   const watchBtn=document.getElementById('cinemaDetailWatch');
-  const hasRows=Array.isArray(item?.media_rows)&&item.media_rows.some(r=>Array.isArray(r.items)&&r.items.length);
-  if(watchBtn&&cinemaSource==='kinopub')watchBtn.textContent=hasRows?(cinemaItemLooksSeries(item)?'СМОТРЕТЬ СЕРИЮ':'СМОТРЕТЬ'):'СМОТРЕТЬ';
+  const seasonsBtn=document.getElementById('cinemaDetailSeasons');
+  const rows=cinemaSeasonRows(item);
+  const hasRows=rows.length>0;
+  const isSeries=cinemaItemLooksSeries(item)&&hasRows;
+  if(isSeries&&!cinemaSelectedKinoMedia)cinemaSelectedKinoMedia=rows[0]?.items?.[0]||null;
+  if(watchBtn&&cinemaSource==='kinopub'){
+    watchBtn.textContent=isSeries
+      ?('СМОТРЕТЬ '+(cinemaSelectedKinoMedia?kinoMediaLabel(cinemaSelectedKinoMedia,0):'S1E1'))
+      :(hasRows?'СМОТРЕТЬ':'СМОТРЕТЬ');
+  }
+  if(seasonsBtn)seasonsBtn.style.display=isSeries?'inline-flex':'none';
+  const mediaHost=document.getElementById('cinemaKpMediaRows');
+  if(mediaHost&&isSeries)mediaHost.style.display='none';
 
   detail.classList.add('open');
   document.getElementById('cinemaScreen')?.style.setProperty('display','none');
@@ -9356,7 +9484,7 @@ async function watchCinemaDetail(){
     if(watchBtn){watchBtn.disabled=true;watchBtn.textContent='ОТКРЫВАЮ…'}
     const media=cinemaSelectedKinoMedia;
     const resolved=await resolveKinoPubInternalStream(item,media);
-    if(watchBtn){watchBtn.disabled=false;watchBtn.textContent=cinemaItemLooksSeries(item)?'СМОТРЕТЬ СЕРИЮ':'СМОТРЕТЬ'}
+    if(watchBtn){watchBtn.disabled=false;watchBtn.textContent=cinemaItemLooksSeries(item)?('СМОТРЕТЬ '+(cinemaSelectedKinoMedia?kinoMediaLabel(cinemaSelectedKinoMedia,0):'S1E1')):'СМОТРЕТЬ'}
     if(resolved&&resolved.url){
       await rememberCinemaWatch(item);
       const detail=document.getElementById('cinemaDetail');
