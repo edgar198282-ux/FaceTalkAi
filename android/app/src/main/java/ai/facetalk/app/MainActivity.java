@@ -423,6 +423,41 @@ public class MainActivity extends Activity {
                 return;
             }
             Class<?> c=node.getClass();
+            if("obf.j30".equals(c.getName())){
+                try{
+                    java.lang.reflect.Method urlMethod=c.getMethod("OooOo0o");
+                    Object uv=urlMethod.invoke(node);
+                    String u=uv==null?"":String.valueOf(uv).trim().replace("\/","/");
+                    if(u.startsWith("http://")||u.startsWith("https://")){
+                        String label=path==null?"":path.trim();
+                        try{
+                            java.lang.reflect.Method labelMethod=c.getMethod("OooOOoo");
+                            Object lv=labelMethod.invoke(node);
+                            if(lv!=null&&!String.valueOf(lv).trim().isEmpty())label=String.valueOf(lv).trim();
+                        }catch(Throwable ignored){}
+                        String format="";
+                        try{
+                            java.lang.reflect.Method formatMethod=c.getMethod("getFormat");
+                            Object fv=formatMethod.invoke(node);
+                            if(fv!=null)format=String.valueOf(fv).trim();
+                        }catch(Throwable ignored){}
+                        org.json.JSONObject row=new org.json.JSONObject();
+                        row.put("name",label.isEmpty()?"LazyMedia":label);
+                        row.put("url",u);
+                        String low=u.toLowerCase(java.util.Locale.US);
+                        String fmt=!format.isEmpty()?format:
+                            (low.contains(".m3u8")||low.contains("/hls/")?"HLS":
+                             low.contains(".mpd")||low.contains("/dash/")?"DASH":
+                             low.contains(".mp4")?"MP4":"AUTO");
+                        row.put("format",fmt);
+                        java.util.regex.Matcher qm=java.util.regex.Pattern
+                            .compile("(2160|1440|1080|720|480|360)")
+                            .matcher(label+" "+format+" "+u);
+                        if(qm.find())row.put("quality",qm.group(1));
+                        out.put(row);
+                    }
+                }catch(Throwable ignored){}
+            }
             while(c!=null&&c!=Object.class){
                 for(java.lang.reflect.Field fld:c.getDeclaredFields()){
                     try{
