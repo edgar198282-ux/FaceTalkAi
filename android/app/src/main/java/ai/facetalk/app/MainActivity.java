@@ -53,6 +53,8 @@ import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.ui.PlayerView;
 
 import org.json.JSONObject;
@@ -1079,6 +1081,13 @@ public class MainActivity extends Activity {
             if(!(url.startsWith("http://")||url.startsWith("https://")))return;
             runOnUiThread(()->startNativeProbe(url));
         }
+        @JavascriptInterface public void cinemaNativeStart(String rawUrl,String rawProvider){
+            if(!isTv||rawUrl==null)return;
+            String url=rawUrl.trim();
+            String provider=rawProvider==null?"":rawProvider.trim().toUpperCase(java.util.Locale.US);
+            if(!(url.startsWith("http://")||url.startsWith("https://")))return;
+            runOnUiThread(()->startNativeCinema(url,provider));
+        }
         @JavascriptInterface public void nativeProbeStop(){
             if(!isTv)return;
             runOnUiThread(()->stopNativeProbe(false));
@@ -1528,6 +1537,37 @@ public class MainActivity extends Activity {
             nativeProbePlayer.play();
         }catch(Exception e){
             Log.w("AbajTVNativeProbe","start_error "+e.getClass().getSimpleName());
+            nativeProbeStartedAt=0L;
+        }
+    }
+    private void startNativeCinema(String url,String provider){
+        if(!isTv||nativeProbeView==null)return;
+        try{
+            ensureNativeProbePlayer();
+            if(nativeProbePlayer==null)return;
+            java.util.HashMap<String,String> headers=new java.util.HashMap<>();
+            headers.put("User-Agent","Mozilla/5.0 (Android) AbajTV/"+BuildConfig.VERSION_NAME);
+            if("FILMIX".equals(provider)){
+                headers.put("Referer","https://filmix.moe/");
+                String cookie=CookieManager.getInstance().getCookie("https://filmix.moe/");
+                if(cookie!=null&&!cookie.trim().isEmpty())headers.put("Cookie",cookie);
+            }else if("HDREZKA".equals(provider)){
+                headers.put("Referer","https://hdrezka.ag/");
+            }
+            DefaultHttpDataSource.Factory httpFactory=new DefaultHttpDataSource.Factory()
+                .setAllowCrossProtocolRedirects(true)
+                .setDefaultRequestProperties(headers);
+            DefaultMediaSourceFactory mediaFactory=new DefaultMediaSourceFactory(httpFactory);
+            nativeProbeUrl=url;
+            nativeProbeStartedAt=System.currentTimeMillis();
+            nativeProbePlayer.setMediaSource(
+                mediaFactory.createMediaSource(MediaItem.fromUri(Uri.parse(url))),true
+            );
+            nativeProbePlayer.prepare();
+            nativeProbePlayer.play();
+            Log.i("AbajCinema","native cinema start provider="+provider);
+        }catch(Exception e){
+            Log.w("AbajCinema","native cinema start failed "+e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
             nativeProbeStartedAt=0L;
         }
     }

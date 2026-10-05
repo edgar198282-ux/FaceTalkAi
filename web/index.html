@@ -4802,6 +4802,34 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   const src=useDirectClient?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
+  const cinemaNative=!!(nativeTv&&String(ch.id||'').startsWith('cinema:external:')&&
+    ch.cinemaProvider&&window.AbajNative&&typeof AbajNative.cinemaNativeStart==='function');
+  if(cinemaNative){
+    playbackPlayerMode='native';
+    nativeMedia3FirstFrameHandler=()=>{
+      if(attemptToken!==streamAttemptToken||!current||current.id!==ch.id)return;
+      nativeMedia3FirstFrameHandler=null;
+      nativeMedia3ErrorHandler=null;
+      try{v.pause()}catch(e){}
+      v.removeAttribute('src');
+      try{v.load()}catch(e){}
+      markFrameReady(true);
+    };
+    nativeMedia3ErrorHandler=(reason)=>{
+      if(attemptToken!==streamAttemptToken)return;
+      nativeMedia3FirstFrameHandler=null;
+      nativeMedia3ErrorHandler=null;
+      err.textContent='Видео не открылось: '+String(reason||'ошибка потока');
+    };
+    try{
+      AbajNative.cinemaNativeStart(src,String(ch.cinemaProvider||''));
+      return;
+    }catch(e){
+      nativeMedia3FirstFrameHandler=null;
+      nativeMedia3ErrorHandler=null;
+    }
+  }
+
   // Race Media3 against HLS.js for every direct HLS channel (AM/RU/other,
   // sports/HD/FHD/4K alike). The current player remains visible until Media3
   // renders a real frame, so failed native attempts never create a blank screen.
@@ -7059,7 +7087,7 @@ function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
       meta.textContent='Открываю…';
       const playTitle=String(cinemaSourcePickerMovie?.title||info.raw||'Кино');
       closeCinemaSourcePicker(false);
-      window.__abajOpenExternalMedia(realUrl,playTitle);
+      window.__abajOpenExternalMedia(realUrl,playTitle,provider);
     };
     list.appendChild(btn);
   });
@@ -7426,7 +7454,7 @@ function playCinemaSource(index){
     note.textContent='Этот источник пока не отдал прямой поток. Окно не закрываю — можно выбрать другой источник.';
   }
 }
-window.__abajOpenExternalMedia=function(url,title){
+window.__abajOpenExternalMedia=function(url,title,provider=''){
   const raw=String(url||'').trim();
   if(!(raw.toLowerCase().startsWith('http://')||raw.toLowerCase().startsWith('https://')||raw.toLowerCase().startsWith('content:')))return;
   const ch={
@@ -7436,7 +7464,8 @@ window.__abajOpenExternalMedia=function(url,title){
     backups:[],
     personal:false,
     quality:'',
-    height:0
+    height:0,
+    cinemaProvider:String(provider||'').trim().toUpperCase()
   };
   try{
     cinemaMode=true;
