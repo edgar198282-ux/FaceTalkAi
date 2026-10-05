@@ -4858,6 +4858,12 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       // Mark it active so play/pause, seek and progress controls target Media3
       // instead of the now-empty HTML <video>.
       setNativeMedia3Visible(true);
+      cinemaDiag('playback_started',{
+        title:ch.name,
+        provider:ch.cinemaProvider||'',
+        playable:true,
+        message:'native Media3 first frame'
+      });
       try{v.pause()}catch(e){}
       v.removeAttribute('src');
       try{v.load()}catch(e){}
@@ -4869,6 +4875,12 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       nativeMedia3FirstFrameHandler=null;
       nativeMedia3ErrorHandler=null;
       setNativeMedia3Visible(false);
+      cinemaDiag('playback_error',{
+        title:ch.name,
+        provider:ch.cinemaProvider||'',
+        playable:false,
+        message:String(reason||'ошибка потока')
+      });
       err.textContent='Видео не открылось: '+String(reason||'ошибка потока');
     };
     try{
