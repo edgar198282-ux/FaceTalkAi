@@ -1448,6 +1448,17 @@ public class MainActivity extends Activity {
                 }catch(Exception ignored){}
             });
         }
+        @JavascriptInterface public long nativePositionMs(){
+            try{return nativeProbePlayer==null?0L:Math.max(0L,nativeProbePlayer.getCurrentPosition());}
+            catch(Exception e){return 0L;}
+        }
+        @JavascriptInterface public long nativeDurationMs(){
+            try{
+                if(nativeProbePlayer==null)return 0L;
+                long d=nativeProbePlayer.getDuration();
+                return d>0L?d:0L;
+            }catch(Exception e){return 0L;}
+        }
         @JavascriptInterface public void setNativeAdMuted(boolean muted){
             if(!isTv)return;
             runOnUiThread(()->{
