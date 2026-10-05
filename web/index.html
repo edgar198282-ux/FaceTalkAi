@@ -7102,8 +7102,8 @@ window.__abajCinemaResolved=function(requestId,url){
   const stream=String(url||'').trim();
   if(stream){
     if(pending.meta)pending.meta.textContent='Поток найден · открываю…';
+    closeCinemaSourcePicker(false);
     window.__abajOpenExternalMedia(stream,pending.title||'Кино');
-    setTimeout(()=>closeCinemaSourcePicker(false),120);
     return;
   }
   if(pending.meta)pending.meta.textContent='Поток не найден';
@@ -7175,8 +7175,9 @@ async function openCinemaSourceGroup(index){
       const intent=String(item?.intent||'').trim();
 
       if(url){
-        window.__abajOpenExternalMedia(url,String(item?.title||cinemaSourcePickerMovie?.title||'Кино'));
-        setTimeout(()=>closeCinemaSourcePicker(),120);
+        const playTitle=String(item?.title||cinemaSourcePickerMovie?.title||'Кино');
+        closeCinemaSourcePicker(false);
+        window.__abajOpenExternalMedia(url,playTitle);
         return;
       }
 
@@ -7231,10 +7232,9 @@ function playCinemaSource(index){
       const meta=btn.querySelector('small');
       if(meta)meta.textContent='Открываю в плеере Abaj TV…';
     }
-    setTimeout(()=>{
-      closeCinemaSourcePicker();
-      window.__abajOpenExternalMedia(url,String(item.title||'Кино'));
-    },120);
+    const playTitle=String(item.title||cinemaSourcePickerMovie?.title||'Кино');
+    closeCinemaSourcePicker(false);
+    window.__abajOpenExternalMedia(url,playTitle);
     return;
   }
   if(btn){
@@ -7385,8 +7385,9 @@ async function cinemaV2Resolve(group,item,meta){
   const provider=String(group?.name||'');
   const url=String(item?.url||'').trim();
   if(url){
-    window.__abajOpenExternalMedia(url,String(cinemaSourcePickerMovie?.title||item?.title||'Кино'));
-    setTimeout(()=>closeCinemaSourcePicker(),120);
+    const playTitle=String(cinemaSourcePickerMovie?.title||item?.title||'Кино');
+    closeCinemaSourcePicker(false);
+    window.__abajOpenExternalMedia(url,playTitle);
     return;
   }
   if(provider==='FILMIX'){
