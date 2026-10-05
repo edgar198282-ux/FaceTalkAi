@@ -488,7 +488,7 @@ public class MainActivity extends Activity {
         }catch(Throwable ignored){}
     }
 
-    private void ensureLazyMediaRuntime(Context lazy,ClassLoader cl){
+    private synchronized void ensureLazyMediaRuntime(Context lazy,ClassLoader cl){
         if(lazy==null||cl==null)return;
         try{
             Class<?> baseAppClass=Class.forName(
@@ -499,23 +499,52 @@ public class MainActivity extends Activity {
 
             Object current=singleton.get(null);
             if(current!=null){
-                try{
-                    java.lang.reflect.Method contextMethod=baseAppClass.getMethod("OooO0Oo");
-                    Object ctx=contextMethod.invoke(null);
-                    if(ctx instanceof Context){
-                        Log.i("AbajCinema","LazyMedia runtime already valid");
-                        return;
-                    }
-                }catch(Throwable broken){
-                    Log.w("AbajCinema","LazyMedia runtime stale, rebuilding: "+
-                        broken.getClass().getSimpleName());
-                }
                 try{singleton.set(null,null);}catch(Throwable ignored){}
             }
 
             final Context packageContext=lazy;
+            final Context appContext=MainActivity.this.getApplicationContext();
             ContextWrapper isolatedContext=new ContextWrapper(packageContext){
+                private String lmName(String name){
+                    String n=name==null?"default":name.replaceAll("[^A-Za-z0-9_.-]","_");
+                    return "lazymedia_"+n;
+                }
+                private java.io.File lmDir(java.io.File parent,String child){
+                    java.io.File d=new java.io.File(parent,child);
+                    if(!d.exists())d.mkdirs();
+                    return d;
+                }
                 @Override public Context getApplicationContext(){return this;}
+                @Override public android.content.SharedPreferences getSharedPreferences(String name,int mode){
+                    return appContext.getSharedPreferences(lmName(name),mode);
+                }
+                @Override public java.io.File getDatabasePath(String name){
+                    return appContext.getDatabasePath(lmName(name));
+                }
+                @Override public android.database.sqlite.SQLiteDatabase openOrCreateDatabase(
+                    String name,int mode,android.database.sqlite.SQLiteDatabase.CursorFactory factory){
+                    return appContext.openOrCreateDatabase(lmName(name),mode,factory);
+                }
+                @Override public android.database.sqlite.SQLiteDatabase openOrCreateDatabase(
+                    String name,int mode,android.database.sqlite.SQLiteDatabase.CursorFactory factory,
+                    android.database.DatabaseErrorHandler errorHandler){
+                    return appContext.openOrCreateDatabase(lmName(name),mode,factory,errorHandler);
+                }
+                @Override public boolean deleteDatabase(String name){
+                    return appContext.deleteDatabase(lmName(name));
+                }
+                @Override public java.io.File getFilesDir(){
+                    return lmDir(appContext.getFilesDir(),"lazymedia");
+                }
+                @Override public java.io.File getCacheDir(){
+                    return lmDir(appContext.getCacheDir(),"lazymedia");
+                }
+                @Override public java.io.File getNoBackupFilesDir(){
+                    return lmDir(appContext.getNoBackupFilesDir(),"lazymedia");
+                }
+                @Override public java.io.File getCodeCacheDir(){
+                    return lmDir(appContext.getCodeCacheDir(),"lazymedia");
+                }
             };
 
             Object app=baseAppClass.getDeclaredConstructor().newInstance();
