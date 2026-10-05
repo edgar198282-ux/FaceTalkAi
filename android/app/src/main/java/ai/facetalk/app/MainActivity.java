@@ -679,6 +679,149 @@ public class MainActivity extends Activity {
         }
     }
 
+    private String lazyDetailField(Object details,String fieldName){
+        if(details==null||fieldName==null)return "";
+        Class<?> c=details.getClass();
+        while(c!=null&&c!=Object.class){
+            try{
+                java.lang.reflect.Field f=c.getDeclaredField(fieldName);
+                f.setAccessible(true);
+                Object v=f.get(details);
+                return v==null?"":String.valueOf(v).trim();
+            }catch(Throwable ignored){}
+            c=c.getSuperclass();
+        }
+        return "";
+    }
+
+    private org.json.JSONObject lazyArticleReflectDetails(String rawIntent,String provider){
+        org.json.JSONObject out=new org.json.JSONObject();
+        try{
+            String source=cinemaSourceId(rawIntent);
+            if(source.isEmpty())return out;
+            int idx=Integer.parseInt(source);
+            Context lazy=createPackageContext(
+                "com.lazycatsoftware.lmd",
+                Context.CONTEXT_INCLUDE_CODE|Context.CONTEXT_IGNORE_SECURITY
+            );
+            ClassLoader cl=lazy.getClassLoader();
+            Class<?> bv=Class.forName("obf.bv",true,cl);
+            Object[] servers=(Object[])bv.getMethod("values").invoke(null);
+            if(idx<0||idx>=servers.length)return out;
+            Object server=servers[idx];
+
+            Class<?> modelClass=Class.forName(
+                "com.lazycatsoftware.lazymediadeluxe.models.service.OooO0O0",true,cl
+            );
+            Object model=modelClass.getDeclaredConstructor().newInstance();
+            try{
+                java.lang.reflect.Field f=modelClass.getDeclaredField("mIdServer");
+                f.setAccessible(true);
+                f.set(model,server);
+            }catch(Throwable ignored){}
+
+            String article=decodeCinemaIntentPart(rawIntent,1);
+            String title=decodeCinemaIntentPart(rawIntent,2);
+            String thumb=decodeCinemaIntentPart(rawIntent,4);
+            setLazyModelString(model,"setID",article);
+            setLazyModelString(model,"setArticleUrl",article);
+            setLazyModelString(model,"setContentUrl",article);
+            setLazyModelString(model,"setTitle",title);
+            setLazyModelString(model,"setThumbUrl",thumb);
+            try{out.put("title",title);}catch(Throwable ignored){}
+            try{out.put("poster",thumb);}catch(Throwable ignored){}
+
+            java.util.LinkedHashSet<String> providerKeys=new java.util.LinkedHashSet<>();
+            String requested=provider==null?"":provider.trim().toUpperCase(java.util.Locale.US);
+            if(!requested.isEmpty())providerKeys.add(requested);
+            try{
+                if(server instanceof java.lang.Enum)providerKeys.add(((java.lang.Enum<?>)server).name());
+            }catch(Throwable ignored){}
+            try{providerKeys.add(String.valueOf(server));}catch(Throwable ignored){}
+            for(String methodName:new String[]{"OooO0OO","OooO0Oo","OooO0oO"}){
+                try{
+                    java.lang.reflect.Method m=bv.getDeclaredMethod(methodName);
+                    m.setAccessible(true);
+                    Object value=m.invoke(server);
+                    if(value!=null)providerKeys.add(String.valueOf(value));
+                }catch(Throwable ignored){}
+            }
+
+            java.util.LinkedHashSet<String> classNames=new java.util.LinkedHashSet<>();
+            for(String key:providerKeys){
+                String normalized=(key==null?"":key)
+                    .trim().toUpperCase(java.util.Locale.US)
+                    .replaceAll("[^A-Z0-9]+","_")
+                    .replaceAll("^_+|_+$","");
+                if(normalized.isEmpty())continue;
+                classNames.add("com.lazycatsoftware.mediaservices.content."+normalized+"_Article");
+                if(normalized.endsWith("_OLD")){
+                    classNames.add("com.lazycatsoftware.mediaservices.content."+
+                        normalized.substring(0,normalized.length()-4)+"_Article");
+                }
+            }
+
+            for(String className:classNames){
+                try{
+                    Class<?> articleClass=Class.forName(className,true,cl);
+                    java.lang.reflect.Constructor<?> ctor=null;
+                    for(java.lang.reflect.Constructor<?> c:articleClass.getDeclaredConstructors()){
+                        Class<?>[] pt=c.getParameterTypes();
+                        if(pt.length==1&&pt[0].isAssignableFrom(modelClass)){ctor=c;break;}
+                    }
+                    if(ctor==null)continue;
+                    ctor.setAccessible(true);
+                    Object articleObj=ctor.newInstance(model);
+
+                    java.lang.reflect.Method parse=null;
+                    for(java.lang.reflect.Method m:articleClass.getMethods()){
+                        if("parseCustom".equals(m.getName())&&m.getParameterTypes().length==0){
+                            parse=m;break;
+                        }
+                    }
+                    if(parse==null)continue;
+                    parse.setAccessible(true);
+                    Object details=parse.invoke(articleObj);
+                    if(details==null)continue;
+
+                    String[][] mapped=new String[][]{
+                        {"title","OooO0oO"},
+                        {"description","OooO"},
+                        {"year","OooOO0o"},
+                        {"imdb","OooOOoo"},
+                        {"kp","OooOo00"},
+                        {"director","OooOOO0"},
+                        {"producer","OooOOO"},
+                        {"scenario","OooOOOO"},
+                        {"actors","OooOOOo"}
+                    };
+                    for(String[] pair:mapped){
+                        String v=lazyDetailField(details,pair[1]);
+                        if(!v.isEmpty())out.put(pair[0],v);
+                    }
+
+                    for(String rawField:new String[]{
+                        "OooOO0","OooOO0O","OooOOo0","OooOOo",
+                        "OooO0oo","OooOo0","OooOo0O"
+                    }){
+                        String v=lazyDetailField(details,rawField);
+                        if(!v.isEmpty())out.put("raw_"+rawField,v);
+                    }
+                    out.put("provider",requested);
+                    out.put("parser",className);
+                    break;
+                }catch(Throwable e){
+                    Log.w("AbajCinema","details parser "+className+" "+
+                        e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+                }
+            }
+        }catch(Throwable e){
+            Log.w("AbajCinema","details reflection failed: "+
+                e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+        }
+        return out;
+    }
+
     private org.json.JSONArray lazyFilmixReflectOptions(String rawIntent){
         org.json.JSONArray out=new org.json.JSONArray();
         try{
@@ -960,6 +1103,23 @@ public class MainActivity extends Activity {
                 });
             },"abaj-lazy-search").start();
         }
+        @JavascriptInterface public void cinemaArticleDetailsAsync(String rawIntent,String provider,String rawRequestId){
+            final String requestId=rawRequestId==null?"":rawRequestId.replaceAll("[^A-Za-z0-9_-]","");
+            final String intent=rawIntent==null?"":rawIntent;
+            final String p=provider==null?"":provider.trim().toUpperCase(java.util.Locale.US);
+            if(requestId.isEmpty()||intent.isEmpty())return;
+            new Thread(()->{
+                org.json.JSONObject details=lazyArticleReflectDetails(intent,p);
+                final String payload=details==null?"{}":details.toString();
+                runOnUiThread(()->{
+                    if(webView==null)return;
+                    String js="window.__abajCinemaArticleDetails&&window.__abajCinemaArticleDetails("+
+                        JSONObject.quote(requestId)+","+JSONObject.quote(p)+","+payload+");";
+                    try{webView.evaluateJavascript(js,null);}catch(Exception ignored){}
+                });
+            },"abaj-cinema-details").start();
+        }
+
         @JavascriptInterface public void cinemaProviderOptionsAsync(String rawIntent,String provider,String rawRequestId){
             final String requestId=rawRequestId==null?"":rawRequestId.replaceAll("[^A-Za-z0-9_-]","");
             final String intent=rawIntent==null?"":rawIntent;
