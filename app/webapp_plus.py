@@ -1750,7 +1750,8 @@ a{{display:block;text-decoration:none;border-radius:14px;padding:15px;margin:10p
 <a class="secondary" href="{web_url}">Открыть через t.me</a>
 <div class="small">Если Telegram откроет только профиль бота, откройте чат и отправьте код <b>{code}</b> обычным сообщением.</div>
 </div><script>
-setTimeout(function(){{ window.location.href={json.dumps(tg_url)}; }},250);
+window.location.href={json.dumps(tg_url)};
+setTimeout(function(){{ window.location.href={json.dumps(web_url)}; }},900);
 </script></body></html>"""
     return web.Response(text=page, content_type='text/html', headers={'Cache-Control':'no-store, max-age=0'})
 
@@ -1775,9 +1776,11 @@ async def api_tv_pair_qr(request):
     username = (me.username or '').lstrip('@')
     if not username:
         return web.json_response({'ok':False,'error':'bot_unavailable'}, status=503)
-    # QR opens Telegram bot directly with the TV pairing payload. No intermediate web page.
-    deeplink = f'https://t.me/{username}?start=tv_{code}'
-    img = qrcode.make(deeplink, image_factory=qrcode.image.svg.SvgPathImage, border=2, box_size=8)
+    # Use a tiny redirect page in the QR so Android scanners first try the
+    # native Telegram scheme (opens the bot chat with START), then fall back
+    # to the normal t.me deep link if the scheme is not handled.
+    landing = f'{request.scheme}://{request.host}/api/tv/pair/open?code={code}'
+    img = qrcode.make(landing, image_factory=qrcode.image.svg.SvgPathImage, border=2, box_size=8)
     buf = io.BytesIO()
     img.save(buf)
     return web.Response(
