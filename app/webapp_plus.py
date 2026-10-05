@@ -944,7 +944,7 @@ async def api_cinema_meta(request):
                         if score > best_score:
                             best_score = score
                             best = row
-                    except Exception:
+                except Exception:
                     pass
 
             if not best:
