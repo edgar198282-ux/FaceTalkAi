@@ -126,6 +126,23 @@ async def _kinopub_access_token(uid):
     await set_setting(f'kinopub_tokens:{uid}', '')
     return ''
 
+def _kinopub_total_from_data(data):
+    if isinstance(data, dict):
+        for key in ('total','total_items','totalItems','count','items_count'):
+            value = data.get(key)
+            try:
+                if value is not None:
+                    return max(0, int(value))
+            except Exception:
+                pass
+        for key in ('pagination','pager','meta','data'):
+            value = data.get(key)
+            if isinstance(value, dict):
+                found = _kinopub_total_from_data(value)
+                if found is not None:
+                    return found
+    return None
+
 def _kinopub_extract_items(data):
     if isinstance(data, list):
         return [x for x in data if isinstance(x, dict)]
@@ -425,6 +442,117 @@ async def api_kinopub_play(request):
 
     return web.json_response({'ok':False,'error':'kinopub_stream_not_found'}, status=404)
 
+async def api_kinopub_overview(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
+    token = await _kinopub_access_token(uid)
+    if not token:
+        return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
+
+    async def total_for(type_name):
+        status, data = await _kinopub_api('GET','/v1/items',params={
+            'access_token':token,'type':type_name,'perpage':1,'page':0,'sort':'updated-'
+        })
+        if status >= 400:
+            return None
+        total = _kinopub_total_from_data(data)
+        if total is not None:
+            return total
+        return len(_kinopub_extract_items(data))
+
+    movies_total, series_total = await asyncio.gather(total_for('movie'), total_for('serial'))
+    return web.json_response({
+        'ok':True,
+        'movies_total':movies_total,
+        'series_total':series_total,
+        'total':(movies_total + series_total) if isinstance(movies_total,int) and isinstance(series_total,int) else None,
+    }, headers={'Cache-Control':'private, max-age=300'})
+
+def _cinema_library_key(uid, section):
+    return f'cinema_library:{int(uid)}:{section}'
+
+async def _cinema_library_read(uid, section):
+    raw = await get_setting(_cinema_library_key(uid, section), '[]')
+    try:
+        rows = json.loads(raw or '[]')
+    except Exception:
+        rows = []
+    return [x for x in rows if isinstance(x, dict)]
+
+async def _cinema_library_write(uid, section, rows):
+    await set_setting(_cinema_library_key(uid, section), json.dumps(rows, ensure_ascii=False, separators=(',',':')))
+
+async def api_cinema_library(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
+    section = str(request.query.get('section') or 'history').strip().lower()
+    if section not in ('history','watching','bookmarks'):
+        return web.json_response({'ok':False,'error':'bad_section'}, status=400)
+    rows = await _cinema_library_read(uid, section)
+    return web.json_response({'ok':True,'section':section,'items':rows,'count':len(rows)}, headers={'Cache-Control':'no-store'})
+
+async def api_cinema_library_bookmark(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
+    body = await request.json()
+    item = body.get('item') if isinstance(body,dict) else None
+    if not isinstance(item,dict):
+        return web.json_response({'ok':False,'error':'bad_item'}, status=400)
+    item_id = str(item.get('id') or '').strip()
+    title = str(item.get('title') or '').strip()
+    if not item_id and not title:
+        return web.json_response({'ok':False,'error':'bad_item'}, status=400)
+    rows = await _cinema_library_read(uid, 'bookmarks')
+    key = item_id or title.casefold()
+    existing = next((i for i,x in enumerate(rows) if (str(x.get('id') or '').strip() or str(x.get('title') or '').strip().casefold()) == key), -1)
+    added = existing < 0
+    if added:
+        compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
+        compact['saved_at'] = int(time.time())
+        rows.insert(0, compact)
+    else:
+        rows.pop(existing)
+    rows = rows[:300]
+    await _cinema_library_write(uid, 'bookmarks', rows)
+    return web.json_response({'ok':True,'added':added,'count':len(rows)}, headers={'Cache-Control':'no-store'})
+
+async def api_cinema_library_watch(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
+    body = await request.json()
+    item = body.get('item') if isinstance(body,dict) else None
+    if not isinstance(item,dict):
+        return web.json_response({'ok':False,'error':'bad_item'}, status=400)
+    item_id = str(item.get('id') or '').strip()
+    title = str(item.get('title') or '').strip()
+    if not item_id and not title:
+        return web.json_response({'ok':False,'error':'bad_item'}, status=400)
+    key = item_id or title.casefold()
+    compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
+    compact['watched_at'] = int(time.time())
+    for section, limit in (('history',200),('watching',100)):
+        rows = await _cinema_library_read(uid, section)
+        rows = [x for x in rows if (str(x.get('id') or '').strip() or str(x.get('title') or '').strip().casefold()) != key]
+        rows.insert(0, dict(compact))
+        await _cinema_library_write(uid, section, rows[:limit])
+    return web.json_response({'ok':True}, headers={'Cache-Control':'no-store'})
+
 async def api_kinopub_catalog(request):
     user = await _user_from_request(request)
     if not user:
@@ -457,7 +585,7 @@ async def api_kinopub_catalog(request):
         if requested_kind in ('movies','series') and row['kind'] != requested_kind:
             continue
         rows.append(row)
-    return web.json_response({'ok':True,'items':rows,'count':len(rows)}, headers={'Cache-Control':'no-store'})
+    return web.json_response({'ok':True,'items':rows,'count':len(rows),'total':_kinopub_total_from_data(data)}, headers={'Cache-Control':'no-store'})
 
 
 def _apk_target(channel='stable'):
@@ -2296,6 +2424,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
     app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play)
+    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
