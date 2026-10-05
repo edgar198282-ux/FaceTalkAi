@@ -913,73 +913,72 @@ async def api_cinema_meta(request):
             best = None
             best_score = -1
 
-            for meta_type in ("movie","series"):
-                try:
-                    search_url = (
-                        f"https://v3-cinemeta.strem.io/catalog/{meta_type}/top/search="
-                        + quote(title)
-                        + ".json"
-                    )
-                    async with session.get(search_url, allow_redirects=True) as resp:
-                        if resp.status >= 400:
-                            continue
-                        search_data = await resp.json(content_type=None)
-                    metas = search_data.get("metas") if isinstance(search_data, dict) else []
-                    for row in metas if isinstance(metas, list) else []:
-                        if not isinstance(row, dict):
-                            continue
-                        imdb_id = str(row.get("imdb_id") or row.get("id") or "")
-                        if not imdb_id.startswith("tt"):
-                            continue
-                        row_year_raw = str(row.get("year") or row.get("releaseInfo") or "")
-                        year_match = re.search(r"(19|20)\d{2}", row_year_raw)
-                        row_year = int(year_match.group(0)) if year_match else 0
-                        if wanted_year and row_year and abs(wanted_year-row_year) > 1:
-                            continue
-                        score = _cinema_title_score(title, row.get("name") or "")
-                        if wanted_year and row_year == wanted_year:
-                            score += 45
-                        elif wanted_year and row_year:
-                            score += 15
-                        if score > best_score:
-                            best_score = score
-                            best = {
-                                "id": imdb_id,
-                                "l": row.get("name") or "",
-                                "y": row_year or "",
-                                "_cinemeta_search": row,
-                            }
-                except Exception:
-                    continue
-
-            if not best or best_score < 50:
+            try:
                 suggest_url = "https://v2.sg.media-imdb.com/suggestion/x/" + quote(title) + ".json"
                 async with session.get(suggest_url, allow_redirects=True) as resp:
-                    if resp.status < 400:
-                        data = await resp.json(content_type=None)
-                    else:
-                        data = {}
+                    data = await resp.json(content_type=None) if resp.status < 400 else {}
                 candidates = data.get("d") if isinstance(data, dict) else []
-                for row in candidates if isinstance(candidates, list) else []:
+                for pos, row in enumerate(candidates if isinstance(candidates, list) else []):
                     if not isinstance(row, dict):
                         continue
                     imdb_id = str(row.get("id") or "")
                     if not imdb_id.startswith("tt"):
                         continue
-                    name = str(row.get("l") or "").strip()
                     row_year = int(row.get("y") or 0) if str(row.get("y") or "").isdigit() else 0
                     if wanted_year and row_year and abs(wanted_year-row_year) > 1:
                         continue
-                    score = _cinema_title_score(title, name)
+                    score = max(0, 90 - pos * 12)
+                    score += _cinema_title_score(title, row.get("l") or "") // 4
                     if wanted_year and row_year == wanted_year:
-                        score += 45
+                        score += 55
                     elif wanted_year and row_year:
-                        score += 15
+                        score += 20
                     if score > best_score:
                         best_score = score
                         best = row
+            except Exception:
+                pass
 
-            if not best or best_score < 50:
+            if not best:
+                for meta_type in ("movie","series"):
+                    try:
+                        search_url = (
+                            f"https://v3-cinemeta.strem.io/catalog/{meta_type}/top/search="
+                            + quote(title)
+                            + ".json"
+                        )
+                        async with session.get(search_url, allow_redirects=True) as resp:
+                            if resp.status >= 400:
+                                continue
+                            search_data = await resp.json(content_type=None)
+                        metas = search_data.get("metas") if isinstance(search_data, dict) else []
+                        for pos, row in enumerate(metas if isinstance(metas, list) else []):
+                            if not isinstance(row, dict):
+                                continue
+                            imdb_id = str(row.get("imdb_id") or row.get("id") or "")
+                            if not imdb_id.startswith("tt"):
+                                continue
+                            row_year_raw = str(row.get("year") or row.get("releaseInfo") or "")
+                            year_match = re.search(r"(19|20)\d{2}", row_year_raw)
+                            row_year = int(year_match.group(0)) if year_match else 0
+                            if wanted_year and row_year and abs(wanted_year-row_year) > 1:
+                                continue
+                            score = _cinema_title_score(title, row.get("name") or "")
+                            score += max(0, 35 - pos * 5)
+                            if wanted_year and row_year == wanted_year:
+                                score += 45
+                            if score > best_score:
+                                best_score = score
+                                best = {
+                                    "id": imdb_id,
+                                    "l": row.get("name") or "",
+                                    "y": row_year or "",
+                                    "_cinemeta_search": row,
+                                }
+                    except Exception:
+                        continue
+
+            if not best:
                 return web.json_response({"ok":True,"found":False}, headers={"Cache-Control":"no-store"})
 
             imdb_id = str(best.get("id") or "")
