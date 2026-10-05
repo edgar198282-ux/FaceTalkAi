@@ -451,6 +451,40 @@ public class MainActivity extends Activity {
         }catch(Throwable ignored){}
     }
 
+    private void ensureLazyMediaRuntime(Context lazy,ClassLoader cl){
+        if(lazy==null||cl==null)return;
+        try{
+            Class<?> baseAppClass=Class.forName(
+                "com.lazycatsoftware.lazymediadeluxe.BaseApplication",true,cl
+            );
+            java.lang.reflect.Field singleton=baseAppClass.getDeclaredField("OooO0oO");
+            singleton.setAccessible(true);
+            if(singleton.get(null)!=null)return;
+
+            final Context packageContext=lazy;
+            ContextWrapper isolatedContext=new ContextWrapper(packageContext){
+                @Override public Context getApplicationContext(){return this;}
+            };
+
+            Object app=baseAppClass.getDeclaredConstructor().newInstance();
+            java.lang.reflect.Method attach=ContextWrapper.class.getDeclaredMethod(
+                "attachBaseContext",Context.class
+            );
+            attach.setAccessible(true);
+            attach.invoke(app,isolatedContext);
+            singleton.set(null,app);
+            Log.i("AbajCinema","LazyMedia runtime context attached");
+        }catch(Throwable e){
+            Throwable root=e;
+            if(e instanceof java.lang.reflect.InvocationTargetException){
+                Throwable t=((java.lang.reflect.InvocationTargetException)e).getTargetException();
+                if(t!=null)root=t;
+            }
+            Log.w("AbajCinema","LazyMedia runtime attach failed "+
+                root.getClass().getName()+" "+String.valueOf(root.getMessage()));
+        }
+    }
+
     private void setLazyModelString(Object model,String method,String value){
         try{
             java.lang.reflect.Method m=model.getClass().getMethod(method,String.class);
@@ -569,6 +603,7 @@ public class MainActivity extends Activity {
             );
             ClassLoader cl=lazy.getClassLoader();
 
+                        ensureLazyMediaRuntime(lazy,cl);
             Class<?> bv=Class.forName("obf.bv",true,cl);
             Object[] servers=(Object[])bv.getMethod("values").invoke(null);
             if(idx<0||idx>=servers.length)return out;
@@ -707,6 +742,7 @@ public class MainActivity extends Activity {
                 Context.CONTEXT_INCLUDE_CODE|Context.CONTEXT_IGNORE_SECURITY
             );
             ClassLoader cl=lazy.getClassLoader();
+                        ensureLazyMediaRuntime(lazy,cl);
             Class<?> bv=Class.forName("obf.bv",true,cl);
             Object[] servers=(Object[])bv.getMethod("values").invoke(null);
             if(idx<0||idx>=servers.length)return out;
@@ -838,6 +874,7 @@ public class MainActivity extends Activity {
                 Context.CONTEXT_INCLUDE_CODE|Context.CONTEXT_IGNORE_SECURITY
             );
             ClassLoader cl=lazy.getClassLoader();
+                        ensureLazyMediaRuntime(lazy,cl);
             Class<?> qi=Class.forName("obf.qi",true,cl);
             java.lang.reflect.Method target=null;
             for(java.lang.reflect.Method m:qi.getDeclaredMethods()){
@@ -948,7 +985,8 @@ public class MainActivity extends Activity {
                     Context.CONTEXT_INCLUDE_CODE|Context.CONTEXT_IGNORE_SECURITY
                 );
                 ClassLoader cl=lazy.getClassLoader();
-                Class<?> bv=Class.forName("obf.bv",true,cl);
+                            ensureLazyMediaRuntime(lazy,cl);
+            Class<?> bv=Class.forName("obf.bv",true,cl);
                 java.lang.reflect.Method values=bv.getMethod("values");
                 Object[] all=(Object[])values.invoke(null);
                 java.lang.reflect.Method mName=null,mAlt=null,mUrl=null,mCode=null;
