@@ -4445,6 +4445,40 @@ function openPlayer(id){
   showTvZap(ch);
   if(!nativeTv&&window.innerWidth>window.innerHeight)setAppFullscreen(true);
 }
+function retryCinemaPlayback(reason=''){
+  if(!current||!String(current.id||'').startsWith('cinema:external:'))return false;
+  const list=Array.isArray(current.cinemaFallbacks)?current.cinemaFallbacks:[];
+  const tried=new Set(Array.isArray(current.cinemaTriedUrls)?current.cinemaTriedUrls:[]);
+  let next=null;
+  while(current.cinemaFallbackIndex<list.length){
+    const candidate=list[current.cinemaFallbackIndex++];
+    const u=String(candidate?.url||'').trim();
+    if(!u||tried.has(u))continue;
+    next=candidate;
+    break;
+  }
+  if(!next)return false;
+  const nextUrl=String(next.url||'').trim();
+  tried.add(nextUrl);
+  current.cinemaTriedUrls=[...tried];
+  current.url=nextUrl;
+  current.cinemaHeaders=(next.headers&&typeof next.headers==='object')?next.headers:{};
+  current.quality=String(next.quality||'');
+  cinemaDiag('playback_fallback',{
+    title:current.name,
+    provider:current.cinemaProvider||'',
+    playable:true,
+    message:'retry '+(current.quality||next.format||'alternate')+' after '+String(reason||'error')
+  });
+  const err=document.getElementById('playerError');
+  if(err)err.textContent='Пробую другой вариант видео…';
+  setNativeMedia3Visible(false);
+  try{if(window.AbajNative&&typeof AbajNative.nativeProbeStop==='function')AbajNative.nativeProbeStop()}catch(e){}
+  setTimeout(()=>{
+    if(current&&String(current.url||'')===nextUrl)startStream(current);
+  },120);
+  return true;
+}
 function stopTvWatchdog(){
   if(tvWatchdogTimer){clearInterval(tvWatchdogTimer);tvWatchdogTimer=null}
   tvWatchdogLastTime=-1;
@@ -4881,6 +4915,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         playable:false,
         message:String(reason||'ошибка потока')
       });
+      if(retryCinemaPlayback(String(reason||'native error')))return;
       err.textContent='Видео не открылось: '+String(reason||'ошибка потока');
     };
     try{
@@ -7261,8 +7296,17 @@ function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
     btn.onclick=()=>{
       meta.textContent='Открываю…';
       const playTitle=String(cinemaSourcePickerMovie?.title||info.raw||'Кино');
+      const fallbacks=qualityRows
+        .map(x=>x.row)
+        .filter(x=>String(x?.url||'').trim()&&String(x?.url||'').trim()!==realUrl)
+        .map(x=>({
+          url:String(x.url||'').trim(),
+          headers:(x.headers&&typeof x.headers==='object')?x.headers:{},
+          quality:String(x.quality||''),
+          format:String(x.format||'')
+        }));
       closeCinemaSourcePicker(false);
-      window.__abajOpenExternalMedia(realUrl,playTitle,provider,row?.headers||{});
+      window.__abajOpenExternalMedia(realUrl,playTitle,provider,row?.headers||{},fallbacks);
     };
     list.appendChild(btn);
   });
@@ -7718,9 +7762,22 @@ function playCinemaSource(index){
     note.textContent='Этот источник пока не отдал прямой поток. Окно не закрываю — можно выбрать другой источник.';
   }
 }
-window.__abajOpenExternalMedia=function(url,title,provider='',headers={}){
+window.__abajOpenExternalMedia=function(url,title,provider='',headers={},fallbacks=[]){
   const raw=String(url||'').trim();
   if(!(raw.toLowerCase().startsWith('http://')||raw.toLowerCase().startsWith('https://')||raw.toLowerCase().startsWith('content:')))return;
+  const uniqueFallbacks=[];
+  const seenFallbacks=new Set([raw]);
+  for(const x of (Array.isArray(fallbacks)?fallbacks:[])){
+    const u=String(x?.url||'').trim();
+    if(!/^https?:\/\//i.test(u)||seenFallbacks.has(u))continue;
+    seenFallbacks.add(u);
+    uniqueFallbacks.push({
+      url:u,
+      headers:(x?.headers&&typeof x.headers==='object')?x.headers:{},
+      quality:String(x?.quality||''),
+      format:String(x?.format||'')
+    });
+  }
   const ch={
     id:'cinema:external:'+Date.now(),
     name:String(title||'Кино'),
@@ -7730,7 +7787,10 @@ window.__abajOpenExternalMedia=function(url,title,provider='',headers={}){
     quality:'',
     height:0,
     cinemaProvider:String(provider||'').trim().toUpperCase(),
-    cinemaHeaders:(headers&&typeof headers==='object')?headers:{}
+    cinemaHeaders:(headers&&typeof headers==='object')?headers:{},
+    cinemaFallbacks:uniqueFallbacks,
+    cinemaFallbackIndex:0,
+    cinemaTriedUrls:[raw]
   };
   try{
     cinemaMode=true;
