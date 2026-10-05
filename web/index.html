@@ -6703,7 +6703,7 @@ async function loadLazyProviderIdMap(){
       const out={};
       for(const row of (Array.isArray(rows)?rows:[])){
         const id=String(row?.id??'').trim();
-        const candidates=[row?.name,row?.alt,row?.enum,row?.url]
+        const candidates=[row?.enum,row?.name,row?.alt,row?.string,row?.url]
           .map(x=>String(x||'').trim())
           .filter(Boolean);
         let name='';
@@ -6722,16 +6722,31 @@ async function loadLazyProviderIdMap(){
           if(up.includes('ZONA')){name='ZONA';break}
           if(up.includes('ENCYCLOPEDIA')){name='ENCYCLOPEDIA';break}
         }
-        if(id&&name)out[id]=name;
-        if(id&&!name){
+        const aliases=[
+          id,
+          String(row?.code??'').trim(),
+          String(row?.hash??'').trim(),
+          String(row?.string??'').trim(),
+          String(row?.enum??'').trim()
+        ].filter(Boolean);
+        if(name){
+          for(const alias of aliases)out[alias]=name;
+        }else{
           const fallback=candidates
             .map(x=>String(x||'').trim())
-            .find(x=>x&&!/^https?:\/\//i.test(x)&&x.length<48);
-          if(fallback)out[id]=normalizeLazyProviderName(fallback);
+            .find(x=>x&&!/^https?:\/\//i.test(x)&&x.length<48&&!/^-?\d+$/.test(x));
+          if(fallback){
+            const normalized=normalizeLazyProviderName(fallback);
+            if(normalized&&!/^-?\d+$/.test(normalized)){
+              for(const alias of aliases)out[alias]=normalized;
+            }
+          }
         }
       }
       lazyProviderIdMap=out;
-      const discovered=[...new Set(Object.values(out).map(normalizeLazyProviderName).filter(Boolean))];
+      const discovered=[...new Set(Object.values(out)
+        .map(normalizeLazyProviderName)
+        .filter(x=>x&&!/^-?\d+$/.test(String(x))))];
       for(const name of discovered){
         if(!LAZYMEDIA_PROVIDER_ORDER.includes(name))LAZYMEDIA_PROVIDER_ORDER.push(name);
       }
