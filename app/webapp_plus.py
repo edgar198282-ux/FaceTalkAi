@@ -922,6 +922,21 @@ async def api_cinema_meta(request):
                 if resp.status >= 400:
                     page = ""
 
+            cinemeta = {}
+            for meta_type in ("movie","series"):
+                try:
+                    meta_url = f"https://v3-cinemeta.strem.io/meta/{meta_type}/{imdb_id}.json"
+                    async with session.get(meta_url, allow_redirects=True) as resp:
+                        if resp.status >= 400:
+                            continue
+                        cm = await resp.json(content_type=None)
+                        if isinstance(cm, dict) and isinstance(cm.get("meta"), dict):
+                            cinemeta = cm["meta"]
+                            if cinemeta.get("name"):
+                                break
+                except Exception:
+                    continue
+
         ld = {}
         if page:
             m = re.search(
@@ -955,23 +970,28 @@ async def api_cinema_meta(request):
         directors = _imdb_name(ld.get("director"))
         image = _imdb_clean_image(ld.get("image") or (best.get("i") or {}).get("imageUrl") if isinstance(best.get("i"), dict) else "")
 
+        cm_genres = cinemeta.get("genres") if isinstance(cinemeta, dict) else []
+        if isinstance(cm_genres, list):
+            cm_genres = ", ".join(str(x) for x in cm_genres if x)
+        cm_director = cinemeta.get("director") if isinstance(cinemeta, dict) else []
+        cm_cast = cinemeta.get("cast") if isinstance(cinemeta, dict) else []
         result = {
             "ok":True,
             "found":True,
             "imdb_id":imdb_id,
-            "title":str(ld.get("name") or best.get("l") or title),
+            "title":str((cinemeta or {}).get("name") or ld.get("name") or best.get("l") or title),
             "original_title":str(ld.get("alternateName") or ""),
-            "year":str(best.get("y") or year_raw or ""),
-            "description":str(ld.get("description") or ""),
-            "rating":str(aggregate.get("ratingValue") or ""),
-            "duration":duration,
-            "genre":genres,
-            "director":directors,
-            "actors":actors,
-            "country":_imdb_name(ld.get("countryOfOrigin")),
-            "poster":image,
-            "backdrop":"",
-            "trailer":str(trailer.get("embedUrl") or trailer.get("url") or ""),
+            "year":str((cinemeta or {}).get("year") or best.get("y") or year_raw or ""),
+            "description":str((cinemeta or {}).get("description") or ld.get("description") or ""),
+            "rating":str((cinemeta or {}).get("imdbRating") or aggregate.get("ratingValue") or ""),
+            "duration":str((cinemeta or {}).get("runtime") or duration or ""),
+            "genre":str(cm_genres or genres or ""),
+            "director":_imdb_name(cm_director) or directors,
+            "actors":_imdb_name(cm_cast) or actors,
+            "country":str((cinemeta or {}).get("country") or _imdb_name(ld.get("countryOfOrigin")) or ""),
+            "poster":str((cinemeta or {}).get("poster") or image or ""),
+            "backdrop":str((cinemeta or {}).get("background") or ""),
+            "trailer":str((cinemeta or {}).get("trailer") or trailer.get("embedUrl") or trailer.get("url") or ""),
         }
         return web.json_response(result, headers={"Cache-Control":"public, max-age=21600"})
     except Exception as exc:
