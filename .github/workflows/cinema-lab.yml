@@ -1,0 +1,78 @@
+name: Abaj TV Cinema Lab
+
+on:
+  push:
+    branches: [ "abajtv-cinema-lab" ]
+    paths:
+      - "android/**"
+      - "web/**"
+      - "tests/**"
+      - ".github/workflows/cinema-lab.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: abajtv-cinema-lab
+  cancel-in-progress: true
+
+jobs:
+  cinema-lab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Gradle 8.10.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -o /tmp/gradle.zip
+          sudo unzip -q /tmp/gradle.zip -d /opt/gradle
+          echo "/opt/gradle/gradle-8.10.2/bin" >> "$GITHUB_PATH"
+
+      - name: Cinema regression checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tests/cinema_lab_check.py
+
+      - name: Java and web syntax checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          html=Path('web/index.html').read_text(encoding='utf-8')
+          parts=re.findall(r'<script(?![^>]*\\bsrc=)[^>]*>(.*?)</script>',html,re.S|re.I)
+          Path('/tmp/abajtv-inline.js').write_text('\n'.join(parts),encoding='utf-8')
+          PY
+          node --check /tmp/abajtv-inline.js
+
+      - name: Build lab APK
+        working-directory: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle :app:assembleDebug -PWEB_APP_URL="https://facetalkai-production.up.railway.app"
+
+      - name: Verify APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          test "$(stat -c%s "$APK")" -ge 300000
+          unzip -t "$APK" >/dev/null
+          unzip -l "$APK" | grep -q "classes.dex"
+
+      - name: Upload lab APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AbajTV-cinema-lab
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
