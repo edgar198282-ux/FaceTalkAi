@@ -993,6 +993,16 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 }
 @media(max-width:430px){.cinemaPosterGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 
+.cinemaKpMediaRows{margin-top:24px;display:flex;flex-direction:column;gap:18px}
+.cinemaKpSeasonTitle{font-size:19px;font-weight:900;color:#eaf8ff;margin-bottom:9px}
+.cinemaKpEpisodeRow{display:flex;gap:9px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none}
+.cinemaKpEpisodeBtn{
+  flex:0 0 auto;min-width:88px;min-height:54px;border:1px solid rgba(126,205,247,.35);border-radius:12px;
+  background:#102f46;color:#dff5ff;padding:8px 12px;text-align:left;font-weight:800
+}
+.cinemaKpEpisodeBtn small{display:block;margin-top:3px;color:#9fc3d8;font-size:11px;font-weight:600}
+.cinemaKpEpisodeBtn.active,.cinemaKpEpisodeBtn:focus{outline:none;background:#18aee0;color:#fff;border-color:#7edfff}
+.cinemaKpEpisodeBtn.active small,.cinemaKpEpisodeBtn:focus small{color:#eaffff}
 /* Cinema movie detail */
 .cinemaDetail{
   position:fixed;inset:0;z-index:610;display:none;overflow:auto;
@@ -1204,6 +1214,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
       </div>
       <div class="cinemaDetailDescription" id="cinemaDetailDescription"></div>
       <div class="cinemaDetailFacts" id="cinemaDetailFacts"></div>
+      <div id="cinemaKpMediaRows" class="cinemaKpMediaRows" style="display:none"></div>
     </div>
   </section>
 
@@ -7284,6 +7295,7 @@ async function loadCinemaCatalog(force=false){
 let cinemaSourcePickerItems=[];
 let cinemaSourceGroups=[];
 let cinemaSourcePickerMovie=null;
+let cinemaSelectedKinoMedia=null;
 let cinemaExternalChannel=null;
 let cinemaResolvePending=new Map();
 let cinemaSourceIgnoreUntil=0;
@@ -8809,6 +8821,78 @@ function cinemaDetailFact(label,value){
   const esc=x=>String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
   return '<div class="k">'+esc(label)+'</div><div class="v">'+esc(value)+'</div>';
 }
+function kinoMediaId(media){
+  return String(media?.id??media?.media_id??media?.mid??'');
+}
+function kinoMediaLabel(media,index){
+  const season=media?.season!=null?'S'+media.season:'';
+  const number=media?.number!=null?'E'+media.number:'';
+  const title=String(media?.title||media?.name||'').trim();
+  return [season,number].filter(Boolean).join(' ')||title||('Видео '+(index+1));
+}
+function renderKinoPubMediaRows(item){
+  const host=document.getElementById('cinemaKpMediaRows');
+  if(!host)return;
+  const rows=Array.isArray(item?.media_rows)?item.media_rows:[];
+  if(cinemaSource!=='kinopub'||!rows.length){
+    host.style.display='none';
+    host.innerHTML='';
+    cinemaSelectedKinoMedia=null;
+    return;
+  }
+  host.style.display='flex';
+  host.innerHTML='';
+  let first=null;
+  rows.forEach((row,rowIndex)=>{
+    const items=Array.isArray(row?.items)?row.items:[];
+    if(!items.length)return;
+    const wrap=document.createElement('div');
+    const title=document.createElement('div');
+    title.className='cinemaKpSeasonTitle';
+    title.textContent=String(row.title||('Сезон '+(rowIndex+1)));
+    const list=document.createElement('div');
+    list.className='cinemaKpEpisodeRow';
+    items.forEach((media,index)=>{
+      if(!first)first=media;
+      const btn=document.createElement('button');
+      btn.className='cinemaKpEpisodeBtn';
+      const label=kinoMediaLabel(media,index);
+      const duration=Number(media?.duration||0);
+      const min=duration>60?Math.round(duration/60):0;
+      btn.innerHTML='<span>'+label.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>'+
+        (min?'<small>'+min+' мин.</small>':'');
+      btn.onclick=()=>{
+        cinemaSelectedKinoMedia=media;
+        host.querySelectorAll('.cinemaKpEpisodeBtn').forEach(x=>x.classList.remove('active'));
+        btn.classList.add('active');
+        watchCinemaDetail();
+      };
+      list.appendChild(btn);
+    });
+    wrap.appendChild(title);
+    wrap.appendChild(list);
+    host.appendChild(wrap);
+  });
+  const selectedId=kinoMediaId(cinemaSelectedKinoMedia);
+  const all=[...host.querySelectorAll('.cinemaKpEpisodeBtn')];
+  if(!cinemaSelectedKinoMedia)cinemaSelectedKinoMedia=first;
+  if(all.length){
+    const mediaFlat=rows.flatMap(r=>Array.isArray(r.items)?r.items:[]);
+    const idx=Math.max(0,mediaFlat.findIndex(x=>kinoMediaId(x)===kinoMediaId(cinemaSelectedKinoMedia)));
+    if(all[idx])all[idx].classList.add('active');
+  }
+}
+async function loadKinoPubItemDetails(item){
+  if(cinemaSource!=='kinopub'||!item?.id)return item;
+  try{
+    const r=await fetch('/api/kinopub/item?id='+encodeURIComponent(String(item.id)),{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)return item;
+    const d=await r.json();
+    const detail=(d&&d.item&&typeof d.item==='object')?d.item:{};
+    return {...item,...detail,source:'KINOPUB',media_rows:Array.isArray(d.media_rows)?d.media_rows:[]};
+  }catch(e){return item}
+}
+
 function renderCinemaDetail(item){
   cinemaDetailMovie=item;
   cinemaSourcePickerMovie=item;
@@ -8867,6 +8951,11 @@ function renderCinemaDetail(item){
     cinemaDetailFact('Режиссер',director)+
     cinemaDetailFact('В ролях',cast);
 
+  renderKinoPubMediaRows(item);
+  const watchBtn=document.getElementById('cinemaDetailWatch');
+  const hasRows=Array.isArray(item?.media_rows)&&item.media_rows.some(r=>Array.isArray(r.items)&&r.items.length);
+  if(watchBtn&&cinemaSource==='kinopub')watchBtn.textContent=hasRows?(cinemaItemLooksSeries(item)?'СМОТРЕТЬ СЕРИЮ':'СМОТРЕТЬ'):'СМОТРЕТЬ';
+
   detail.classList.add('open');
   document.getElementById('cinemaScreen')?.style.setProperty('display','none');
   requestAnimationFrame(()=>{
@@ -8889,13 +8978,17 @@ function closeCinemaDetail(){
     if(target)target.focus();
   },20);
 }
-async function resolveKinoPubInternalStream(item){
-  const direct=String(item?.url||item?.stream||item?.stream_url||'').trim();
+async function resolveKinoPubInternalStream(item,media=null){
+  const direct=String(media?.url||item?.url||item?.stream||item?.stream_url||'').trim();
   if(/^https?:\/\//i.test(direct))return {url:direct,provider:'KINOPUB'};
   const id=String(item?.id||'').trim();
-  if(!id)return null;
+  const mid=kinoMediaId(media);
+  if(!id&&!mid)return null;
   try{
-    const r=await fetch('/api/kinopub/play?id='+encodeURIComponent(id),{headers:authHeaders(),cache:'no-store'});
+    const params=new URLSearchParams();
+    if(id)params.set('id',id);
+    if(mid)params.set('mid',mid);
+    const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return null;
     const d=await r.json();
     if(d&&d.ok&&/^https?:\/\//i.test(String(d.url||'')))return d;
@@ -8909,13 +9002,15 @@ async function watchCinemaDetail(){
   const watchBtn=document.getElementById('cinemaDetailWatch');
   if(cinemaSource==='kinopub'||String(item.source||'').toUpperCase()==='KINOPUB'){
     if(watchBtn){watchBtn.disabled=true;watchBtn.textContent='ОТКРЫВАЮ KINOPUB…'}
-    const resolved=await resolveKinoPubInternalStream(item);
-    if(watchBtn){watchBtn.disabled=false;watchBtn.textContent='СМОТРЕТЬ ФИЛЬМ'}
+    const media=cinemaSelectedKinoMedia;
+    const resolved=await resolveKinoPubInternalStream(item,media);
+    if(watchBtn){watchBtn.disabled=false;watchBtn.textContent=cinemaItemLooksSeries(item)?'СМОТРЕТЬ СЕРИЮ':'СМОТРЕТЬ'}
     if(resolved&&resolved.url){
       await rememberCinemaWatch(item);
       const detail=document.getElementById('cinemaDetail');
       if(detail)detail.classList.remove('open');
-      window.__abajOpenExternalMedia(resolved.url,String(item.title||'Кино'),'KINOPUB',resolved.headers||{});
+      const mediaLabel=media?kinoMediaLabel(media,0):'';
+      window.__abajOpenExternalMedia(resolved.url,String(item.title||'Кино')+(mediaLabel?' · '+mediaLabel:''),'KINOPUB',resolved.headers||{});
       return;
     }
     const modal=ensureCinemaSourceModal();
@@ -9069,9 +9164,13 @@ async function enrichCinemaMovie(item){
 }
 async function openCinemaMovie(item){
   if(!item)return;
+  cinemaSelectedKinoMedia=null;
   renderCinemaDetail(item);
   const openedId=String(item?.id||item?.intent||'');
-  const enriched=await enrichCinemaMovie(item);
+  let enriched=await enrichCinemaMovie(item);
+  if(cinemaSource==='kinopub'||String(item?.source||'').toUpperCase()==='KINOPUB'){
+    enriched=await loadKinoPubItemDetails(enriched);
+  }
   const currentId=String(cinemaDetailMovie?.id||cinemaDetailMovie?.intent||'');
   if(currentId!==openedId)return;
 
