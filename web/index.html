@@ -1177,9 +1177,12 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
         <button class="cinemaMenuItem active" data-cinema-main="movies" onclick="cinemaSideAction('movies')"><span>◉</span><span>ФИЛЬМЫ</span></button>
         <button class="cinemaMenuItem" data-cinema-main="series" onclick="cinemaSideAction('series')"><span>▣</span><span>СЕРИАЛЫ</span></button>
         <button class="cinemaMenuItem" onclick="cinemaSideAction('cartoons')"><span>☆</span><span>МУЛЬТФИЛЬМЫ</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('anime')"><span>✦</span><span>АНИМЕ</span></button>
         <button class="cinemaMenuItem" onclick="cinemaSideAction('4k')"><span>HDR</span><span>4K</span></button>
         <button class="cinemaMenuItem" onclick="cinemaSideAction('docs')"><span>▣</span><span>ДОК.ФИЛЬМЫ</span></button>
         <button class="cinemaMenuItem" onclick="cinemaSideAction('docseries')"><span>▣</span><span>ДОК.СЕРИАЛЫ</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('tvshows')"><span>▣</span><span>ТВ ШОУ</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('concerts')"><span>♫</span><span>КОНЦЕРТЫ</span></button>
         <button class="cinemaMenuItem" onclick="cinemaSideAction('collections')"><span>▤</span><span>ПОДБОРКИ</span></button>
       </div>
     </aside>
@@ -6188,35 +6191,38 @@ function cinemaDetailOpen(){
   return !!document.getElementById('cinemaDetail')?.classList.contains('open');
 }
 function cinemaDetailFocusable(){
-  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction')]
+  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction,#cinemaDetail #cinemaBookmarkBtn,#cinemaDetail .cinemaKpEpisodeBtn')]
     .filter(el=>el.offsetParent!==null);
 }
 function moveCinemaDetailFocus(direction){
-  const back=document.getElementById('cinemaDetailBack');
-  const watch=document.getElementById('cinemaDetailWatch');
-  const trailer=document.getElementById('cinemaDetailTrailer');
-  const active=document.activeElement;
-  let target=null;
-
-  if(active===back){
-    if(direction==='down'||direction==='right')target=watch||trailer;
-    else target=back;
-  }else if(active===watch){
-    if(direction==='left')target=back;
-    else if(direction==='right')target=trailer||watch;
-    else if(direction==='up')target=back;
-    else target=watch;
-  }else if(active===trailer){
-    if(direction==='left')target=watch||back;
-    else if(direction==='up')target=back;
-    else target=trailer;
-  }else{
-    target=watch||trailer||back;
+  const items=cinemaDetailFocusable();
+  if(!items.length)return;
+  let current=document.activeElement;
+  if(!items.includes(current)){
+    current=document.getElementById('cinemaDetailWatch')||items[0];
+    try{current.focus({preventScroll:true})}catch(_){try{current.focus()}catch(__){}}
+    return;
   }
-
-  if(!target)return;
-  try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
-  try{target.scrollIntoView({block:'center',inline:'center',behavior:'auto'})}catch(_){}
+  const a=current.getBoundingClientRect();
+  const ax=a.left+a.width/2, ay=a.top+a.height/2;
+  let best=null,bestScore=Infinity;
+  items.forEach(el=>{
+    if(el===current)return;
+    const r=el.getBoundingClientRect();
+    const x=r.left+r.width/2,y=r.top+r.height/2;
+    const dx=x-ax,dy=y-ay;
+    let valid=false,primary=0,secondary=0;
+    if(direction==='left'&&dx<-6){valid=true;primary=-dx;secondary=Math.abs(dy)}
+    else if(direction==='right'&&dx>6){valid=true;primary=dx;secondary=Math.abs(dy)}
+    else if(direction==='up'&&dy<-6){valid=true;primary=-dy;secondary=Math.abs(dx)}
+    else if(direction==='down'&&dy>6){valid=true;primary=dy;secondary=Math.abs(dx)}
+    if(!valid)return;
+    const score=primary+secondary*1.8;
+    if(score<bestScore){bestScore=score;best=el}
+  });
+  if(!best)return;
+  try{best.focus({preventScroll:true})}catch(_){try{best.focus()}catch(__){}}
+  try{best.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
 }
 document.addEventListener('keydown',e=>{
   if(nativeTv&&tvLastAutoTimer)cancelLastChannelAutoStart(true);
@@ -6553,7 +6559,7 @@ function writeCinemaCache(items){
   try{localStorage.setItem(cinemaCacheKey(),JSON.stringify({ts:Date.now(),items:(items||[]).slice(0,80)}))}catch(e){}
 }
 function cinemaItemLooksSeries(item){
-  const t=(String(item?.content_type||'')+' '+String(item?.subtitle||'')+' '+String(item?.title||'')).toLowerCase();
+  const t=(String(item?.type||'')+' '+String(item?.kind||'')+' '+String(item?.content_type||'')+' '+String(item?.subtitle||'')+' '+String(item?.title||'')).toLowerCase();
   return /(сериал|series|serial|tv[\s_-]*series|season|сезон|episode|эпизод)/i.test(t);
 }
 function cinemaYear(item){
@@ -6772,7 +6778,7 @@ async function loadKinoPubSection(section,options={}){
   const status=document.getElementById('cinemaStatus');
   const sectionTitle=document.getElementById('cinemaSectionTitle');
   const labels={
-    movies:'Фильмы',series:'Сериалы',cartoons:'Мультфильмы',
+    movies:'Фильмы',series:'Сериалы',cartoons:'Мультфильмы',anime:'Аниме',
     docmovies:'Док. фильмы',docseries:'Док. сериалы',tvshows:'ТВ шоу',
     concerts:'Концерты','4k':'4K',collections:'Подборки',
     fresh:'Новинки',popular:'Популярные',hot:'Горячие'
@@ -6999,9 +7005,12 @@ function cinemaSideAction(action){
     if(action==='movies'){cinemaType='movies';localStorage.setItem('abaj_cinema_type','movies');loadKinoPubSection('movies');return}
     if(action==='series'){cinemaType='series';localStorage.setItem('abaj_cinema_type','series');loadKinoPubSection('series');return}
     if(action==='cartoons'){loadKinoPubSection('cartoons');return}
+    if(action==='anime'){loadKinoPubSection('anime');return}
     if(action==='4k'){loadKinoPubSection('4k');return}
     if(action==='docs'){loadKinoPubSection('docmovies');return}
     if(action==='docseries'){loadKinoPubSection('docseries');return}
+    if(action==='tvshows'){loadKinoPubSection('tvshows');return}
+    if(action==='concerts'){loadKinoPubSection('concerts');return}
     if(action==='collections'){loadKinoPubSection('collections');return}
   }
   if(action==='movies'){setCinemaShellTitle('ФИЛЬМЫ НОВИНКИ');setCinemaType('movies');return}
