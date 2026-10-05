@@ -7508,7 +7508,7 @@ async function cinemaV2FindSources(movie){
       return group;
     }
     group.playable=false;
-    return null;
+    return group;
   }));
 
   return checked.filter(Boolean);
