@@ -606,6 +606,135 @@ async def api_kinopub_filters(request):
     )
     return web.json_response({'ok':True,'types':types,'genres':genres}, headers={'Cache-Control':'private, max-age=1800'})
 
+async def _kinopub_section_page(token, *, path='/v1/items', params=None):
+    status, data = await _kinopub_api('GET', path, params={'access_token':token, **(params or {})})
+    if status >= 400:
+        return status, [], None, data
+    rows = []
+    for item in _kinopub_extract_items(data):
+        row = _kinopub_normalize(item)
+        if row:
+            rows.append(row)
+    return status, rows, _kinopub_total_from_data(data), data
+
+async def api_kinopub_section(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
+    token = await _kinopub_access_token(uid)
+    if not token:
+        return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
+
+    section = str(request.query.get('section') or 'movies').strip().lower()
+    sort = str(request.query.get('sort') or 'updated-').strip()
+    try:
+        page = max(1, int(request.query.get('page') or 1))
+        perpage = max(12, min(60, int(request.query.get('perpage') or 40)))
+    except Exception:
+        page, perpage = 1, 40
+
+    if section == 'collections':
+        status, data = await _kinopub_api('GET','/v1/collections',params={
+            'access_token':token,'page':page,'perpage':perpage,'sort':sort
+        })
+        if status >= 400:
+            return web.json_response({'ok':False,'error':'kinopub_collections_failed','status':status}, status=502)
+        raw = _kinopub_extract_items(data)
+        rows=[]
+        for item in raw:
+            title=str(item.get('title') or item.get('name') or '').strip()
+            if not title: continue
+            rows.append({
+                'id':str(item.get('id') or ''),
+                'title':title,
+                'poster':_kinopub_poster(item),
+                'description':str(item.get('description') or item.get('plot') or ''),
+                'source':'KINOPUB_COLLECTION',
+                'kind':'collection',
+            })
+        total=_kinopub_total_from_data(data)
+        return web.json_response({
+            'ok':True,'items':rows,'count':len(rows),'total':total,'page':page,'perpage':perpage,
+            'has_more':bool(len(rows)>0 and (total is None or page*perpage<total)),
+        },headers={'Cache-Control':'no-store'})
+
+    mapping = {
+        'movies': {'type':'movie'},
+        'series': {'type':'serial'},
+        'docmovies': {'type':'documovie'},
+        'docseries': {'type':'docuserial'},
+        'tvshows': {'type':'tvshow'},
+        'concerts': {'type':'concert'},
+        '4k': {'quality':'4k'},
+    }
+    shortcut = ''
+    if section in ('fresh','popular','hot'):
+        shortcut = section
+        api_type = str(request.query.get('type') or 'movie').strip().lower()
+        if api_type == 'series': api_type='serial'
+        params={'type':api_type,'page':page,'perpage':perpage}
+        path=f'/v1/items/{shortcut}'
+    elif section == 'cartoons':
+        params={'genre':23,'page':page,'perpage':perpage,'sort':sort}
+        path='/v1/items'
+    else:
+        params={**mapping.get(section, {'type':'movie'}),'page':page,'perpage':perpage,'sort':sort}
+        path='/v1/items'
+
+    status, rows, total, data = await _kinopub_section_page(token,path=path,params=params)
+    if status >= 400:
+        return web.json_response({'ok':False,'error':'kinopub_section_failed','status':status}, status=502)
+
+    # KinoPub may return a small server-side page even when a larger perpage is requested.
+    # Fill the first screen from subsequent pages, capped to keep API work small.
+    if page == 1 and len(rows) < min(30, perpage):
+        seen={str(x.get('id') or '') for x in rows}
+        next_page=2
+        while len(rows) < min(40, perpage) and next_page <= 5:
+            more_params=dict(params); more_params['page']=next_page
+            st, more, _, _ = await _kinopub_section_page(token,path=path,params=more_params)
+            if st >= 400 or not more: break
+            added=0
+            for x in more:
+                key=str(x.get('id') or '')
+                if key and key not in seen:
+                    seen.add(key); rows.append(x); added+=1
+            if not added: break
+            next_page += 1
+
+    return web.json_response({
+        'ok':True,'items':rows,'count':len(rows),'total':total,'page':page,'perpage':perpage,
+        'has_more':bool(len(rows)>0 and (total is None or page*perpage<total)),
+    },headers={'Cache-Control':'no-store'})
+
+async def api_kinopub_collection_items(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid=int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
+    token=await _kinopub_access_token(uid)
+    if not token:
+        return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
+    cid=str(request.query.get('id') or '').strip()
+    if not cid:
+        return web.json_response({'ok':False,'error':'missing_collection_id'}, status=400)
+    try: page=max(1,int(request.query.get('page') or 1))
+    except Exception: page=1
+    status,data=await _kinopub_api('GET','/v1/collections/view',params={'access_token':token,'id':cid,'page':page,'perpage':40})
+    if status>=400:
+        return web.json_response({'ok':False,'error':'kinopub_collection_failed','status':status}, status=502)
+    rows=[]
+    for item in _kinopub_extract_items(data):
+        row=_kinopub_normalize(item)
+        if row: rows.append(row)
+    total=_kinopub_total_from_data(data)
+    return web.json_response({'ok':True,'items':rows,'count':len(rows),'total':total,'page':page},headers={'Cache-Control':'no-store'})
+
 async def api_kinopub_catalog(request):
     user = await _user_from_request(request)
     if not user:
@@ -620,10 +749,10 @@ async def api_kinopub_catalog(request):
     requested_kind = str(request.query.get('type') or '').strip().lower()
     genre = str(request.query.get('genre') or '').strip()
     try:
-        page = max(0, int(request.query.get('page') or 0))
+        page = max(1, int(request.query.get('page') or 1))
         perpage = max(12, min(60, int(request.query.get('perpage') or 30)))
     except Exception:
-        page, perpage = 0, 30
+        page, perpage = 1, 30
     path = '/v1/items/search' if query else '/v1/items'
     params = {'access_token':token, 'perpage':perpage, 'page':page}
     api_type = 'serial' if requested_kind in ('series','serial') else ('movie' if requested_kind in ('movies','movie') else '')
@@ -653,7 +782,7 @@ async def api_kinopub_catalog(request):
     return web.json_response({
         'ok':True,'items':rows,'count':len(rows),'total':total,
         'page':page,'perpage':perpage,
-        'has_more':bool(len(rows) >= perpage and (total is None or (page + 1) * perpage < total)),
+        'has_more':bool(len(rows) > 0 and (total is None or page * perpage < total)),
     }, headers={'Cache-Control':'no-store'})
 
 
@@ -2493,7 +2622,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
     app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play)
-    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters)
+    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
