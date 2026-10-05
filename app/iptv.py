@@ -2269,6 +2269,26 @@ def _playback_benchmark_summary():
     }
 
 
+async def api_cinema_diagnostic(request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    stage = str(body.get("stage") or "")[:64]
+    title = str(body.get("title") or "")[:160]
+    provider = str(body.get("provider") or "")[:64]
+    rows = int(body.get("rows") or 0)
+    playable = body.get("playable")
+    message = str(body.get("message") or "")[:240]
+    logging.info(
+        "CINEMA_DIAG stage=%s provider=%s rows=%s playable=%s title=%s message=%s",
+        stage, provider, rows, playable, title, message
+    )
+    return web.json_response({"ok": True})
+
+
 async def api_cinema_catalog(request):
     kind = "series" if str(request.query.get("type") or "").lower() == "series" else "movies"
     raw = await get_setting(f"cinema_catalog:{kind}", "[]")
@@ -3042,6 +3062,7 @@ def install(app: web.Application):
     app.router.add_get("/api/iptv/worker-bootstrap", api_worker_bootstrap)
     app.router.add_post("/api/iptv/worker-snapshot", api_worker_snapshot)
     app.router.add_get("/api/iptv/diagnostics", api_diagnostics)
+    app.router.add_post("/api/cinema/diagnostic", api_cinema_diagnostic)
     app.router.add_get("/api/cinema/catalog", api_cinema_catalog)
     app.router.add_post("/api/iptv/refresh", api_refresh)
     app.router.add_get("/api/iptv/play", api_play)
