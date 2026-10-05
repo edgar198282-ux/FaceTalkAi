@@ -67,10 +67,9 @@ async def _hide_reply_keyboard(m: Message):
         pass
 
 def _apk_download_url():
-    if not MINIAPP_URL:
-        return ""
-    parts = urlsplit(MINIAPP_URL)
-    return urlunsplit((parts.scheme, parts.netloc, "/downloads/AbajTV-latest.apk", "", ""))
+    # Use the signed GitHub Release asset directly. Some Android/Telegram
+    # download managers keep the Railway FileResponse stuck at 100%.
+    return "https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-latest/AbajTV-latest.apk"
 
 def _tv_apk_download_url():
     return "https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-latest/AbajTV-TV-compat.apk"
