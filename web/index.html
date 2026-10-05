@@ -1210,8 +1210,8 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
       </div>
     </aside>
     <div class="cinemaShellBody">
-      <div id="cinemaStatus" class="cinemaStatus">Каталог загружается…</div>
-      <div id="cinemaKpFilters" style="display:none;gap:8px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none"></div>
+      <div id="cinemaStatus" class="cinemaStatus" style="display:none"></div>
+      <div id="cinemaKpFilters" style="display:none"></div>
       <div class="cinemaTypeGrid" id="cinemaTypeGrid" style="display:none">
         <button id="cinemaMoviesCard" class="cinemaTypeCard active" data-cinema-type="movies"></button>
         <button id="cinemaSeriesCard" class="cinemaTypeCard" data-cinema-type="series"></button>
@@ -7001,7 +7001,7 @@ function syncCinemaSourceUi(){
   const kp=cinemaMode&&cinemaSource==='kinopub';
   document.body.classList.toggle('cinemaKinopub',kp);
   const filters=document.getElementById('cinemaKpFilters');
-  if(filters)filters.style.display=kp?'flex':'none';
+  if(filters)filters.style.display='none';
   if(!kp){
     const more=document.getElementById('cinemaLoadMoreBtn');
     if(more)more.style.display='none';
@@ -7086,6 +7086,8 @@ async function openKinoPubCollection(item){
 async function loadKinoPubFilters(force=false){
   if(cinemaSource!=='kinopub')return;
   const host=document.getElementById('cinemaKpFilters');
+  if(host){host.style.display='none';host.innerHTML='';}
+  return;
   if(!host)return;
   host.style.display='flex';
   const key=cinemaType;
