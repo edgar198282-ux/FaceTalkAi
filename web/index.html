@@ -7193,6 +7193,42 @@ async function loadCinemaLibrary(section){
     if(status)status.textContent='Раздел временно недоступен.';
   }
 }
+let cinemaBookmarkStateSeq=0;
+function cinemaBookmarkKey(item){
+  const id=String(item?.id||'').trim();
+  if(id)return 'id:'+id;
+  const title=cinemaPublicText(item?.title||item?.name||'').toLocaleLowerCase('ru');
+  return title?'title:'+title:'';
+}
+function setCinemaBookmarkButtonState(added){
+  const btn=document.getElementById('cinemaBookmarkBtn');
+  if(!btn)return;
+  btn.textContent=added?'♥':'♡';
+  btn.classList.toggle('bookmarked',!!added);
+  btn.title=added?'Убрать из закладок':'Добавить в закладки';
+  btn.setAttribute('aria-label',btn.title);
+}
+async function syncCinemaBookmarkState(item){
+  const btn=document.getElementById('cinemaBookmarkBtn');
+  if(!btn)return;
+  if(!item||cinemaSource!=='kinopub'){
+    setCinemaBookmarkButtonState(false);
+    btn.disabled=true;
+    return;
+  }
+  btn.disabled=false;
+  const seq=++cinemaBookmarkStateSeq;
+  const wanted=cinemaBookmarkKey(item);
+  try{
+    const r=await fetch('/api/cinema/library?section=bookmarks',{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(seq!==cinemaBookmarkStateSeq)return;
+    const rows=Array.isArray(d.items)?d.items:[];
+    const added=!!wanted&&rows.some(x=>cinemaBookmarkKey(x)===wanted);
+    setCinemaBookmarkButtonState(added);
+  }catch(e){}
+}
 async function toggleCinemaBookmark(){
   const item=cinemaDetailMovie;
   if(!item||cinemaSource!=='kinopub')return;
@@ -7204,12 +7240,7 @@ async function toggleCinemaBookmark(){
       body:JSON.stringify({item})
     });
     const d=await r.json().catch(()=>({}));
-    if(r.ok&&btn){
-      btn.textContent=d.added?'♥':'♡';
-      btn.classList.toggle('bookmarked',!!d.added);
-      btn.title=d.added?'Убрать из закладок':'Добавить в закладки';
-      btn.setAttribute('aria-label',btn.title);
-    }
+    if(r.ok&&btn)setCinemaBookmarkButtonState(!!d.added);
     await refreshCinemaLibraryCounts();
   }catch(e){}
   if(btn)btn.disabled=false;
@@ -9214,6 +9245,7 @@ function renderCinemaDetail(item){
     heroPoster.style.display=(!bg&&poster)?'block':'none';
   }
   title.textContent=cinemaDisplayTitle(item);
+  syncCinemaBookmarkState(item);
 
   const badgeList=[];
   const sourceBadge='';
