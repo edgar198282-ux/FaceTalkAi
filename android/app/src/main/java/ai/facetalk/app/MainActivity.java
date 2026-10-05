@@ -719,6 +719,9 @@ public class MainActivity extends Activity {
             String thumb=decodeCinemaIntentPart(rawIntent,4);
             setLazyModelString(model,"setID",article);
             setLazyModelString(model,"setArticleUrl",article);
+            if(provider!=null&&"ZONA".equals(provider.trim().toUpperCase(java.util.Locale.US))){
+                setLazyModelString(model,"setContentUrl",cinemaArticleUrl(rawIntent,"ZONA"));
+            }
             setLazyModelString(model,"setTitle",title);
             setLazyModelString(model,"setThumbUrl",thumb);
 
