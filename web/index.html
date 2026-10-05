@@ -2411,7 +2411,7 @@ async function refreshAppUpdateState(){
   const btn=document.getElementById('appUpdateBtn');
   const ver=document.getElementById('appVersionText');
   if(!btn||!ver)return;
-  const inApk=!!tvAppVersionCode;
+  const inApk=!!tvAppVersionCode||launchParams.get('app')==='1'||['android','android_tv'].includes(launchParams.get('source')||'');
   btn.style.display=inApk?'block':'none';
   ver.style.display=inApk?'block':'none';
   if(!inApk)return;
@@ -2423,7 +2423,7 @@ async function refreshAppUpdateState(){
     if(!r.ok)return;
     const d=await r.json();
     const latest=Number(d.version_code||0);
-    if(d.available&&latest>tvAppVersionCode){
+    if(d.available&&(!tvAppVersionCode||latest>tvAppVersionCode)){
       const v=String(d.version_name||latest);
       btn.textContent=appLang==='hy'?('⬆️ Թարմացնել մինչև v'+v):(appLang==='en'?('⬆️ Update to v'+v):('⬆️ Обновить до v'+v));
       btn.dataset.update='1';
@@ -2433,7 +2433,6 @@ async function refreshAppUpdateState(){
   }catch(e){}
 }
 function manualAppUpdate(){
-  if(!tvAppVersionCode)return;
   window.location.href='facetalk://check-update';
 }
 function openTvSettings(){
