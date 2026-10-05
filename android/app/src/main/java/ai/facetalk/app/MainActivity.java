@@ -529,6 +529,7 @@ public class MainActivity extends Activity {
             );
             java.util.concurrent.CountDownLatch baseDone=new java.util.concurrent.CountDownLatch(1);
             java.util.concurrent.CountDownLatch contentDone=new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.atomic.AtomicInteger pendingContentCallbacks=new java.util.concurrent.atomic.AtomicInteger(0);
             Object callback=java.lang.reflect.Proxy.newProxyInstance(
                 cl,
                 new Class<?>[]{callbackClass},
@@ -552,7 +553,11 @@ public class MainActivity extends Activity {
                         baseDone.countDown();
                     }
                     if("OooO0Oo".equals(n)){
-                        contentDone.countDown();
+                        if(pendingContentCallbacks.get()>0){
+                            if(pendingContentCallbacks.decrementAndGet()<=0)contentDone.countDown();
+                        }else{
+                            contentDone.countDown();
+                        }
                     }
                     return null;
                 }
@@ -583,10 +588,15 @@ public class MainActivity extends Activity {
                             break;
                         }
                     }
-                    if(detectContent!=null&&contentTypes!=null){
+                    if(detectContent!=null&&contentTypes!=null&&contentTypes.length>0){
                         detectContent.setAccessible(true);
+                        pendingContentCallbacks.set(contentTypes.length);
                         for(Object contentType:contentTypes){
-                            try{detectContent.invoke(articleObj,contentType);}catch(Throwable ignored){}
+                            try{
+                                detectContent.invoke(articleObj,contentType);
+                            }catch(Throwable ignored){
+                                if(pendingContentCallbacks.decrementAndGet()<=0)contentDone.countDown();
+                            }
                         }
                         try{contentDone.await(12,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
                     }
