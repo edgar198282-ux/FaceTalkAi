@@ -495,20 +495,87 @@ public class MainActivity extends Activity {
             setLazyModelString(model,"setTitle",title);
             setLazyModelString(model,"setThumbUrl",thumb);
 
-            String p=provider==null?"":provider.trim().toUpperCase(java.util.Locale.US);
-            String className="";
-            if("FILMIX".equals(p))className="com.lazycatsoftware.mediaservices.content.FILMIX_Article";
-            else if("ZONA".equals(p))className="com.lazycatsoftware.mediaservices.content.ZONA_Article";
-            else if("ZONAFILM".equals(p))className="com.lazycatsoftware.mediaservices.content.ZONAFILM_Article";
-            else return out;
+            java.util.LinkedHashSet<String> providerKeys=new java.util.LinkedHashSet<>();
+            String requested=provider==null?"":provider.trim().toUpperCase(java.util.Locale.US);
+            if(!requested.isEmpty())providerKeys.add(requested);
+            try{
+                if(server instanceof java.lang.Enum){
+                    providerKeys.add(((java.lang.Enum<?>)server).name());
+                }
+            }catch(Throwable ignored){}
+            try{providerKeys.add(String.valueOf(server));}catch(Throwable ignored){}
+            for(String methodName:new String[]{"OooO0OO","OooO0Oo","OooO0oO"}){
+                try{
+                    java.lang.reflect.Method m=bv.getDeclaredMethod(methodName);
+                    m.setAccessible(true);
+                    Object value=m.invoke(server);
+                    if(value!=null)providerKeys.add(String.valueOf(value));
+                }catch(Throwable ignored){}
+            }
 
-            Class<?> articleClass=Class.forName(className,true,cl);
-            Object articleObj=articleClass.getConstructor(modelClass).newInstance(model);
-            java.lang.reflect.Method parse=articleClass.getMethod("parseCustom");
-            Object parsed=parse.invoke(articleObj);
-            if(parsed==null)return out;
+            java.util.LinkedHashSet<String> classNames=new java.util.LinkedHashSet<>();
+            for(String key:providerKeys){
+                String normalized=(key==null?"":key)
+                    .trim()
+                    .toUpperCase(java.util.Locale.US)
+                    .replaceAll("[^A-Z0-9]+","_")
+                    .replaceAll("^_+|_+$","");
+                if(normalized.isEmpty())continue;
+                classNames.add("com.lazycatsoftware.mediaservices.content."+normalized+"_Article");
+                if(normalized.endsWith("_OLD")){
+                    classNames.add("com.lazycatsoftware.mediaservices.content."+
+                        normalized.substring(0,normalized.length()-4)+"_Article");
+                }
+            }
 
-            collectLazyMediaUrls(parsed,"",0,new java.util.HashSet<Integer>(),out);
+            Throwable lastError=null;
+            String usedClass="";
+            for(String className:classNames){
+                try{
+                    Class<?> articleClass=Class.forName(className,true,cl);
+                    java.lang.reflect.Constructor<?> ctor=null;
+                    for(java.lang.reflect.Constructor<?> c:articleClass.getDeclaredConstructors()){
+                        Class<?>[] pt=c.getParameterTypes();
+                        if(pt.length==1&&pt[0].isAssignableFrom(modelClass)){
+                            ctor=c;
+                            break;
+                        }
+                    }
+                    if(ctor==null)continue;
+                    ctor.setAccessible(true);
+                    Object articleObj=ctor.newInstance(model);
+
+                    java.lang.reflect.Method parse=null;
+                    for(java.lang.reflect.Method m:articleClass.getMethods()){
+                        if("parseCustom".equals(m.getName())&&m.getParameterTypes().length==0){
+                            parse=m;
+                            break;
+                        }
+                    }
+                    if(parse==null){
+                        for(java.lang.reflect.Method m:articleClass.getDeclaredMethods()){
+                            if("parseCustom".equals(m.getName())&&m.getParameterTypes().length==0){
+                                parse=m;
+                                break;
+                            }
+                        }
+                    }
+                    if(parse==null)continue;
+                    parse.setAccessible(true);
+                    Object parsed=parse.invoke(articleObj);
+                    if(parsed==null)continue;
+
+                    org.json.JSONArray candidate=new org.json.JSONArray();
+                    collectLazyMediaUrls(parsed,"",0,new java.util.HashSet<Integer>(),candidate);
+                    if(candidate.length()>0){
+                        for(int i=0;i<candidate.length();i++)out.put(candidate.opt(i));
+                        usedClass=className;
+                        break;
+                    }
+                }catch(Throwable e){
+                    lastError=e;
+                }
+            }
 
             java.util.HashSet<String> seenUrls=new java.util.HashSet<>();
             org.json.JSONArray dedup=new org.json.JSONArray();
@@ -520,10 +587,16 @@ public class MainActivity extends Activity {
                 seenUrls.add(u);
                 dedup.put(row);
             }
-            Log.i("AbajCinema",p+" reflected streams="+dedup.length()+" source="+source);
+            Log.i("AbajCinema",requested+" reflected streams="+dedup.length()+
+                " source="+source+" parser="+usedClass);
+            if(dedup.length()==0&&lastError!=null){
+                Log.w("AbajCinema","provider reflection empty: "+requested+" "+
+                    lastError.getClass().getSimpleName()+" "+String.valueOf(lastError.getMessage()));
+            }
             return dedup;
         }catch(Throwable e){
-            Log.w("AbajCinema","provider reflection failed: "+provider+" "+e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            Log.w("AbajCinema","provider reflection failed: "+provider+" "+
+                e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
             return out;
         }
     }
