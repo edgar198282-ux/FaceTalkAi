@@ -1135,6 +1135,14 @@ public class MainActivity extends Activity {
                 if(nativeProbePlayer.isPlaying())nativeProbePlayer.pause();else nativeProbePlayer.play();
             });
         }
+        @JavascriptInterface public void setNativeAdMuted(boolean muted){
+            if(!isTv)return;
+            runOnUiThread(()->{
+                try{
+                    if(nativeProbePlayer!=null)nativeProbePlayer.setVolume(muted?0f:1f);
+                }catch(Exception ignored){}
+            });
+        }
         @JavascriptInterface public String lazyMediaProviderMap(){
             org.json.JSONArray out=new org.json.JSONArray();
             try{
