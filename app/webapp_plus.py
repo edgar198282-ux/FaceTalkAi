@@ -1771,8 +1771,13 @@ async def api_tv_pair_qr(request):
         data = {}
     if int(data.get('expires_at') or 0) < int(time.time()):
         return web.json_response({'ok':False,'error':'expired'}, status=410)
-    landing = f'{request.scheme}://{request.host}/api/tv/pair/open?code={code}'
-    img = qrcode.make(landing, image_factory=qrcode.image.svg.SvgPathImage, border=2, box_size=8)
+    me = await request.app['bot'].get_me()
+    username = (me.username or '').lstrip('@')
+    if not username:
+        return web.json_response({'ok':False,'error':'bot_unavailable'}, status=503)
+    # QR opens Telegram bot directly with the TV pairing payload. No intermediate web page.
+    deeplink = f'https://t.me/{username}?start=tv_{code}'
+    img = qrcode.make(deeplink, image_factory=qrcode.image.svg.SvgPathImage, border=2, box_size=8)
     buf = io.BytesIO()
     img.save(buf)
     return web.Response(
