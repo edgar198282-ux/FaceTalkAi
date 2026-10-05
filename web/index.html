@@ -2035,10 +2035,12 @@ function closeAdmin(){
 function getKinoPubInfo(){
   try{
     if(window.AbajNative&&typeof AbajNative.kinoPubInfo==='function'){
-      return JSON.parse(AbajNative.kinoPubInfo()||'{}');
+      const info=JSON.parse(AbajNative.kinoPubInfo()||'{}');
+      return {...info,bridge:true};
     }
+    if(window.AbajNative)return {installed:false,bridge:false,needs_app_update:true};
   }catch(e){}
-  return {installed:false};
+  return {installed:false,bridge:false};
 }
 function kinoPubExplicitlyDisabled(){
   return localStorage.getItem('abaj_kinopub_disabled')==='1';
@@ -2057,15 +2059,18 @@ function refreshKinoPubAdminStatus(){
   const meta=document.getElementById('kinoPubAdminMeta');
   const info=getKinoPubInfo();
   const disabled=kinoPubExplicitlyDisabled();
+  const bridgeMissing=!!info.needs_app_update;
   const active=info.installed&&!disabled&&cinemaSource==='kinopub';
   if(st){
-    st.textContent=active?'Подключено автоматически':(info.installed?(disabled?'Отключено':'Установлено'):'Не найдено');
-    st.style.color=active?'#16865b':(info.installed?(disabled?'#6f8798':'#0b5f9e'):'#a33');
+    st.textContent=bridgeMissing?'Обновите Abaj TV':(active?'Подключено автоматически':(info.installed?(disabled?'Отключено':'Установлено'):'Не найдено'));
+    st.style.color=bridgeMissing?'#c28a13':(active?'#16865b':(info.installed?(disabled?'#6f8798':'#0b5f9e'):'#a33'));
   }
   if(meta){
-    meta.textContent=info.installed
-      ?('KinoPub '+(info.version||'')+(active?' найден на устройстве и используется как источник Кино.':(disabled?' отключён вручную и сам не подключится.':' найден на устройстве.')))
-      :'KinoPub не найден на этом устройстве.';
+    meta.textContent=bridgeMissing
+      ?'Эта версия Abaj TV ещё не умеет проверять KinoPub. Установите последнее обновление Abaj TV — KinoPub уже добавлен в новый APK.'
+      :(info.installed
+        ?('KinoPub '+(info.version||'')+(active?' найден на устройстве и используется как источник Кино.':(disabled?' отключён вручную и сам не подключится.':' найден на устройстве.')))
+        :'KinoPub не найден на этом устройстве.');
   }
 }
 function openKinoPubFromAdmin(){
@@ -2075,6 +2080,11 @@ function openKinoPubFromAdmin(){
 }
 function connectKinoPubFromAdmin(){
   const info=getKinoPubInfo();
+  if(info.needs_app_update){
+    try{location.href='facetalk://check-update'}catch(e){}
+    refreshKinoPubAdminStatus();
+    return;
+  }
   if(!info.installed){refreshKinoPubAdminStatus();return}
   localStorage.removeItem('abaj_kinopub_disabled');
   cinemaSource='kinopub';
