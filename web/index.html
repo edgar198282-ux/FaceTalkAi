@@ -7303,7 +7303,10 @@ function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
     title.textContent=parts.join(' · ');
   }
 
-  const qualityRows=[...filtered].sort((a,b)=>cinemaQualityRank(a.quality)-cinemaQualityRank(b.quality));
+  const qualityRows=[...filtered].sort((a,b)=>{
+    const ar=cinemaQualityRank(a.quality),br=cinemaQualityRank(b.quality);
+    return (br===9999?0:br)-(ar===9999?0:ar);
+  });
   const seenUrls=new Set();
   let rendered=0;
   qualityRows.forEach((info,i)=>{
@@ -7674,6 +7677,7 @@ async function openCinemaSourceGroup(index){
     if(list)list.innerHTML='<div class="cinemaSourceBusy">Ищу реальные варианты '+provider+'…</div>';
     let rows=Array.isArray(group.resolvedOptions)?group.resolvedOptions:[];
     if(!rows.length)rows=await resolveProviderAcrossItems(group);
+    if(Array.isArray(rows)&&rows.length&&cinemaPlayResolvedMovie(group,rows))return;
     if(rows.length){
       group.resolvedOptions=rows;
       renderResolvedProviderOptions(group,rows);
@@ -7684,6 +7688,7 @@ async function openCinemaSourceGroup(index){
   if(title)title.textContent=group.name+' · ВИДЕО';
   if(!list)return;
   if(Array.isArray(group.resolvedOptions)&&group.resolvedOptions.length){
+    if(cinemaPlayResolvedMovie(group,group.resolvedOptions))return;
     renderResolvedProviderOptions(group,group.resolvedOptions);
     return;
   }
@@ -7960,6 +7965,55 @@ function cinemaV2RenderSources(movie,groups){
   list.appendChild(close);
   setTimeout(()=>focusCinemaSourceButton(0),20);
 }
+function cinemaBestMovieRows(rows){
+  const infos=(Array.isArray(rows)?rows:[])
+    .map(cinemaResolvedRowInfo)
+    .filter(x=>x&&x.row&&/^https?:\/\//i.test(String(x.row.url||'')));
+  const episodic=infos.some(x=>x.season>0||x.episode>0);
+  if(episodic)return {episodic:true,best:null,fallbacks:[]};
+  const ranked=[...infos].sort((a,b)=>{
+    const ar=cinemaQualityRank(a.quality),br=cinemaQualityRank(b.quality);
+    const aa=ar===9999?0:ar,bb=br===9999?0:br;
+    return bb-aa;
+  });
+  const best=ranked[0]?.row||null;
+  const bestUrl=String(best?.url||'').trim();
+  const fallbacks=ranked.slice(1)
+    .map(x=>x.row)
+    .filter(x=>String(x?.url||'').trim()&&String(x?.url||'').trim()!==bestUrl)
+    .map(x=>({
+      url:String(x.url||'').trim(),
+      headers:(x.headers&&typeof x.headers==='object')?x.headers:{},
+      quality:String(x.quality||''),
+      format:String(x.format||'')
+    }));
+  return {episodic:false,best,fallbacks};
+}
+function cinemaPlayResolvedMovie(group,rows){
+  const picked=cinemaBestMovieRows(rows);
+  if(picked.episodic||!picked.best)return false;
+  const provider=normalizeLazyProviderName(group?.name||'');
+  const row=picked.best;
+  const url=String(row?.url||'').trim();
+  if(!url)return false;
+  const playTitle=String(cinemaSourcePickerMovie?.title||row?.name||'Кино');
+  cinemaDiag('playback_request',{
+    title:playTitle,
+    provider,
+    rows:Array.isArray(rows)?rows.length:0,
+    playable:true,
+    message:'auto best '+String(row?.quality||row?.format||'')
+  });
+  closeCinemaSourcePicker(false);
+  window.__abajOpenExternalMedia(
+    url,
+    playTitle,
+    provider,
+    (row?.headers&&typeof row.headers==='object')?row.headers:{},
+    picked.fallbacks
+  );
+  return true;
+}
 async function cinemaV2OpenSource(index){
   const group=cinemaSourceGroups[Number(index)];
   if(!group||!group.items?.length)return;
@@ -8015,6 +8069,7 @@ async function cinemaV2Resolve(group,item,meta){
     }
     if(Array.isArray(rows)&&rows.length){
       group.resolvedOptions=rows;
+      if(cinemaPlayResolvedMovie(group,rows))return;
       renderResolvedProviderOptions(group,rows);
       return;
     }
