@@ -6898,17 +6898,19 @@ function writeCinemaCache(items){
   try{localStorage.setItem(cinemaCacheKey(),JSON.stringify({ts:Date.now(),items:(items||[]).slice(0,80)}))}catch(e){}
 }
 function cinemaItemLooksSeries(item){
+  const t=(String(item?.type||'')+' '+String(item?.kind||'')+' '+String(item?.content_type||'')+' '+String(item?.subtitle||'')).toLowerCase();
+  if(/(сериал|series|serial|tv[\s_-]*series)/i.test(t))return true;
+
   const rows=Array.isArray(item?.media_rows)?item.media_rows:[];
-  if(rows.length){
-    if(rows.length>1)return true;
+  if(rows.length>1)return true;
+  if(rows.length===1){
     const row=rows[0]||{};
     const rowTitle=String(row?.title||'').toLowerCase();
     if(row?.season!=null||/(season|сезон)/i.test(rowTitle))return true;
     const items=Array.isArray(row?.items)?row.items:[];
-    if(items.some(x=>x?.season!=null||x?.number!=null))return true;
+    if(items.some(x=>x?.season!=null))return true;
   }
-  const t=(String(item?.type||'')+' '+String(item?.kind||'')+' '+String(item?.content_type||'')+' '+String(item?.subtitle||'')+' '+String(item?.title||'')).toLowerCase();
-  return /(сериал|series|serial|tv[\s_-]*series|season|сезон|episode|эпизод)/i.test(t);
+  return false;
 }
 function cinemaYear(item){
   const direct=Number(item?.year||0);
@@ -9622,6 +9624,7 @@ function renderCinemaDetail(item){
     if(first&&first.number==null)first.number=1;
     cinemaSelectedKinoMedia=first;
   }
+  if(!isSeries)cinemaSelectedKinoMedia=null;
   if(watchBtn&&cinemaSource==='kinopub'){
     watchBtn.textContent=isSeries
       ?('СМОТРЕТЬ '+(cinemaSelectedKinoMedia?kinoMediaLabel(cinemaSelectedKinoMedia,0):'S1E1'))
