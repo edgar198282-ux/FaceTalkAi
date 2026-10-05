@@ -732,7 +732,7 @@ body.darkMode.nativeTv .channel.focused,body.darkMode.nativeTv .channel:focus{bo
 body.darkMode .appearanceToggle button{background:#142434;color:#d9efff;border-color:#2a465c}
 body.darkMode .appearanceToggle button.active{background:#087fe1;color:#fff;border-color:#087fe1}
 
-.adminPanel{position:fixed;inset:0;background:rgba(3,27,62,.72);z-index:220;display:none;align-items:flex-end;justify-content:center;padding:12px}.adminPanel.open{display:flex}.adminCard{width:min(760px,100%);max-height:88vh;overflow:auto;background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}.adminHead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:nowrap}
+.adminPanel{position:fixed;inset:0;background:rgba(3,27,62,.72);z-index:650;display:none;align-items:flex-end;justify-content:center;padding:12px}.adminPanel.open{display:flex}.adminCard{width:min(760px,100%);max-height:88vh;overflow:auto;background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}.adminHead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:nowrap}
 .adminTitle{min-width:0;flex:1}
 .adminHeadActions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto}
 .adminHeadActions .adminBack,.adminHeadActions .adminClose{height:42px;display:inline-flex;align-items:center;justify-content:center;padding:0 14px;white-space:nowrap}.adminTitle{font-size:22px;font-weight:800;color:#0d4d86}.adminClose{border:0;background:#d9efff;color:#0b5f9e;border-radius:12px;padding:10px 13px;font-weight:800}.adminForm{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin:14px 0}.adminForm input{height:44px;border:1px solid #aad7f2;border-radius:11px;padding:0 11px;background:white}.adminForm button{border:0;border-radius:11px;background:#087fe1;color:white;padding:0 14px;font-weight:800}.adminRows{display:grid;gap:8px}.adminRow{background:white;border:1px solid #cde7f7;border-radius:14px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.adminMeta{font-size:12px;color:#55758c;margin-top:4px}.limitBox{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.limitBox input{width:58px;height:36px;border:1px solid #b9dff5;border-radius:9px;padding:0 8px}.limitBox button{height:36px;border:0;border-radius:9px;background:#168de8;color:white;padding:0 10px}.adminEmpty{padding:18px;text-align:center;color:#66869a}@media(max-width:650px){.adminForm{grid-template-columns:1fr}.adminRow{grid-template-columns:1fr}.limitBox{justify-content:flex-start}}
@@ -1254,7 +1254,7 @@ body.cinemaMode .top{display:none!important}
       <option value="1080">1080p</option>
       <option value="2160">4K</option>
     </select>
-    <button class="settingsAction" id="settingsAdminBtn" onclick="closeTvSettings();openAdmin()" style="display:none;background:#0b5f9e">🛠 Админ-панель</button>
+    <button class="settingsAction" id="settingsAdminBtn" onclick="openAdminFromTvSettings()" style="display:none;background:#0b5f9e">🛠 Админ-панель</button>
     <button class="settingsAction" id="appUpdateBtn" onclick="manualAppUpdate()" style="display:none;background:#123b78">🔄 Проверить обновление</button>
     <div id="appVersionText" class="deviceMeta" style="display:none;text-align:center;margin-top:7px"></div>
     <button class="settingsClose" id="settingsCloseBtn" onclick="closeTvSettings()">Закрыть</button>
@@ -1953,15 +1953,58 @@ function openSettings(){
 function closeSettings(){document.getElementById('settingsModal').classList.remove('open')}
 
 let adminAccessUsers=[];
+function adminPanelOpen(){
+  return !!document.getElementById('adminPanel')?.classList.contains('open');
+}
+function adminFocusable(){
+  const panel=document.getElementById('adminPanel');
+  if(!panel)return [];
+  return [...panel.querySelectorAll('button,input,select,textarea,[tabindex]')].filter(el=>{
+    if(el.disabled)return false;
+    const r=el.getBoundingClientRect();
+    return r.width>0&&r.height>0&&getComputedStyle(el).visibility!=='hidden';
+  });
+}
+function focusAdminControl(el){
+  if(!el)return false;
+  try{el.focus({preventScroll:true})}catch(_){try{el.focus()}catch(__){}}
+  try{el.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
+  return true;
+}
+function moveAdminFocus(action){
+  const els=adminFocusable();
+  if(!els.length)return false;
+  let i=els.indexOf(document.activeElement);
+  if(i<0)i=0;
+  if(action==='up')i=Math.max(0,i-1);
+  else if(action==='down')i=Math.min(els.length-1,i+1);
+  else if(action==='left')i=Math.max(0,i-1);
+  else if(action==='right')i=Math.min(els.length-1,i+1);
+  else if(action==='ok'){
+    const el=document.activeElement;
+    if(el&&typeof el.click==='function'){el.click();return true}
+  }
+  return focusAdminControl(els[i]);
+}
+function openAdminFromTvSettings(){
+  closeTvSettings();
+  requestAnimationFrame(()=>openAdmin());
+}
 function openAdmin(){
-  document.getElementById('adminPanel').classList.add('open');
+  const panel=document.getElementById('adminPanel');
+  if(!panel)return;
+  panel.classList.add('open');
   loadAdminAccess();
   loadAdminEdem();
   loadIptvDiagnostics();
   loadOtaInfo();
   refreshLazyMediaAdminStatus();
+  if(nativeTv)setTimeout(()=>focusAdminControl(adminFocusable()[0]),80);
 }
-function closeAdmin(){document.getElementById('adminPanel').classList.remove('open')}
+function closeAdmin(){
+  const panel=document.getElementById('adminPanel');
+  if(panel)panel.classList.remove('open');
+}
 function backFromAdmin(){
   closeAdmin();
   setTimeout(()=>openTvSettings(),40);
@@ -3880,6 +3923,8 @@ function handleTvBack(){
     if(tvPairPoll){clearInterval(tvPairPoll);tvPairPoll=null}
     return true;
   }
+  const admin=document.getElementById('adminPanel');
+  if(admin&&admin.classList.contains('open')){closeAdmin();return true}
   if(tvSettingsOpen()){closeTvSettings();return true}
   if(tvSearchOpen()){closeTvSearch(false);return true}
   if(tvGuideOpen()){toggleTvGuide(false);return true}
@@ -5750,6 +5795,10 @@ function activatePlayerControl(){
 }
 function tvNativeOkDown(){
   if(!nativeTv)return;
+  if(adminPanelOpen()){
+    tvNativeRemote('ok');
+    return;
+  }
   if(tvSettingsOpen()||tvSettingPickerOpen()||tvGuideOpen()||tvSearchOpen()){
     tvNativeRemote('ok');
     return;
@@ -5776,6 +5825,10 @@ function tvNativeOkUp(){
 }
 function tvNativeRemote(action){
   if(!nativeTv)return;
+  if(adminPanelOpen()){
+    if(action==='up'||action==='down'||action==='left'||action==='right'||action==='ok')moveAdminFocus(action);
+    return;
+  }
   if(cinemaDetailOpen()){
     if(action==='left'||action==='right'||action==='up'||action==='down'){
       moveCinemaDetailFocus(action);
@@ -5999,6 +6052,23 @@ function moveCinemaDetailFocus(direction){
 }
 document.addEventListener('keydown',e=>{
   if(nativeTv&&tvLastAutoTimer)cancelLastChannelAutoStart(true);
+  if(adminPanelOpen()){
+    if(e.key==='Escape'||e.key==='Backspace'){
+      e.preventDefault();
+      closeAdmin();
+      return;
+    }
+    if(nativeTv&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.key)){
+      e.preventDefault();
+      moveAdminFocus(
+        e.key==='ArrowUp'?'up':
+        e.key==='ArrowDown'?'down':
+        e.key==='ArrowLeft'?'left':
+        e.key==='ArrowRight'?'right':'ok'
+      );
+      return;
+    }
+  }
   if(cinemaDetailOpen()){
     if(e.key==='Escape'||e.key==='Backspace'){
       e.preventDefault();
