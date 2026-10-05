@@ -908,7 +908,7 @@ async def api_kinopub_section(request):
         return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
 
     section = str(request.query.get('section') or 'movies').strip().lower()
-    sort = str(request.query.get('sort') or 'updated-').strip()
+    sort = str(request.query.get('sort') or '').strip()
     try:
         page = max(1, int(request.query.get('page') or 1))
         perpage = max(12, min(60, int(request.query.get('perpage') or 40)))
@@ -963,7 +963,9 @@ async def api_kinopub_section(request):
         params={'genre':25,'page':page,'perpage':perpage,'sort':sort}
         path='/v1/items'
     else:
-        params={**mapping.get(section, {'type':'movie'}),'page':page,'perpage':perpage,'sort':sort}
+        params={**mapping.get(section, {'type':'movie'}),'page':page,'perpage':perpage}
+        if sort:
+            params['sort']=sort
         path='/v1/items'
 
     status, rows, total, data = await _kinopub_section_page(token,path=path,params=params)
