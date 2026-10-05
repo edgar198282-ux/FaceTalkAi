@@ -6191,35 +6191,13 @@ function lazyProviderCacheWrite(items){
   try{localStorage.setItem('abaj_lazy_provider_registry_v1',JSON.stringify({ts:Date.now(),items}))}catch(e){}
 }
 async function loadLazyProviderRegistry(force=false){
-  const canonical=LAZYMEDIA_PROVIDER_ORDER.map(name=>({
-    key:name.toLocaleLowerCase('ru'),
-    name
-  }));
   if(!force&&lazyProviderRegistry.length&&Date.now()-lazyProviderRegistryAt<30*60*1000){
     return lazyProviderRegistry;
   }
-
-  const info=getLazyMediaInfo();
-  const out=[...canonical];
-  const seen=new Set(canonical.map(x=>x.key));
-
-  if(info.installed){
-    const probes=['','2025','фильм','сериал'];
-    const batches=await Promise.all(probes.map(q=>lazyMediaSearchAsync(q).catch(()=>[])));
-    const add=(item)=>{
-      const name=normalizeLazyProviderName(cinemaProviderName(item));
-      const key=name.toLocaleLowerCase('ru').replace(/\s+/g,' ').trim();
-      if(!key||key==='источник'||seen.has(key))return;
-      seen.add(key);
-      out.push({key,name});
-    };
-    for(const rows of batches){
-      for(const item of (Array.isArray(rows)?rows:[]))add(item);
-    }
-    for(const item of [...readCinemaCacheFor('movies'),...readCinemaCacheFor('series')])add(item);
-  }
-
-  lazyProviderRegistry=sortLazyProviders(out);
+  lazyProviderRegistry=LAZYMEDIA_PROVIDER_ORDER.map(name=>({
+    key:name.toLocaleLowerCase('ru'),
+    name
+  }));
   lazyProviderRegistryAt=Date.now();
   lazyProviderCacheWrite(lazyProviderRegistry);
   return lazyProviderRegistry;
@@ -6258,23 +6236,37 @@ async function findCinemaItemsForProvider(providerName,movie){
 function cinemaProviderName(item){
   const raw=String(item?.intent||'');
   const sourceId=(raw.split(',')[0]||'').trim();
-  if(sourceId&&lazyProviderIdMap[sourceId])return lazyProviderIdMap[sourceId];
-  const subtitle=String(item?.subtitle||'').trim();
-  const title=String(item?.title||'').trim();
-  if(subtitle&&subtitle.toLocaleLowerCase('ru')!==title.toLocaleLowerCase('ru')){
-    return subtitle.replace(/\s+/g,' ').trim();
+  if(sourceId&&lazyProviderIdMap[sourceId]){
+    const mapped=normalizeLazyProviderName(lazyProviderIdMap[sourceId]);
+    if(LAZYMEDIA_PROVIDER_ORDER.includes(mapped))return mapped;
   }
-  const id=sourceId;
-  if(id==='4')return 'ZONA.MOBI';
-  if(id==='13')return 'ZONAFILM';
-  try{
-    let h=new URL(String(item?.poster||'')).hostname.toLowerCase().replace(/^img\d*\./,'').replace(/^www\./,'');
-    if(h){
-      const base=h.split('.')[0]||h;
-      return base.replace(/[-_]+/g,' ').toUpperCase();
-    }
-  }catch(e){}
-  return id?('Источник '+id):'Источник';
+
+  const candidates=[
+    String(item?.subtitle||''),
+    String(item?.provider||''),
+    String(item?.source||''),
+    String(item?.poster||'')
+  ].map(x=>x.trim()).filter(Boolean);
+
+  for(const value of candidates){
+    const up=value.toUpperCase();
+    if(up.includes('ENCYCLOPEDIA'))return 'ENCYCLOPEDIA';
+    if(up.includes('FILMIX'))return 'FILMIX';
+    if(up.includes('HDREZKA')||up.includes('HD-REZKA')||up.includes('REZKA'))return 'HDREZKA';
+    if(up.includes('KINODB'))return 'KINODB';
+    if(up.includes('ZETFLIX')||up.includes('ZET-FLIX'))return 'ZETFLIX';
+    if(up.includes('SEASONVAR'))return 'SEASONVAR';
+    if(up.includes('ZOMBIE'))return 'ZOMBIE';
+    if(up.includes('OCTOPUS'))return 'OCTOPUS';
+    if(up.includes('ANILIBRIA')&&up.includes('V3'))return 'ANILIBRIA(v3)';
+    if(up.includes('ANILIBRIA'))return 'ANILIBRIA(v1)';
+    if(up.includes('ZONA'))return 'ZONA';
+  }
+
+  if(sourceId==='4')return 'ZONA';
+  if(sourceId==='21')return 'HDREZKA';
+  if(sourceId==='1')return 'FILMIX';
+  return '';
 }
 function cinemaProviderKey(item){
   return normalizeLazyProviderName(cinemaProviderName(item)).toLocaleLowerCase('ru').replace(/\s+/g,' ').trim();
@@ -6331,25 +6323,23 @@ async function showCinemaSourcePicker(item){
     poster.style.visibility=p?'visible':'hidden';
   }
   modal.classList.add('open');
-  if(list)list.innerHTML='<div class="cinemaSourceBusy">Ищу все активные источники LazyMedia…</div>';
+  if(list)list.innerHTML='<div class="cinemaSourceBusy">Ищу варианты во всех видеосервисах LazyMedia…</div>';
 
   cinemaSourcePickerMovie=item;
   await loadLazyProviderIdMap();
+
   const rows=[],seenRows=new Set();
   const push=(x)=>{
     if(!x)return;
     const key=String(x.intent||x.id||x.url||x.title||'');
     if(!key||seenRows.has(key))return;
-    seenRows.add(key); rows.push(x);
+    seenRows.add(key);
+    rows.push(x);
   };
   push(item);
 
   const variants=cinemaSearchVariants(item);
-  const [registry,batches]=await Promise.all([
-    loadLazyProviderRegistry(false).catch(()=>[]),
-    Promise.all(variants.map(q=>lazyMediaSearchAsync(q).catch(()=>[])))
-  ]);
-
+  const batches=await Promise.all(variants.map(q=>lazyMediaSearchAsync(q).catch(()=>[])));
   const base=cinemaComparableTitle(item?.title||'');
   const year=cinemaYear(item);
   for(const found of batches){
@@ -6362,48 +6352,33 @@ async function showCinemaSourcePicker(item){
     }
   }
 
-  const byProvider=new Map();
-  const providerOrder=[];
-  const ensureGroup=(name,key)=>{
-    if(!byProvider.has(key)){
-      byProvider.set(key,{key,name,items:[]});
-      providerOrder.push(key);
-    }
-    return byProvider.get(key);
-  };
+  const byCanonical=new Map(
+    LAZYMEDIA_PROVIDER_ORDER.map(name=>[
+      name.toLocaleLowerCase('ru'),
+      {key:name.toLocaleLowerCase('ru'),name,items:[]}
+    ])
+  );
 
   for(const x of rows){
-    const key=cinemaProviderKey(x);
-    const group=ensureGroup(normalizeLazyProviderName(cinemaProviderName(x)),key);
-    group.items.push(x);
+    const name=normalizeLazyProviderName(cinemaProviderName(x));
+    if(!LAZYMEDIA_PROVIDER_ORDER.includes(name))continue;
+    const key=name.toLocaleLowerCase('ru');
+    const group=byCanonical.get(key);
+    if(group)group.items.push(x);
   }
 
-  cinemaSourceGroups=sortLazyProviders(
-    providerOrder
-      .map(k=>byProvider.get(k))
-      .filter(g=>g&&Array.isArray(g.items))
-      .filter(g=>g.items.length)
-      .filter(g=>normalizeLazyProviderName(g.name)!=='ENCYCLOPEDIA')
-  );
-  const currentProvider=cinemaProviderKey(item);
-  if(currentProvider){
-    cinemaSourceGroups.sort((a,b)=>{
-      const av=a?.key===currentProvider?0:1;
-      const bv=b?.key===currentProvider?0:1;
-      return av-bv;
-    });
-  }
+  cinemaSourceGroups=LAZYMEDIA_PROVIDER_ORDER.map(name=>{
+    const key=name.toLocaleLowerCase('ru');
+    return byCanonical.get(key)||{key,name,items:[]};
+  });
+
   cinemaSourcePickerItems=cinemaSourceGroups.map(g=>{
     const direct=g.items.find(x=>String(x.url||'').trim());
     return direct||g.items[0]||null;
   });
 
-  if(title)title.textContent=String(item?.title||'Кино')+' · '+cinemaSourceGroups.length+' ист.';
+  if(title)title.textContent=String(item?.title||'Кино')+' · '+cinemaSourceGroups.length+' источников';
   if(!list)return;
-  if(!cinemaSourceGroups.length){
-    list.innerHTML='<div class="cinemaSourceEmpty">Активные источники LazyMedia не найдены.</div>';
-    return;
-  }
   renderCinemaSourceGroups();
 }
 
@@ -6424,10 +6399,10 @@ function renderCinemaSourceGroups(){
     const providerName=normalizeLazyProviderName(group.name);
     const qSummary=cinemaQualitySummary(group.resolvedOptions||[]);
     meta.textContent=qSummary
-      ?('Найдено вариантов: '+group.items.length+' · '+qSummary)
+      ?qSummary
       :(direct
-        ?('Найдено вариантов: '+group.items.length+' · поток готов')
-        :('Найдено вариантов: '+group.items.length));
+        ?'Видео готово'
+        :(group.items.length?'Найдено в LazyMedia':'Нажмите для поиска'));
     btn.appendChild(label);
     btn.appendChild(meta);
     btn.onclick=()=>{
@@ -6515,16 +6490,37 @@ function renderResolvedProviderOptions(group,rows){
     empty.textContent=provider+' не вернул реальные варианты видео.';
     list.appendChild(empty);
   }else{
+    const qualityRank=q=>{
+      const t=String(q||'').toUpperCase();
+      if(t.includes('360'))return 360;
+      if(t.includes('480'))return 480;
+      if(t.includes('720'))return 720;
+      if(t.includes('1080')&&t.includes('ULTRA'))return 1081;
+      if(t.includes('1080'))return 1080;
+      if(t.includes('1440')||t.includes('2K'))return 1440;
+      if(t.includes('2160')||t.includes('4K'))return 2160;
+      return 9999;
+    };
+    rows=[...rows].sort((a,b)=>{
+      const aq=String(a?.quality||'')+' '+String(a?.name||'');
+      const bq=String(b?.quality||'')+' '+String(b?.name||'');
+      return qualityRank(aq)-qualityRank(bq);
+    });
     rows.forEach((row,i)=>{
       const btn=document.createElement('button');
       btn.className='cinemaSourceBtn';
       const label=document.createElement('span');
-      label.textContent=String(row?.name||('Вариант '+(i+1)));
       const meta=document.createElement('small');
       let quality=String(row?.quality||'').trim();
       if(quality&&/^\d+$/.test(quality))quality=quality+'p';
       const format=String(row?.format||'').trim().toUpperCase();
-      meta.textContent=[quality,format].filter(Boolean).join(' · ')||'Готово к воспроизведению';
+      const rawName=String(row?.name||'').trim();
+      label.textContent=(format&&format!=='AUTO'&&quality)
+        ?(format+' · '+quality)
+        :(quality||rawName||('Вариант '+(i+1)));
+      meta.textContent=(rawName&&rawName!==label.textContent)
+        ?rawName
+        :'Готово к воспроизведению';
       btn.appendChild(label);
       btn.appendChild(meta);
       btn.onclick=()=>{
@@ -6720,7 +6716,29 @@ async function openCinemaSourceGroup(index){
   const list=document.getElementById('cinemaSourceList');
   const title=document.getElementById('cinemaSourceTitle');
   const provider=normalizeLazyProviderName(group.name);
-  if(!group.items.length)return;
+  if(!group.items.length){
+    if(title)title.textContent=provider+' · ВИДЕО';
+    if(list)list.innerHTML='<div class="cinemaSourceBusy">Ищу '+provider+' для этого фильма…</div>';
+    const found=await findCinemaItemsForProvider(provider,cinemaSourcePickerMovie).catch(()=>[]);
+    if(Array.isArray(found)&&found.length){
+      group.items=found;
+      cinemaSourcePickerItems=group.items;
+    }else{
+      if(list){
+        list.innerHTML='';
+        const empty=document.createElement('div');
+        empty.className='cinemaSourceEmpty';
+        empty.textContent=provider+' не нашёл этот фильм.';
+        list.appendChild(empty);
+        const back=document.createElement('button');
+        back.className='cinemaSourceClose';
+        back.textContent='← Источники';
+        back.onclick=renderCinemaSourceGroups;
+        list.appendChild(back);
+      }
+      return;
+    }
+  }
 
   if(!group.items.some(x=>String(x.url||'').trim())){
     if(title)title.textContent=provider+' · ВИДЕО';
