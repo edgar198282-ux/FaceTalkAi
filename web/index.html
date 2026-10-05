@@ -1968,6 +1968,7 @@ async function loadEdemStatus(){
       const limit=Number(edemStatus.device_limit||0);
       devicesValue.textContent=limit>0?(Number(edemStatus.device_count||0)+' / '+limit):(appLang==='hy'?'անսահմանափակ':(appLang==='en'?'unlimited':'без лимита'));
     }
+    await loadGlobalCinemaSource();
   }catch(e){}
 }
 
@@ -6373,6 +6374,7 @@ document.addEventListener('keyup',e=>{
 });
 
 let cinemaMode=localStorage.getItem('abaj_cinema_mode')==='1';
+let cinemaAccessEnabled=true;
 let cinemaLoaded=false;
 const storedCinemaSource=String(localStorage.getItem('abaj_cinema_source')||'').toLowerCase();
 let cinemaSource=['lazy','kinopub','none'].includes(storedCinemaSource)?storedCinemaSource:'none';
@@ -6384,6 +6386,17 @@ async function loadGlobalCinemaSource(){
     const r=await fetch('/api/cinema/source-state',{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return cinemaSource;
     const d=await r.json();
+    cinemaAccessEnabled=d.cinema_enabled!==false;
+    const btn=document.getElementById('cinemaToggleBtn');
+    if(btn)btn.style.display=cinemaAccessEnabled?'':'none';
+    if(!cinemaAccessEnabled){
+      cinemaSource='none';
+      localStorage.setItem('abaj_cinema_source','none');
+      cinemaMode=false;
+      localStorage.setItem('abaj_cinema_mode','0');
+      syncCinemaUi();
+      return cinemaSource;
+    }
     const src=String(d.source||'none').toLowerCase();
     if(['none','lazy','kinopub'].includes(src)){
       cinemaSource=src;
@@ -6808,6 +6821,7 @@ function moveCinemaFocus(direction){
   }
 }
 function syncCinemaUi(){
+  if(!cinemaAccessEnabled)cinemaMode=false;
   document.body.classList.toggle('cinemaMode',cinemaMode);
   syncCinemaSourceUi();
   const screen=document.getElementById('cinemaScreen');
@@ -8792,7 +8806,9 @@ async function openCinemaMovie(item){
     renderCinemaDetail(enriched);
   }
 }
-function toggleCinemaMode(){
+async function toggleCinemaMode(){
+  await loadGlobalCinemaSource();
+  if(!cinemaAccessEnabled)return;
   cinemaMode=!cinemaMode;
   localStorage.setItem('abaj_cinema_mode',cinemaMode?'1':'0');
   syncCinemaUi();
