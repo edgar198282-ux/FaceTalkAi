@@ -582,7 +582,13 @@ public class MainActivity extends Activity {
                 }
                 if(detect!=null){
                     detect.setAccessible(true);
-                    detect.invoke(articleObj,types[0]);
+                    // Different LazyMedia providers expose video under different
+                    // content types. Probing only values()[0] made FILMIX/ZOMBIE/
+                    // ZETFLIX frequently look empty while the LazyMedia app itself
+                    // could still play them.
+                    for(Object type:types){
+                        try{detect.invoke(articleObj,type);}catch(Throwable ignored){}
+                    }
                     try{videoDone.await(12,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
                 }
             }
@@ -668,35 +674,8 @@ public class MainActivity extends Activity {
 
             if("obf.j30".equals(c.getName())){
                 try{
-                    Object uv=null;
-                    try{
-                        java.lang.reflect.Method urlMethod=c.getMethod("OooOo0o");
-                        uv=urlMethod.invoke(node);
-                    }catch(Throwable ignored){}
-                    String u=uv==null?"":String.valueOf(uv).trim().replace("\\/","/");
-                    if(u.startsWith("http://")||u.startsWith("https://")){
-                        String label=path==null?"":path.trim();
-                        String format="";
-                        try{
-                            java.lang.reflect.Method formatMethod=c.getMethod("getFormat");
-                            Object fv=formatMethod.invoke(node);
-                            if(fv!=null)format=String.valueOf(fv).trim();
-                        }catch(Throwable ignored){}
-                        org.json.JSONObject row=new org.json.JSONObject();
-                        row.put("name",label.isEmpty()?"LazyMedia":label);
-                        row.put("url",u);
-                        String low=u.toLowerCase(java.util.Locale.US);
-                        String fmt=!format.isEmpty()?format:
-                            (low.contains(".m3u8")||low.contains("/hls/")?"HLS":
-                             low.contains(".mpd")||low.contains("/dash/")?"DASH":
-                             low.contains(".mp4")?"MP4":"AUTO");
-                        row.put("format",fmt);
-                        java.util.regex.Matcher qm=java.util.regex.Pattern
-                            .compile("(2160|1440|1080|720|480|360)")
-                            .matcher(label+" "+format+" "+u);
-                        if(qm.find())row.put("quality",qm.group(1));
-                        out.put(row);
-                    }
+                    org.json.JSONObject row=lazyJ30Row(node,path);
+                    if(row!=null)out.put(row);
                 }catch(Throwable ignored){}
             }
             while(c!=null&&c!=Object.class){
