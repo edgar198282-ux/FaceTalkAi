@@ -966,23 +966,58 @@ public class MainActivity extends Activity {
         return out;
     }
 
+    private Object resolveLazyProviderServer(Class<?> bv,Object[] servers,String source){
+        if(servers==null||source==null)return null;
+        String wanted=source.trim();
+        if(wanted.isEmpty())return null;
+        try{
+            int ordinal=Integer.parseInt(wanted);
+            if(ordinal>=0&&ordinal<servers.length)return servers[ordinal];
+        }catch(Throwable ignored){}
+        for(int i=0;i<servers.length;i++){
+            Object server=servers[i];
+            if(server==null)continue;
+            try{
+                if(server instanceof java.lang.Enum){
+                    java.lang.Enum<?> e=(java.lang.Enum<?>)server;
+                    if(wanted.equalsIgnoreCase(e.name())||wanted.equals(String.valueOf(e.ordinal())))return server;
+                }
+            }catch(Throwable ignored){}
+            try{
+                if(wanted.equals(String.valueOf(server)))return server;
+            }catch(Throwable ignored){}
+            for(String methodName:new String[]{"OooO0OO","OooO0Oo","OooO0oO","OooO0oo"}){
+                try{
+                    java.lang.reflect.Method m=bv.getDeclaredMethod(methodName);
+                    if(m.getParameterTypes().length!=0)continue;
+                    m.setAccessible(true);
+                    Object value=m.invoke(server);
+                    if(value!=null&&wanted.equalsIgnoreCase(String.valueOf(value).trim()))return server;
+                }catch(Throwable ignored){}
+            }
+        }
+        return null;
+    }
+
     private synchronized org.json.JSONArray lazyProviderReflectOptions(String rawIntent,String provider){
         org.json.JSONArray out=new org.json.JSONArray();
         try{
             String source=cinemaSourceId(rawIntent);
             if(source.isEmpty())return out;
-            int idx=Integer.parseInt(source);
             Context lazy=createPackageContext(
                 "com.lazycatsoftware.lmd",
                 Context.CONTEXT_INCLUDE_CODE|Context.CONTEXT_IGNORE_SECURITY
             );
             ClassLoader cl=lazy.getClassLoader();
 
-                        ensureLazyMediaRuntime(lazy,cl);
+            ensureLazyMediaRuntime(lazy,cl);
             Class<?> bv=Class.forName("obf.bv",true,cl);
             Object[] servers=(Object[])bv.getMethod("values").invoke(null);
-            if(idx<0||idx>=servers.length)return out;
-            Object server=servers[idx];
+            Object server=resolveLazyProviderServer(bv,servers,source);
+            if(server==null){
+                Log.w("AbajCinema","unknown LazyMedia provider source="+source);
+                return out;
+            }
 
             Class<?> modelClass=Class.forName(
                 "com.lazycatsoftware.lazymediadeluxe.models.service.OooO0O0",true,cl
@@ -1158,17 +1193,19 @@ public class MainActivity extends Activity {
         try{
             String source=cinemaSourceId(rawIntent);
             if(source.isEmpty())return out;
-            int idx=Integer.parseInt(source);
             Context lazy=createPackageContext(
                 "com.lazycatsoftware.lmd",
                 Context.CONTEXT_INCLUDE_CODE|Context.CONTEXT_IGNORE_SECURITY
             );
             ClassLoader cl=lazy.getClassLoader();
-                        ensureLazyMediaRuntime(lazy,cl);
+            ensureLazyMediaRuntime(lazy,cl);
             Class<?> bv=Class.forName("obf.bv",true,cl);
             Object[] servers=(Object[])bv.getMethod("values").invoke(null);
-            if(idx<0||idx>=servers.length)return out;
-            Object server=servers[idx];
+            Object server=resolveLazyProviderServer(bv,servers,source);
+            if(server==null){
+                Log.w("AbajCinema","unknown LazyMedia provider source="+source);
+                return out;
+            }
 
             Class<?> modelClass=Class.forName(
                 "com.lazycatsoftware.lazymediadeluxe.models.service.OooO0O0",true,cl
@@ -1520,7 +1557,12 @@ public class MainActivity extends Activity {
                     Object v=all[i];
                     org.json.JSONObject o=new org.json.JSONObject();
                     o.put("id",i);
-                    o.put("enum",String.valueOf(v));
+                    try{
+                        if(v instanceof java.lang.Enum)o.put("enum",((java.lang.Enum<?>)v).name());
+                        else o.put("enum",String.valueOf(v));
+                    }catch(Throwable ignored){o.put("enum",String.valueOf(v));}
+                    try{o.put("string",String.valueOf(v));}catch(Throwable ignored){}
+                    try{o.put("hash",String.valueOf(v.hashCode()));}catch(Throwable ignored){}
                     try{if(mName!=null)o.put("name",String.valueOf(mName.invoke(v)));}catch(Throwable ignored){}
                     try{if(mAlt!=null)o.put("alt",String.valueOf(mAlt.invoke(v)));}catch(Throwable ignored){}
                     try{if(mUrl!=null)o.put("url",String.valueOf(mUrl.invoke(v)));}catch(Throwable ignored){}
