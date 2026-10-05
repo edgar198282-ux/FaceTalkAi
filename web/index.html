@@ -7975,14 +7975,19 @@ async function cinemaV2FindSources(movie){
   }
 
   const discovered=checked.filter(Boolean);
-  const playable=discovered.filter(group=>group.playable);
+  const playable=discovered.filter(group=>
+    group&&group.playable&&(
+      (Array.isArray(group.resolvedOptions)&&group.resolvedOptions.length>0)||
+      (Array.isArray(group.items)&&group.items.some(x=>cinemaIsDirectStreamUrl(x?.url)))
+    )
+  );
   cinemaDiag('source_scan_done',{
     title:movie?.title,
     rows:playable.length,
     playable:playable.length>0,
-    message:'found '+discovered.length+' providers / '+playable.length+' playable'
+    message:'found '+discovered.length+' providers / '+playable.length+' real video sources'
   });
-  return discovered;
+  return playable;
 }
 function cinemaV2RenderSources(movie,groups){
   const modal=ensureCinemaSourceModal();
@@ -8002,7 +8007,7 @@ function cinemaV2RenderSources(movie,groups){
   if(!list)return;
   list.innerHTML='';
   if(!groups.length){
-    list.innerHTML='<div class="cinemaSourceEmpty">Для этого фильма LazyMedia не вернул рабочих видеоисточников.</div>';
+    list.innerHTML='<div class="cinemaSourceEmpty">Для этого фильма LazyMedia сейчас не вернул ни одного подтверждённого видеопотока.</div>';
     return;
   }
   groups.forEach((group,index)=>{
@@ -8012,14 +8017,8 @@ function cinemaV2RenderSources(movie,groups){
     label.textContent=group.name;
     const meta=document.createElement('small');
     const q=cinemaQualitySummary(group.resolvedOptions||[]);
-    if(group.playable){
-      meta.textContent=q||'Видео доступно';
-      btn.disabled=false;
-    }else{
-      meta.textContent='Источник найден · проверка видео';
-      btn.disabled=false;
-      btn.classList.add('cinemaSourceNeedsResolve');
-    }
+    meta.textContent=q||'Видео доступно';
+    btn.disabled=false;
     btn.appendChild(label);
     btn.appendChild(meta);
     btn.onclick=()=>cinemaV2OpenSource(index);
