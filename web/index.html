@@ -6879,9 +6879,150 @@ window.__abajOpenExternalMedia=function(url,title){
   cinemaExternalChannel=ch;
   openPlayer(ch.id);
 };
+function cinemaV2ProviderName(item){
+  const name=normalizeLazyProviderName(cinemaProviderName(item));
+  return LAZYMEDIA_PROVIDER_ORDER.includes(name)?name:'';
+}
+function cinemaV2MatchMovie(item,movie){
+  const a=cinemaComparableTitle(item?.title||'');
+  const b=cinemaComparableTitle(movie?.title||'');
+  if(!a||!b)return false;
+  if(!(a===b||a.includes(b)||b.includes(a)))return false;
+  const ay=cinemaYear(item),by=cinemaYear(movie);
+  return !ay||!by||Math.abs(ay-by)<=1;
+}
+async function cinemaV2FindSources(movie){
+  const variants=cinemaSearchVariants(movie);
+  const batches=await Promise.all(variants.map(q=>lazyMediaSearchAsync(q).catch(()=>[])));
+  const groups=new Map();
+  for(const name of LAZYMEDIA_PROVIDER_ORDER){
+    groups.set(name,{name,items:[]});
+  }
+  const seen=new Set();
+  const add=item=>{
+    if(!item||!cinemaV2MatchMovie(item,movie))return;
+    const provider=cinemaV2ProviderName(item);
+    if(!provider)return;
+    const key=provider+'|'+String(item.intent||item.id||item.url||item.title||'');
+    if(seen.has(key))return;
+    seen.add(key);
+    groups.get(provider).items.push(item);
+  };
+  add(movie);
+  for(const rows of batches){
+    for(const item of (Array.isArray(rows)?rows:[]))add(item);
+  }
+  return LAZYMEDIA_PROVIDER_ORDER
+    .map(name=>groups.get(name))
+    .filter(group=>group&&group.items.length);
+}
+function cinemaV2RenderSources(movie,groups){
+  const modal=ensureCinemaSourceModal();
+  const list=document.getElementById('cinemaSourceList');
+  const title=document.getElementById('cinemaSourceTitle');
+  const poster=document.getElementById('cinemaSourcePoster');
+  cinemaSourcePickerMovie=movie;
+  cinemaSourceGroups=groups;
+  cinemaSourcePickerItems=groups.map(g=>g.items[0]);
+  if(title)title.textContent=String(movie?.title||'Кино')+' · '+groups.length+' ист.';
+  if(poster){
+    const p=posterUrl(movie);
+    poster.src=p||'';
+    poster.style.visibility=p?'visible':'hidden';
+  }
+  modal.classList.add('open');
+  if(!list)return;
+  list.innerHTML='';
+  if(!groups.length){
+    list.innerHTML='<div class="cinemaSourceEmpty">Для этого фильма LazyMedia не нашёл доступных источников.</div>';
+    return;
+  }
+  groups.forEach((group,index)=>{
+    const btn=document.createElement('button');
+    btn.className='cinemaSourceBtn';
+    const label=document.createElement('span');
+    label.textContent=group.name;
+    const meta=document.createElement('small');
+    meta.textContent='Источник доступен';
+    btn.appendChild(label);
+    btn.appendChild(meta);
+    btn.onclick=()=>cinemaV2OpenSource(index);
+    list.appendChild(btn);
+  });
+  const close=document.createElement('button');
+  close.className='cinemaSourceClose';
+  close.textContent='Закрыть';
+  close.onclick=closeCinemaSourcePicker;
+  list.appendChild(close);
+  setTimeout(()=>focusCinemaSourceButton(0),20);
+}
+async function cinemaV2OpenSource(index){
+  const group=cinemaSourceGroups[Number(index)];
+  if(!group||!group.items?.length)return;
+  const list=document.getElementById('cinemaSourceList');
+  const title=document.getElementById('cinemaSourceTitle');
+  if(title)title.textContent=group.name+' · ВИДЕО';
+  if(!list)return;
+  list.innerHTML='';
+  group.items.forEach((item,i)=>{
+    const btn=document.createElement('button');
+    btn.className='cinemaSourceBtn';
+    const label=document.createElement('span');
+    label.textContent=String(item.title||cinemaSourcePickerMovie?.title||('Вариант '+(i+1)));
+    const meta=document.createElement('small');
+    meta.textContent='Найдено в '+group.name;
+    btn.appendChild(label);
+    btn.appendChild(meta);
+    btn.onclick=()=>{
+      meta.textContent='Подготовка источника…';
+      cinemaV2Resolve(group,item,meta);
+    };
+    list.appendChild(btn);
+  });
+  const back=document.createElement('button');
+  back.className='cinemaSourceClose';
+  back.textContent='← Источники';
+  back.onclick=()=>cinemaV2RenderSources(cinemaSourcePickerMovie,cinemaSourceGroups);
+  list.appendChild(back);
+  setTimeout(()=>focusCinemaSourceButton(0),20);
+}
+async function cinemaV2Resolve(group,item,meta){
+  const provider=String(group?.name||'');
+  const url=String(item?.url||'').trim();
+  if(url){
+    window.__abajOpenExternalMedia(url,String(cinemaSourcePickerMovie?.title||item?.title||'Кино'));
+    setTimeout(()=>closeCinemaSourcePicker(),120);
+    return;
+  }
+  if(provider==='FILMIX'){
+    meta.textContent='Получаю варианты FILMIX…';
+    const rows=await filmixVideoOptionsAsync(item).catch(()=>[]);
+    if(Array.isArray(rows)&&rows.length){
+      group.resolvedOptions=rows;
+      renderResolvedProviderOptions(group,rows);
+      return;
+    }
+  }
+  meta.textContent='Источник найден. Воспроизведение этого сервиса подключается заново.';
+}
 async function openCinemaMovie(item){
   if(!item)return;
-  await showCinemaSourcePicker(item);
+  const modal=ensureCinemaSourceModal();
+  const list=document.getElementById('cinemaSourceList');
+  const title=document.getElementById('cinemaSourceTitle');
+  const poster=document.getElementById('cinemaSourcePoster');
+  cinemaSourcePickerMovie=item;
+  if(title)title.textContent=String(item?.title||'Кино');
+  if(poster){
+    const p=posterUrl(item);
+    poster.src=p||'';
+    poster.style.visibility=p?'visible':'hidden';
+  }
+  modal.classList.add('open');
+  if(list)list.innerHTML='<div class="cinemaSourceBusy">Проверяю реальные источники LazyMedia…</div>';
+  await loadLazyProviderIdMap();
+  const groups=await cinemaV2FindSources(item);
+  cinemaV2RenderSources(item,groups);
 }
 function toggleCinemaMode(){
   cinemaMode=!cinemaMode;
