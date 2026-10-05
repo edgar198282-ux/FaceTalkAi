@@ -11,6 +11,7 @@ import android.app.SearchManager;
 import android.media.AudioManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
