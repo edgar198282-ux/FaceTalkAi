@@ -1427,6 +1427,19 @@ body.cinemaKinopub .cinemaKpNav{display:flex}
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
+const DEFAULT_UI_PROFILE_V1='abaj_default_ui_profile_v1';
+if(localStorage.getItem(DEFAULT_UI_PROFILE_V1)!=='1'){
+  localStorage.setItem('abaj_tv_theme_hue','204');
+  localStorage.setItem('abaj_tv_appearance','light');
+  localStorage.setItem('abaj_tv_player_mode','hls');
+  localStorage.setItem('abaj_tv_quality','auto');
+  localStorage.setItem('abaj_tv_adult_enabled','0');
+  localStorage.setItem('abaj_tv_autostart_last','0');
+  localStorage.setItem('iptv_layout','grid');
+  localStorage.setItem('abaj_tv_filter','all');
+  localStorage.setItem('abaj_tv_category','');
+  localStorage.setItem(DEFAULT_UI_PROFILE_V1,'1');
+}
 let channels=[];
 let sourceFilter='all';
 try{localStorage.removeItem('abaj_tv_source_filter')}catch(e){}
@@ -1453,7 +1466,7 @@ setTimeout(()=>{
 const tvDeviceName=(launchParams.get('device_name')||'Android TV').slice(0,120);
 const tvAppVersion=(launchParams.get('app_version')||'').slice(0,40);
 const tvAppVersionCode=Math.max(0,Number(launchParams.get('app_version_code')||0));
-let layout=localStorage.getItem('iptv_layout')||(nativeTv?'grid':'list');
+let layout=localStorage.getItem('iptv_layout')||'grid';
 let tvMode=nativeTv||localStorage.getItem('iptv_tv_mode')==='1';
 let hls=null;
 let current=null;
@@ -1548,15 +1561,10 @@ const streamWarmCache=new Map();
 let streamWarmTimer=null;
 let streamWarmController=null;
 let tvHideUnreliable=localStorage.getItem('abaj_tv_hide_unreliable')!=='0';
-let tvAutoStartLast=localStorage.getItem('abaj_tv_autostart_last')!=='0';
+let tvAutoStartLast=localStorage.getItem('abaj_tv_autostart_last')==='1';
 let tvPreferredQuality=localStorage.getItem('abaj_tv_quality')||'auto';
-let savedTvPlayerMode=localStorage.getItem('abaj_tv_player_mode');
-if(nativeTv&&localStorage.getItem('abaj_tv_player_auto_native_v1')!=='1'){
-  savedTvPlayerMode='auto';
-  localStorage.setItem('abaj_tv_player_mode','auto');
-  localStorage.setItem('abaj_tv_player_auto_native_v1','1');
-}
-let tvPlayerMode=['auto','hls','system'].includes(savedTvPlayerMode)?savedTvPlayerMode:'auto';
+let savedTvPlayerMode=localStorage.getItem('abaj_tv_player_mode')||'hls';
+let tvPlayerMode=['auto','hls','system'].includes(savedTvPlayerMode)?savedTvPlayerMode:'hls';
 let appThemeHue=Math.max(0,Math.min(359,Number(localStorage.getItem('abaj_tv_theme_hue')||204)||204));
 let appAppearanceMode=localStorage.getItem('abaj_tv_appearance')==='dark'?'dark':'light';
 let tvHeaderCollapsed=false;
