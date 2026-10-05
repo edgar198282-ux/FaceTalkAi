@@ -527,7 +527,8 @@ public class MainActivity extends Activity {
             Class<?> callbackClass=Class.forName(
                 "com.lazycatsoftware.lazymediadeluxe.models.service.OooO00o$OooO00o",true,cl
             );
-            java.util.concurrent.CountDownLatch done=new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch baseDone=new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch contentDone=new java.util.concurrent.CountDownLatch(1);
             Object callback=java.lang.reflect.Proxy.newProxyInstance(
                 cl,
                 new Class<?>[]{callbackClass},
@@ -547,8 +548,11 @@ public class MainActivity extends Activity {
                         }
                     }catch(Throwable ignored){}
                     String n=method.getName();
+                    if("OooO0o0".equals(n)||"OooO0o".equals(n)){
+                        baseDone.countDown();
+                    }
                     if("OooO0Oo".equals(n)){
-                        done.countDown();
+                        contentDone.countDown();
                     }
                     return null;
                 }
@@ -566,7 +570,30 @@ public class MainActivity extends Activity {
             if(taskParse!=null){
                 taskParse.setAccessible(true);
                 taskParse.invoke(articleObj,callback);
-                try{done.await(12,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
+                try{baseDone.await(12,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
+
+                try{
+                    Class<?> contentTypeClass=Class.forName("obf.v41",true,cl);
+                    Object[] contentTypes=(Object[])contentTypeClass.getMethod("values").invoke(null);
+                    java.lang.reflect.Method detectContent=null;
+                    for(java.lang.reflect.Method m:articleObj.getClass().getMethods()){
+                        Class<?>[] pt=m.getParameterTypes();
+                        if("detectContent".equals(m.getName())&&pt.length==1&&pt[0]==contentTypeClass){
+                            detectContent=m;
+                            break;
+                        }
+                    }
+                    if(detectContent!=null&&contentTypes!=null){
+                        detectContent.setAccessible(true);
+                        for(Object contentType:contentTypes){
+                            try{detectContent.invoke(articleObj,contentType);}catch(Throwable ignored){}
+                        }
+                        try{contentDone.await(12,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
+                    }
+                }catch(Throwable e){
+                    Log.w("AbajCinema","LazyMedia content detection failed: "+
+                        e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+                }
             }
 
             try{
