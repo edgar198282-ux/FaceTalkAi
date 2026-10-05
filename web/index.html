@@ -1357,15 +1357,15 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
       </div>
     </div>
 
-    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Кино · KinoPub</div>
+    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Кино · источник</div>
     <div class="adminRow" style="display:block">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-        <b>KinoPub</b>
+        <b>Источник кино</b>
         <span id="kinoPubAdminStatus" class="adminMeta">Проверка…</span>
       </div>
-      <div class="adminMeta" id="kinoPubAdminMeta" style="margin-top:6px">Если KinoPub уже установлен на этом устройстве, Abaj TV подключит его без новой регистрации.</div>
+      <div class="adminMeta" id="kinoPubAdminMeta" style="margin-top:6px">Если источник кино уже доступен на этом устройстве, Abaj TV подключит его без новой регистрации.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-        <button onclick="openKinoPubFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#087fe1;color:#fff;font-weight:900">Открыть KinoPub</button>
+        <button onclick="openKinoPubFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#087fe1;color:#fff;font-weight:900">Открыть источник</button>
         <button onclick="connectKinoPubFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#16a05d;color:#fff;font-weight:900">Подключить</button>
         <button onclick="disconnectKinoPubFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Отключить</button>
       </div>
@@ -2131,10 +2131,10 @@ function refreshKinoPubAdminStatus(){
   }
   if(meta){
     meta.textContent=bridgeMissing
-      ?'Эта версия Abaj TV ещё не умеет проверять KinoPub. Установите последнее обновление Abaj TV — KinoPub уже добавлен в новый APK.'
+      ?'Эта версия Abaj TV ещё не умеет проверять источник кино. Установите последнее обновление Abaj TV.'
       :(info.installed
-        ?('KinoPub '+(info.version||'')+(active?' найден на устройстве и используется как источник Кино.':(disabled?' отключён вручную и сам не подключится.':' найден на устройстве.')))
-        :'KinoPub не найден на этом устройстве.');
+        ?((info.version||'')+(active?'Источник найден на устройстве и используется в разделе «Кино».':(disabled?'Источник отключён вручную и сам не подключится.':'Источник найден на устройстве.')))
+        :'Источник кино не найден на этом устройстве.');
   }
 }
 function openKinoPubFromAdmin(){
@@ -5513,7 +5513,7 @@ function openCinemaTrackMenu(kind){
   if(!modal||!list)return;
   const titles={quality:'Качество',audio:'Аудиодорожка',subtitles:'Субтитры'};
   if(title)title.textContent=titles[cinemaTrackMenuKind];
-  if(hint)hint.textContent='KinoPub · '+(cinemaTrackMenuKind==='quality'?'видео':cinemaTrackMenuKind==='audio'?'язык/озвучка':'язык субтитров');
+  if(hint)hint.textContent=(cinemaTrackMenuKind==='quality'?'Видео':'Язык/озвучка');
   list.innerHTML='';
   if(!hls){
     list.innerHTML='<button class="cinemaTrackOption" disabled>Для этого потока выбор недоступен</button>';
@@ -6859,11 +6859,11 @@ async function searchCinemaLazyMedia(raw){
     return;
   }
   if(cinemaSource==='kinopub'&&q){
-    if(status)status.textContent='KinoPub: поиск '+q+'…';
+    if(status)status.textContent='Поиск '+q+'…';
     const rows=await kinoPubCatalogAsync(q);
     if(seq!==cinemaSearchSeq)return;
     renderCinemaCatalog(rows,{search:true});
-    if(status)status.textContent=rows.length?('KinoPub · найдено '+rows.length):'KinoPub · ничего не найдено';
+    if(status)status.textContent=rows.length?('Найдено '+rows.length):'Ничего не найдено';
     return;
   }
   if(!q){
@@ -7017,8 +7017,8 @@ async function loadKinoPubSection(section,options={}){
     fresh:'Новинки',popular:'Популярные',hot:'Горячие'
   };
   setCinemaShellTitle(labels[section]||'КИНО');
-  if(sectionTitle)sectionTitle.textContent=labels[section]||'KinoPub';
-  if(status)status.textContent='KinoPub · загрузка…';
+  if(sectionTitle)sectionTitle.textContent=labels[section]||'КИНО';
+  if(status)status.textContent='Загрузка…';
   kinopubCatalogPage=1;
   kinopubCatalogItems=[];
   kinopubCatalogTotal=null;
@@ -7038,12 +7038,12 @@ async function loadKinoPubSection(section,options={}){
       const count=kinopubCatalogItems.length;
       status.textContent=kinopubCatalogTotal!==null
         ?('Показано '+count+' из '+kinopubCatalogTotal)
-        :('KinoPub · '+count);
+        :('Показано '+count);
     }
     updateKinoPubLoadMore();
   }catch(e){
     renderCinemaCatalog([]);
-    if(status)status.textContent='KinoPub · раздел временно недоступен.';
+    if(status)status.textContent='Раздел временно недоступен.';
   }
 }
 async function openKinoPubCollection(item){
@@ -7062,7 +7062,7 @@ async function openKinoPubCollection(item){
     kinopubCatalogTotal=Number.isFinite(Number(d.total))?Number(d.total):null;
     kinopubCatalogHasMore=false;
     renderCinemaCatalog(rows);
-    if(status)status.textContent=kinopubCatalogTotal!==null?('Показано '+rows.length+' из '+kinopubCatalogTotal):('KinoPub · '+rows.length);
+    if(status)status.textContent=kinopubCatalogTotal!==null?('Показано '+rows.length+' из '+kinopubCatalogTotal):('Показано '+rows.length);
     updateKinoPubLoadMore();
   }catch(e){
     renderCinemaCatalog([]);
@@ -7146,7 +7146,7 @@ async function loadKinoPubOverview(){
     const meta=document.getElementById('cinemaSideMeta');
     const m=Number.isFinite(Number(d.movies_total))?Number(d.movies_total):null;
     const sr=Number.isFinite(Number(d.series_total))?Number(d.series_total):null;
-    if(meta)meta.textContent=(m!==null||sr!==null)?('KinoPub · '+(m!==null?m+' фильмов':'')+(m!==null&&sr!==null?' · ':'')+(sr!==null?sr+' сериалов':'')):'KinoPub';
+    if(meta)meta.textContent=(m!==null||sr!==null)?((m!==null?m+' фильмов':'')+(m!==null&&sr!==null?' · ':'')+(sr!==null?sr+' сериалов':'')):'Кино';
   }catch(e){}
 }
 async function refreshCinemaLibraryCounts(){
@@ -7408,11 +7408,11 @@ async function loadCinemaCatalog(force=false){
     if(kinoPubExplicitlyDisabled()){
       cinemaLoaded=false;
       renderCinemaCatalog([]);
-      if(status)status.textContent='KinoPub отключён.';
+      if(status)status.textContent='Источник кино отключён.';
       refreshKinoPubAdminStatus();
       return;
     }
-    if(status)status.textContent='KinoPub · загрузка каталога…';
+    if(status)status.textContent='Загрузка каталога…';
     await loadKinoPubFilters();
     kinopubCatalogPage=0;
     kinopubCatalogItems=[];
@@ -7422,10 +7422,10 @@ async function loadCinemaCatalog(force=false){
     if(rows.length){
       writeCinemaCache(rows);
       renderCinemaCatalog(rows);
-      if(status)status.textContent=kinopubCatalogTotal!==null?('Показано '+rows.length+' из '+kinopubCatalogTotal):('KinoPub · найдено '+rows.length);
+      if(status)status.textContent=kinopubCatalogTotal!==null?('Показано '+rows.length+' из '+kinopubCatalogTotal):('Найдено '+rows.length);
     }else{
       renderCinemaCatalog([]);
-      if(status)status.textContent='KinoPub подключён, но каталог пуст.';
+      if(status)status.textContent='Источник подключён, но каталог пуст.';
     }
     updateKinoPubLoadMore();
     return;
@@ -7797,7 +7797,7 @@ async function showCinemaSourcePicker(item){
   const title=document.getElementById('cinemaSourceTitle');
   const hint=document.getElementById('cinemaSourceHint');
   const poster=document.getElementById('cinemaSourcePoster');
-  if(hint)hint.textContent=cinemaSource==='kinopub'?'KinoPub':'Выберите источник LazyMedia';
+  if(hint)hint.textContent=cinemaSource==='kinopub'?'Источник кино':'Выберите источник';
   if(title)title.textContent=String(item?.title||'Кино');
   if(poster){
     const p=posterUrl(item);
@@ -7807,14 +7807,14 @@ async function showCinemaSourcePicker(item){
   modal.classList.add('open');
   cinemaSourcePickerMovie=item;
   if(cinemaSource==='kinopub'){
-    if(list)list.innerHTML='<div class="cinemaSourceBusy">Получаю поток KinoPub для внутреннего плеера…</div>';
+    if(list)list.innerHTML='<div class="cinemaSourceBusy">Получаю поток для внутреннего плеера…</div>';
     const resolved=await resolveKinoPubInternalStream(item);
     if(resolved&&resolved.url){
       closeCinemaSourcePicker(false);
       window.__abajOpenExternalMedia(resolved.url,String(item?.title||'Кино'),'KINOPUB',resolved.headers||{});
       return;
     }
-    if(list)list.innerHTML='<div class="cinemaSourceEmpty">Поток KinoPub для внутреннего плеера не получен. LazyMedia вместо него не используется.</div>';
+    if(list)list.innerHTML='<div class="cinemaSourceEmpty">Поток для внутреннего плеера не получен.</div>';
     return;
   }
   if(list)list.innerHTML='<div class="cinemaSourceBusy">Ищу варианты во всех видеосервисах LazyMedia…</div>';
@@ -9166,7 +9166,7 @@ function renderCinemaDetail(item){
   title.textContent=cinemaDetailText(item,'title','name')||'Фильм';
 
   const badgeList=[];
-  const sourceBadge=String(item?.source||'').toUpperCase()==='KINOPUB'||cinemaSource==='kinopub'?'KinoPub':'';
+  const sourceBadge='';
   if(sourceBadge)badgeList.push(sourceBadge);
   const q=cinemaDetailText(item,'quality');
   if(q)badgeList.push(q);
@@ -9249,7 +9249,7 @@ async function watchCinemaDetail(){
   if(!item)return;
   const watchBtn=document.getElementById('cinemaDetailWatch');
   if(cinemaSource==='kinopub'||String(item.source||'').toUpperCase()==='KINOPUB'){
-    if(watchBtn){watchBtn.disabled=true;watchBtn.textContent='ОТКРЫВАЮ KINOPUB…'}
+    if(watchBtn){watchBtn.disabled=true;watchBtn.textContent='ОТКРЫВАЮ…'}
     const media=cinemaSelectedKinoMedia;
     const resolved=await resolveKinoPubInternalStream(item,media);
     if(watchBtn){watchBtn.disabled=false;watchBtn.textContent=cinemaItemLooksSeries(item)?'СМОТРЕТЬ СЕРИЮ':'СМОТРЕТЬ'}
@@ -9275,9 +9275,9 @@ async function watchCinemaDetail(){
     const title=document.getElementById('cinemaSourceTitle');
     const hint=document.getElementById('cinemaSourceHint');
     if(title)title.textContent=String(item?.title||'Кино');
-    if(hint)hint.textContent='KinoPub';
+    if(hint)hint.textContent='Источник кино';
     modal.classList.add('open');
-    if(list)list.innerHTML='<div class="cinemaSourceEmpty">Поток KinoPub не удалось получить для внутреннего плеера. Внешнее приложение KinoPub больше не открывается автоматически.</div>';
+    if(list)list.innerHTML='<div class="cinemaSourceEmpty">Поток не удалось получить для внутреннего плеера.</div>';
     return;
   }
   if(watchBtn){
