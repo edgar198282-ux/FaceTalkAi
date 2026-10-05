@@ -849,6 +849,138 @@ async def api_cinema_catalog_cache(request):
     return web.json_response({"ok": True, "count": len(clean), "type": kind}, headers={"Cache-Control": "no-store"})
 
 
+
+def _imdb_clean_image(url):
+    url = str(url or "").strip()
+    if not url:
+        return ""
+    return re.sub(r"_V1_[^./]+(?=\.(?:jpg|jpeg|png|webp)(?:\?|$))", "_V1_", url, flags=re.I)
+
+def _imdb_name(value):
+    if isinstance(value, dict):
+        return str(value.get("name") or "").strip()
+    if isinstance(value, list):
+        return ", ".join([_imdb_name(x) for x in value if _imdb_name(x)])
+    return str(value or "").strip()
+
+async def api_cinema_meta(request):
+    title = str(request.query.get("title") or "").strip()
+    year_raw = str(request.query.get("year") or "").strip()
+    if not title:
+        return web.json_response({"ok":False,"error":"title_required"}, status=400)
+    try:
+        wanted_year = int(year_raw) if year_raw.isdigit() else 0
+    except Exception:
+        wanted_year = 0
+
+    timeout = aiohttp.ClientTimeout(total=12, connect=5, sock_read=8)
+    headers = {
+        "Accept":"application/json,text/html;q=0.9,*/*;q=0.8",
+        "User-Agent":"Mozilla/5.0 (Linux; Android TV 11) AppleWebKit/537.36 Chrome/124 Safari/537.36",
+        "Accept-Language":"ru-RU,ru;q=0.9,en;q=0.7",
+    }
+    try:
+        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+            suggest_url = "https://v2.sg.media-imdb.com/suggestion/x/" + quote(title) + ".json"
+            async with session.get(suggest_url, allow_redirects=True) as resp:
+                if resp.status >= 400:
+                    raise RuntimeError(f"suggest_{resp.status}")
+                data = await resp.json(content_type=None)
+
+            candidates = data.get("d") if isinstance(data, dict) else []
+            best = None
+            best_score = -1
+            normalized = re.sub(r"\W+", "", title.casefold(), flags=re.UNICODE)
+            for row in candidates if isinstance(candidates, list) else []:
+                if not isinstance(row, dict):
+                    continue
+                imdb_id = str(row.get("id") or "")
+                if not imdb_id.startswith("tt"):
+                    continue
+                name = str(row.get("l") or "").strip()
+                row_year = int(row.get("y") or 0) if str(row.get("y") or "").isdigit() else 0
+                n = re.sub(r"\W+", "", name.casefold(), flags=re.UNICODE)
+                score = 0
+                if normalized and n == normalized:
+                    score += 100
+                elif normalized and (normalized in n or n in normalized):
+                    score += 55
+                if wanted_year and row_year:
+                    score += max(0, 30 - abs(wanted_year-row_year)*12)
+                if score > best_score:
+                    best_score = score
+                    best = row
+
+            if not best:
+                return web.json_response({"ok":True,"found":False}, headers={"Cache-Control":"no-store"})
+
+            imdb_id = str(best.get("id") or "")
+            page_url = f"https://www.imdb.com/title/{imdb_id}/"
+            async with session.get(page_url, allow_redirects=True) as resp:
+                page = await resp.text(errors="ignore")
+                if resp.status >= 400:
+                    page = ""
+
+        ld = {}
+        if page:
+            m = re.search(
+                r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+                page, re.I|re.S
+            )
+            if m:
+                try:
+                    parsed = json.loads(html.unescape(m.group(1)).strip())
+                    if isinstance(parsed, dict):
+                        ld = parsed
+                except Exception:
+                    ld = {}
+
+        aggregate = ld.get("aggregateRating") if isinstance(ld.get("aggregateRating"), dict) else {}
+        trailer = ld.get("trailer") if isinstance(ld.get("trailer"), dict) else {}
+        duration = str(ld.get("duration") or "")
+        if duration.startswith("PT"):
+            h = re.search(r"(\d+)H", duration)
+            mn = re.search(r"(\d+)M", duration)
+            total = (int(h.group(1))*60 if h else 0) + (int(mn.group(1)) if mn else 0)
+            duration = f"{total} мин." if total else duration
+
+        genres = ld.get("genre")
+        if isinstance(genres, list):
+            genres = ", ".join(str(x) for x in genres if x)
+        elif not isinstance(genres, str):
+            genres = ""
+
+        actors = _imdb_name(ld.get("actor"))
+        directors = _imdb_name(ld.get("director"))
+        image = _imdb_clean_image(ld.get("image") or (best.get("i") or {}).get("imageUrl") if isinstance(best.get("i"), dict) else "")
+
+        result = {
+            "ok":True,
+            "found":True,
+            "imdb_id":imdb_id,
+            "title":str(ld.get("name") or best.get("l") or title),
+            "original_title":str(ld.get("alternateName") or ""),
+            "year":str(best.get("y") or year_raw or ""),
+            "description":str(ld.get("description") or ""),
+            "rating":str(aggregate.get("ratingValue") or ""),
+            "duration":duration,
+            "genre":genres,
+            "director":directors,
+            "actors":actors,
+            "country":_imdb_name(ld.get("countryOfOrigin")),
+            "poster":image,
+            "backdrop":"",
+            "trailer":str(trailer.get("embedUrl") or trailer.get("url") or ""),
+        }
+        return web.json_response(result, headers={"Cache-Control":"public, max-age=21600"})
+    except Exception as exc:
+        return web.json_response(
+            {"ok":False,"error":"metadata_unavailable","detail":str(exc)[:160]},
+            status=502,
+            headers={"Cache-Control":"no-store"},
+        )
+
+
 async def api_cinema_search(request):
     q = str(request.query.get("q") or "").strip().casefold()
     if not q:
@@ -1664,6 +1796,7 @@ async def start_webapp(bot):
     app.router.add_post('/api/iptv/ai-dub/chunk', api_iptv_ai_dub_chunk)
     app.router.add_post('/api/cinema/catalog-cache', api_cinema_catalog_cache)
     app.router.add_get('/api/cinema/search', api_cinema_search)
+    app.router.add_get('/api/cinema/meta', api_cinema_meta)
     app.router.add_post('/api/cinema/resolve', api_cinema_resolve)
     app.router.add_get('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider); app.router.add_post('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider)
     app.router.add_post('/api/support/message', api_support_message)
