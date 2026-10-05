@@ -7390,7 +7390,7 @@ function renderCinemaCatalog(items,options={}){
     const poster=String(item.poster||'');
     const sub=cinemaPublicText(item.subtitle||item.year||'')+(item.quality?' · '+cinemaPublicText(item.quality):'');
     card.innerHTML=(poster?'<img class="cinemaPosterImg" loading="lazy" src="'+poster.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaPosterFallback">🎞️</div>')+
-      '<div class="cinemaPosterMeta"><div class="cinemaPosterTitle">'+String(item.title||'Фильм').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
+      '<div class="cinemaPosterMeta"><div class="cinemaPosterTitle">'+cinemaDisplayTitle(item).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
       '<div class="cinemaPosterSub">'+sub.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div></div>';
     card.onclick=()=>{
       document.querySelectorAll('.cinemaPosterCard').forEach(x=>{if(x.dataset)x.dataset.cinemaSelected='0'});
@@ -9080,6 +9080,17 @@ function cinemaPublicText(value){
     .replace(/\s{2,}/g,' ')
     .trim();
 }
+function cinemaDisplayTitle(item){
+  const candidates=[
+    item?.title,item?.name,item?.title_ru,item?.name_ru,item?.ru_title,
+    item?.original_title,item?.originalTitle,item?.title_original
+  ];
+  for(const value of candidates){
+    const clean=cinemaPublicText(value);
+    if(clean)return clean;
+  }
+  return 'Фильм';
+}
 function cinemaDetailBackdrop(item){
   return cinemaDetailText(item,'backdrop','background','fanart','poster_wide')||'';
 }
@@ -9159,7 +9170,10 @@ async function loadKinoPubItemDetails(item){
     if(!r.ok)return item;
     const d=await r.json();
     const detail=(d&&d.item&&typeof d.item==='object')?d.item:{};
-    return {...item,...detail,source:'KINOPUB',media_rows:Array.isArray(d.media_rows)?d.media_rows:[]};
+    const merged={...item,...detail,source:'KINOPUB',media_rows:Array.isArray(d.media_rows)?d.media_rows:[]};
+    const beforeTitle=cinemaDisplayTitle(item);
+    if(cinemaDisplayTitle(merged)==='Фильм'&&beforeTitle!=='Фильм')merged.title=beforeTitle;
+    return merged;
   }catch(e){return item}
 }
 
@@ -9185,7 +9199,7 @@ function renderCinemaDetail(item){
     heroPoster.src=poster||'';
     heroPoster.style.display=(!bg&&poster)?'block':'none';
   }
-  title.textContent=cinemaPublicText(cinemaDetailText(item,'title','name'))||'Фильм';
+  title.textContent=cinemaDisplayTitle(item);
 
   const badgeList=[];
   const sourceBadge='';
@@ -9427,8 +9441,8 @@ function cinemaMetadataScore(item){
 }
 async function enrichCinemaMovie(item){
   let best={...(item||{})};
-  const title=String(item?.title||'').trim();
-  if(!title)return best;
+  const title=cinemaDisplayTitle(item);
+  if(!title||title==='Фильм')return best;
   const year=cinemaYear(item);
 
   try{
