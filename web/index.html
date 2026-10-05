@@ -999,7 +999,8 @@ body.cinemaMode .top{display:none!important}
   min-width:170px;height:54px;border:1px solid rgba(155,220,255,.22);border-radius:2px;
   background:rgba(33,120,168,.64);color:#eaf8ff;font-size:17px;font-weight:650;padding:0 22px
 }
-.cinemaDetailAction:focus{outline:none;box-shadow:0 0 0 3px #38b9ff;background:#238ec4}
+.cinemaDetailAction:focus,.cinemaDetailBack:focus{outline:none;box-shadow:0 0 0 3px #38b9ff;background:#238ec4}
+.cinemaDetailAction:disabled{opacity:.65}
 .cinemaDetailBody{padding:0 26px 34px;margin-top:-34px;position:relative;z-index:2}
 .cinemaDetailTitle{font-size:34px;font-weight:700;margin:0 0 15px}
 .cinemaDetailBadges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
@@ -5701,8 +5702,55 @@ document.addEventListener('focusin',e=>{
   }
 });
 
+function cinemaDetailOpen(){
+  return !!document.getElementById('cinemaDetail')?.classList.contains('open');
+}
+function cinemaDetailFocusable(){
+  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction')]
+    .filter(el=>el.offsetParent!==null);
+}
+function moveCinemaDetailFocus(direction){
+  const items=cinemaDetailFocusable();
+  if(!items.length)return;
+  const active=document.activeElement;
+  let index=items.indexOf(active);
+  if(index<0){
+    const watch=document.getElementById('cinemaDetailWatch');
+    (watch||items[0]).focus();
+    return;
+  }
+  if(direction==='left'||direction==='up')index=(index-1+items.length)%items.length;
+  else index=(index+1)%items.length;
+  items[index].focus();
+}
 document.addEventListener('keydown',e=>{
   if(nativeTv&&tvLastAutoTimer)cancelLastChannelAutoStart(true);
+  if(cinemaDetailOpen()){
+    if(e.key==='Escape'||e.key==='Backspace'){
+      e.preventDefault();
+      closeCinemaDetail();
+      return;
+    }
+    if(nativeTv&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
+      e.preventDefault();
+      moveCinemaDetailFocus(
+        e.key==='ArrowLeft'?'left':
+        e.key==='ArrowRight'?'right':
+        e.key==='ArrowUp'?'up':'down'
+      );
+      return;
+    }
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const el=document.activeElement;
+      if(el&&typeof el.click==='function'){
+        el.click();
+      }else{
+        document.getElementById('cinemaDetailWatch')?.click();
+      }
+      return;
+    }
+  }
   if(cinemaSourcePickerOpen()){
     if(e.key==='Escape'||e.key==='Backspace'){e.preventDefault();closeCinemaSourcePicker();return}
     if(e.key==='ArrowUp'){e.preventDefault();focusCinemaSourceButton(-1);return}
@@ -6217,7 +6265,11 @@ function renderCinemaCatalog(items,options={}){
     card.innerHTML=(poster?'<img class="cinemaPosterImg" loading="lazy" src="'+poster.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaPosterFallback">🎞️</div>')+
       '<div class="cinemaPosterMeta"><div class="cinemaPosterTitle">'+String(item.title||'Фильм').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
       '<div class="cinemaPosterSub">'+sub.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div></div>';
-    card.onclick=()=>openCinemaMovie(item);
+    card.onclick=()=>{
+      document.querySelectorAll('.cinemaPosterCard').forEach(x=>{if(x.dataset)x.dataset.cinemaSelected='0'});
+      card.dataset.cinemaSelected='1';
+      openCinemaMovie(item);
+    };
     grid.appendChild(card);
   });
 }
@@ -7313,11 +7365,20 @@ function closeCinemaDetail(){
   if(detail)detail.classList.remove('open');
   const screen=document.getElementById('cinemaScreen');
   if(screen&&cinemaMode)screen.style.display='block';
-  setTimeout(()=>document.querySelector('.cinemaPosterCard')?.focus(),20);
+  setTimeout(()=>{
+    const cards=[...document.querySelectorAll('.cinemaPosterCard')];
+    const target=cards.find(card=>card.dataset&&card.dataset.cinemaSelected==='1')||cards[0];
+    if(target)target.focus();
+  },20);
 }
 async function watchCinemaDetail(){
   const item=cinemaDetailMovie;
   if(!item)return;
+  const watchBtn=document.getElementById('cinemaDetailWatch');
+  if(watchBtn){
+    watchBtn.disabled=true;
+    watchBtn.textContent='ИЩУ ИСТОЧНИКИ…';
+  }
   const detail=document.getElementById('cinemaDetail');
   if(detail)detail.classList.remove('open');
   const modal=ensureCinemaSourceModal();
@@ -7334,6 +7395,10 @@ async function watchCinemaDetail(){
   if(list)list.innerHTML='<div class="cinemaSourceBusy">Проверяю реальные источники LazyMedia…</div>';
   await loadLazyProviderIdMap();
   const groups=await cinemaV2FindSources(item);
+  if(watchBtn){
+    watchBtn.disabled=false;
+    watchBtn.textContent='СМОТРЕТЬ ФИЛЬМ';
+  }
   cinemaV2RenderSources(item,groups);
 }
 function playCinemaTrailer(){
