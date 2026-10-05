@@ -9517,12 +9517,10 @@ function renderCinemaDetail(item){
   badges.innerHTML=badgeList.map(x=>'<span class="cinemaDetailBadge">'+String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>').join('');
 
   const primaryDescription=cinemaPublicText(cinemaDetailText(item,'description','plot','overview','summary','content_description','subtitle','suggest_text_2'));
-  const secondaryDescription=cinemaPublicText(item?.description_en||'');
-  desc.textContent=primaryDescription||secondaryDescription||'';
+  desc.textContent=primaryDescription||'';
   if(descSecondary){
-    const showSecondary=!!(primaryDescription&&secondaryDescription&&secondaryDescription!==primaryDescription);
-    descSecondary.textContent=showSecondary?secondaryDescription:'';
-    descSecondary.style.display=showSecondary?'block':'none';
+    descSecondary.textContent='';
+    descSecondary.style.display='none';
   }
 
   const year=cinemaDetailText(item,'year','suggest_production_year','production_year');
