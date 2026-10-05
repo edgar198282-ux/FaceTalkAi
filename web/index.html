@@ -6883,7 +6883,7 @@ function cinemaProviderOptionsAsync(item,provider){
     const timer=setTimeout(()=>{
       cinemaProviderOptionsPending.delete(requestId);
       resolve([]);
-    },12000);
+    },26000);
     cinemaProviderOptionsPending.set(requestId,{resolve,timer,provider:p});
     try{
       AbajNative.cinemaProviderOptionsAsync(String(item.intent||''),p,requestId);
@@ -7260,7 +7260,7 @@ function filmixVideoOptionsAsync(item){
     const timer=setTimeout(()=>{
       filmixVideoPending.delete(requestId);
       resolve([]);
-    },10000);
+    },26000);
     filmixVideoPending.set(requestId,{resolve,timer});
     try{
       AbajNative.filmixVideoOptionsAsync(String(item.intent||''),requestId);
