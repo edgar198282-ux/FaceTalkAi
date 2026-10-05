@@ -981,8 +981,17 @@ body.cinemaMode .top{display:none!important}
 .cinemaDetail.open{display:block}
 .cinemaDetailHero{
   position:relative;min-height:58vh;background:#0a263a center 24%/cover no-repeat;
-  display:flex;align-items:flex-end
+  display:flex;align-items:flex-end;overflow:hidden
 }
+.cinemaDetailHero.posterFallback::before{
+  content:"";position:absolute;inset:-6%;background:var(--cinema-detail-poster) center/cover no-repeat;
+  filter:blur(28px) brightness(.52);transform:scale(1.08)
+}
+.cinemaDetailHeroPoster{
+  position:absolute;z-index:1;left:7%;top:8%;height:70%;max-width:32%;object-fit:contain;
+  border-radius:7px;box-shadow:0 12px 38px rgba(0,0,0,.38);display:none
+}
+.cinemaDetailHero.posterFallback .cinemaDetailHeroPoster{display:block}
 .cinemaDetailHero::after{
   content:"";position:absolute;inset:0;
   background:linear-gradient(180deg,rgba(2,12,22,.08) 0%,rgba(3,21,35,.18) 44%,rgba(5,36,58,.92) 84%,#07243a 100%)
@@ -1150,6 +1159,7 @@ body.cinemaMode .top{display:none!important}
 
   <section class="cinemaDetail" id="cinemaDetail">
     <div class="cinemaDetailHero" id="cinemaDetailHero">
+      <img class="cinemaDetailHeroPoster" id="cinemaDetailHeroPoster" alt="">
       <button class="cinemaDetailBack" id="cinemaDetailBack" onclick="closeCinemaDetail()" aria-label="Назад">←</button>
       <div class="cinemaDetailActions">
         <button class="cinemaDetailAction" id="cinemaDetailWatch" onclick="watchCinemaDetail()">СМОТРЕТЬ ФИЛЬМ</button>
@@ -7302,7 +7312,10 @@ function cinemaDetailText(item,...keys){
   return '';
 }
 function cinemaDetailBackdrop(item){
-  return cinemaDetailText(item,'backdrop','background','fanart','poster_wide','poster')||posterUrl(item)||'';
+  return cinemaDetailText(item,'backdrop','background','fanart','poster_wide')||'';
+}
+function cinemaDetailPoster(item){
+  return cinemaDetailText(item,'poster','image','image_url')||posterUrl(item)||'';
 }
 function cinemaDetailFact(label,value){
   if(!value)return '';
@@ -7321,7 +7334,16 @@ function renderCinemaDetail(item){
   if(!detail)return;
 
   const bg=cinemaDetailBackdrop(item);
+  const poster=cinemaDetailPoster(item);
+  const heroPoster=document.getElementById('cinemaDetailHeroPoster');
+  hero.classList.toggle('posterFallback',!bg&&!!poster);
   hero.style.backgroundImage=bg?'url("'+bg.replace(/"/g,'%22')+'")':'';
+  if(poster)hero.style.setProperty('--cinema-detail-poster','url("'+poster.replace(/"/g,'%22')+'")');
+  else hero.style.removeProperty('--cinema-detail-poster');
+  if(heroPoster){
+    heroPoster.src=poster||'';
+    heroPoster.style.display=(!bg&&poster)?'block':'none';
+  }
   title.textContent=cinemaDetailText(item,'title','name')||'Фильм';
 
   const badgeList=[];
@@ -7440,10 +7462,10 @@ async function enrichCinemaMovie(item){
   let best={...(item||{})};
   const title=String(item?.title||'').trim();
   if(!title)return best;
+  const year=cinemaYear(item);
   try{
     const rows=await lazyMediaSearchAsync(title);
     const base=cinemaComparableTitle(title);
-    const year=cinemaYear(item);
     for(const row of (Array.isArray(rows)?rows:[])){
       const rt=cinemaComparableTitle(row?.title||'');
       const ry=cinemaYear(row);
@@ -7452,6 +7474,13 @@ async function enrichCinemaMovie(item){
       if(!titleMatch||!yearMatch)continue;
       const candidate=cinemaMergeMetadata(item,row);
       if(cinemaMetadataScore(candidate)>cinemaMetadataScore(best))best=candidate;
+    }
+  }catch(e){}
+  try{
+    const r=await fetch('/api/cinema/meta?title='+encodeURIComponent(title)+'&year='+encodeURIComponent(year||''),{cache:'no-store'});
+    if(r.ok){
+      const meta=await r.json();
+      if(meta&&meta.found)best=cinemaMergeMetadata(best,meta);
     }
   }catch(e){}
   return best;
