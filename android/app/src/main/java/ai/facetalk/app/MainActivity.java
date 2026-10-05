@@ -1043,17 +1043,27 @@ public class MainActivity extends Activity {
                 }
             }
 
-            java.util.HashSet<String> seenUrls=new java.util.HashSet<>();
+            java.util.HashSet<String> seenKeys=new java.util.HashSet<>();
             org.json.JSONArray dedup=new org.json.JSONArray();
             for(int i=0;i<out.length();i++){
                 org.json.JSONObject row=out.optJSONObject(i);
                 if(row==null)continue;
-                String u=row.optString("url","");
-                if(u.isEmpty()||seenUrls.contains(u))continue;
-                seenUrls.add(u);
+                String kind=row.optString("kind","stream");
+                String key;
+                if("folder".equalsIgnoreCase(kind)){
+                    String token=row.optString("token","");
+                    if(token.isEmpty())continue;
+                    key="folder:"+token;
+                }else{
+                    String u=row.optString("url","");
+                    if(u.isEmpty())continue;
+                    key="stream:"+u;
+                }
+                if(seenKeys.contains(key))continue;
+                seenKeys.add(key);
                 dedup.put(row);
             }
-            Log.i("AbajCinema",requested+" reflected streams="+dedup.length()+
+            Log.i("AbajCinema",requested+" reflected rows="+dedup.length()+
                 " source="+source+" parser="+usedClass);
             if(dedup.length()==0&&lastError!=null){
                 Log.w("AbajCinema","provider reflection empty: "+requested+" "+
