@@ -972,6 +972,53 @@ body.cinemaMode .top{display:none!important}
   .cinemaShellCategory{left:52px;top:54px;width:min(300px,78vw)}
 }
 @media(max-width:430px){.cinemaPosterGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+/* Cinema movie detail */
+.cinemaDetail{
+  position:fixed;inset:0;z-index:610;display:none;overflow:auto;
+  background:#07243a;color:#eaf8ff
+}
+.cinemaDetail.open{display:block}
+.cinemaDetailHero{
+  position:relative;min-height:58vh;background:#0a263a center 24%/cover no-repeat;
+  display:flex;align-items:flex-end
+}
+.cinemaDetailHero::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(2,12,22,.08) 0%,rgba(3,21,35,.18) 44%,rgba(5,36,58,.92) 84%,#07243a 100%)
+}
+.cinemaDetailBack{
+  position:absolute;left:20px;top:18px;z-index:3;width:46px;height:46px;border:0;border-radius:50%;
+  background:rgba(3,18,30,.58);color:#d9f4ff;font-size:27px
+}
+.cinemaDetailActions{
+  position:absolute;z-index:3;left:50%;bottom:74px;transform:translateX(-50%);
+  display:flex;gap:16px
+}
+.cinemaDetailAction{
+  min-width:170px;height:54px;border:1px solid rgba(155,220,255,.22);border-radius:2px;
+  background:rgba(33,120,168,.64);color:#eaf8ff;font-size:17px;font-weight:650;padding:0 22px
+}
+.cinemaDetailAction:focus{outline:none;box-shadow:0 0 0 3px #38b9ff;background:#238ec4}
+.cinemaDetailBody{padding:0 26px 34px;margin-top:-34px;position:relative;z-index:2}
+.cinemaDetailTitle{font-size:34px;font-weight:700;margin:0 0 15px}
+.cinemaDetailBadges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.cinemaDetailBadge{
+  border:1px solid #75c6ef;border-radius:6px;padding:3px 8px;color:#d7f3ff;font-size:12px;font-weight:650
+}
+.cinemaDetailDescription{font-size:17px;line-height:1.45;margin-bottom:14px;color:#e4f5ff;max-width:1180px}
+.cinemaDetailTools{display:flex;justify-content:flex-end;gap:18px;font-size:27px;color:#7fd7ff;margin:-30px 8px 10px}
+.cinemaDetailFacts{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 18px;max-width:1050px;font-size:15px;line-height:1.35}
+.cinemaDetailFacts .k{color:#7ec6e9}.cinemaDetailFacts .v{color:#e9f8ff}
+.cinemaDetailFacts a{color:#dff6ff;text-decoration:underline}
+@media(max-width:760px){
+  .cinemaDetailHero{min-height:44vh}
+  .cinemaDetailActions{bottom:42px;gap:9px}
+  .cinemaDetailAction{min-width:128px;height:44px;font-size:13px;padding:0 14px}
+  .cinemaDetailBody{padding:0 14px 24px;margin-top:-20px}
+  .cinemaDetailTitle{font-size:24px}.cinemaDetailDescription{font-size:14px}
+  .cinemaDetailFacts{grid-template-columns:86px 1fr;font-size:13px;gap:6px 10px}
+}
 </style>
 </head>
 <body>
@@ -1097,6 +1144,23 @@ body.cinemaMode .top{display:none!important}
       </div>
       <div class="cinemaSectionTitle" id="cinemaSectionTitle">Новинки · Фильмы</div>
       <div class="cinemaPosterGrid" id="cinemaPosterGrid"></div>
+    </div>
+  </section>
+
+  <section class="cinemaDetail" id="cinemaDetail">
+    <div class="cinemaDetailHero" id="cinemaDetailHero">
+      <button class="cinemaDetailBack" id="cinemaDetailBack" onclick="closeCinemaDetail()" aria-label="Назад">←</button>
+      <div class="cinemaDetailActions">
+        <button class="cinemaDetailAction" id="cinemaDetailWatch" onclick="watchCinemaDetail()">СМОТРЕТЬ ФИЛЬМ</button>
+        <button class="cinemaDetailAction" id="cinemaDetailTrailer" onclick="playCinemaTrailer()">ТРЕЙЛЕР</button>
+      </div>
+    </div>
+    <div class="cinemaDetailBody">
+      <h1 class="cinemaDetailTitle" id="cinemaDetailTitle">Фильм</h1>
+      <div class="cinemaDetailBadges" id="cinemaDetailBadges"></div>
+      <div class="cinemaDetailTools"><span>◉</span><span>▢</span></div>
+      <div class="cinemaDetailDescription" id="cinemaDetailDescription"></div>
+      <div class="cinemaDetailFacts" id="cinemaDetailFacts"></div>
     </div>
   </section>
 
@@ -7177,13 +7241,89 @@ async function cinemaV2Resolve(group,item,meta){
   }
   meta.textContent='Источник найден. Воспроизведение этого сервиса подключается заново.';
 }
-async function openCinemaMovie(item){
+let cinemaDetailMovie=null;
+function cinemaDetailText(item,...keys){
+  for(const key of keys){
+    const value=item&&item[key];
+    if(value!==undefined&&value!==null&&String(value).trim())return String(value).trim();
+  }
+  return '';
+}
+function cinemaDetailBackdrop(item){
+  return cinemaDetailText(item,'backdrop','background','fanart','poster_wide','poster')||posterUrl(item)||'';
+}
+function cinemaDetailFact(label,value){
+  if(!value)return '';
+  const esc=x=>String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+  return '<div class="k">'+esc(label)+'</div><div class="v">'+esc(value)+'</div>';
+}
+function renderCinemaDetail(item){
+  cinemaDetailMovie=item;
+  cinemaSourcePickerMovie=item;
+  const detail=document.getElementById('cinemaDetail');
+  const hero=document.getElementById('cinemaDetailHero');
+  const title=document.getElementById('cinemaDetailTitle');
+  const badges=document.getElementById('cinemaDetailBadges');
+  const desc=document.getElementById('cinemaDetailDescription');
+  const facts=document.getElementById('cinemaDetailFacts');
+  if(!detail)return;
+
+  const bg=cinemaDetailBackdrop(item);
+  hero.style.backgroundImage=bg?'url("'+bg.replace(/"/g,'%22')+'")':'';
+  title.textContent=cinemaDetailText(item,'title','name')||'Фильм';
+
+  const badgeList=[];
+  const q=cinemaDetailText(item,'quality');
+  if(q)badgeList.push(q);
+  const audio=cinemaDetailText(item,'audio','sound');
+  if(audio)badgeList.push(audio);
+  if(item?.subtitles||item?.cc)badgeList.push('CC');
+  if(!badgeList.length)badgeList.push('HD');
+  badges.innerHTML=badgeList.map(x=>'<span class="cinemaDetailBadge">'+String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>').join('');
+
+  desc.textContent=cinemaDetailText(item,'description','plot','overview','subtitle')||'';
+
+  const year=cinemaDetailText(item,'year');
+  const rating=cinemaDetailText(item,'imdb','rating','kp');
+  const original=cinemaDetailText(item,'original_title','originalTitle','title_original');
+  const duration=cinemaDetailText(item,'duration','runtime');
+  const country=cinemaDetailText(item,'country');
+  const genre=cinemaDetailText(item,'genre','genres');
+  const translation=cinemaDetailText(item,'translation','translator','audio');
+  const director=cinemaDetailText(item,'director');
+  const cast=cinemaDetailText(item,'actors','cast','roles');
+
+  facts.innerHTML=
+    cinemaDetailFact('Рейтинг',rating)+
+    cinemaDetailFact('Название',original)+
+    cinemaDetailFact('Год',year)+
+    cinemaDetailFact('',duration)+
+    cinemaDetailFact('Страна',country)+
+    cinemaDetailFact('Жанр',genre)+
+    cinemaDetailFact('Перевод',translation)+
+    cinemaDetailFact('Режиссер',director)+
+    cinemaDetailFact('В ролях',cast);
+
+  detail.classList.add('open');
+  document.getElementById('cinemaScreen')?.style.setProperty('display','none');
+  setTimeout(()=>document.getElementById('cinemaDetailWatch')?.focus(),30);
+}
+function closeCinemaDetail(){
+  const detail=document.getElementById('cinemaDetail');
+  if(detail)detail.classList.remove('open');
+  const screen=document.getElementById('cinemaScreen');
+  if(screen&&cinemaMode)screen.style.display='block';
+  setTimeout(()=>document.querySelector('.cinemaPosterCard')?.focus(),20);
+}
+async function watchCinemaDetail(){
+  const item=cinemaDetailMovie;
   if(!item)return;
+  const detail=document.getElementById('cinemaDetail');
+  if(detail)detail.classList.remove('open');
   const modal=ensureCinemaSourceModal();
   const list=document.getElementById('cinemaSourceList');
   const title=document.getElementById('cinemaSourceTitle');
   const poster=document.getElementById('cinemaSourcePoster');
-  cinemaSourcePickerMovie=item;
   if(title)title.textContent=String(item?.title||'Кино');
   if(poster){
     const p=posterUrl(item);
@@ -7195,6 +7335,25 @@ async function openCinemaMovie(item){
   await loadLazyProviderIdMap();
   const groups=await cinemaV2FindSources(item);
   cinemaV2RenderSources(item,groups);
+}
+function playCinemaTrailer(){
+  const item=cinemaDetailMovie;
+  if(!item)return;
+  const trailer=cinemaDetailText(item,'trailer','trailer_url','trailerUrl');
+  if(trailer){
+    window.__abajOpenExternalMedia(trailer,String(item?.title||'Трейлер'));
+    return;
+  }
+  const btn=document.getElementById('cinemaDetailTrailer');
+  if(btn){
+    const old=btn.textContent;
+    btn.textContent='ТРЕЙЛЕР НЕДОСТУПЕН';
+    setTimeout(()=>btn.textContent=old,1800);
+  }
+}
+async function openCinemaMovie(item){
+  if(!item)return;
+  renderCinemaDetail(item);
 }
 function toggleCinemaMode(){
   cinemaMode=!cinemaMode;
