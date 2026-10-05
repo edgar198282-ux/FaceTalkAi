@@ -8444,6 +8444,15 @@ function toggleCinemaMode(){
     try{closeTvSearch(false)}catch(e){}
     try{closeTvSettings()}catch(e){}
     closeCinemaShellMenus();
+    if(nativeTv){
+      try{
+        const key='abaj_cinema_update_check_v2';
+        if(!sessionStorage.getItem(key)){
+          sessionStorage.setItem(key,'1');
+          setTimeout(()=>{ try{location.href='facetalk://check-update'}catch(e){} },250);
+        }
+      }catch(e){}
+    }
     loadCinemaCatalog();
     setTimeout(()=>{
       if(nativeTv){
