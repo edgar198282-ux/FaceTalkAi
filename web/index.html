@@ -1110,6 +1110,18 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaDetailFacts{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 18px;max-width:1050px;font-size:15px;line-height:1.35}
 .cinemaDetailFacts .k{color:#7ec6e9}.cinemaDetailFacts .v{color:#e9f8ff}
 .cinemaDetailFacts a{color:#dff6ff;text-decoration:underline}
+.cinemaRatingValue{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cinemaRatingScore{font-size:18px;font-weight:800;color:#fff;text-decoration:underline}
+.cinemaRatingLogo{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 6px;border-radius:5px;font-size:11px;font-weight:900}
+.cinemaRatingLogo.imdb{background:#f5c518;color:#000}
+.cinemaRatingLogo.kp{background:#ff6a00;color:#fff}
+.cinemaSimilar{margin-top:28px}
+.cinemaSimilarTitle{font-size:20px;font-weight:800;color:#eaf8ff;margin-bottom:12px}
+.cinemaSimilarRow{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+.cinemaSimilarCard{flex:0 0 150px;border:0;background:transparent;color:#fff;text-align:left;padding:0}
+.cinemaSimilarCard img{width:150px;height:220px;object-fit:cover;border-radius:10px;display:block;background:#102537}
+.cinemaSimilarName{font-size:13px;font-weight:700;line-height:1.25;margin-top:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cinemaSimilarMeta{font-size:11px;color:#8eb7cc;margin-top:3px}
 @media(max-width:760px){
   .cinemaDetailHero{min-height:44vh}
   .cinemaDetailActions{bottom:42px;gap:9px}
@@ -1278,6 +1290,10 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
       <div class="cinemaDetailDescription cinemaDetailDescriptionSecondary" id="cinemaDetailDescriptionSecondary" style="display:none"></div>
       <div class="cinemaDetailFacts" id="cinemaDetailFacts"></div>
       <div id="cinemaKpMediaRows" class="cinemaKpMediaRows" style="display:none"></div>
+      <div class="cinemaSimilar" id="cinemaSimilar" style="display:none">
+        <div class="cinemaSimilarTitle">ПОХОЖИЕ</div>
+        <div class="cinemaSimilarRow" id="cinemaSimilarRow"></div>
+      </div>
     </div>
   </section>
 
@@ -9241,6 +9257,13 @@ function cinemaDetailFact(label,value){
   const esc=x=>String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
   return '<div class="k">'+esc(label)+'</div><div class="v">'+esc(value)+'</div>';
 }
+function cinemaRatingFact(imdb,kp){
+  const parts=[];
+  if(imdb)parts.push('<span class="cinemaRatingScore">'+String(imdb).replace(/[&<>]/g,'')+'</span><span class="cinemaRatingLogo imdb">IMDb</span>');
+  if(kp)parts.push('<span class="cinemaRatingScore">'+String(kp).replace(/[&<>]/g,'')+'</span><span class="cinemaRatingLogo kp">КП</span>');
+  if(!parts.length)return '';
+  return '<div class="k">Рейтинг</div><div class="v cinemaRatingValue">'+parts.join('')+'</div>';
+}
 function shareCinemaDetail(){
   const item=cinemaDetailMovie;
   if(!item)return;
@@ -9416,11 +9439,37 @@ async function loadKinoPubItemDetails(item){
     if(!r.ok)return item;
     const d=await r.json();
     const detail=(d&&d.item&&typeof d.item==='object')?d.item:{};
-    const merged={...item,...detail,source:'KINOPUB',media_rows:Array.isArray(d.media_rows)?d.media_rows:[]};
+    const merged={...item,...detail,source:'KINOPUB',media_rows:Array.isArray(d.media_rows)?d.media_rows:[],related:Array.isArray(d.related)?d.related:[]};
     const beforeTitle=cinemaDisplayTitle(item);
     if(cinemaDisplayTitle(merged)==='Фильм'&&beforeTitle!=='Фильм')merged.title=beforeTitle;
     return merged;
   }catch(e){return item}
+}
+
+function renderCinemaSimilar(item){
+  const host=document.getElementById('cinemaSimilar');
+  const row=document.getElementById('cinemaSimilarRow');
+  if(!host||!row)return;
+  const items=Array.isArray(item?.related)?item.related.filter(Boolean):[];
+  if(!items.length){
+    host.style.display='none';
+    row.innerHTML='';
+    return;
+  }
+  row.innerHTML='';
+  items.slice(0,20).forEach(sim=>{
+    const btn=document.createElement('button');
+    btn.className='cinemaSimilarCard';
+    const poster=String(sim.poster||'');
+    const title=cinemaDisplayTitle(sim);
+    const meta=[sim.year,sim.rating].filter(Boolean).join(' · ');
+    btn.innerHTML=(poster?'<img loading="lazy" src="'+poster.replace(/"/g,'&quot;')+'" alt="">':'<div style="width:150px;height:220px;border-radius:10px;background:#102537"></div>')+
+      '<div class="cinemaSimilarName">'+title.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
+      '<div class="cinemaSimilarMeta">'+String(meta).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>';
+    btn.onclick=()=>openCinemaMovie(sim);
+    row.appendChild(btn);
+  });
+  host.style.display='block';
 }
 
 function renderCinemaDetail(item){
@@ -9474,7 +9523,8 @@ function renderCinemaDetail(item){
   }
 
   const year=cinemaDetailText(item,'year','suggest_production_year','production_year');
-  const rating=cinemaDetailText(item,'imdb','rating','kp','content_rating','suggest_rating');
+  const rating=cinemaDetailText(item,'imdb','rating','content_rating','suggest_rating');
+  const kpRating=cinemaDetailText(item,'kp','kinopoisk_rating','kp_rating');
   const original=cinemaDetailText(item,'original_title','originalTitle','title_original','original','original_name');
   const duration=cinemaDetailText(item,'duration','runtime','suggest_duration');
   const country=cinemaDetailText(item,'country','countryOfOrigin','production_country');
@@ -9485,7 +9535,7 @@ function renderCinemaDetail(item){
 
   const seriesInfo=cinemaItemLooksSeries(item)?cinemaSeriesInfo(item):'';
   facts.innerHTML=
-    cinemaDetailFact('Рейтинг',rating)+
+    cinemaRatingFact(rating,kpRating)+
     cinemaDetailFact('Название',original)+
     cinemaDetailFact('Год',year)+
     cinemaDetailFact('',duration)+
@@ -9511,6 +9561,7 @@ function renderCinemaDetail(item){
   if(seasonsBtn)seasonsBtn.style.display=isSeries?'inline-flex':'none';
   const mediaHost=document.getElementById('cinemaKpMediaRows');
   if(mediaHost&&isSeries)mediaHost.style.display='none';
+  renderCinemaSimilar(item);
 
   detail.classList.add('open');
   document.getElementById('cinemaScreen')?.style.setProperty('display','none');
