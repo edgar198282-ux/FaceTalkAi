@@ -80,6 +80,7 @@ public class MainActivity extends Activity {
     private FrameLayout fullscreenContainer;
     private PlayerView nativeProbeView;
     private ExoPlayer nativeProbePlayer;
+    private ExoPlayer cinemaHeadlessPlayer;
     private volatile long nativeProbeStartedAt=0L;
     private volatile String nativeProbeUrl="";
     private SharedPreferences prefs; private boolean telegramLaunchAttempted=false; private boolean isTv=false; private long lastTvBackAt=0L;
@@ -1520,6 +1521,24 @@ public class MainActivity extends Activity {
             }catch(Exception ignored){}
             runOnUiThread(()->startNativeCinema(url,provider,extra));
         }
+        @JavascriptInterface public void cinemaHeadlessProbe(String rawUrl,String rawProvider,String rawHeaders,String rawRequestId){
+            if(!isTv||rawUrl==null)return;
+            final String url=rawUrl.trim();
+            final String provider=rawProvider==null?"":rawProvider.trim().toUpperCase(java.util.Locale.US);
+            final String requestId=rawRequestId==null?"":rawRequestId.replaceAll("[^A-Za-z0-9_-]","");
+            if(!(url.startsWith("http://")||url.startsWith("https://"))||requestId.isEmpty())return;
+            final java.util.HashMap<String,String> extra=new java.util.HashMap<>();
+            try{
+                org.json.JSONObject h=new org.json.JSONObject(rawHeaders==null?"{}":rawHeaders);
+                java.util.Iterator<String> it=h.keys();
+                while(it.hasNext()){
+                    String k=it.next();
+                    String v=h.optString(k,"");
+                    if(k!=null&&!k.trim().isEmpty()&&!v.isEmpty())extra.put(k,v);
+                }
+            }catch(Exception ignored){}
+            runOnUiThread(()->startCinemaHeadlessProbe(url,provider,extra,requestId));
+        }
         @JavascriptInterface public void nativeProbeStop(){
             if(!isTv)return;
             runOnUiThread(()->stopNativeProbe(false));
@@ -2074,6 +2093,82 @@ public class MainActivity extends Activity {
             nativeProbeStartedAt=0L;
         }
     }
+    private void finishCinemaHeadlessProbe(String requestId,boolean ok,String message,long elapsed){
+        try{
+            if(cinemaHeadlessPlayer!=null){
+                cinemaHeadlessPlayer.release();
+                cinemaHeadlessPlayer=null;
+            }
+        }catch(Exception ignored){}
+        if(webView==null)return;
+        String safe=(message==null?"":message).replace("\\","\\\\").replace("'","\\'");
+        String js="window.__abajCinemaHeadlessProbeResult&&window.__abajCinemaHeadlessProbeResult("+
+            JSONObject.quote(requestId)+","+(ok?"true":"false")+","+JSONObject.quote(safe)+","+elapsed+");";
+        try{webView.evaluateJavascript(js,null);}catch(Exception ignored){}
+    }
+
+    private void startCinemaHeadlessProbe(String url,String provider,java.util.Map<String,String> extraHeaders,String requestId){
+        try{
+            if(cinemaHeadlessPlayer!=null){
+                try{cinemaHeadlessPlayer.release();}catch(Exception ignored){}
+                cinemaHeadlessPlayer=null;
+            }
+            java.util.HashMap<String,String> headers=new java.util.HashMap<>();
+            headers.put("User-Agent","Mozilla/5.0 (Android) AbajTV/"+BuildConfig.VERSION_NAME);
+            if("FILMIX".equals(provider)){
+                headers.put("Referer","https://filmix.moe/");
+                String cookie=CookieManager.getInstance().getCookie("https://filmix.moe/");
+                if(cookie!=null&&!cookie.trim().isEmpty())headers.put("Cookie",cookie);
+            }else if("HDREZKA".equals(provider)){
+                headers.put("Referer","https://hdrezka.ag/");
+            }
+            if(extraHeaders!=null){
+                for(java.util.Map.Entry<String,String> e:extraHeaders.entrySet()){
+                    if(e.getKey()!=null&&e.getValue()!=null&&!e.getKey().trim().isEmpty()){
+                        headers.put(e.getKey(),e.getValue());
+                    }
+                }
+            }
+            DefaultHttpDataSource.Factory httpFactory=new DefaultHttpDataSource.Factory()
+                .setAllowCrossProtocolRedirects(true)
+                .setDefaultRequestProperties(headers);
+            DefaultMediaSourceFactory mediaFactory=new DefaultMediaSourceFactory(httpFactory);
+            final long started=System.currentTimeMillis();
+            final ExoPlayer player=new ExoPlayer.Builder(this).build();
+            cinemaHeadlessPlayer=player;
+            final java.util.concurrent.atomic.AtomicBoolean done=new java.util.concurrent.atomic.AtomicBoolean(false);
+            player.addListener(new Player.Listener(){
+                @Override public void onPlaybackStateChanged(int state){
+                    if(state==Player.STATE_READY&&done.compareAndSet(false,true)){
+                        long elapsed=Math.max(0L,System.currentTimeMillis()-started);
+                        Log.i("AbajCinema","headless ready provider="+provider+" ms="+elapsed);
+                        finishCinemaHeadlessProbe(requestId,true,"ready",elapsed);
+                    }
+                }
+                @Override public void onPlayerError(PlaybackException error){
+                    if(done.compareAndSet(false,true)){
+                        long elapsed=Math.max(0L,System.currentTimeMillis()-started);
+                        String code=error==null?"unknown":error.getErrorCodeName();
+                        Log.w("AbajCinema","headless error provider="+provider+" code="+code+" ms="+elapsed);
+                        finishCinemaHeadlessProbe(requestId,false,code,elapsed);
+                    }
+                }
+            });
+            player.setMediaSource(mediaFactory.createMediaSource(MediaItem.fromUri(Uri.parse(url))),true);
+            player.prepare();
+            updateHandler.postDelayed(()->{
+                if(done.compareAndSet(false,true)){
+                    long elapsed=Math.max(0L,System.currentTimeMillis()-started);
+                    Log.w("AbajCinema","headless timeout provider="+provider+" ms="+elapsed);
+                    finishCinemaHeadlessProbe(requestId,false,"timeout",elapsed);
+                }
+            },9000L);
+        }catch(Exception e){
+            Log.w("AbajCinema","headless start failed "+e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            finishCinemaHeadlessProbe(requestId,false,e.getClass().getSimpleName(),0L);
+        }
+    }
+
     private void startNativeCinema(String url,String provider,java.util.Map<String,String> extraHeaders){
         if(!isTv||nativeProbeView==null)return;
         try{
