@@ -4810,7 +4810,11 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       err.textContent='Видео не открылось: '+String(reason||'ошибка потока');
     };
     try{
-      AbajNative.cinemaNativeStart(src,String(ch.cinemaProvider||''));
+      if(ch.cinemaHeaders&&Object.keys(ch.cinemaHeaders).length&&typeof AbajNative.cinemaNativeStartWithHeaders==='function'){
+        AbajNative.cinemaNativeStartWithHeaders(src,String(ch.cinemaProvider||''),JSON.stringify(ch.cinemaHeaders));
+      }else{
+        AbajNative.cinemaNativeStart(src,String(ch.cinemaProvider||''));
+      }
       return;
     }catch(e){
       nativeMedia3FirstFrameHandler=null;
@@ -6501,6 +6505,7 @@ let cinemaResolvePending=new Map();
 let cinemaSourceIgnoreUntil=0;
 let filmixVideoPending=new Map();
 let cinemaProviderOptionsPending=new Map();
+let cinemaLazyFolderPending=new Map();
 let cinemaArticleDetailsPending=new Map();
 let lazyProviderRegistry=[];
 let lazyProviderRegistryAt=0;
@@ -6885,6 +6890,34 @@ window.__abajCinemaProviderOptions=function(requestId,provider,rows){
   cinemaProviderOptionsPending.delete(String(requestId||''));
   p.resolve(Array.isArray(rows)?rows:[]);
 };
+function cinemaLazyFolderAsync(token){
+  return new Promise(resolve=>{
+    if(!token||!window.AbajNative||typeof AbajNative.cinemaLazyFolderAsync!=='function'){
+      resolve([]);
+      return;
+    }
+    const requestId='folder_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    const timer=setTimeout(()=>{
+      cinemaLazyFolderPending.delete(requestId);
+      resolve([]);
+    },16000);
+    cinemaLazyFolderPending.set(requestId,{resolve,timer});
+    try{
+      AbajNative.cinemaLazyFolderAsync(String(token),requestId);
+    }catch(e){
+      clearTimeout(timer);
+      cinemaLazyFolderPending.delete(requestId);
+      resolve([]);
+    }
+  });
+}
+window.__abajCinemaLazyFolder=function(requestId,rows){
+  const p=cinemaLazyFolderPending.get(String(requestId||''));
+  if(!p)return;
+  clearTimeout(p.timer);
+  cinemaLazyFolderPending.delete(String(requestId||''));
+  p.resolve(Array.isArray(rows)?rows:[]);
+};
 function cinemaQualitySummary(rows){
   const labels=[];
   for(const row of (Array.isArray(rows)?rows:[])){
@@ -7075,7 +7108,7 @@ function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
       meta.textContent='Открываю…';
       const playTitle=String(cinemaSourcePickerMovie?.title||info.raw||'Кино');
       closeCinemaSourcePicker(false);
-      window.__abajOpenExternalMedia(realUrl,playTitle,provider);
+      window.__abajOpenExternalMedia(realUrl,playTitle,provider,row?.headers||{});
     };
     list.appendChild(btn);
   });
@@ -7105,9 +7138,88 @@ function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
   );
   setTimeout(()=>focusCinemaSourceButton(0),20);
 }
+function cinemaRenderLazyRows(group,rows,trail=[]){
+  const list=document.getElementById('cinemaSourceList');
+  const title=document.getElementById('cinemaSourceTitle');
+  if(!list)return;
+  const provider=normalizeLazyProviderName(group.name);
+  const current=Array.isArray(rows)?rows:[];
+  const label=trail.length?String(trail[trail.length-1]?.label||''):'';
+  if(title)title.textContent=provider+' · '+(label||'ВИДЕО');
+  list.innerHTML='';
+
+  current.forEach((row,index)=>{
+    const kind=String(row?.kind||'stream').toLowerCase();
+    const btn=document.createElement('button');
+    btn.className='cinemaSourceBtn';
+    const name=document.createElement('span');
+    const meta=document.createElement('small');
+
+    if(kind==='folder'&&row?.token){
+      name.textContent=String(row?.name||('Источник '+(index+1)));
+      const count=Number(row?.count||0);
+      meta.textContent=count>0?(count+' вариантов'):'Открыть источник';
+      btn.append(name,meta);
+      btn.onclick=async()=>{
+        meta.textContent='Загружаю…';
+        btn.disabled=true;
+        const next=await cinemaLazyFolderAsync(String(row.token));
+        btn.disabled=false;
+        if(next.length){
+          cinemaRenderLazyRows(group,next,[...trail,{rows:current,label:String(row?.name||'Видео')}]);
+        }else{
+          meta.textContent='Поток не найден';
+        }
+      };
+    }else{
+      const url=String(row?.url||'').trim();
+      if(!url)return;
+      const q=String(row?.quality||'').trim();
+      const fmt=String(row?.format||'').trim().toUpperCase();
+      name.textContent=q?(/^\d+$/.test(q)?q+'p':q):(String(row?.name||fmt||('Вариант '+(index+1))));
+      meta.textContent=(fmt&&fmt!=='AUTO'?fmt+' · ':'')+'Открыть в Abaj TV';
+      btn.append(name,meta);
+      btn.onclick=()=>{
+        meta.textContent='Открываю…';
+        const playTitle=String(cinemaSourcePickerMovie?.title||row?.name||'Кино');
+        closeCinemaSourcePicker(false);
+        window.__abajOpenExternalMedia(url,playTitle,provider,row?.headers||{});
+      };
+    }
+    list.appendChild(btn);
+  });
+
+  if(!list.children.length){
+    const empty=document.createElement('div');
+    empty.className='cinemaSourceEmpty';
+    empty.textContent=provider+' не вернул видео для этого уровня.';
+    list.appendChild(empty);
+  }
+
+  const back=document.createElement('button');
+  back.className='cinemaSourceClose';
+  back.textContent=trail.length?'← Назад':'← Источники';
+  back.onclick=()=>{
+    if(trail.length){
+      const prev=trail[trail.length-1];
+      cinemaRenderLazyRows(group,prev.rows,trail.slice(0,-1));
+    }else{
+      renderCinemaSourceGroups();
+    }
+  };
+  list.appendChild(back);
+  setTimeout(()=>focusCinemaSourceButton(0),20);
+}
+
 function renderResolvedProviderOptions(group,rows){
   const provider=normalizeLazyProviderName(group.name);
-  const normalized=(Array.isArray(rows)?rows:[]).filter(row=>String(row?.url||'').trim());
+  const allRows=Array.isArray(rows)?rows:[];
+  const folderRows=allRows.filter(row=>String(row?.kind||'').toLowerCase()==='folder'&&row?.token);
+  if(folderRows.length){
+    cinemaRenderLazyRows(group,allRows,[]);
+    return;
+  }
+  const normalized=allRows.filter(row=>String(row?.url||'').trim());
   if(!normalized.length){
     const list=document.getElementById('cinemaSourceList');
     const title=document.getElementById('cinemaSourceTitle');
@@ -7342,6 +7454,10 @@ async function openCinemaSourceGroup(index){
 
   if(title)title.textContent=group.name+' · ВИДЕО';
   if(!list)return;
+  if(Array.isArray(group.resolvedOptions)&&group.resolvedOptions.length){
+    renderResolvedProviderOptions(group,group.resolvedOptions);
+    return;
+  }
   list.innerHTML='';
   group.items.forEach((item,i)=>{
     const btn=document.createElement('button');
@@ -7442,7 +7558,7 @@ function playCinemaSource(index){
     note.textContent='Этот источник пока не отдал прямой поток. Окно не закрываю — можно выбрать другой источник.';
   }
 }
-window.__abajOpenExternalMedia=function(url,title,provider=''){
+window.__abajOpenExternalMedia=function(url,title,provider='',headers={}){
   const raw=String(url||'').trim();
   if(!(raw.toLowerCase().startsWith('http://')||raw.toLowerCase().startsWith('https://')||raw.toLowerCase().startsWith('content:')))return;
   const ch={
@@ -7453,7 +7569,8 @@ window.__abajOpenExternalMedia=function(url,title,provider=''){
     personal:false,
     quality:'',
     height:0,
-    cinemaProvider:String(provider||'').trim().toUpperCase()
+    cinemaProvider:String(provider||'').trim().toUpperCase(),
+    cinemaHeaders:(headers&&typeof headers==='object')?headers:{}
   };
   try{
     cinemaMode=true;
@@ -7578,6 +7695,10 @@ async function cinemaV2OpenSource(index){
   const title=document.getElementById('cinemaSourceTitle');
   if(title)title.textContent=group.name+' · ВИДЕО';
   if(!list)return;
+  if(Array.isArray(group.resolvedOptions)&&group.resolvedOptions.length){
+    renderResolvedProviderOptions(group,group.resolvedOptions);
+    return;
+  }
   list.innerHTML='';
   group.items.forEach((item,i)=>{
     const btn=document.createElement('button');
@@ -7607,9 +7728,17 @@ async function cinemaV2Resolve(group,item,meta){
   if(url){
     const playTitle=String(cinemaSourcePickerMovie?.title||item?.title||'Кино');
     closeCinemaSourcePicker(false);
-    window.__abajOpenExternalMedia(url,playTitle);
+    window.__abajOpenExternalMedia(url,playTitle,provider,item?.headers||{});
     return;
   }
+  try{
+    const rows=await cinemaProviderOptionsAsync(item,provider);
+    if(Array.isArray(rows)&&rows.length){
+      group.resolvedOptions=rows;
+      renderResolvedProviderOptions(group,rows);
+      return;
+    }
+  }catch(e){}
   if(provider==='FILMIX'){
     meta.textContent='Получаю варианты FILMIX…';
     const rows=await filmixVideoOptionsAsync(item).catch(()=>[]);

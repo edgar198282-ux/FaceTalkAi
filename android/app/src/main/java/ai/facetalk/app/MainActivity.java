@@ -98,6 +98,8 @@ public class MainActivity extends Activity {
     private volatile boolean cinemaResolverDone=false;
     private volatile String pendingExternalMediaUrl="";
     private volatile String pendingExternalMediaTitle="";
+    private final java.util.concurrent.ConcurrentHashMap<String,Object> lazyCinemaNodes=new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicLong lazyCinemaNodeSeq=new java.util.concurrent.atomic.AtomicLong(1L);
     private String decodeCinemaIntentPart(String raw,int index){
         try{
             String[] parts=(raw==null?"":raw).split(",",-1);
@@ -383,6 +385,215 @@ public class MainActivity extends Activity {
         });
     }
 
+    private String rememberLazyCinemaNode(Object node){
+        if(node==null)return "";
+        if(lazyCinemaNodes.size()>480)lazyCinemaNodes.clear();
+        String token="lm_"+Long.toString(lazyCinemaNodeSeq.getAndIncrement(),36)+"_"+Integer.toHexString(System.identityHashCode(node));
+        lazyCinemaNodes.put(token,node);
+        return token;
+    }
+
+    private String lazyFolderLabel(Object node){
+        if(node==null)return "";
+        try{
+            java.lang.reflect.Method m=node.getClass().getMethod("OooOo0O");
+            Object v=m.invoke(node);
+            if(v!=null&&!String.valueOf(v).trim().isEmpty())return String.valueOf(v).trim();
+        }catch(Throwable ignored){}
+        try{
+            java.lang.reflect.Method m=node.getClass().getMethod("OooOooo");
+            Object v=m.invoke(node);
+            if(v!=null&&!String.valueOf(v).trim().isEmpty())return String.valueOf(v).trim();
+        }catch(Throwable ignored){}
+        return "";
+    }
+
+    private org.json.JSONObject lazyJ30Row(Object node,String path){
+        if(node==null)return null;
+        try{
+            Class<?> c=node.getClass();
+            if(!"obf.j30".equals(c.getName()))return null;
+            String url="";
+            try{
+                Object v=c.getMethod("OooOo0o").invoke(node);
+                if(v!=null)url=String.valueOf(v).trim().replace("\\/","/");
+            }catch(Throwable ignored){}
+            if(!(url.startsWith("http://")||url.startsWith("https://")))return null;
+
+            String label=path==null?"":path.trim();
+            try{
+                Object v=c.getMethod("OooOOoo").invoke(node);
+                String x=v==null?"":String.valueOf(v).trim();
+                if(!x.isEmpty())label=(label+" "+x).trim();
+            }catch(Throwable ignored){}
+            String format="";
+            try{
+                Object v=c.getMethod("getFormat").invoke(node);
+                if(v!=null)format=String.valueOf(v).trim();
+            }catch(Throwable ignored){}
+
+            org.json.JSONObject row=new org.json.JSONObject();
+            row.put("kind","stream");
+            row.put("name",label.isEmpty()?"Видео":label);
+            row.put("url",url);
+            String low=url.toLowerCase(java.util.Locale.US);
+            String fmt=!format.isEmpty()?format:
+                (low.contains(".m3u8")||low.contains("/hls/")?"HLS":
+                 low.contains(".mpd")||low.contains("/dash/")?"DASH":
+                 low.contains(".mp4")?"MP4":"AUTO");
+            row.put("format",fmt);
+            java.util.regex.Matcher qm=java.util.regex.Pattern
+                .compile("(2160|1440|1080|720|480|360)")
+                .matcher(label+" "+format+" "+url);
+            if(qm.find())row.put("quality",qm.group(1));
+
+            try{
+                Object headersObj=c.getMethod("OooOOo0").invoke(node);
+                if(headersObj!=null){
+                    Object mapObj=headersObj.getClass().getMethod("OooO0oo").invoke(headersObj);
+                    if(mapObj instanceof java.util.Map){
+                        org.json.JSONObject headers=new org.json.JSONObject();
+                        for(Object e0:((java.util.Map<?,?>)mapObj).entrySet()){
+                            java.util.Map.Entry<?,?> e=(java.util.Map.Entry<?,?>)e0;
+                            if(e.getKey()!=null&&e.getValue()!=null){
+                                headers.put(String.valueOf(e.getKey()),String.valueOf(e.getValue()));
+                            }
+                        }
+                        if(headers.length()>0)row.put("headers",headers);
+                    }
+                }
+            }catch(Throwable ignored){}
+            return row;
+        }catch(Throwable ignored){}
+        return null;
+    }
+
+    private org.json.JSONArray serializeLazyFolderRows(Object folder,String path){
+        org.json.JSONArray out=new org.json.JSONArray();
+        if(folder==null)return out;
+        try{
+            Class<?> c=folder.getClass();
+            if("obf.j30".equals(c.getName())){
+                org.json.JSONObject row=lazyJ30Row(folder,path);
+                if(row!=null)out.put(row);
+                return out;
+            }
+            if(!"obf.k30".equals(c.getName()))return out;
+            int count=0;
+            try{count=((Number)c.getMethod("Oooo000").invoke(folder)).intValue();}catch(Throwable ignored){}
+            java.lang.reflect.Method itemMethod=c.getMethod("OooOOO",int.class);
+            for(int i=0;i<count&&i<160;i++){
+                Object child=null;
+                try{child=itemMethod.invoke(folder,i);}catch(Throwable ignored){}
+                if(child==null)continue;
+                String cn=child.getClass().getName();
+                if("obf.j30".equals(cn)){
+                    org.json.JSONObject row=lazyJ30Row(child,path);
+                    if(row!=null)out.put(row);
+                }else if("obf.k30".equals(cn)){
+                    String label=lazyFolderLabel(child);
+                    org.json.JSONObject row=new org.json.JSONObject();
+                    row.put("kind","folder");
+                    row.put("name",label.isEmpty()?"Видео":label);
+                    row.put("token",rememberLazyCinemaNode(child));
+                    int childCount=0;
+                    try{childCount=((Number)child.getClass().getMethod("Oooo000").invoke(child)).intValue();}catch(Throwable ignored){}
+                    row.put("count",childCount);
+                    try{row.put("expandable",child.getClass().getMethod("OooOoo").invoke(child)!=null);}catch(Throwable ignored){}
+                    out.put(row);
+                }
+            }
+        }catch(Throwable e){
+            Log.w("AbajCinema","serialize LazyMedia folder failed "+e.getClass().getSimpleName());
+        }
+        return out;
+    }
+
+    private org.json.JSONArray expandLazyCinemaFolder(String token){
+        Object folder=lazyCinemaNodes.get(token==null?"":token);
+        if(folder==null)return new org.json.JSONArray();
+        try{
+            Class<?> c=folder.getClass();
+            if(!"obf.k30".equals(c.getName()))return serializeLazyFolderRows(folder,"");
+            int count=((Number)c.getMethod("Oooo000").invoke(folder)).intValue();
+            if(count<=0){
+                Object parser=c.getMethod("OooOoo").invoke(folder);
+                if(parser!=null){
+                    java.lang.reflect.Method parse=parser.getClass().getMethod("OooO00o",c);
+                    parse.setAccessible(true);
+                    Object expanded=parse.invoke(parser,folder);
+                    if(expanded!=null){
+                        int ec=0;
+                        try{ec=((Number)expanded.getClass().getMethod("Oooo000").invoke(expanded)).intValue();}catch(Throwable ignored){}
+                        if(ec>0)c.getMethod("OooO0oO",c).invoke(folder,expanded);
+                    }
+                }
+            }
+            return serializeLazyFolderRows(folder,lazyFolderLabel(folder));
+        }catch(Throwable e){
+            Log.w("AbajCinema","LazyMedia folder expand failed "+e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            return new org.json.JSONArray();
+        }
+    }
+
+    private org.json.JSONArray resolveLazyArticleVideoTree(Object articleObj,ClassLoader cl){
+        org.json.JSONArray empty=new org.json.JSONArray();
+        if(articleObj==null||cl==null)return empty;
+        final java.util.concurrent.atomic.AtomicReference<Object> videoTree=new java.util.concurrent.atomic.AtomicReference<>();
+        try{
+            Class<?> callbackClass=Class.forName(
+                "com.lazycatsoftware.lazymediadeluxe.models.service.OooO00o$OooO00o",true,cl
+            );
+            java.util.concurrent.CountDownLatch baseDone=new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.CountDownLatch videoDone=new java.util.concurrent.CountDownLatch(1);
+            Object callback=java.lang.reflect.Proxy.newProxyInstance(
+                cl,new Class<?>[]{callbackClass},(proxy,method,args)->{
+                    String n=method.getName();
+                    if("OooO0o0".equals(n)||"OooO0o".equals(n))baseDone.countDown();
+                    if("OooO0Oo".equals(n)&&args!=null&&args.length>=2&&args[0]!=null){
+                        String type=String.valueOf(args[0]).toLowerCase(java.util.Locale.US);
+                        if("video".equals(type)){
+                            videoTree.set(args[1]);
+                            videoDone.countDown();
+                        }
+                    }
+                    return null;
+                }
+            );
+            java.lang.reflect.Method taskParse=null;
+            for(java.lang.reflect.Method m:articleObj.getClass().getMethods()){
+                Class<?>[] pt=m.getParameterTypes();
+                if("taskParse".equals(m.getName())&&pt.length==1&&pt[0].isAssignableFrom(callbackClass)){taskParse=m;break;}
+            }
+            if(taskParse==null)return empty;
+            taskParse.setAccessible(true);
+            taskParse.invoke(articleObj,callback);
+            try{baseDone.await(10,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
+
+            Class<?> v41=Class.forName("obf.v41",true,cl);
+            Object[] types=(Object[])v41.getMethod("values").invoke(null);
+            if(types!=null&&types.length>0){
+                java.lang.reflect.Method detect=null;
+                for(java.lang.reflect.Method m:articleObj.getClass().getMethods()){
+                    Class<?>[] pt=m.getParameterTypes();
+                    if("detectContent".equals(m.getName())&&pt.length==1&&pt[0]==v41){detect=m;break;}
+                }
+                if(detect!=null){
+                    detect.setAccessible(true);
+                    detect.invoke(articleObj,types[0]);
+                    try{videoDone.await(12,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
+                }
+            }
+            Object tree=videoTree.get();
+            org.json.JSONArray rows=serializeLazyFolderRows(tree,"");
+            try{articleObj.getClass().getMethod("stopAllTasks").invoke(articleObj);}catch(Throwable ignored){}
+            return rows;
+        }catch(Throwable e){
+            Log.w("AbajCinema","LazyMedia video tree failed "+e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            return empty;
+        }
+    }
+
     private void collectLazyMediaUrls(Object node,String path,int depth,java.util.Set<Integer> seen,org.json.JSONArray out){
         if(node==null||depth>7||out==null||out.length()>=120)return;
         try{
@@ -457,7 +668,7 @@ public class MainActivity extends Activity {
                 try{
                     Object uv=null;
                     try{
-                        java.lang.reflect.Method urlMethod=c.getMethod("OooOOoo");
+                        java.lang.reflect.Method urlMethod=c.getMethod("OooOo0o");
                         uv=urlMethod.invoke(node);
                     }catch(Throwable ignored){}
                     String u=uv==null?"":String.valueOf(uv).trim().replace("\\/","/");
@@ -814,9 +1025,9 @@ public class MainActivity extends Activity {
                     Log.i("AbajCinema","parser instantiated: "+requested+" class="+className+
                         " article="+article+" title="+title);
 
-                    org.json.JSONArray candidate=resolveLazyArticleOptions(articleObj,cl);
+                    org.json.JSONArray candidate=resolveLazyArticleVideoTree(articleObj,cl);
                     Log.i("AbajCinema","parser result: "+requested+" class="+className+
-                        " streams="+candidate.length());
+                        " rows="+candidate.length());
                     if(candidate.length()>0){
                         for(int i=0;i<candidate.length();i++)out.put(candidate.opt(i));
                         usedClass=className;
@@ -1114,7 +1325,24 @@ public class MainActivity extends Activity {
             String url=rawUrl.trim();
             String provider=rawProvider==null?"":rawProvider.trim().toUpperCase(java.util.Locale.US);
             if(!(url.startsWith("http://")||url.startsWith("https://")))return;
-            runOnUiThread(()->startNativeCinema(url,provider));
+            runOnUiThread(()->startNativeCinema(url,provider,null));
+        }
+        @JavascriptInterface public void cinemaNativeStartWithHeaders(String rawUrl,String rawProvider,String rawHeaders){
+            if(!isTv||rawUrl==null)return;
+            String url=rawUrl.trim();
+            String provider=rawProvider==null?"":rawProvider.trim().toUpperCase(java.util.Locale.US);
+            if(!(url.startsWith("http://")||url.startsWith("https://")))return;
+            final java.util.HashMap<String,String> extra=new java.util.HashMap<>();
+            try{
+                org.json.JSONObject h=new org.json.JSONObject(rawHeaders==null?"{}":rawHeaders);
+                java.util.Iterator<String> it=h.keys();
+                while(it.hasNext()){
+                    String k=it.next();
+                    String v=h.optString(k,"");
+                    if(k!=null&&!k.trim().isEmpty()&&!v.isEmpty())extra.put(k,v);
+                }
+            }catch(Exception ignored){}
+            runOnUiThread(()->startNativeCinema(url,provider,extra));
         }
         @JavascriptInterface public void nativeProbeStop(){
             if(!isTv)return;
@@ -1328,6 +1556,22 @@ public class MainActivity extends Activity {
                     try{webView.evaluateJavascript(js,null);}catch(Exception ignored){}
                 });
             },"abaj-cinema-details").start();
+        }
+
+        @JavascriptInterface public void cinemaLazyFolderAsync(String rawToken,String rawRequestId){
+            final String token=rawToken==null?"":rawToken.replaceAll("[^A-Za-z0-9_-]","");
+            final String requestId=rawRequestId==null?"":rawRequestId.replaceAll("[^A-Za-z0-9_-]","");
+            if(token.isEmpty()||requestId.isEmpty())return;
+            new Thread(()->{
+                org.json.JSONArray rows=expandLazyCinemaFolder(token);
+                final String payload=rows==null?"[]":rows.toString();
+                runOnUiThread(()->{
+                    if(webView==null)return;
+                    String js="window.__abajCinemaLazyFolder&&window.__abajCinemaLazyFolder("+
+                        JSONObject.quote(requestId)+","+payload+");";
+                    try{webView.evaluateJavascript(js,null);}catch(Exception ignored){}
+                });
+            },"abaj-cinema-folder").start();
         }
 
         @JavascriptInterface public void cinemaProviderOptionsAsync(String rawIntent,String provider,String rawRequestId){
@@ -1576,7 +1820,7 @@ public class MainActivity extends Activity {
             nativeProbeStartedAt=0L;
         }
     }
-    private void startNativeCinema(String url,String provider){
+    private void startNativeCinema(String url,String provider,java.util.Map<String,String> extraHeaders){
         if(!isTv||nativeProbeView==null)return;
         try{
             ensureNativeProbePlayer();
@@ -1589,6 +1833,13 @@ public class MainActivity extends Activity {
                 if(cookie!=null&&!cookie.trim().isEmpty())headers.put("Cookie",cookie);
             }else if("HDREZKA".equals(provider)){
                 headers.put("Referer","https://hdrezka.ag/");
+            }
+            if(extraHeaders!=null){
+                for(java.util.Map.Entry<String,String> e:extraHeaders.entrySet()){
+                    if(e.getKey()!=null&&e.getValue()!=null&&!e.getKey().trim().isEmpty()){
+                        headers.put(e.getKey(),e.getValue());
+                    }
+                }
             }
             DefaultHttpDataSource.Factory httpFactory=new DefaultHttpDataSource.Factory()
                 .setAllowCrossProtocolRedirects(true)
