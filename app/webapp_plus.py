@@ -865,6 +865,33 @@ def _imdb_name(value):
         return ", ".join([_imdb_name(x) for x in value if _imdb_name(x)])
     return str(value or "").strip()
 
+def _cinema_translit(value):
+    table = {
+        'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y',
+        'к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f',
+        'х':'h','ц':'c','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'
+    }
+    out = []
+    for ch in str(value or '').casefold():
+        out.append(table.get(ch, ch))
+    return ''.join(out)
+
+def _cinema_norm(value):
+    value = _cinema_translit(value)
+    return re.sub(r'[^a-z0-9]+', '', value)
+
+def _cinema_title_score(query, candidate):
+    q = _cinema_norm(query)
+    c = _cinema_norm(candidate)
+    if not q or not c:
+        return 0
+    if q == c:
+        return 100
+    if q in c or c in q:
+        return 72
+    import difflib
+    return int(difflib.SequenceMatcher(None, q, c).ratio() * 60)
+
 async def api_cinema_meta(request):
     title = str(request.query.get("title") or "").strip()
     year_raw = str(request.query.get("year") or "").strip()
@@ -883,37 +910,76 @@ async def api_cinema_meta(request):
     }
     try:
         async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
-            suggest_url = "https://v2.sg.media-imdb.com/suggestion/x/" + quote(title) + ".json"
-            async with session.get(suggest_url, allow_redirects=True) as resp:
-                if resp.status >= 400:
-                    raise RuntimeError(f"suggest_{resp.status}")
-                data = await resp.json(content_type=None)
-
-            candidates = data.get("d") if isinstance(data, dict) else []
             best = None
             best_score = -1
-            normalized = re.sub(r"\W+", "", title.casefold(), flags=re.UNICODE)
-            for row in candidates if isinstance(candidates, list) else []:
-                if not isinstance(row, dict):
-                    continue
-                imdb_id = str(row.get("id") or "")
-                if not imdb_id.startswith("tt"):
-                    continue
-                name = str(row.get("l") or "").strip()
-                row_year = int(row.get("y") or 0) if str(row.get("y") or "").isdigit() else 0
-                n = re.sub(r"\W+", "", name.casefold(), flags=re.UNICODE)
-                score = 0
-                if normalized and n == normalized:
-                    score += 100
-                elif normalized and (normalized in n or n in normalized):
-                    score += 55
-                if wanted_year and row_year:
-                    score += max(0, 30 - abs(wanted_year-row_year)*12)
-                if score > best_score:
-                    best_score = score
-                    best = row
 
-            if not best:
+            for meta_type in ("movie","series"):
+                try:
+                    search_url = (
+                        f"https://v3-cinemeta.strem.io/catalog/{meta_type}/top/search="
+                        + quote(title)
+                        + ".json"
+                    )
+                    async with session.get(search_url, allow_redirects=True) as resp:
+                        if resp.status >= 400:
+                            continue
+                        search_data = await resp.json(content_type=None)
+                    metas = search_data.get("metas") if isinstance(search_data, dict) else []
+                    for row in metas if isinstance(metas, list) else []:
+                        if not isinstance(row, dict):
+                            continue
+                        imdb_id = str(row.get("imdb_id") or row.get("id") or "")
+                        if not imdb_id.startswith("tt"):
+                            continue
+                        row_year_raw = str(row.get("year") or row.get("releaseInfo") or "")
+                        year_match = re.search(r"(19|20)\d{2}", row_year_raw)
+                        row_year = int(year_match.group(0)) if year_match else 0
+                        if wanted_year and row_year and abs(wanted_year-row_year) > 1:
+                            continue
+                        score = _cinema_title_score(title, row.get("name") or "")
+                        if wanted_year and row_year == wanted_year:
+                            score += 45
+                        elif wanted_year and row_year:
+                            score += 15
+                        if score > best_score:
+                            best_score = score
+                            best = {
+                                "id": imdb_id,
+                                "l": row.get("name") or "",
+                                "y": row_year or "",
+                                "_cinemeta_search": row,
+                            }
+                except Exception:
+                    continue
+
+            if not best or best_score < 50:
+                suggest_url = "https://v2.sg.media-imdb.com/suggestion/x/" + quote(title) + ".json"
+                async with session.get(suggest_url, allow_redirects=True) as resp:
+                    if resp.status < 400:
+                        data = await resp.json(content_type=None)
+                    else:
+                        data = {}
+                candidates = data.get("d") if isinstance(data, dict) else []
+                for row in candidates if isinstance(candidates, list) else []:
+                    if not isinstance(row, dict):
+                        continue
+                    imdb_id = str(row.get("id") or "")
+                    if not imdb_id.startswith("tt"):
+                        continue
+                    name = str(row.get("l") or "").strip()
+                    row_year = int(row.get("y") or 0) if str(row.get("y") or "").isdigit() else 0
+                    if wanted_year and row_year and abs(wanted_year-row_year) > 1:
+                        continue
+                    score = _cinema_title_score(title, name)
+                    if wanted_year and row_year == wanted_year:
+                        score += 45
+                    elif wanted_year and row_year:
+                        score += 15
+                    if score > best_score:
+                        best_score = score
+                        best = row
+
+            if not best or best_score < 50:
                 return web.json_response({"ok":True,"found":False}, headers={"Cache-Control":"no-store"})
 
             imdb_id = str(best.get("id") or "")
