@@ -1027,22 +1027,27 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 }
 .cinemaSeasons.open{display:block}
 .cinemaSeasonsBar{
-  height:72px;display:flex;align-items:center;gap:14px;padding:0 18px;
-  background:#1b1b1b;border-bottom:1px solid rgba(255,255,255,.06);position:sticky;top:0;z-index:2
+  height:64px;display:flex;align-items:center;gap:10px;padding:0 14px;
+  background:#1b1b1b;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:2
 }
 .cinemaSeasonsBack{
-  width:44px;height:44px;border:0;background:transparent;color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center
+  width:40px;height:40px;min-width:40px;border:0;background:transparent;color:#fff;font-size:27px;
+  display:flex;align-items:center;justify-content:center;padding:0
 }
-.cinemaSeasonsTitle{font-size:22px;color:#d2d2d2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cinemaSeasonsTitle{
+  min-width:0;flex:1;font-size:19px;font-weight:500;color:#dedede;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
 .cinemaSeasonsList{display:flex;flex-direction:column}
 .cinemaSeasonRow{
-  min-height:86px;width:100%;border:0;border-bottom:1px solid rgba(255,255,255,.10);
-  background:#161616;color:#d8d8d8;padding:0 20px;display:flex;align-items:center;justify-content:space-between;
-  font-size:22px;text-align:left
+  min-height:72px;width:100%;border:0;border-bottom:1px solid rgba(255,255,255,.08);
+  background:#161616;color:#dddddd;padding:0 16px 0 20px;display:flex;align-items:center;justify-content:space-between;
+  font-size:20px;font-weight:500;text-align:left
 }
 .cinemaSeasonRow:focus{outline:none;background:#222}
 .cinemaSeasonCount{
-  min-width:70px;padding:8px 12px;border-radius:16px;background:#809bb6;color:#fff;text-align:center;font-size:18px;font-weight:700
+  min-width:58px;padding:7px 10px;border-radius:14px;background:#86a6c4;color:#fff;text-align:center;
+  font-size:17px;font-weight:800;box-sizing:border-box
 }
 .cinemaEpisodesPane{padding:8px 0 22px}
 .cinemaEpisodeRow{
@@ -9480,7 +9485,7 @@ function openCinemaSeasons(){
   if(!screen||!list)return;
   document.getElementById('cinemaDetail')?.classList.remove('open');
   screen.classList.add('open');
-  if(title)title.textContent='СЕЗОНЫ '+cinemaDisplayTitle(item);
+  if(title)title.textContent='СЕЗОНЫ · '+cinemaDisplayTitle(item);
   list.innerHTML='';
   rows.forEach((row,index)=>{
     const watched=row.items.filter(cinemaEpisodeWatched).length;
