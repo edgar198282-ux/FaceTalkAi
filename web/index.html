@@ -1970,7 +1970,10 @@ function closeSettings(){document.getElementById('settingsModal').classList.remo
 
 let adminAccessUsers=[];
 function openAdmin(){
-  document.getElementById('adminPanel').classList.add('open');
+  const panel=document.getElementById('adminPanel');
+  if(panel)panel.classList.add('open');
+  document.documentElement.style.overflow='hidden';
+  document.body.style.overflow='hidden';
   loadAdminAccess();
   loadAdminEdem();
   loadIptvDiagnostics();
@@ -1982,7 +1985,12 @@ function openAdmin(){
     focusAdminControl(first);
   },80);
 }
-function closeAdmin(){document.getElementById('adminPanel').classList.remove('open')}
+function closeAdmin(){
+  const panel=document.getElementById('adminPanel');
+  if(panel)panel.classList.remove('open');
+  document.documentElement.style.overflow='';
+  document.body.style.overflow='';
+}
 function adminPanelOpen(){
   return !!document.getElementById('adminPanel')?.classList.contains('open');
 }
@@ -2001,13 +2009,32 @@ function focusAdminControl(target){
   try{target.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
   return true;
 }
+function scrollAdminCard(direction){
+  const card=document.querySelector('#adminPanel .adminCard');
+  if(!card)return false;
+  const max=Math.max(0,card.scrollHeight-card.clientHeight);
+  if(max<=0)return false;
+  const step=Math.max(120,Math.round(card.clientHeight*0.22));
+  const next=Math.max(0,Math.min(max,card.scrollTop+(direction==='down'?step:-step)));
+  if(next===card.scrollTop)return false;
+  card.scrollTop=next;
+  return true;
+}
 function moveAdminFocus(action){
   const els=adminFocusable();
-  if(!els.length)return false;
+  if(!els.length){
+    if(action==='up'||action==='down')return scrollAdminCard(action);
+    return false;
+  }
   let i=els.indexOf(document.activeElement);
   if(i<0)i=0;
-  if(action==='up')i=Math.max(0,i-1);
-  else if(action==='down')i=Math.min(els.length-1,i+1);
+  if(action==='up'){
+    scrollAdminCard('up');
+    i=Math.max(0,i-1);
+  }else if(action==='down'){
+    scrollAdminCard('down');
+    i=Math.min(els.length-1,i+1);
+  }
   else if(action==='left'||action==='right'){
     const active=els[i]||document.activeElement;
     if(active&&active.type==='number'){
@@ -6082,6 +6109,22 @@ function moveCinemaDetailFocus(direction){
   try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
   try{target.scrollIntoView({block:'center',inline:'center',behavior:'auto'})}catch(_){}
 }
+function adminTvCapture(e){
+  if(!adminPanelOpen())return;
+  const key=e.key;
+  if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Escape','Backspace'].includes(key))return;
+  e.preventDefault();
+  e.stopPropagation();
+  if(typeof e.stopImmediatePropagation==='function')e.stopImmediatePropagation();
+  if(key==='Escape'||key==='Backspace'){closeAdmin();return}
+  moveAdminFocus(
+    key==='ArrowUp'?'up':
+    key==='ArrowDown'?'down':
+    key==='ArrowLeft'?'left':
+    key==='ArrowRight'?'right':'ok'
+  );
+}
+window.addEventListener('keydown',adminTvCapture,true);
 document.addEventListener('keydown',e=>{
   if(nativeTv&&tvLastAutoTimer)cancelLastChannelAutoStart(true);
   if(adminPanelOpen()){
