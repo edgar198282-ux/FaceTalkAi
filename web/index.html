@@ -1311,6 +1311,19 @@ body.cinemaMode .top{display:none!important}
       </div>
     </div>
 
+    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Кино · KinoPub</div>
+    <div class="adminRow" style="display:block">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <b>KinoPub</b>
+        <span id="kinoPubAdminStatus" class="adminMeta">Тестовая ветка</span>
+      </div>
+      <div class="adminMeta" id="kinoPubAdminMeta" style="margin-top:6px">KinoPub пока изолирован от рабочего ТВ. Сначала проверяется отдельно, без изменения LazyMedia и IPTV.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+        <button onclick="testKinoPubAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#087fe1;color:#fff;font-weight:900">Проверить KinoPub</button>
+        <button onclick="prepareKinoPubLogin()" style="min-height:44px;border:0;border-radius:11px;background:#16a05d;color:#fff;font-weight:900">Подготовить вход</button>
+      </div>
+    </div>
+
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Диагностика IPTV</div>
     <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px;width:100%;box-sizing:border-box">
       <button onclick="loadIptvDiagnostics()" style="width:100%;min-width:0;min-height:70px;box-sizing:border-box;background:#087fe1;color:#fff;border:0;border-radius:14px;padding:12px 10px;font-weight:800;font-size:16px;line-height:1.15;white-space:normal">Обновить<br>диагностику</button>
@@ -2004,6 +2017,18 @@ function openAdmin(){
 function closeAdmin(){
   const panel=document.getElementById('adminPanel');
   if(panel)panel.classList.remove('open');
+}
+function testKinoPubAdmin(){
+  const st=document.getElementById('kinoPubAdminStatus');
+  const meta=document.getElementById('kinoPubAdminMeta');
+  if(st){st.textContent='Готов к проверке';st.style.color='#0b5f9e'}
+  if(meta)meta.textContent='Рабочий ТВ не изменён. Следующий шаг — отдельная проверка авторизации KinoPub в этой ветке.';
+}
+function prepareKinoPubLogin(){
+  const st=document.getElementById('kinoPubAdminStatus');
+  const meta=document.getElementById('kinoPubAdminMeta');
+  if(st){st.textContent='Ожидает интеграцию';st.style.color='#c28a13'}
+  if(meta)meta.textContent='Вход ещё не активирован: сначала проверяем API/авторизацию отдельно, затем подключаем каталог.';
 }
 function backFromAdmin(){
   closeAdmin();
