@@ -7168,6 +7168,13 @@ async function loadKinoPubSection(section,options={}){
     }
     updateKinoPubLoadMore();
   }catch(e){
+    if(section!=='movies'&&section!=='series'){
+      try{
+        const fallbackSection=(cinemaType==='series'?'series':'movies');
+        await loadKinoPubSection(fallbackSection);
+        return;
+      }catch(_){}
+    }
     renderCinemaCatalog([]);
     if(status)status.textContent='Раздел временно недоступен.';
   }
