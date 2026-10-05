@@ -161,9 +161,13 @@ public class MainActivity extends Activity {
         return u.contains(".m3u8")||u.contains(".mpd")||u.contains(".mp4")||u.contains("/hls/")||u.contains("/dash/");
     }
     private void finishCinemaResolve(String requestId,String url){
+        finishCinemaResolve(requestId,url,null);
+    }
+    private void finishCinemaResolve(String requestId,String url,org.json.JSONObject headers){
         if(requestId==null||!requestId.equals(cinemaResolverRequestId)||cinemaResolverDone)return;
         cinemaResolverDone=true;
         final String resolved=url==null?"":url.trim();
+        final String headerJson=headers==null?"{}":headers.toString();
         cinemaResolverHandler.removeCallbacksAndMessages(null);
         runOnUiThread(()->{
             try{
@@ -175,7 +179,7 @@ public class MainActivity extends Activity {
                 }
                 if(webView!=null){
                     String js="window.__abajCinemaResolved&&window.__abajCinemaResolved("+
-                        JSONObject.quote(requestId)+","+JSONObject.quote(resolved)+");";
+                        JSONObject.quote(requestId)+","+JSONObject.quote(resolved)+","+headerJson+");";
                     webView.evaluateJavascript(js,null);
                 }
             }catch(Exception ignored){}
@@ -294,6 +298,9 @@ public class MainActivity extends Activity {
     private void resolveCinemaStreamInternal(String rawIntent,String provider,String transport,String quality,String requestId){
         final String source=cinemaSourceId(rawIntent);
         final String normalizedProvider=provider==null?"":provider.trim().toUpperCase(java.util.Locale.US);
+        cinemaResolverRequestId=requestId;
+        cinemaResolverTransport=transport;
+        cinemaResolverDone=false;
 
         // First ask the installed LazyMedia parser for its real video tree.
         // This preserves provider logic such as translation/season/episode/quality
@@ -304,35 +311,37 @@ public class MainActivity extends Activity {
                     ?lazyFilmixReflectOptions(rawIntent)
                     :lazyProviderReflectOptions(rawIntent,normalizedProvider);
                 if(nativeRows!=null&&nativeRows.length()>0){
-                    java.util.ArrayList<String[]> candidates=new java.util.ArrayList<>();
+                    java.util.ArrayList<org.json.JSONObject> candidates=new java.util.ArrayList<>();
                     for(int i=0;i<nativeRows.length();i++){
                         org.json.JSONObject row=nativeRows.optJSONObject(i);
                         if(row==null)continue;
                         String u=row.optString("url","");
                         if(!(u.startsWith("http://")||u.startsWith("https://")))continue;
-                        String q=row.optString("quality","");
-                        String f=row.optString("format","");
-                        String n=row.optString("name","");
-                        candidates.add(new String[]{u,q,f,n});
+                        candidates.add(row);
                     }
                     if(!candidates.isEmpty()){
                         String wantedTransport=transport==null?"":transport.trim().toUpperCase(java.util.Locale.US);
                         String wantedQuality=quality==null?"":quality.trim().toUpperCase(java.util.Locale.US);
-                        String best="";
-                        for(String[] c:candidates){
-                            String u=c[0],q=c[1].toUpperCase(java.util.Locale.US),f=c[2].toUpperCase(java.util.Locale.US),n=c[3].toUpperCase(java.util.Locale.US);
+                        org.json.JSONObject bestRow=null;
+                        for(org.json.JSONObject row:candidates){
+                            String u=row.optString("url","");
+                            String q=row.optString("quality","").toUpperCase(java.util.Locale.US);
+                            String f=row.optString("format","").toUpperCase(java.util.Locale.US);
+                            String n=row.optString("name","").toUpperCase(java.util.Locale.US);
                             boolean transportOk=wantedTransport.isEmpty()||"AUTO".equals(wantedTransport)||
                                 f.contains(wantedTransport)||
                                 ("HLS".equals(wantedTransport)&&u.toLowerCase(java.util.Locale.US).contains(".m3u8"))||
                                 ("DASH".equals(wantedTransport)&&u.toLowerCase(java.util.Locale.US).contains(".mpd"))||
                                 ("MP4".equals(wantedTransport)&&u.toLowerCase(java.util.Locale.US).contains(".mp4"));
                             boolean qualityOk=wantedQuality.isEmpty()||q.contains(wantedQuality)||n.contains(wantedQuality);
-                            if(transportOk&&qualityOk){best=u;break;}
-                            if(best.isEmpty()&&transportOk)best=u;
-                            if(best.isEmpty())best=u;
+                            if(transportOk&&qualityOk){bestRow=row;break;}
+                            if(bestRow==null&&transportOk)bestRow=row;
+                            if(bestRow==null)bestRow=row;
                         }
-                        if(!best.isEmpty()){
-                            finishCinemaResolve(requestId,best);
+                        if(bestRow!=null){
+                            String best=bestRow.optString("url","");
+                            org.json.JSONObject headers=bestRow.optJSONObject("headers");
+                            finishCinemaResolve(requestId,best,headers);
                             return;
                         }
                     }
@@ -358,9 +367,6 @@ public class MainActivity extends Activity {
                     try{fullscreenContainer.removeView(cinemaResolverWebView);}catch(Exception ignored){}
                     try{cinemaResolverWebView.destroy();}catch(Exception ignored){}
                 }
-                cinemaResolverRequestId=requestId;
-                cinemaResolverTransport=transport;
-                cinemaResolverDone=false;
                 WebView resolver=new WebView(MainActivity.this);
                 cinemaResolverWebView=resolver;
                 WebSettings ws=resolver.getSettings();
