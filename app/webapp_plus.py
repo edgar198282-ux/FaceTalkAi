@@ -491,10 +491,27 @@ async def api_kinopub_item(request):
             'season':row.get('season'),
             'items':[_kinopub_media_summary(x) for x in row.get('items',[]) if isinstance(x,dict)],
         })
+    related = []
+    for key in ('similar','related','recommendations','recommended','also_watch','watch_also'):
+        value = item.get(key) if isinstance(item,dict) else None
+        if isinstance(value, dict):
+            value = value.get('items') or value.get('results') or value.get('data')
+        if not isinstance(value, list):
+            continue
+        for row in value:
+            if not isinstance(row, dict):
+                continue
+            normalized = _kinopub_normalize(row)
+            if normalized:
+                related.append(normalized)
+        if related:
+            break
+
     return web.json_response({
         'ok':True,
         'item':_kinopub_normalize(item) or {'id':item_id,'title':str(item.get('title') or '')},
         'media_rows':rows,
+        'related':related[:24],
     },headers={'Cache-Control':'no-store'})
 
 async def api_kinopub_play(request):
