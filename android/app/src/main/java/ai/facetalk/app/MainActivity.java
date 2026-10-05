@@ -771,20 +771,10 @@ public class MainActivity extends Activity {
                         folderPath=(folderPath+" "+label).trim();
                     }
                 }catch(Throwable ignored){}
-                try{
-                    java.lang.reflect.Method parserGetter=c.getMethod("OooOoo");
-                    Object parser=parserGetter.invoke(node);
-                    if(parser!=null){
-                        java.lang.reflect.Method parseFolder=parser.getClass().getMethod("OooO00o",c);
-                        parseFolder.setAccessible(true);
-                        Object expanded=parseFolder.invoke(parser,node);
-                        if(expanded!=null&&expanded!=node){
-                            collectLazyMediaUrls(expanded,folderPath,depth+1,seen,out);
-                        }
-                    }
-                }catch(Throwable e){
-                    Log.d("AbajCinema","LazyMedia folder parse skipped: "+e.getClass().getSimpleName());
-                }
+                // Do not invoke the k30 parser again during the generic deep walk.
+                // serializeLazyFolderRows() is the single place that expands folders.
+                // Re-parsing arbitrary k30 nodes here makes LazyMedia's h30 parser treat
+                // labels/IDs as URLs, causing noisy HTTP/JSON exceptions and duplicate work.
                 path=folderPath;
             }
 
