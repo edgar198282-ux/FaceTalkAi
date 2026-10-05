@@ -80,6 +80,7 @@ public class MainActivity extends Activity {
     private FrameLayout fullscreenContainer;
     private PlayerView nativeProbeView;
     private ExoPlayer nativeProbePlayer;
+    private ExoPlayer cinemaHeadlessPlayer;
     private volatile long nativeProbeStartedAt=0L;
     private volatile String nativeProbeUrl="";
     private SharedPreferences prefs; private boolean telegramLaunchAttempted=false; private boolean isTv=false; private long lastTvBackAt=0L;
@@ -770,20 +771,10 @@ public class MainActivity extends Activity {
                         folderPath=(folderPath+" "+label).trim();
                     }
                 }catch(Throwable ignored){}
-                try{
-                    java.lang.reflect.Method parserGetter=c.getMethod("OooOoo");
-                    Object parser=parserGetter.invoke(node);
-                    if(parser!=null){
-                        java.lang.reflect.Method parseFolder=parser.getClass().getMethod("OooO00o",c);
-                        parseFolder.setAccessible(true);
-                        Object expanded=parseFolder.invoke(parser,node);
-                        if(expanded!=null&&expanded!=node){
-                            collectLazyMediaUrls(expanded,folderPath,depth+1,seen,out);
-                        }
-                    }
-                }catch(Throwable e){
-                    Log.d("AbajCinema","LazyMedia folder parse skipped: "+e.getClass().getSimpleName());
-                }
+                // Do not invoke the k30 parser again during the generic deep walk.
+                // serializeLazyFolderRows() is the single place that expands folders.
+                // Re-parsing arbitrary k30 nodes here makes LazyMedia's h30 parser treat
+                // labels/IDs as URLs, causing noisy HTTP/JSON exceptions and duplicate work.
                 path=folderPath;
             }
 
@@ -1520,6 +1511,24 @@ public class MainActivity extends Activity {
             }catch(Exception ignored){}
             runOnUiThread(()->startNativeCinema(url,provider,extra));
         }
+        @JavascriptInterface public void cinemaHeadlessProbe(String rawUrl,String rawProvider,String rawHeaders,String rawRequestId){
+            if(!isTv||rawUrl==null)return;
+            final String url=rawUrl.trim();
+            final String provider=rawProvider==null?"":rawProvider.trim().toUpperCase(java.util.Locale.US);
+            final String requestId=rawRequestId==null?"":rawRequestId.replaceAll("[^A-Za-z0-9_-]","");
+            if(!(url.startsWith("http://")||url.startsWith("https://"))||requestId.isEmpty())return;
+            final java.util.HashMap<String,String> extra=new java.util.HashMap<>();
+            try{
+                org.json.JSONObject h=new org.json.JSONObject(rawHeaders==null?"{}":rawHeaders);
+                java.util.Iterator<String> it=h.keys();
+                while(it.hasNext()){
+                    String k=it.next();
+                    String v=h.optString(k,"");
+                    if(k!=null&&!k.trim().isEmpty()&&!v.isEmpty())extra.put(k,v);
+                }
+            }catch(Exception ignored){}
+            runOnUiThread(()->startCinemaHeadlessProbe(url,provider,extra,requestId));
+        }
         @JavascriptInterface public void nativeProbeStop(){
             if(!isTv)return;
             runOnUiThread(()->stopNativeProbe(false));
@@ -1658,6 +1667,180 @@ public class MainActivity extends Activity {
                 }catch(Exception ignored){return "{\"installed\":false}";}
             }
         }
+        @JavascriptInterface public String kinoPubInfo(){
+            try{
+                android.content.pm.PackageInfo pi=getPackageManager().getPackageInfo("com.kinopub",0);
+                JSONObject o=new JSONObject();
+                o.put("installed",true);
+                o.put("version",pi.versionName==null?"":pi.versionName);
+                return o.toString();
+            }catch(Exception e){
+                try{
+                    JSONObject o=new JSONObject();
+                    o.put("installed",false);
+                    return o.toString();
+                }catch(Exception ignored){return "{\"installed\":false}";}
+            }
+        }
+        @JavascriptInterface public boolean openKinoPub(){
+            try{
+                Intent launch=getPackageManager().getLaunchIntentForPackage("com.kinopub");
+                if(launch==null){
+                    launch=new Intent();
+                    launch.setClassName("com.kinopub","com.kinopub.activity.LaunchActivity");
+                }
+                final Intent target=launch;
+                runOnUiThread(()->{
+                    try{startActivity(target);}catch(Exception ignored){}
+                });
+                return true;
+            }catch(Exception e){return false;}
+        }
+        @JavascriptInterface public boolean openKinoPubSection(String section){
+            try{
+                String s=section==null?"":section.trim().toLowerCase(java.util.Locale.US);
+                String activity="";
+                if("auth".equals(s)||"activate".equals(s))activity="com.kinopub.activity.ActivateActivity";
+                else if("search".equals(s))activity="com.kinopub.activity.SearchActivity";
+                else if("bookmarks".equals(s))activity="com.kinopub.activity.BookmarksActivity";
+                else if("history".equals(s))activity="com.kinopub.history.HistoryActivity";
+                else if("catalog".equals(s)||"home".equals(s))activity="com.kinopub.activity.LaunchActivity";
+                else return openKinoPub();
+                Intent i=new Intent();
+                i.setClassName("com.kinopub",activity);
+                runOnUiThread(()->{
+                    try{startActivity(i);}catch(Exception e){
+                        try{
+                            Intent launch=getPackageManager().getLaunchIntentForPackage("com.kinopub");
+                            if(launch!=null)startActivity(launch);
+                        }catch(Exception ignored){}
+                    }
+                });
+                return true;
+            }catch(Exception e){return false;}
+        }
+        @JavascriptInterface public String kinoPubCatalog(String rawQuery){
+            final String query=rawQuery==null?"":rawQuery.trim();
+            org.json.JSONArray out=new org.json.JSONArray();
+            java.util.LinkedHashSet<String> seen=new java.util.LinkedHashSet<>();
+            try{
+                android.content.pm.PackageInfo pi=getPackageManager().getPackageInfo(
+                    "com.kinopub",android.content.pm.PackageManager.GET_PROVIDERS
+                );
+                android.content.pm.ProviderInfo[] providers=pi.providers;
+                if(providers==null)return "[]";
+                for(android.content.pm.ProviderInfo provider:providers){
+                    if(provider==null||provider.authority==null||provider.authority.trim().isEmpty())continue;
+                    String providerName=provider.name==null?"":provider.name;
+                    if(!provider.exported&&!providerName.endsWith("VideoProvider"))continue;
+                    String[] authorities=provider.authority.split(";");
+                    for(String authority0:authorities){
+                        String authority=authority0==null?"":authority0.trim();
+                        if(authority.isEmpty())continue;
+                        java.util.ArrayList<Uri> uris=new java.util.ArrayList<>();
+                        Uri base=Uri.parse("content://"+authority);
+                        uris.add(base);
+                        uris.add(Uri.withAppendedPath(base,"videos"));
+                        uris.add(Uri.withAppendedPath(base,"items"));
+                        uris.add(Uri.withAppendedPath(base,"catalog"));
+                        if(!query.isEmpty()){
+                            uris.add(Uri.parse(base.toString()+"/search/"+Uri.encode(query)));
+                            uris.add(Uri.parse(base.toString()+"/search_suggest_query/"+Uri.encode(query)));
+                        }
+                        for(Uri uri:uris){
+                            if(out.length()>=180)break;
+                            Cursor cur=null;
+                            try{
+                                cur=getContentResolver().query(uri,null,null,null,null);
+                                if(cur==null)continue;
+                                String[] cols=cur.getColumnNames();
+                                int rows=0;
+                                while(cur.moveToNext()&&out.length()<180&&rows<180){
+                                    rows++;
+                                    JSONObject o=new JSONObject();
+                                    if(cols!=null){
+                                        for(int ci=0;ci<cols.length;ci++){
+                                            String cn=cols[ci];
+                                            if(cn==null||cn.trim().isEmpty())continue;
+                                            try{
+                                                int type=cur.getType(ci);
+                                                if(type==Cursor.FIELD_TYPE_NULL)continue;
+                                                if(type==Cursor.FIELD_TYPE_INTEGER)o.put(cn,cur.getLong(ci));
+                                                else if(type==Cursor.FIELD_TYPE_FLOAT)o.put(cn,cur.getDouble(ci));
+                                                else if(type==Cursor.FIELD_TYPE_STRING)o.put(cn,cur.getString(ci));
+                                            }catch(Throwable ignored){}
+                                        }
+                                    }
+                                    String title=jsonText(o,"title","name","video_name","suggest_text_1","_display_name");
+                                    if(title.isEmpty())continue;
+                                    if(!query.isEmpty()){
+                                        String low=(title+" "+jsonText(o,"subtitle","description","suggest_text_2"))
+                                            .toLowerCase(java.util.Locale.US);
+                                        if(!low.contains(query.toLowerCase(java.util.Locale.US)))continue;
+                                    }
+                                    String poster=jsonText(o,"poster","poster_url","image","image_url","cover","thumb","thumbnail","suggest_result_card_image");
+                                    String year=jsonText(o,"year","production_year","suggest_production_year");
+                                    String intent=jsonText(o,"intent","url","link","uri","suggest_intent_data");
+                                    String id=jsonText(o,"id","_id","video_id","item_id");
+                                    if(intent.isEmpty()&&!id.isEmpty()){
+                                        try{intent=Uri.withAppendedPath(uri,id).toString();}catch(Throwable ignored){}
+                                    }
+                                    String key=!intent.isEmpty()?intent:(title+"|"+year+"|"+poster);
+                                    if(seen.contains(key))continue;
+                                    seen.add(key);
+                                    o.put("title",title);
+                                    if(!poster.isEmpty())o.put("poster",poster);
+                                    if(!year.isEmpty())o.put("year",year);
+                                    if(!intent.isEmpty()){
+                                        o.put("intent",intent);
+                                        o.put("id",intent);
+                                    }else if(!id.isEmpty())o.put("id",id);
+                                    o.put("source","KINOPUB");
+                                    out.put(o);
+                                }
+                            }catch(Throwable ignored){
+                            }finally{
+                                if(cur!=null)try{cur.close();}catch(Exception ignored){}
+                            }
+                        }
+                    }
+                }
+            }catch(Throwable e){
+                Log.w("AbajCinema","KinoPub catalog unavailable: "+e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            }
+            return out.toString();
+        }
+        @JavascriptInterface public boolean openKinoPubItem(String rawUri,String rawTitle){
+            try{
+                final String uriText=rawUri==null?"":rawUri.trim();
+                final String title=rawTitle==null?"":rawTitle.trim();
+                Intent i=null;
+                if(!uriText.isEmpty()){
+                    try{
+                        Uri uri=Uri.parse(uriText);
+                        i=new Intent(Intent.ACTION_VIEW,uri);
+                        i.setPackage("com.kinopub");
+                    }catch(Exception ignored){}
+                }
+                if(i==null&&!title.isEmpty()){
+                    i=new Intent(Intent.ACTION_SEARCH);
+                    i.setPackage("com.kinopub");
+                    i.putExtra(SearchManager.QUERY,title);
+                }
+                if(i==null)return openKinoPub();
+                final Intent target=i;
+                runOnUiThread(()->{
+                    try{startActivity(target);}catch(Exception e){
+                        try{
+                            Intent launch=getPackageManager().getLaunchIntentForPackage("com.kinopub");
+                            if(launch!=null)startActivity(launch);
+                        }catch(Exception ignored){}
+                    }
+                });
+                return true;
+            }catch(Exception e){return false;}
+        }
+
         @JavascriptInterface public boolean openLazyMedia(){
             try{
                 Intent launch=getPackageManager().getLaunchIntentForPackage("com.lazycatsoftware.lmd");
@@ -2074,6 +2257,82 @@ public class MainActivity extends Activity {
             nativeProbeStartedAt=0L;
         }
     }
+    private void finishCinemaHeadlessProbe(String requestId,boolean ok,String message,long elapsed){
+        try{
+            if(cinemaHeadlessPlayer!=null){
+                cinemaHeadlessPlayer.release();
+                cinemaHeadlessPlayer=null;
+            }
+        }catch(Exception ignored){}
+        if(webView==null)return;
+        String safe=(message==null?"":message).replace("\\","\\\\").replace("'","\\'");
+        String js="window.__abajCinemaHeadlessProbeResult&&window.__abajCinemaHeadlessProbeResult("+
+            JSONObject.quote(requestId)+","+(ok?"true":"false")+","+JSONObject.quote(safe)+","+elapsed+");";
+        try{webView.evaluateJavascript(js,null);}catch(Exception ignored){}
+    }
+
+    private void startCinemaHeadlessProbe(String url,String provider,java.util.Map<String,String> extraHeaders,String requestId){
+        try{
+            if(cinemaHeadlessPlayer!=null){
+                try{cinemaHeadlessPlayer.release();}catch(Exception ignored){}
+                cinemaHeadlessPlayer=null;
+            }
+            java.util.HashMap<String,String> headers=new java.util.HashMap<>();
+            headers.put("User-Agent","Mozilla/5.0 (Android) AbajTV/"+BuildConfig.VERSION_NAME);
+            if("FILMIX".equals(provider)){
+                headers.put("Referer","https://filmix.moe/");
+                String cookie=CookieManager.getInstance().getCookie("https://filmix.moe/");
+                if(cookie!=null&&!cookie.trim().isEmpty())headers.put("Cookie",cookie);
+            }else if("HDREZKA".equals(provider)){
+                headers.put("Referer","https://hdrezka.ag/");
+            }
+            if(extraHeaders!=null){
+                for(java.util.Map.Entry<String,String> e:extraHeaders.entrySet()){
+                    if(e.getKey()!=null&&e.getValue()!=null&&!e.getKey().trim().isEmpty()){
+                        headers.put(e.getKey(),e.getValue());
+                    }
+                }
+            }
+            DefaultHttpDataSource.Factory httpFactory=new DefaultHttpDataSource.Factory()
+                .setAllowCrossProtocolRedirects(true)
+                .setDefaultRequestProperties(headers);
+            DefaultMediaSourceFactory mediaFactory=new DefaultMediaSourceFactory(httpFactory);
+            final long started=System.currentTimeMillis();
+            final ExoPlayer player=new ExoPlayer.Builder(this).build();
+            cinemaHeadlessPlayer=player;
+            final java.util.concurrent.atomic.AtomicBoolean done=new java.util.concurrent.atomic.AtomicBoolean(false);
+            player.addListener(new Player.Listener(){
+                @Override public void onPlaybackStateChanged(int state){
+                    if(state==Player.STATE_READY&&done.compareAndSet(false,true)){
+                        long elapsed=Math.max(0L,System.currentTimeMillis()-started);
+                        Log.i("AbajCinema","headless ready provider="+provider+" ms="+elapsed);
+                        finishCinemaHeadlessProbe(requestId,true,"ready",elapsed);
+                    }
+                }
+                @Override public void onPlayerError(PlaybackException error){
+                    if(done.compareAndSet(false,true)){
+                        long elapsed=Math.max(0L,System.currentTimeMillis()-started);
+                        String code=error==null?"unknown":error.getErrorCodeName();
+                        Log.w("AbajCinema","headless error provider="+provider+" code="+code+" ms="+elapsed);
+                        finishCinemaHeadlessProbe(requestId,false,code,elapsed);
+                    }
+                }
+            });
+            player.setMediaSource(mediaFactory.createMediaSource(MediaItem.fromUri(Uri.parse(url))),true);
+            player.prepare();
+            updateHandler.postDelayed(()->{
+                if(done.compareAndSet(false,true)){
+                    long elapsed=Math.max(0L,System.currentTimeMillis()-started);
+                    Log.w("AbajCinema","headless timeout provider="+provider+" ms="+elapsed);
+                    finishCinemaHeadlessProbe(requestId,false,"timeout",elapsed);
+                }
+            },9000L);
+        }catch(Exception e){
+            Log.w("AbajCinema","headless start failed "+e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            finishCinemaHeadlessProbe(requestId,false,e.getClass().getSimpleName(),0L);
+        }
+    }
+
     private void startNativeCinema(String url,String provider,java.util.Map<String,String> extraHeaders){
         if(!isTv||nativeProbeView==null)return;
         try{
