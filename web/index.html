@@ -967,7 +967,10 @@ body.cinemaMode .top{display:none!important}
   width:100%;height:50px;border:0;background:transparent;color:#e8f7ff;text-align:left;
   padding:0 22px;font-size:15px;font-weight:650;display:flex;align-items:center;gap:14px
 }
-.cinemaMenuItem span:first-child{width:24px;text-align:center;color:#8fd5ff;font-size:15px}
+.cinemaMenuItem .cinemaMenuIcon{
+  width:28px;min-width:28px;text-align:center;color:#8fd5ff;font-size:20px;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center
+}
 .cinemaMenuItem.active,.cinemaMenuItem:focus{
   outline:none;background:#18aee0;color:#fff
 }
@@ -1241,20 +1244,20 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
         <div><div class="cinemaSideUser">Abaj TV</div><div class="cinemaSideMeta" id="cinemaSideMeta">Кино</div></div>
       </div>
       <div class="cinemaSideItems">
-        <button class="cinemaMenuItem cinemaTvReturn" id="cinemaTvReturnBtn" onclick="toggleCinemaMode()"><span>▣</span><span>ТВ</span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('watching')"><span>◉</span><span>Я СМОТРЮ <b id="cinemaWatchingCount"></b></span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('bookmarks')"><span>▭</span><span>ЗАКЛАДКИ <b id="cinemaBookmarksCount"></b></span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('history')"><span>◴</span><span>ИСТОРИЯ <b id="cinemaHistoryCount"></b></span></button>
-        <button class="cinemaMenuItem active" data-cinema-main="movies" onclick="cinemaSideAction('movies')"><span>◉</span><span>ФИЛЬМЫ</span></button>
-        <button class="cinemaMenuItem" data-cinema-main="series" onclick="cinemaSideAction('series')"><span>▣</span><span>СЕРИАЛЫ</span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('cartoons')"><span>☆</span><span>МУЛЬТФИЛЬМЫ</span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('anime')"><span>✦</span><span>АНИМЕ</span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('4k')"><span>HDR</span><span>4K</span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('docs')"><span>▣</span><span>ДОК.ФИЛЬМЫ</span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('docseries')"><span>▣</span><span>ДОК.СЕРИАЛЫ</span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('tvshows')"><span>▣</span><span>ТВ ШОУ</span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('concerts')"><span>♫</span><span>КОНЦЕРТЫ</span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('collections')"><span>▤</span><span>ПОДБОРКИ</span></button>
+        <button class="cinemaMenuItem cinemaTvReturn" id="cinemaTvReturnBtn" onclick="toggleCinemaMode()"><span class="cinemaMenuIcon">▣</span><span>ТВ</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('watching')"><span class="cinemaMenuIcon">◉</span><span>Я СМОТРЮ <b id="cinemaWatchingCount"></b></span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('bookmarks')"><span class="cinemaMenuIcon">♡</span><span>ЗАКЛАДКИ <b id="cinemaBookmarksCount"></b></span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('history')"><span class="cinemaMenuIcon">◷</span><span>ИСТОРИЯ <b id="cinemaHistoryCount"></b></span></button>
+        <button class="cinemaMenuItem active" data-cinema-main="movies" onclick="cinemaSideAction('movies')"><span class="cinemaMenuIcon">◉</span><span>ФИЛЬМЫ</span></button>
+        <button class="cinemaMenuItem" data-cinema-main="series" onclick="cinemaSideAction('series')"><span class="cinemaMenuIcon">▣</span><span>СЕРИАЛЫ</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('cartoons')"><span class="cinemaMenuIcon">☆</span><span>МУЛЬТФИЛЬМЫ</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('anime')"><span class="cinemaMenuIcon">✦</span><span>АНИМЕ</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('4k')"><span class="cinemaMenuIcon" style="font-size:12px;font-weight:900">HDR</span><span>4K</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('docs')"><span class="cinemaMenuIcon">▤</span><span>ДОК.ФИЛЬМЫ</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('docseries')"><span class="cinemaMenuIcon">▥</span><span>ДОК.СЕРИАЛЫ</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('tvshows')"><span class="cinemaMenuIcon">▣</span><span>ТВ ШОУ</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('concerts')"><span class="cinemaMenuIcon">♫</span><span>КОНЦЕРТЫ</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('collections')"><span class="cinemaMenuIcon">▤</span><span>ПОДБОРКИ</span></button>
       </div>
     </aside>
     <div class="cinemaShellBody">
