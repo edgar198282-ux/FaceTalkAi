@@ -1075,6 +1075,11 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   position:absolute;left:20px;top:18px;z-index:3;width:46px;height:46px;border:0;border-radius:50%;
   background:rgba(3,18,30,.58);color:#d9f4ff;font-size:27px
 }
+.cinemaDetailShare{
+  position:absolute;right:20px;top:18px;z-index:3;width:46px;height:46px;border:0;border-radius:50%;
+  background:rgba(3,18,30,.42);color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center
+}
+.cinemaDetailShare:focus{outline:none;box-shadow:0 0 0 3px #38b9ff}
 .cinemaDetailActions{
   position:absolute;z-index:3;left:50%;bottom:74px;transform:translateX(-50%);
   display:flex;gap:16px
@@ -1257,6 +1262,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
     <div class="cinemaDetailHero" id="cinemaDetailHero">
       <img class="cinemaDetailHeroPoster" id="cinemaDetailHeroPoster" alt="">
       <button class="cinemaDetailBack" id="cinemaDetailBack" onclick="closeCinemaDetail()" aria-label="Назад">←</button>
+      <button class="cinemaDetailShare" id="cinemaDetailShare" onclick="shareCinemaDetail()" aria-label="Поделиться" title="Поделиться">↗</button>
       <div class="cinemaDetailActions">
         <button class="cinemaDetailAction" id="cinemaDetailWatch" onclick="watchCinemaDetail()">СМОТРЕТЬ ФИЛЬМ</button>
         <button class="cinemaDetailAction" id="cinemaDetailSeasons" onclick="openCinemaSeasons()" style="display:none">СЕЗОНЫ</button>
@@ -9201,6 +9207,36 @@ function cinemaDetailFact(label,value){
   const esc=x=>String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
   return '<div class="k">'+esc(label)+'</div><div class="v">'+esc(value)+'</div>';
 }
+function shareCinemaDetail(){
+  const item=cinemaDetailMovie;
+  if(!item)return;
+  const title=cinemaDisplayTitle(item);
+  const text=[title,cinemaDetailText(item,'year')].filter(Boolean).join(' · ');
+  const url=location.href;
+  if(navigator.share){
+    navigator.share({title,text,url}).catch(()=>{});
+    return;
+  }
+  try{
+    navigator.clipboard.writeText(text+' '+url);
+    showTvShortcut('Ссылка скопирована');
+  }catch(e){}
+}
+function cinemaSeriesInfo(item){
+  const rows=cinemaSeasonRows(item);
+  if(!rows.length)return '';
+  const durations=[];
+  rows.forEach(r=>r.items.forEach(m=>{
+    const d=Number(m?.duration||0);
+    if(d>0)durations.push(d>60?Math.round(d/60):Math.round(d));
+  }));
+  const parts=['Сезонов '+rows.length];
+  if(durations.length){
+    const avg=Math.round(durations.reduce((a,b)=>a+b,0)/durations.length);
+    parts.push('Серия ~'+avg+' мин');
+  }
+  return parts.join(' · ');
+}
 function kinoMediaId(media){
   return String(media?.id??media?.media_id??media?.mid??'');
 }
@@ -9382,11 +9418,15 @@ function renderCinemaDetail(item){
   const badgeList=[];
   const sourceBadge='';
   if(sourceBadge)badgeList.push(sourceBadge);
-  const q=cinemaPublicText(cinemaDetailText(item,'quality'));
+  const rowsForBadges=cinemaSeasonRows(item);
+  const mediaForBadges=cinemaSelectedKinoMedia||rowsForBadges[0]?.items?.[0]||null;
+  const q=cinemaPublicText(cinemaDetailText(item,'quality'))||
+    (Array.isArray(mediaForBadges?.files)&&mediaForBadges.files.length?'1080p–2160p':'');
   if(q)badgeList.push(q);
-  const audio=cinemaPublicText(cinemaDetailText(item,'audio','sound'));
+  const audio=cinemaPublicText(cinemaDetailText(item,'audio','sound'))||
+    (Array.isArray(mediaForBadges?.audios)&&mediaForBadges.audios.length?'AC3':'');
   if(audio)badgeList.push(audio);
-  if(item?.subtitles||item?.cc)badgeList.push('CC');
+  if(item?.subtitles||item?.cc||(Array.isArray(mediaForBadges?.subtitles)&&mediaForBadges.subtitles.length))badgeList.push('CC');
   if(!badgeList.length)badgeList.push('HD');
   badges.innerHTML=badgeList.map(x=>'<span class="cinemaDetailBadge">'+String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>').join('');
 
@@ -9409,11 +9449,13 @@ function renderCinemaDetail(item){
   const director=cinemaDetailText(item,'director','directors');
   const cast=cinemaDetailText(item,'actors','actor','cast','roles');
 
+  const seriesInfo=cinemaItemLooksSeries(item)?cinemaSeriesInfo(item):'';
   facts.innerHTML=
     cinemaDetailFact('Рейтинг',rating)+
     cinemaDetailFact('Название',original)+
     cinemaDetailFact('Год',year)+
     cinemaDetailFact('',duration)+
+    cinemaDetailFact('',seriesInfo)+
     cinemaDetailFact('Страна',country)+
     cinemaDetailFact('Жанр',genre)+
     cinemaDetailFact('Перевод',translation)+
