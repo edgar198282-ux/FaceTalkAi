@@ -170,7 +170,8 @@ async def api_cinema_source_state(request):
     user = await _user_from_request(request)
     if not user:
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
-    source = str(await get_setting('cinema_global_source', 'none') or 'none').strip().lower()
+    default_source = str(os.getenv('CINEMA_GLOBAL_SOURCE_DEFAULT') or 'none').strip().lower()
+    source = str(await get_setting('cinema_global_source', default_source) or default_source).strip().lower()
     if source not in ('none','lazy','kinopub'):
         source = 'none'
     return web.json_response({'ok':True,'source':source}, headers={'Cache-Control':'no-store, max-age=0'})
