@@ -172,15 +172,25 @@ def _kinopub_normalize(item):
         'source': 'KINOPUB',
     }
 
+async def _cinema_access_allowed(uid: int) -> bool:
+    if ADMIN_ID and int(uid) == int(ADMIN_ID):
+        return True
+    sub = await _edem_subscription_state(int(uid))
+    return bool(sub.get('active'))
+
 async def api_cinema_source_state(request):
     user = await _user_from_request(request)
     if not user:
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    allowed = await _cinema_access_allowed(uid)
+    if not allowed:
+        return web.json_response({'ok':True,'source':'none','cinema_enabled':False}, headers={'Cache-Control':'no-store, max-age=0'})
     default_source = str(os.getenv('CINEMA_GLOBAL_SOURCE_DEFAULT') or 'none').strip().lower()
     source = str(await get_setting('cinema_global_source', default_source) or default_source).strip().lower()
     if source not in ('none','lazy','kinopub'):
         source = 'none'
-    return web.json_response({'ok':True,'source':source}, headers={'Cache-Control':'no-store, max-age=0'})
+    return web.json_response({'ok':True,'source':source,'cinema_enabled':True}, headers={'Cache-Control':'no-store, max-age=0'})
 
 async def api_admin_cinema_source_state(request):
     user = await _user_from_request(request)
@@ -203,6 +213,8 @@ async def api_kinopub_status(request):
     if not user:
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     uid = int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
     tokens = await _kinopub_tokens(uid)
     if not (tokens.get('access_token') or tokens.get('refresh_token')) and ADMIN_ID and uid != int(ADMIN_ID):
         tokens = await _kinopub_tokens(int(ADMIN_ID))
@@ -347,6 +359,8 @@ async def api_kinopub_play(request):
     if not user:
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     uid = int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
     token = await _kinopub_access_token(uid)
     if not token:
         return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
@@ -390,6 +404,8 @@ async def api_kinopub_catalog(request):
     if not user:
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     uid = int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
     token = await _kinopub_access_token(uid)
     if not token:
         return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
