@@ -1062,6 +1062,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   border:1px solid #75c6ef;border-radius:6px;padding:3px 8px;color:#d7f3ff;font-size:12px;font-weight:650
 }
 .cinemaDetailDescription{font-size:17px;line-height:1.45;margin-bottom:14px;color:#e4f5ff;max-width:1180px}
+.cinemaDetailDescriptionSecondary{color:#b9d7e8;font-size:15px;margin-top:-4px}
 .cinemaDetailTools{display:flex;justify-content:flex-end;margin:-30px 8px 10px}
 .cinemaDetailTools #cinemaBookmarkBtn{
   width:42px;height:42px;border:0;border-radius:50%;padding:0;
@@ -1237,6 +1238,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
         <button id="cinemaBookmarkBtn" onclick="toggleCinemaBookmark()" aria-label="Закладка" title="Закладка">♡</button>
       </div>
       <div class="cinemaDetailDescription" id="cinemaDetailDescription"></div>
+      <div class="cinemaDetailDescription cinemaDetailDescriptionSecondary" id="cinemaDetailDescriptionSecondary" style="display:none"></div>
       <div class="cinemaDetailFacts" id="cinemaDetailFacts"></div>
       <div id="cinemaKpMediaRows" class="cinemaKpMediaRows" style="display:none"></div>
     </div>
@@ -9196,6 +9198,7 @@ function renderCinemaDetail(item){
   const title=document.getElementById('cinemaDetailTitle');
   const badges=document.getElementById('cinemaDetailBadges');
   const desc=document.getElementById('cinemaDetailDescription');
+  const descSecondary=document.getElementById('cinemaDetailDescriptionSecondary');
   const facts=document.getElementById('cinemaDetailFacts');
   if(!detail)return;
 
@@ -9223,7 +9226,14 @@ function renderCinemaDetail(item){
   if(!badgeList.length)badgeList.push('HD');
   badges.innerHTML=badgeList.map(x=>'<span class="cinemaDetailBadge">'+String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>').join('');
 
-  desc.textContent=cinemaPublicText(cinemaDetailText(item,'description','plot','overview','summary','content_description','subtitle','suggest_text_2'))||'';
+  const primaryDescription=cinemaPublicText(cinemaDetailText(item,'description','plot','overview','summary','content_description','subtitle','suggest_text_2'));
+  const secondaryDescription=cinemaPublicText(item?.description_en||'');
+  desc.textContent=primaryDescription||secondaryDescription||'';
+  if(descSecondary){
+    const showSecondary=!!(primaryDescription&&secondaryDescription&&secondaryDescription!==primaryDescription);
+    descSecondary.textContent=showSecondary?secondaryDescription:'';
+    descSecondary.style.display=showSecondary?'block':'none';
+  }
 
   const year=cinemaDetailText(item,'year','suggest_production_year','production_year');
   const rating=cinemaDetailText(item,'imdb','rating','kp','content_rating','suggest_rating');
@@ -9431,8 +9441,18 @@ function cinemaNormalizeLazyDetails(details){
 
 function cinemaMergeMetadata(base,extra){
   const out={...(base||{})};
-  const preferExtra=new Set(['backdrop','background','fanart','description','plot','overview','rating','imdb','kp','duration','runtime','genre','genres','country','director','directors','actors','cast','trailer','trailer_url','poster']);
+  const baseDescription=cinemaPublicText(cinemaDetailText(base,'description','plot','overview','summary','content_description'));
+  const extraDescription=cinemaPublicText(cinemaDetailText(extra,'description','plot','overview','summary','content_description'));
+  if(baseDescription){
+    out.description=baseDescription;
+    if(extraDescription&&extraDescription!==baseDescription)out.description_en=extraDescription;
+  }else if(extraDescription){
+    out.description=extraDescription;
+  }
+
+  const preferExtra=new Set(['backdrop','background','fanart','rating','imdb','kp','duration','runtime','genre','genres','country','director','directors','actors','cast','trailer','trailer_url','poster']);
   for(const [k,v] of Object.entries(extra||{})){
+    if(['description','plot','overview','summary','content_description'].includes(k))continue;
     if(v===undefined||v===null||String(v).trim()==='')continue;
     if(preferExtra.has(k)||out[k]===undefined||out[k]===null||String(out[k]).trim()==='')out[k]=v;
   }
