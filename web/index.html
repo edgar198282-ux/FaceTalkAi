@@ -7626,6 +7626,23 @@ function cinemaIsDirectStreamUrl(value){
     ||u.includes('/hls/')
     ||u.includes('/dash/');
 }
+function cinemaDiag(stage,data={}){
+  try{
+    fetch('/api/cinema/diagnostic',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        stage:String(stage||'').slice(0,64),
+        title:String(cinemaSourcePickerMovie?.title||cinemaDetailMovie?.title||data.title||'').slice(0,160),
+        provider:String(data.provider||'').slice(0,64),
+        rows:Number(data.rows||0),
+        playable:data.playable===undefined?null:!!data.playable,
+        message:String(data.message||'').slice(0,240)
+      }),
+      keepalive:true
+    }).catch(()=>{});
+  }catch(e){}
+}
 async function cinemaV2FindSources(movie){
   const variants=cinemaSearchVariants(movie);
   const batches=await Promise.all(variants.map(q=>lazyMediaSearchAsync(q).catch(()=>[])));
@@ -7654,6 +7671,7 @@ async function cinemaV2FindSources(movie){
   const checked=await Promise.all(found.map(async group=>{
     if(group.items.some(x=>cinemaIsDirectStreamUrl(x?.url))){
       group.playable=true;
+      cinemaDiag('direct_stream',{title:movie?.title,provider:group.name,rows:group.items.length,playable:true});
       return group;
     }
     const provider=normalizeLazyProviderName(group.name);
@@ -7666,13 +7684,17 @@ async function cinemaV2FindSources(movie){
     if(Array.isArray(rows)&&rows.length){
       group.resolvedOptions=rows;
       group.playable=true;
+      cinemaDiag('provider_resolved',{title:movie?.title,provider,rows:rows.length,playable:true});
       return group;
     }
     group.playable=false;
+    cinemaDiag('provider_empty',{title:movie?.title,provider,rows:0,playable:false});
     return group;
   }));
 
-  return checked.filter(Boolean);
+  const playable=checked.filter(group=>group&&group.playable);
+  cinemaDiag('source_scan_done',{title:movie?.title,rows:playable.length,playable:playable.length>0,message:'found '+playable.length+' playable providers'});
+  return playable;
 }
 function cinemaV2RenderSources(movie,groups){
   const modal=ensureCinemaSourceModal();
@@ -7702,7 +7724,8 @@ function cinemaV2RenderSources(movie,groups){
     label.textContent=group.name;
     const meta=document.createElement('small');
     const q=cinemaQualitySummary(group.resolvedOptions||[]);
-    meta.textContent=q||'Видео доступно';
+    meta.textContent=q||(group.playable?'Видео доступно':'Нет рабочего потока');
+    btn.disabled=!group.playable;
     btn.appendChild(label);
     btn.appendChild(meta);
     btn.onclick=()=>cinemaV2OpenSource(index);
