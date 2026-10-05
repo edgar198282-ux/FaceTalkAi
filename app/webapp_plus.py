@@ -391,6 +391,88 @@ def _kinopub_direct_stream_response(request, url):
         'proxied':False,
     }, headers={'Cache-Control':'no-store'})
 
+def _kinopub_media_array(value):
+    if isinstance(value, list):
+        return [x for x in value if isinstance(x, dict)]
+    if isinstance(value, dict):
+        return [x for x in value.values() if isinstance(x, dict)]
+    return []
+
+def _kinopub_media_rows(item):
+    rows=[]
+    videos=_kinopub_media_array(item.get('videos') if isinstance(item,dict) else None)
+    if videos:
+        rows.append({'title':'Фильм' if len(videos)==1 else 'Видео','items':videos})
+    seasons=item.get('seasons') if isinstance(item,dict) else None
+    if isinstance(seasons,list):
+        for idx,season in enumerate(seasons):
+            if not isinstance(season,dict):
+                continue
+            episodes=_kinopub_media_array(season.get('episodes'))
+            if not episodes:
+                episodes=_kinopub_media_array(season.get('videos'))
+            if not episodes:
+                continue
+            season_number=season.get('number')
+            normalized=[]
+            for ep in episodes:
+                row=dict(ep)
+                if row.get('season') is None and season_number is not None:
+                    row['season']=season_number
+                normalized.append(row)
+            rows.append({
+                'title':str(season.get('title') or f'Сезон {season_number if season_number is not None else idx+1}'),
+                'season':season_number if season_number is not None else idx+1,
+                'items':normalized,
+            })
+    if not rows and isinstance(item,dict) and isinstance(item.get('files'),list):
+        rows.append({'title':'Фильм','items':[item]})
+    return rows
+
+def _kinopub_media_summary(media):
+    if not isinstance(media,dict):
+        return {}
+    return {
+        'id': media.get('media_id') or media.get('mid') or media.get('id'),
+        'number': media.get('number'),
+        'season': media.get('season'),
+        'title': media.get('title') or media.get('name'),
+        'duration': media.get('duration'),
+        'watching': media.get('watching'),
+        'files': media.get('files') if isinstance(media.get('files'),list) else [],
+        'audios': media.get('audios') if isinstance(media.get('audios'),list) else [],
+        'subtitles': media.get('subtitles') if isinstance(media.get('subtitles'),list) else [],
+    }
+
+async def api_kinopub_item(request):
+    user=await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'},status=401)
+    uid=int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'},status=403)
+    token=await _kinopub_access_token(uid)
+    if not token:
+        return web.json_response({'ok':False,'error':'kinopub_auth_required'},status=401)
+    item_id=str(request.query.get('id') or '').strip()
+    if not item_id:
+        return web.json_response({'ok':False,'error':'missing_item_id'},status=400)
+    status,item=await _kinopub_api('GET','/v1/items/'+item_id,params={'access_token':token})
+    if status>=400 or not isinstance(item,dict):
+        return web.json_response({'ok':False,'error':'kinopub_item_failed','status':status},status=502)
+    rows=[]
+    for row in _kinopub_media_rows(item):
+        rows.append({
+            'title':row.get('title'),
+            'season':row.get('season'),
+            'items':[_kinopub_media_summary(x) for x in row.get('items',[]) if isinstance(x,dict)],
+        })
+    return web.json_response({
+        'ok':True,
+        'item':_kinopub_normalize(item) or {'id':item_id,'title':str(item.get('title') or '')},
+        'media_rows':rows,
+    },headers={'Cache-Control':'no-store'})
+
 async def api_kinopub_play(request):
     user = await _user_from_request(request)
     if not user:
@@ -402,6 +484,40 @@ async def api_kinopub_play(request):
     if not token:
         return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
     item_id = str(request.query.get('id') or '').strip()
+    media_id = str(request.query.get('mid') or '').strip()
+    file_token = str(request.query.get('file') or '').strip()
+    if file_token:
+        for stream_type in ('hls4','hls2','hls','http'):
+            st, video = await _kinopub_api('GET','/v1/items/media-video-link',params={
+                'access_token':token,'file':file_token,'type':stream_type
+            })
+            if st < 400:
+                direct = _kinopub_stream_from_obj(video)
+                if direct:
+                    response = _kinopub_direct_stream_response(request,direct)
+                    if response is not None:
+                        return response
+    if media_id:
+        status, media = await _kinopub_api('GET','/v1/items/media-links',params={'access_token':token,'mid':media_id})
+        if status < 400:
+            for obj in _kinopub_walk(media):
+                direct = _kinopub_stream_from_obj(obj)
+                if direct:
+                    response = _kinopub_direct_stream_response(request,direct)
+                    if response is not None:
+                        return response
+            resolved_file = _kinopub_first_file_token(media)
+            if resolved_file:
+                for stream_type in ('hls4','hls2','hls','http'):
+                    st, video = await _kinopub_api('GET','/v1/items/media-video-link',params={
+                        'access_token':token,'file':resolved_file,'type':stream_type
+                    })
+                    if st < 400:
+                        direct = _kinopub_stream_from_obj(video)
+                        if direct:
+                            response = _kinopub_direct_stream_response(request,direct)
+                            if response is not None:
+                                return response
     if not item_id:
         return web.json_response({'ok':False,'error':'missing_item_id'}, status=400)
 
@@ -2621,7 +2737,7 @@ async def start_webapp(bot):
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/open', api_tv_pair_open); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
-    app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play)
+    app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play); app.router.add_get('/api/kinopub/item', api_kinopub_item)
     app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
