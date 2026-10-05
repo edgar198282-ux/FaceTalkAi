@@ -2057,6 +2057,28 @@ async def api_cinema_meta(request):
 
         aggregate = ld.get("aggregateRating") if isinstance(ld.get("aggregateRating"), dict) else {}
         trailer = ld.get("trailer") if isinstance(ld.get("trailer"), dict) else {}
+        cinemeta_trailer = ""
+        if isinstance(cinemeta, dict):
+            raw_trailer = cinemeta.get("trailer")
+            if isinstance(raw_trailer, str) and raw_trailer.strip():
+                cinemeta_trailer = raw_trailer.strip()
+            if not cinemeta_trailer:
+                trailers = cinemeta.get("trailers")
+                if isinstance(trailers, list):
+                    preferred = []
+                    for row in trailers:
+                        if not isinstance(row, dict):
+                            continue
+                        source = str(row.get("source") or row.get("id") or row.get("youtubeId") or "").strip()
+                        if not source:
+                            continue
+                        kind = str(row.get("type") or row.get("name") or "").lower()
+                        preferred.append((0 if "trailer" in kind else 1, source))
+                    if preferred:
+                        preferred.sort(key=lambda x:x[0])
+                        cinemeta_trailer = preferred[0][1]
+            if cinemeta_trailer and re.fullmatch(r"[A-Za-z0-9_-]{6,}", cinemeta_trailer):
+                cinemeta_trailer = "https://www.youtube.com/watch?v=" + cinemeta_trailer
         duration = str(ld.get("duration") or "")
         if duration.startswith("PT"):
             h = re.search(r"(\d+)H", duration)
@@ -2095,7 +2117,7 @@ async def api_cinema_meta(request):
             "country":str((cinemeta or {}).get("country") or _imdb_name(ld.get("countryOfOrigin")) or ""),
             "poster":str((cinemeta or {}).get("poster") or image or ""),
             "backdrop":str((cinemeta or {}).get("background") or ""),
-            "trailer":str((cinemeta or {}).get("trailer") or trailer.get("embedUrl") or trailer.get("url") or ""),
+            "trailer":str(cinemeta_trailer or trailer.get("embedUrl") or trailer.get("url") or ""),
         }
         return web.json_response(result, headers={"Cache-Control":"public, max-age=21600"})
     except Exception as exc:
