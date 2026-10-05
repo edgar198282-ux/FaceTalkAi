@@ -6352,7 +6352,9 @@ document.addEventListener('keyup',e=>{
 
 let cinemaMode=localStorage.getItem('abaj_cinema_mode')==='1';
 let cinemaLoaded=false;
-let cinemaSource=localStorage.getItem('abaj_cinema_source')||'abaj';
+const storedCinemaSource=String(localStorage.getItem('abaj_cinema_source')||'').toLowerCase();
+let cinemaSource=['lazy','kinopub','none'].includes(storedCinemaSource)?storedCinemaSource:'none';
+if(cinemaSource==='none')localStorage.setItem('abaj_cinema_source','none');
 let cinemaType=localStorage.getItem('abaj_cinema_type')||'movies';
 
 function getLazyMediaInfo(){
@@ -6800,11 +6802,6 @@ async function loadCinemaCatalog(force=false){
   }
 
   const localLazyInfo=getLazyMediaInfo();
-  if(localLazyInfo.installed&&cinemaSource==='abaj'){
-    cinemaSource='lazy';
-    localStorage.setItem('abaj_cinema_source','lazy');
-  }
-
   if(cinemaSource==='lazy'){
     const info=localLazyInfo;
     if(!info.installed){
