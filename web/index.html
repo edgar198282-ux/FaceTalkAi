@@ -6686,6 +6686,7 @@ let cinemaSourceGroups=[];
 let cinemaSourcePickerMovie=null;
 let cinemaExternalChannel=null;
 let cinemaResolvePending=new Map();
+let cinemaHeadlessProbePending=new Map();
 let cinemaSourceIgnoreUntil=0;
 let filmixVideoPending=new Map();
 let cinemaProviderOptionsPending=new Map();
@@ -7908,6 +7909,66 @@ function cinemaDiag(stage,data={}){
     }).catch(()=>{});
   }catch(e){}
 }
+window.__abajCinemaHeadlessProbeResult=function(requestId,ok,message,elapsed){
+  const key=String(requestId||'');
+  const pending=cinemaHeadlessProbePending.get(key);
+  if(!pending)return;
+  cinemaHeadlessProbePending.delete(key);
+  clearTimeout(pending.timer);
+  pending.resolve({ok:!!ok,message:String(message||''),elapsed:Number(elapsed||0)});
+};
+function cinemaHeadlessProbe(url,provider,headers={}){
+  const stream=String(url||'').trim();
+  if(!nativeTv||!window.AbajNative||typeof AbajNative.cinemaHeadlessProbe!=='function'){
+    return Promise.resolve({ok:true,message:'native probe unavailable',elapsed:0});
+  }
+  if(!/^https?:\/\//i.test(stream))return Promise.resolve({ok:false,message:'invalid url',elapsed:0});
+  return new Promise(resolve=>{
+    const requestId='cinema_probe_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    const timer=setTimeout(()=>{
+      if(!cinemaHeadlessProbePending.has(requestId))return;
+      cinemaHeadlessProbePending.delete(requestId);
+      resolve({ok:false,message:'js timeout',elapsed:10000});
+    },10000);
+    cinemaHeadlessProbePending.set(requestId,{resolve,timer});
+    try{
+      AbajNative.cinemaHeadlessProbe(
+        stream,
+        String(provider||''),
+        JSON.stringify((headers&&typeof headers==='object')?headers:{}),
+        requestId
+      );
+    }catch(e){
+      clearTimeout(timer);
+      cinemaHeadlessProbePending.delete(requestId);
+      resolve({ok:false,message:String(e?.message||e||'probe error'),elapsed:0});
+    }
+  });
+}
+async function cinemaVerifyResolvedRows(provider,rows){
+  const infos=(Array.isArray(rows)?rows:[])
+    .map(r=>({row:r,info:cinemaResolvedRowInfo(r)}))
+    .filter(x=>x.info&&cinemaIsDirectStreamUrl(x.info.url))
+    .sort((a,b)=>cinemaQualityRank(b.info.quality)-cinemaQualityRank(a.info.quality));
+  const passed=[];
+  for(const item of infos.slice(0,4)){
+    const result=await cinemaHeadlessProbe(item.info.url,provider,item.info.headers||{});
+    cinemaDiag(result.ok?'stream_probe_ready':'stream_probe_failed',{
+      provider,
+      rows:1,
+      playable:result.ok,
+      message:(item.info.quality||'auto')+' '+result.message+' '+result.elapsed+'ms'
+    });
+    if(result.ok){
+      passed.push(item.row);
+      break;
+    }
+  }
+  if(!passed.length)return [];
+  const firstUrl=cinemaResolvedRowInfo(passed[0])?.url||'';
+  return [passed[0],...infos.map(x=>x.row).filter(r=>(cinemaResolvedRowInfo(r)?.url||'')!==firstUrl)];
+}
+
 async function cinemaV2FindSources(movie){
   const variants=cinemaSearchVariants(movie);
   const batches=await Promise.all(variants.map(q=>lazyMediaSearchAsync(q).catch(()=>[])));
@@ -7964,9 +8025,19 @@ async function cinemaV2FindSources(movie){
     let rows=[];
     try{rows=await resolveProviderAcrossItems(group)}catch(e){}
     if(Array.isArray(rows)&&rows.length){
-      group.resolvedOptions=rows;
-      group.playable=true;
-      cinemaDiag('provider_resolved',{title:movie?.title,provider,rows:rows.length,playable:true});
+      let verifiedRows=rows;
+      if(nativeTv&&window.AbajNative&&typeof AbajNative.cinemaHeadlessProbe==='function'){
+        try{verifiedRows=await cinemaVerifyResolvedRows(provider,rows)}catch(e){verifiedRows=[]}
+      }
+      if(verifiedRows.length){
+        group.resolvedOptions=verifiedRows;
+        group.playable=true;
+        cinemaDiag('provider_resolved',{title:movie?.title,provider,rows:verifiedRows.length,playable:true,message:'Media3 verified'});
+      }else{
+        group.resolvedOptions=[];
+        group.playable=false;
+        cinemaDiag('provider_empty',{title:movie?.title,provider,rows:0,playable:false,message:'resolved URLs failed Media3 probe'});
+      }
     }else{
       group.playable=false;
       cinemaDiag('provider_empty',{title:movie?.title,provider,rows:0,playable:false});
