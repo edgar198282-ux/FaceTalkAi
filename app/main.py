@@ -75,13 +75,18 @@ def _tv_apk_download_url():
     return "https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-latest/AbajTV-TV-compat.apk"
 
 async def _bot_start_link(payload: str = "") -> str:
-    username = EXPECTED_BOT_USERNAME.strip().lstrip('@') if EXPECTED_BOT_USERNAME else ''
-    if not username and bot:
+    # Always prefer the real username returned by Telegram for the currently
+    # connected bot token. This avoids stale EXPECTED_BOT_USERNAME values making
+    # QR codes open the wrong bot/profile.
+    username = ''
+    if bot:
         try:
             me = await bot.get_me()
             username = str(getattr(me, 'username', '') or '').strip().lstrip('@')
         except Exception:
             username = ''
+    if not username:
+        username = EXPECTED_BOT_USERNAME.strip().lstrip('@') if EXPECTED_BOT_USERNAME else ''
     if not username:
         return ''
     return f"https://t.me/{username}?start={payload}" if payload else f"https://t.me/{username}"
