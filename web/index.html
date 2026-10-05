@@ -956,7 +956,10 @@ body.cinemaMode .top{display:none!important}
 .cinemaShellSide.open{transform:translateX(0)}
 .cinemaSideProfile{padding:26px 22px 16px;display:flex;gap:12px;align-items:center}
 .cinemaSideAvatar{
-  width:60px;height:60px;border-radius:50%;background:#06131d;display:flex;align-items:center;justify-content:center;
+  width:60px;height:60px;border-radius:50%;background:#06131d;display:flex;align-items:center;justify-content:center;overflow:hidden
+}
+.cinemaSideAvatar img{width:100%;height:100%;object-fit:cover;display:block}
+.cinemaSideAvatar{;
   font-size:30px;border:1px solid rgba(255,255,255,.16)
 }
 .cinemaSideUser{font-size:17px;font-weight:700}
@@ -1225,7 +1228,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
     </div>
     <aside class="cinemaShellSide" id="cinemaSideMenu">
       <div class="cinemaSideProfile">
-        <div class="cinemaSideAvatar">◉</div>
+        <div class="cinemaSideAvatar"><img src="/static/abaj_tv_logo.jpg" alt="Abaj TV"></div>
         <div><div class="cinemaSideUser">Abaj TV</div><div class="cinemaSideMeta" id="cinemaSideMeta">Кино</div></div>
       </div>
       <div class="cinemaSideItems">
@@ -1262,7 +1265,6 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
     <div class="cinemaDetailHero" id="cinemaDetailHero">
       <img class="cinemaDetailHeroPoster" id="cinemaDetailHeroPoster" alt="">
       <button class="cinemaDetailBack" id="cinemaDetailBack" onclick="closeCinemaDetail()" aria-label="Назад">←</button>
-      <button class="cinemaDetailShare" id="cinemaDetailShare" onclick="shareCinemaDetail()" aria-label="Поделиться" title="Поделиться">↗</button>
       <div class="cinemaDetailActions">
         <button class="cinemaDetailAction" id="cinemaDetailWatch" onclick="watchCinemaDetail()">СМОТРЕТЬ ФИЛЬМ</button>
         <button class="cinemaDetailAction" id="cinemaDetailSeasons" onclick="openCinemaSeasons()" style="display:none">СЕЗОНЫ</button>
