@@ -7914,9 +7914,25 @@ async function cinemaV2FindSources(movie){
   for(const rows of batches){
     for(const item of (Array.isArray(rows)?rows:[]))add(item);
   }
-  const found=LAZYMEDIA_PROVIDER_ORDER
-    .map(name=>groups.get(name))
-    .filter(group=>group&&group.items.length);
+  const ordered=[];
+  const seenProviderKeys=new Set();
+  for(const name of LAZYMEDIA_PROVIDER_ORDER){
+    const group=groups.get(name);
+    if(group&&group.items.length){
+      ordered.push(group);
+      seenProviderKeys.add(group.key||name);
+    }
+  }
+  for(const group of groups.values()){
+    const key=group.key||group.name;
+    if(group.items.length&&!seenProviderKeys.has(key)){
+      ordered.push(group);
+      seenProviderKeys.add(key);
+      const normalized=normalizeLazyProviderName(group.name);
+      if(normalized&&!LAZYMEDIA_PROVIDER_ORDER.includes(normalized))LAZYMEDIA_PROVIDER_ORDER.push(normalized);
+    }
+  }
+  const found=ordered;
 
   // LazyMedia parsers share one application/runtime. Running several provider
   // parsers in parallel can reset that shared runtime under another active parser.
@@ -7943,9 +7959,15 @@ async function cinemaV2FindSources(movie){
     checked.push(group);
   }
 
-  const playable=checked.filter(group=>group&&group.playable);
-  cinemaDiag('source_scan_done',{title:movie?.title,rows:playable.length,playable:playable.length>0,message:'found '+playable.length+' playable providers'});
-  return playable;
+  const discovered=checked.filter(Boolean);
+  const playable=discovered.filter(group=>group.playable);
+  cinemaDiag('source_scan_done',{
+    title:movie?.title,
+    rows:playable.length,
+    playable:playable.length>0,
+    message:'found '+discovered.length+' providers / '+playable.length+' playable'
+  });
+  return discovered;
 }
 function cinemaV2RenderSources(movie,groups){
   const modal=ensureCinemaSourceModal();
@@ -7975,8 +7997,14 @@ function cinemaV2RenderSources(movie,groups){
     label.textContent=group.name;
     const meta=document.createElement('small');
     const q=cinemaQualitySummary(group.resolvedOptions||[]);
-    meta.textContent=q||(group.playable?'Видео доступно':'Нет рабочего потока');
-    btn.disabled=!group.playable;
+    if(group.playable){
+      meta.textContent=q||'Видео доступно';
+      btn.disabled=false;
+    }else{
+      meta.textContent='Источник найден · проверка видео';
+      btn.disabled=false;
+      btn.classList.add('cinemaSourceNeedsResolve');
+    }
     btn.appendChild(label);
     btn.appendChild(meta);
     btn.onclick=()=>cinemaV2OpenSource(index);
@@ -8045,6 +8073,41 @@ async function cinemaV2OpenSource(index){
   const title=document.getElementById('cinemaSourceTitle');
   if(title)title.textContent=group.name+' · ВИДЕО';
   if(!list)return;
+
+  if(!group.playable){
+    list.innerHTML='<div class="cinemaSourceBusy">Проверяю реальное видео '+group.name+'…</div>';
+    let retryRows=[];
+    try{retryRows=await resolveProviderAcrossItems(group)}catch(e){}
+    if(Array.isArray(retryRows)&&retryRows.length){
+      group.resolvedOptions=retryRows;
+      group.playable=true;
+      cinemaDiag('provider_recheck_resolved',{
+        title:cinemaSourcePickerMovie?.title,
+        provider:group.name,
+        rows:retryRows.length,
+        playable:true
+      });
+    }else{
+      cinemaDiag('provider_recheck_empty',{
+        title:cinemaSourcePickerMovie?.title,
+        provider:group.name,
+        rows:0,
+        playable:false
+      });
+      list.innerHTML='';
+      const empty=document.createElement('div');
+      empty.className='cinemaSourceEmpty';
+      empty.textContent=group.name+' найден в LazyMedia, но рабочего видео сейчас не вернул.';
+      list.appendChild(empty);
+      const back=document.createElement('button');
+      back.className='cinemaSourceClose';
+      back.textContent='← Источники';
+      back.onclick=()=>cinemaV2RenderSources(cinemaSourcePickerMovie,cinemaSourceGroups);
+      list.appendChild(back);
+      setTimeout(()=>focusCinemaSourceButton(0),20);
+      return;
+    }
+  }
   if(Array.isArray(group.resolvedOptions)&&group.resolvedOptions.length){
     renderResolvedProviderOptions(group,group.resolvedOptions);
     return;
