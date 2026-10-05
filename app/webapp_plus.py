@@ -940,6 +940,14 @@ async def api_kinopub_section(request):
             'has_more':bool(len(rows)>0 and (total is None or page*perpage<total)),
         },headers={'Cache-Control':'no-store'})
 
+    requested_type = str(request.query.get('type') or '').strip().lower()
+    if requested_type in ('series','serial'):
+        requested_type = 'serial'
+    elif requested_type in ('movies','movie'):
+        requested_type = 'movie'
+    else:
+        requested_type = ''
+
     mapping = {
         'movies': {'type':'movie'},
         'series': {'type':'serial'},
@@ -947,7 +955,7 @@ async def api_kinopub_section(request):
         'docseries': {'type':'docuserial'},
         'tvshows': {'type':'tvshow'},
         'concerts': {'type':'concert'},
-        '4k': {'quality':'4k'},
+        '4k': {'quality':'4k', **({'type':requested_type} if requested_type else {})},
     }
     shortcut = ''
     if section in ('fresh','popular','hot'):
