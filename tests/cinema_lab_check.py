@@ -29,6 +29,14 @@ ok("resolved movie autoplay exists", "cinemaPlayResolvedMovie" in web)
 ok("playback request diagnostics exists", "playback_request" in web)
 ok("fallback array passed to player", "picked.fallbacks" in web)
 
+# Headless Media3 verification must gate provider visibility.
+ok("native headless probe bridge exists", "cinemaHeadlessProbe" in java)
+ok("native headless Media3 player exists", "cinemaHeadlessPlayer" in java)
+ok("headless READY callback exists", "Player.STATE_READY" in java)
+ok("web headless probe result bridge exists", "__abajCinemaHeadlessProbeResult" in web)
+ok("provider rows are Media3 verified", "cinemaVerifyResolvedRows" in web)
+ok("provider resolved diagnostics marks Media3 verification", "Media3 verified" in web)
+
 # Known HLS/season regression.
 ok("HLS not parsed as season", 'HLS 1080' not in re.findall(r'(?:сезон|season|s).*', web, flags=re.I)[:1])
 ok("strict Sxx season token parser exists", "S(\\d{1,3})" in web)
