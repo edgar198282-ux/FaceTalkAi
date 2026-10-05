@@ -602,6 +602,51 @@ async def _cinema_library_read(uid, section):
 async def _cinema_library_write(uid, section, rows):
     await set_setting(_cinema_library_key(uid, section), json.dumps(rows, ensure_ascii=False, separators=(',',':')))
 
+async def api_cinema_progress(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
+    if request.method == 'GET':
+        item_id = str(request.query.get('item_id') or '').strip()
+        media_id = str(request.query.get('media_id') or '').strip()
+        if not item_id:
+            return web.json_response({'ok':False,'error':'missing_item_id'}, status=400)
+        raw = await get_setting(f'cinema_progress:{uid}:{item_id}:{media_id}', '')
+        try:
+            data = json.loads(raw) if raw else {}
+        except Exception:
+            data = {}
+        return web.json_response({'ok':True,'progress':data}, headers={'Cache-Control':'no-store'})
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    item_id = str(body.get('item_id') or '').strip()
+    media_id = str(body.get('media_id') or '').strip()
+    if not item_id:
+        return web.json_response({'ok':False,'error':'missing_item_id'}, status=400)
+    try:
+        position = max(0.0, float(body.get('position') or 0))
+        duration = max(0.0, float(body.get('duration') or 0))
+    except Exception:
+        position, duration = 0.0, 0.0
+    completed = bool(duration > 0 and position / duration >= 0.96)
+    if completed:
+        position = 0.0
+    data = {
+        'item_id':item_id,
+        'media_id':media_id,
+        'position':round(position,2),
+        'duration':round(duration,2),
+        'completed':completed,
+        'updated_at':int(time.time()),
+    }
+    await set_setting(f'cinema_progress:{uid}:{item_id}:{media_id}', json.dumps(data,separators=(',',':')))
+    return web.json_response({'ok':True,'progress':data}, headers={'Cache-Control':'no-store'})
+
 async def api_cinema_library(request):
     user = await _user_from_request(request)
     if not user:
@@ -2741,7 +2786,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
     app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play); app.router.add_get('/api/kinopub/item', api_kinopub_item)
-    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items)
+    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items); app.router.add_get('/api/cinema/progress', api_cinema_progress); app.router.add_post('/api/cinema/progress', api_cinema_progress)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
