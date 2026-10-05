@@ -2078,7 +2078,7 @@ function openKinoPubFromAdmin(){
     if(window.AbajNative&&typeof AbajNative.openKinoPub==='function')AbajNative.openKinoPub();
   }catch(e){}
 }
-function connectKinoPubFromAdmin(){
+async function connectKinoPubFromAdmin(){
   const info=getKinoPubInfo();
   if(info.needs_app_update){
     try{location.href='facetalk://check-update'}catch(e){}
@@ -2089,6 +2089,7 @@ function connectKinoPubFromAdmin(){
   localStorage.removeItem('abaj_kinopub_disabled');
   cinemaSource='kinopub';
   localStorage.setItem('abaj_cinema_source','kinopub');
+  await saveGlobalCinemaSource('kinopub');
   cinemaLoaded=false;
   cinemaDetailMovie=null;
   cinemaSourcePickerMovie=null;
@@ -2098,10 +2099,11 @@ function connectKinoPubFromAdmin(){
   syncCinemaSourceUi();
   if(cinemaMode)loadCinemaCatalog(true);
 }
-function disconnectKinoPubFromAdmin(){
+async function disconnectKinoPubFromAdmin(){
   localStorage.setItem('abaj_kinopub_disabled','1');
   cinemaSource='none';
   localStorage.setItem('abaj_cinema_source','none');
+  await saveGlobalCinemaSource('none');
   cinemaLoaded=false;
   try{localStorage.removeItem(cinemaCacheKey())}catch(e){}
   refreshLazyMediaAdminStatus();
@@ -6368,12 +6370,38 @@ const storedCinemaSource=String(localStorage.getItem('abaj_cinema_source')||'').
 let cinemaSource=['lazy','kinopub','none'].includes(storedCinemaSource)?storedCinemaSource:'none';
 if(cinemaSource==='none')localStorage.setItem('abaj_cinema_source','none');
 let cinemaType=localStorage.getItem('abaj_cinema_type')||'movies';
-setTimeout(()=>{
-  if(autoConnectInstalledKinoPub()){
-    cinemaLoaded=false;
-    refreshKinoPubAdminStatus();
-    if(cinemaMode)loadCinemaCatalog(true);
-  }
+
+async function loadGlobalCinemaSource(){
+  try{
+    const r=await fetch('/api/cinema/source-state',{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)return cinemaSource;
+    const d=await r.json();
+    const src=String(d.source||'none').toLowerCase();
+    if(['none','lazy','kinopub'].includes(src)){
+      cinemaSource=src;
+      localStorage.setItem('abaj_cinema_source',src);
+      if(src!=='kinopub')localStorage.removeItem('abaj_kinopub_disabled');
+      syncCinemaSourceUi();
+    }
+  }catch(e){}
+  return cinemaSource;
+}
+async function saveGlobalCinemaSource(src){
+  try{
+    const r=await fetch('/api/admin/cinema/source-state',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',...authHeaders()},
+      body:JSON.stringify({source:src})
+    });
+    return r.ok;
+  }catch(e){return false}
+}
+setTimeout(async()=>{
+  await loadGlobalCinemaSource();
+  cinemaLoaded=false;
+  refreshLazyMediaAdminStatus();
+  refreshKinoPubAdminStatus();
+  if(cinemaMode)loadCinemaCatalog(true);
 },80);
 
 function getLazyMediaInfo(){
@@ -6399,18 +6427,20 @@ function refreshLazyMediaAdminStatus(){
       :'LazyMedia не найден на этом устройстве.';
   }
 }
-function connectLazyMediaFromAdmin(){
+async function connectLazyMediaFromAdmin(){
   const info=getLazyMediaInfo();
   if(!info.installed){refreshLazyMediaAdminStatus();return}
   cinemaSource='lazy';
   localStorage.setItem('abaj_cinema_source','lazy');
+  await saveGlobalCinemaSource('lazy');
   cinemaLoaded=false;
   refreshLazyMediaAdminStatus();
   if(cinemaMode)loadCinemaCatalog(true);
 }
-function disconnectLazyMediaFromAdmin(){
+async function disconnectLazyMediaFromAdmin(){
   cinemaSource='none';
   localStorage.setItem('abaj_cinema_source','none');
+  await saveGlobalCinemaSource('none');
   cinemaLoaded=false;
   try{localStorage.removeItem(cinemaCacheKey())}catch(e){}
   refreshLazyMediaAdminStatus();
@@ -6814,6 +6844,7 @@ function renderCinemaCatalog(items,options={}){
   });
 }
 async function loadCinemaCatalog(force=false){
+  await loadGlobalCinemaSource();
   if(cinemaLoaded&&!force)return;
   const status=document.getElementById('cinemaStatus');
 
