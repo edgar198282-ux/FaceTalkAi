@@ -6769,7 +6769,7 @@ async function showCinemaSourcePicker(item){
     .filter(group=>Array.isArray(group.items)&&group.items.length>0);
 
   cinemaSourcePickerItems=cinemaSourceGroups.map(g=>{
-    const direct=g.items.find(x=>String(x.url||'').trim());
+    const direct=g.items.find(x=>cinemaIsDirectStreamUrl(x?.url));
     return direct||g.items[0]||null;
   });
 
@@ -6795,7 +6795,7 @@ function renderCinemaSourceGroups(){
     const label=document.createElement('span');
     label.textContent=group.name;
     const meta=document.createElement('small');
-    const direct=group.items.some(x=>String(x.url||'').trim());
+    const direct=group.items.some(x=>cinemaIsDirectStreamUrl(x?.url));
     const providerName=normalizeLazyProviderName(group.name);
     const qSummary=cinemaQualitySummary(group.resolvedOptions||[]);
     meta.textContent=qSummary
@@ -6820,7 +6820,7 @@ function renderCinemaSourceGroups(){
 async function prefetchCinemaSourceQualities(){
   for(const group of cinemaSourceGroups){
     if(!group||group.resolvedOptions||group.qualityChecked||!group.items?.[0])continue;
-    if(group.items.some(x=>String(x.url||'').trim()))continue;
+    if(group.items.some(x=>cinemaIsDirectStreamUrl(x?.url)))continue;
     const provider=normalizeLazyProviderName(group.name);
     if(!provider||provider==='ENCYCLOPEDIA')continue;
     group.qualityChecked=true;
@@ -7306,7 +7306,7 @@ async function openCinemaSourceGroup(index){
     }
   }
 
-  if(!group.items.some(x=>String(x.url||'').trim())){
+  if(!group.items.some(x=>cinemaIsDirectStreamUrl(x?.url))){
     if(title)title.textContent=provider+' · ВИДЕО';
     if(list)list.innerHTML='<div class="cinemaSourceBusy">Ищу реальные варианты '+provider+'…</div>';
     let rows=Array.isArray(group.resolvedOptions)?group.resolvedOptions:[];
@@ -7448,10 +7448,17 @@ function cinemaV2ProviderName(item){
 function cinemaV2MatchMovie(item,movie){
   const a=cinemaComparableTitle(item?.title||'');
   const b=cinemaComparableTitle(movie?.title||'');
-  if(!a||!b)return false;
-  if(!(a===b||a.includes(b)||b.includes(a)))return false;
+  if(!a||!b||a!==b)return false;
   const ay=cinemaYear(item),by=cinemaYear(movie);
-  return !ay||!by||Math.abs(ay-by)<=1;
+  if(ay&&by&&ay!==by)return false;
+  return true;
+}
+function cinemaIsDirectStreamUrl(value){
+  const u=String(value||'').trim().toLowerCase();
+  if(!/^https?:\/\//.test(u))return false;
+  return /(?:\.m3u8|\.mp4|\.mkv|\.webm|\.mpd)(?:[?#]|$)/i.test(u)
+    ||u.includes('/hls/')
+    ||u.includes('/dash/');
 }
 async function cinemaV2FindSources(movie){
   const variants=cinemaSearchVariants(movie);
@@ -7479,7 +7486,7 @@ async function cinemaV2FindSources(movie){
     .filter(group=>group&&group.items.length);
 
   const checked=await Promise.all(found.map(async group=>{
-    if(group.items.some(x=>String(x?.url||'').trim())){
+    if(group.items.some(x=>cinemaIsDirectStreamUrl(x?.url))){
       group.playable=true;
       return group;
     }
