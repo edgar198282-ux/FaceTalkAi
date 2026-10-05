@@ -9675,19 +9675,79 @@ async function watchCinemaDetail(){
   }
   cinemaV2RenderSources(item,groups);
 }
-function playCinemaTrailer(){
+function cinemaTrailerEmbedUrl(raw){
+  const url=String(raw||'').trim();
+  if(!url)return '';
+  let m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i);
+  if(m)return 'https://www.youtube.com/embed/'+m[1]+'?autoplay=1&playsinline=1&rel=0';
+  m=url.match(/(?:vimeo\.com\/(?:video\/)?)(\d+)/i);
+  if(m)return 'https://player.vimeo.com/video/'+m[1]+'?autoplay=1';
+  return '';
+}
+function closeCinemaTrailerModal(){
+  const modal=document.getElementById('cinemaTrailerModal');
+  const frame=document.getElementById('cinemaTrailerFrame');
+  if(frame)frame.src='about:blank';
+  if(modal)modal.remove();
+}
+function openCinemaTrailerModal(url,title){
+  closeCinemaTrailerModal();
+  const embed=cinemaTrailerEmbedUrl(url);
+  if(!embed)return false;
+  const modal=document.createElement('div');
+  modal.id='cinemaTrailerModal';
+  modal.style.cssText='position:fixed;inset:0;z-index:990;background:#000;display:flex;flex-direction:column';
+  modal.innerHTML=
+    '<div style="height:58px;display:flex;align-items:center;gap:12px;padding:0 14px;background:#111;color:#fff">'+
+      '<button id="cinemaTrailerClose" style="width:42px;height:42px;border:0;background:transparent;color:#fff;font-size:30px">←</button>'+
+      '<div style="font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+      String(title||'Трейлер').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+
+      '</div></div>'+
+    '<iframe id="cinemaTrailerFrame" src="'+embed.replace(/"/g,'&quot;')+'" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="flex:1;width:100%;border:0;background:#000"></iframe>';
+  document.body.appendChild(modal);
+  modal.querySelector('#cinemaTrailerClose').onclick=closeCinemaTrailerModal;
+  return true;
+}
+async function playCinemaTrailer(){
   const item=cinemaDetailMovie;
   if(!item)return;
-  const trailer=cinemaDetailText(item,'trailer','trailer_url','trailerUrl');
+  const btn=document.getElementById('cinemaDetailTrailer');
+  let trailer=cinemaDetailText(item,'trailer','trailer_url','trailerUrl');
+  if(!trailer&&item?.id&&cinemaSource==='kinopub'){
+    try{
+      const r=await fetch('/api/kinopub/item?id='+encodeURIComponent(String(item.id)),{headers:authHeaders(),cache:'no-store'});
+      const d=await r.json();
+      trailer=cinemaDetailText(d?.item||{},'trailer','trailer_url','trailerUrl');
+      if(trailer){
+        item.trailer=trailer;
+        cinemaDetailMovie=item;
+      }
+    }catch(e){}
+  }
+  if(!trailer){
+    try{
+      const q=new URLSearchParams({title:cinemaDisplayTitle(item)});
+      const year=cinemaDetailText(item,'year');
+      if(year)q.set('year',year);
+      const r=await fetch('/api/cinema/meta?'+q.toString(),{cache:'no-store'});
+      const d=await r.json();
+      trailer=cinemaDetailText(d||{},'trailer','trailer_url','trailerUrl');
+      if(trailer){
+        item.trailer=trailer;
+        cinemaDetailMovie=item;
+      }
+    }catch(e){}
+  }
   if(trailer){
-    window.__abajOpenExternalMedia(trailer,String(item?.title||'Трейлер'));
+    const title=cinemaDisplayTitle(item)+' · Трейлер';
+    if(openCinemaTrailerModal(trailer,title))return;
+    window.__abajOpenExternalMedia(trailer,title);
     return;
   }
-  const btn=document.getElementById('cinemaDetailTrailer');
   if(btn){
-    const old=btn.textContent;
+    const oldText=btn.textContent;
     btn.textContent='ТРЕЙЛЕР НЕДОСТУПЕН';
-    setTimeout(()=>btn.textContent=old,1800);
+    setTimeout(()=>btn.textContent=oldText,1800);
   }
 }
 function cinemaArticleDetailsAsync(item,provider){
