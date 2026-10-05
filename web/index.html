@@ -1333,16 +1333,9 @@ body.cinemaMode .top{display:none!important}
   <div class="videoWrap" onclick="handlePlayerSurfaceClick(event)">
     <div class="playerBrand" onclick="dismissMobilePlayerLoading(event)"><img class="playerLoadingLogo" src="/static/abaj_tv_logo.jpg" alt="ABAJ TV"></div>
     <video id="video" preload="auto" playsinline webkit-playsinline disablepictureinpicture controlslist="nofullscreen nodownload noremoteplayback"></video>
-    <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:linear-gradient(145deg,#07131f,#0d2740 55%,#103a5f);align-items:center;justify-content:center;text-align:center;color:white;padding:18px;box-sizing:border-box;pointer-events:none">
-      <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;gap:0">
-        <img src="/static/abaj_tv_logo.jpg" alt="ABAJ TV" style="width:min(28vw,220px);height:min(28vw,220px);max-width:58%;max-height:26vh;object-fit:contain;border-radius:18%;filter:drop-shadow(0 12px 28px rgba(0,0,0,.35))">
-        <div style="font-size:clamp(17px,2.4vw,27px);font-weight:900;margin-top:14px">Рекламная пауза</div>
-        <div id="freeAdCountdown" style="font-size:clamp(16px,2.1vw,23px);font-weight:900;margin-top:7px;color:#9fe6ff">Осталось: 15 сек</div>
-        <div style="font-size:clamp(13px,1.8vw,18px);opacity:.82;margin-top:5px">Более 3000 каналов · до 3 устройств</div>
-        <div class="freeAdPrice">Всего 1 доллар</div>
-        <img src="/static/abaj_tv_share_qr.png" alt="QR Abaj TV" style="width:min(28vw,220px);height:min(28vw,220px);max-width:58%;max-height:26vh;object-fit:contain;background:#fff;border-radius:12px;padding:6px;box-sizing:border-box;margin-top:12px;filter:drop-shadow(0 8px 20px rgba(0,0,0,.28))">
-        <div style="font-size:clamp(14px,1.8vw,20px);font-weight:900;letter-spacing:.2px;opacity:.96;margin-top:12px">Telegram: @FaceTalkID_bot</div>
-      </div>
+    <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:#020817;align-items:center;justify-content:center;text-align:center;color:white;padding:0;box-sizing:border-box;pointer-events:none;overflow:hidden">
+      <img src="/static/abaj_tv_ad_banner.jpg" alt="ABAJ TV" style="width:100%;height:100%;object-fit:contain;background:#020817">
+      <div id="freeAdCountdown" style="position:absolute;right:14px;bottom:12px;padding:7px 11px;border-radius:10px;background:rgba(0,0,0,.66);font-size:clamp(14px,1.8vw,20px);font-weight:900;color:#9fe6ff;box-shadow:0 4px 16px rgba(0,0,0,.32)">Осталось: 30 сек</div>
     </div>
     <div id="playerChannelHud" class="playerChannelHud">
       <img id="playerChannelHudLogo" class="playerChannelHudLogo" alt="">
@@ -3926,9 +3919,9 @@ function updateFreeAdCountdown(seconds){
   if(!el)return;
   el.textContent='Осталось: '+Math.max(0,Math.ceil(Number(seconds)||0))+' сек';
 }
-function startFreeAdCountdown(seconds=15){
+function startFreeAdCountdown(seconds=30){
   if(freeAdCountdownTimer){clearInterval(freeAdCountdownTimer);freeAdCountdownTimer=null}
-  const safe=Math.max(1,Math.min(90,Number(seconds)||15));
+  const safe=Math.max(1,Math.min(90,Number(seconds)||30));
   freeAdCountdownEndsAt=Date.now()+safe*1000;
   updateFreeAdCountdown(safe);
   freeAdCountdownTimer=setInterval(()=>{
@@ -3998,7 +3991,7 @@ function setFreeAdOverlay(active,seconds){
     freeAdMuteBefore=!!(v&&v.muted);
     if(v)v.muted=true;
     if(overlay)overlay.style.display='flex';
-    startFreeAdCountdown(Number(seconds)>0?seconds:15);
+    startFreeAdCountdown(Number(seconds)>0?seconds:30);
     startFreeAdMusic();
   }else{
     if(overlay)overlay.style.display='none';
@@ -4035,7 +4028,7 @@ async function sampleQrAdFrame(ch){
       freeAdShieldStartedAt=now/1000;
       freeAdShieldSawPositive=true;
       freeAdShieldVerifiedNegative=0;
-      if(!freeAdActive)setFreeAdOverlay(true,15);
+      if(!freeAdActive)setFreeAdOverlay(true,30);
       return;
     }
     if(qrAdChannel===String(ch.id||'')&&qrAdLastSeenAt&&now-qrAdLastSeenAt>1800){
@@ -4093,7 +4086,7 @@ async function checkFreeAdState(){
       freeAdShieldVerifiedNegative=0;
       freeAdShieldChannel=String(id||'');
       if(!freeAdShieldStartedAt)freeAdShieldStartedAt=Date.now()/1000;
-      const remaining=Math.max(1,Number(d.remaining||d.estimated_duration||15));
+      const remaining=Math.max(1,Number(d.remaining||d.estimated_duration||30));
       setFreeAdOverlay(true,remaining);
       return;
     }
