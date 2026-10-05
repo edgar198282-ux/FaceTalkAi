@@ -3894,13 +3894,7 @@ function selectedFreeStreamUrl(ch){
   return String(ch.url||'');
 }
 function shouldInstantShieldCinerama(ch){
-  if(!ch||ch.personal)return false;
-  const src=selectedFreeStreamUrl(ch);
-  // OTT Club promos on mcquack/ottclub sources are provider-side pre-rolls.
-  // On Android TV the video is rendered by native Media3, so browser OCR/QR
-  // detection cannot reliably see the SurfaceView. Shield these known provider
-  // sources immediately instead of waiting for server OCR to catch the same live frame.
-  return isProviderAdStreamUrl(src);
+  return !!(ch&&!ch.personal&&isCineramaStreamUrl(selectedFreeStreamUrl(ch)));
 }
 function armInstantCineramaShield(ch){
   if(!shouldInstantShieldCinerama(ch))return false;
@@ -4785,7 +4779,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
     }
   }
   const directSrc=directUrls[Math.min(tvDirectAttemptIndex,Math.max(0,directUrls.length-1))]||'';
-  if(nativeTv&&!ch.personal&&isProviderAdStreamUrl(directSrc)){
+  if(nativeTv&&!ch.personal&&isCineramaStreamUrl(directSrc)){
     if(freeAdShieldChannel!==String(ch.id||''))armInstantCineramaShield(ch);
   }
   // Direct-first on phone too. Until now mobile always went through our
