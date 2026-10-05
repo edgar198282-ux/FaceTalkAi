@@ -1289,6 +1289,33 @@ async def api_tv_device_auth(request):
         return web.json_response({'ok':False,'error':'device_required'}, status=400)
     raw = await get_setting(f'tv_device:{device_id}', '')
     if not raw:
+        signed_user = await _user_from_request(request)
+        if signed_user:
+            uid = int(signed_user['id'])
+            if ADMIN_ID and uid == int(ADMIN_ID):
+                can_restore = True
+            else:
+                device_count, already_registered = await _tv_device_usage(uid, device_id)
+                can_restore = already_registered or device_count < 3
+            if can_restore:
+                now = int(time.time())
+                data = {
+                    'secret':device_secret,
+                    'user_id':uid,
+                    'device_name':device_name,
+                    'app_version':app_version,
+                    'app_version_code':app_version_code,
+                    'paired_at':now,
+                    'last_seen':now,
+                    'current_channel_id':current_channel_id,
+                    'current_channel_name':current_channel_name,
+                }
+                await set_setting(f'tv_device:{device_id}', json.dumps(data, separators=(',',':')))
+                return web.json_response({
+                    'ok':True,'paired':True,'user_id':uid,
+                    'ft_uid':str(uid),'ft_ts':str(now),'ft_sig':_tv_pair_sign(uid, now),
+                    'restored':True,
+                }, headers={'Cache-Control':'no-store'})
         return web.json_response({'ok':True,'paired':False}, headers={'Cache-Control':'no-store'})
     try:
         data = json.loads(raw)
