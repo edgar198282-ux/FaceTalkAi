@@ -48,7 +48,9 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
 
 import androidx.core.content.FileProvider;
+import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.Tracks;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.DefaultLoadControl;
@@ -1782,6 +1784,21 @@ public class MainActivity extends Activity {
         }
     }
 
+    private boolean nativeProbeHasUsableAudio(){
+        try{
+            if(nativeProbePlayer==null)return false;
+            Tracks tracks=nativeProbePlayer.getCurrentTracks();
+            if(tracks==null)return false;
+            for(Tracks.Group group:tracks.getGroups()){
+                if(group.getType()!=C.TRACK_TYPE_AUDIO)continue;
+                for(int i=0;i<group.length;i++){
+                    if(group.isTrackSupported(i))return true;
+                }
+            }
+        }catch(Exception ignored){}
+        return false;
+    }
+
     private void ensureNativeProbePlayer(){
         if(!isTv||nativeProbeView==null||nativeProbePlayer!=null)return;
         DefaultLoadControl loadControl=new DefaultLoadControl.Builder()
@@ -1798,8 +1815,9 @@ public class MainActivity extends Activity {
                 Log.i("AbajTVNativeProbe","first_frame_ms="+elapsed+" url="+nativeProbeUrl);
                 nativeProbeStartedAt=0L;
                 if(webView!=null){
+                    final boolean hasAudio=nativeProbeHasUsableAudio();
                     webView.evaluateJavascript(
-                        "if(typeof nativeProbeFirstFrame==='function')nativeProbeFirstFrame("+elapsed+")",
+                        "if(typeof nativeProbeFirstFrame==='function')nativeProbeFirstFrame("+elapsed+","+hasAudio+")",
                         null
                     );
                 }
