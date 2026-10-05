@@ -6428,18 +6428,30 @@ function renderCinemaSourceGroups(){
     };
     list.appendChild(btn);
 
-    if(['FILMIX','ZONA','ZONAFILM'].includes(providerName)&&!group.resolvedOptions&&group.items[0]){
-      cinemaProviderOptionsAsync(group.items[0],providerName).then(rows=>{
-        if(!Array.isArray(rows)||!rows.length)return;
-        group.resolvedOptions=rows;
-        const q=cinemaQualitySummary(rows);
-        if(q&&meta&&meta.isConnected){
-          meta.textContent='Найдено вариантов: '+group.items.length+' · '+q;
-        }
-      }).catch(()=>{});
+    if(!direct&&providerName&&providerName!=='ENCYCLOPEDIA'&&group.items[0]){
+      group.qualityMeta=meta;
     }
   });
   setTimeout(()=>focusCinemaSourceButton(0),20);
+  prefetchCinemaSourceQualities();
+}
+
+async function prefetchCinemaSourceQualities(){
+  for(const group of cinemaSourceGroups){
+    if(!group||group.resolvedOptions||group.qualityChecked||!group.items?.[0])continue;
+    if(group.items.some(x=>String(x.url||'').trim()))continue;
+    const provider=normalizeLazyProviderName(group.name);
+    if(!provider||provider==='ENCYCLOPEDIA')continue;
+    group.qualityChecked=true;
+    let rows=[];
+    try{rows=await cinemaProviderOptionsAsync(group.items[0],provider)}catch(e){}
+    if(!Array.isArray(rows)||!rows.length)continue;
+    group.resolvedOptions=rows;
+    const q=cinemaQualitySummary(rows);
+    if(q&&group.qualityMeta&&group.qualityMeta.isConnected){
+      group.qualityMeta.textContent='Найдено вариантов: '+group.items.length+' · '+q;
+    }
+  }
 }
 
 function cinemaProviderOptionsAsync(item,provider){
@@ -6702,15 +6714,12 @@ async function openCinemaSourceGroup(index){
   const provider=normalizeLazyProviderName(group.name);
   if(!group.items.length)return;
 
-  if(['FILMIX','ZONA','ZONAFILM'].includes(provider)&&!group.items.some(x=>String(x.url||'').trim())){
-    if(provider==='FILMIX'){
-      renderFilmixVideoOptions(group);
-      return;
-    }
+  if(!group.items.some(x=>String(x.url||'').trim())){
     if(title)title.textContent=provider+' · ВИДЕО';
     if(list)list.innerHTML='<div class="cinemaSourceBusy">Ищу реальные варианты '+provider+'…</div>';
     let rows=Array.isArray(group.resolvedOptions)?group.resolvedOptions:[];
     if(!rows.length)rows=await cinemaProviderOptionsAsync(group.items[0],provider);
+    if(!rows.length&&provider==='FILMIX')rows=await filmixVideoOptionsAsync(group.items[0]);
     if(rows.length){
       group.resolvedOptions=rows;
       renderResolvedProviderOptions(group,rows);
