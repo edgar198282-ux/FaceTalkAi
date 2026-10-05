@@ -148,6 +148,9 @@ button{cursor:pointer}
   position:fixed;inset:0;background:#000;color:#fff;z-index:100;display:none;flex-direction:column
 }
 .playerView.open{display:flex}
+.playerView .cinemaSeekCtrl{display:none!important}
+.playerView.cinemaPlayback .cinemaSeekCtrl{display:flex!important}
+.playerView.cinemaPlayback .tvChannelCtrl{display:none!important}
 .playerView.appFullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;transform:none!important;z-index:1000!important;background:#000!important}
 .playerView.appFullscreen .playerTop,.playerView.appFullscreen .playerBottom{display:none!important}
 .playerView.appFullscreen .videoWrap{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;background:#000!important;padding:0!important}
@@ -1364,12 +1367,14 @@ body.cinemaMode .top{display:none!important}
     </div>
     <div class="playerTimeline" aria-hidden="true"><span id="playerTimelineFill"></span></div>
     <div class="playerPrimaryControls" onclick="event.stopPropagation();if(document.getElementById('playerView').classList.contains('pureFullscreen'))showPureFullscreenControls();else showTvPlayerUi(true)">
-      <button class="ctrl playerCircleCtrl" onclick="playPrev()" title="Предыдущий канал"><span class="playerCtrlIcon">◀|</span><small>Пред. канал</small></button>
-      <button id="playerFavAction" class="ctrl playerCircleCtrl" onclick="togglePlayerFavorite()" title="Избранное"><span class="playerCtrlIcon">♡</span><small>Избранное</small></button>
+      <button class="ctrl playerCircleCtrl tvChannelCtrl" onclick="playPrev()" title="Предыдущий канал"><span class="playerCtrlIcon">◀|</span><small>Пред. канал</small></button>
+      <button id="playerFavAction" class="ctrl playerCircleCtrl tvChannelCtrl" onclick="togglePlayerFavorite()" title="Избранное"><span class="playerCtrlIcon">♡</span><small>Избранное</small></button>
+      <button class="ctrl playerCircleCtrl cinemaSeekCtrl" onclick="seekPlayerBy(-10)" title="Назад 10 секунд"><span class="playerCtrlIcon">↶</span><small>−10 сек</small></button>
       <button id="playerPlayPause" class="ctrl playerCircleCtrl playerPlayCtrl" onclick="togglePlayerPlayback()" title="Пауза"><span class="playerCtrlIcon" id="playerPlayPauseIcon">Ⅱ</span><small id="playerPlayPauseLabel">Пауза</small></button>
+      <button class="ctrl playerCircleCtrl cinemaSeekCtrl" onclick="seekPlayerBy(10)" title="Вперёд 10 секунд"><span class="playerCtrlIcon">↷</span><small>+10 сек</small></button>
       <button id="playerAiAction" class="ctrl playerCircleCtrl" onclick="openAiDubMenu()" title="AI перевод"><span class="playerCtrlIcon">AI</span><small id="playerAiLabel">AI перевод</small></button>
       <button class="ctrl playerCircleCtrl" onclick="toggleFullscreen()" title="На весь экран"><span class="playerCtrlIcon">⛶</span><small>Экран</small></button>
-      <button class="ctrl playerCircleCtrl" onclick="playNext()" title="Следующий канал"><span class="playerCtrlIcon">|▶</span><small>След. канал</small></button>
+      <button class="ctrl playerCircleCtrl tvChannelCtrl" onclick="playNext()" title="Следующий канал"><span class="playerCtrlIcon">|▶</span><small>След. канал</small></button>
     </div>
     <div id="playerError" style="color:#ff7680;text-align:center;font-size:13px;margin-top:10px"></div>
   </div>
@@ -3796,12 +3801,24 @@ function handleAppBack(){
 }
 function handleTvBack(){
   if(!nativeTv)return handleAppBack();
-  if(cinemaDetailOpen()){
-    closeCinemaDetail();
+
+  // Back must unwind one UI layer at a time.
+  // Cinema player -> movie detail -> cinema catalog -> TV.
+  const player=document.getElementById('playerView');
+  if(player&&player.classList.contains('open')){
+    if(player.classList.contains('pureFullscreen')){
+      exitPureFullscreen();
+      return true;
+    }
+    closePlayer();
     return true;
   }
   if(cinemaSourcePickerOpen()){
     closeCinemaSourcePicker(true);
+    return true;
+  }
+  if(cinemaDetailOpen()){
+    closeCinemaDetail();
     return true;
   }
   if(cinemaSideMenuOpen()){
@@ -3828,8 +3845,6 @@ function handleTvBack(){
   if(tvSearchOpen()){closeTvSearch(false);return true}
   if(tvGuideOpen()){toggleTvGuide(false);return true}
   if(tvRailOpen()){toggleTvRail(false);return true}
-  const player=document.getElementById('playerView');
-  if(player&&player.classList.contains('open')){closePlayer();return true}
   if(tvHeaderCollapsed){
     const now=Date.now();
     if(now-tvHeaderBackAt<=1500){
@@ -3845,7 +3860,6 @@ function handleTvBack(){
   tvHeaderBackAt=0;
   return false;
 }
-
 function tvTuneDigit(d){
   if(!nativeTv)return;
   tvDigitBuffer=(tvDigitBuffer+String(d)).slice(-3);
@@ -4337,6 +4351,9 @@ function openPlayer(id){
   streamRetries=0;
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   const playerView=document.getElementById('playerView');
+  const cinemaPlayback=String(ch.id||'').startsWith('cinema:')||
+    !!(cinemaExternalChannel&&String(cinemaExternalChannel.id||'')===String(ch.id||''));
+  playerView.classList.toggle('cinemaPlayback',cinemaPlayback);
   if(!nativeTv)playerView.classList.remove('videoFill');
   const loadingBrand=playerView.querySelector('.playerBrand');
   if(loadingBrand)loadingBrand.style.display='flex';
@@ -5281,6 +5298,7 @@ function closePlayer(){
   playerView.classList.remove('appFullscreen');
   playerView.classList.remove('videoFill');
   playerView.classList.remove('pureFullscreen');
+  playerView.classList.remove('cinemaPlayback');
   document.body.classList.remove('playerFullscreenActive');
   document.body.classList.remove('mobileLandscapePlayer');
   try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}
@@ -5396,6 +5414,30 @@ function togglePlayerPlayback(){
 document.addEventListener('play',e=>{if(e.target&&e.target.id==='video')updatePlayerPlaybackUi()},true);
 document.addEventListener('pause',e=>{if(e.target&&e.target.id==='video')updatePlayerPlaybackUi()},true);
 
+function isCinemaPlaybackOpen(){
+  const p=document.getElementById('playerView');
+  return !!(p&&p.classList.contains('open')&&p.classList.contains('cinemaPlayback'));
+}
+function seekPlayerBy(seconds){
+  if(!isCinemaPlaybackOpen())return false;
+  const delta=Number(seconds||0);
+  if(!delta)return false;
+  if(nativeMedia3Active&&window.AbajNative&&typeof AbajNative.nativeSeekBy==='function'){
+    try{AbajNative.nativeSeekBy(Math.round(delta))}catch(e){}
+  }else{
+    const v=document.getElementById('video');
+    if(!v)return false;
+    try{
+      const duration=Number(v.duration||0);
+      let target=Math.max(0,Number(v.currentTime||0)+delta);
+      if(Number.isFinite(duration)&&duration>0)target=Math.min(duration,target);
+      v.currentTime=target;
+    }catch(e){return false}
+  }
+  showTvShortcut((delta<0?'−':'+')+Math.abs(Math.round(delta))+' сек');
+  showTvPlayerUi(true);
+  return true;
+}
 function playNext(){
   if(nativeTv){queueTvChannelStep(1);return}
   const rows=filteredNow.length?filteredNow:channels;
@@ -5725,8 +5767,14 @@ function tvNativeRemote(action){
     }
     const controlsHidden=document.body.classList.contains('playerClean');
     if(controlsHidden){
-      if(action==='left'){queueTvChannelStep(-1);return}
-      if(action==='right'){queueTvChannelStep(1);return}
+      if(action==='left'){
+        if(isCinemaPlaybackOpen())seekPlayerBy(-10);else queueTvChannelStep(-1);
+        return;
+      }
+      if(action==='right'){
+        if(isCinemaPlaybackOpen())seekPlayerBy(10);else queueTvChannelStep(1);
+        return;
+      }
       if(action==='ok'||action==='up'||action==='down'){showTvPlayerUi(true);focusPlayerControl();return}
     }
     if(action==='left'||action==='right'||action==='up'||action==='down'){
@@ -5909,8 +5957,14 @@ document.addEventListener('keydown',e=>{
       e.preventDefault();
       const controlsHidden=document.body.classList.contains('playerClean');
       if(controlsHidden){
-        if(e.key==='ArrowLeft'){queueTvChannelStep(-1);return}
-        if(e.key==='ArrowRight'){queueTvChannelStep(1);return}
+        if(e.key==='ArrowLeft'){
+          if(isCinemaPlaybackOpen())seekPlayerBy(-10);else queueTvChannelStep(-1);
+          return;
+        }
+        if(e.key==='ArrowRight'){
+          if(isCinemaPlaybackOpen())seekPlayerBy(10);else queueTvChannelStep(1);
+          return;
+        }
         showTvPlayerUi(true);focusPlayerControl();return
       }
       showTvPlayerUi(true);
