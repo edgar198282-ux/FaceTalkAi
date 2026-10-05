@@ -425,19 +425,44 @@ public class MainActivity extends Activity {
                 return;
             }
             Class<?> c=node.getClass();
+
+            if("obf.k30".equals(c.getName())){
+                String folderPath=path==null?"":path.trim();
+                try{
+                    java.lang.reflect.Method labelMethod=c.getMethod("OooOo0O");
+                    Object lv=labelMethod.invoke(node);
+                    String label=lv==null?"":String.valueOf(lv).trim();
+                    if(!label.isEmpty()&&!folderPath.toLowerCase(java.util.Locale.US).contains(label.toLowerCase(java.util.Locale.US))){
+                        folderPath=(folderPath+" "+label).trim();
+                    }
+                }catch(Throwable ignored){}
+                try{
+                    java.lang.reflect.Method parserGetter=c.getMethod("OooOoo");
+                    Object parser=parserGetter.invoke(node);
+                    if(parser!=null){
+                        java.lang.reflect.Method parseFolder=parser.getClass().getMethod("OooO00o",c);
+                        parseFolder.setAccessible(true);
+                        Object expanded=parseFolder.invoke(parser,node);
+                        if(expanded!=null&&expanded!=node){
+                            collectLazyMediaUrls(expanded,folderPath,depth+1,seen,out);
+                        }
+                    }
+                }catch(Throwable e){
+                    Log.d("AbajCinema","LazyMedia folder parse skipped: "+e.getClass().getSimpleName());
+                }
+                path=folderPath;
+            }
+
             if("obf.j30".equals(c.getName())){
                 try{
-                    java.lang.reflect.Field urlField=c.getDeclaredField("OooOOoo");
-                    urlField.setAccessible(true);
-                    Object uv=urlField.get(node);
+                    Object uv=null;
+                    try{
+                        java.lang.reflect.Method urlMethod=c.getMethod("OooOOoo");
+                        uv=urlMethod.invoke(node);
+                    }catch(Throwable ignored){}
                     String u=uv==null?"":String.valueOf(uv).trim().replace("\\/","/");
                     if(u.startsWith("http://")||u.startsWith("https://")){
                         String label=path==null?"":path.trim();
-                        try{
-                            java.lang.reflect.Method labelMethod=c.getMethod("OooOOoo");
-                            Object lv=labelMethod.invoke(node);
-                            if(lv!=null&&!String.valueOf(lv).trim().isEmpty())label=String.valueOf(lv).trim();
-                        }catch(Throwable ignored){}
                         String format="";
                         try{
                             java.lang.reflect.Method formatMethod=c.getMethod("getFormat");
