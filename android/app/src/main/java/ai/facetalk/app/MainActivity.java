@@ -1027,7 +1027,23 @@ public class MainActivity extends Activity {
                     Log.i("AbajCinema","parser instantiated: "+requested+" class="+className+
                         " article="+article+" title="+title);
 
-                    org.json.JSONArray candidate=resolveLazyArticleVideoTree(articleObj,cl);
+                    org.json.JSONArray candidate;
+                    if("ZONA".equals(requested)){
+                        candidate=new org.json.JSONArray();
+                        try{
+                            java.lang.reflect.Method getEpisode=articleObj.getClass().getDeclaredMethod("getEpisode",String.class);
+                            getEpisode.setAccessible(true);
+                            Object root=getEpisode.invoke(articleObj,article);
+                            candidate=serializeLazyFolderRows(root,"ZONA");
+                            Log.i("AbajCinema","ZONA direct getEpisode rows="+candidate.length()+" id="+article);
+                        }catch(Throwable zonaDirectError){
+                            Log.w("AbajCinema","ZONA direct getEpisode failed "+
+                                zonaDirectError.getClass().getSimpleName()+" "+String.valueOf(zonaDirectError.getMessage()));
+                            candidate=resolveLazyArticleVideoTree(articleObj,cl);
+                        }
+                    }else{
+                        candidate=resolveLazyArticleVideoTree(articleObj,cl);
+                    }
                     Log.i("AbajCinema","parser result: "+requested+" class="+className+
                         " rows="+candidate.length());
                     if(candidate.length()>0){
