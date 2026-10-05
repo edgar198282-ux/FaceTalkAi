@@ -6875,68 +6875,235 @@ function cinemaQualitySummary(rows){
   }
   return labels.slice(0,4).join(' / ');
 }
-function renderResolvedProviderOptions(group,rows){
+function cinemaResolvedRowInfo(row){
+  const raw=String(row?.name||row?.title||'').replace(/\s+/g,' ').trim();
+  const qualityRaw=String(row?.quality||'').trim();
+  const format=String(row?.format||'').trim().toUpperCase();
+  const combined=(raw+' '+qualityRaw+' '+format).trim();
+
+  const seasonMatch=combined.match(/(?:сезон|season|s)[\s._:-]*(\d{1,3})/i);
+  const episodeMatch=combined.match(/(?:серия|episode|ep|e)[\s._:-]*(\d{1,4})/i);
+  const season=seasonMatch?Number(seasonMatch[1]):0;
+  const episode=episodeMatch?Number(episodeMatch[1]):0;
+
+  let quality=qualityRaw;
+  if(!quality){
+    const qm=combined.match(/\b(2160p|1440p|1080p(?:\s*ultra)?|720p|480p|360p|4k|2k|fhd|hd)\b/i);
+    if(qm)quality=qm[1];
+  }
+  if(/^\d+$/.test(quality))quality=quality+'p';
+
+  let voice=raw
+    .replace(/(?:сезон|season|s)[\s._:-]*\d{1,3}/ig,' ')
+    .replace(/(?:серия|episode|ep|e)[\s._:-]*\d{1,4}/ig,' ')
+    .replace(/\b(?:2160p|1440p|1080p(?:\s*ultra)?|720p|480p|360p|4k|2k|fhd|hd|hls|dash|mp4|mkv|auto)\b/ig,' ')
+    .replace(/[|/\\>»]+/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+
+  if(!voice||voice.length>80||/^видео$/i.test(voice))voice='Оригинал';
+  return {row,raw,season,episode,voice,quality,format};
+}
+function cinemaQualityRank(value){
+  const t=String(value||'').toUpperCase();
+  if(t.includes('360'))return 360;
+  if(t.includes('480'))return 480;
+  if(t.includes('720'))return 720;
+  if(t.includes('1080')&&t.includes('ULTRA'))return 1081;
+  if(t.includes('1080')||t==='FHD')return 1080;
+  if(t.includes('1440')||t.includes('2K'))return 1440;
+  if(t.includes('2160')||t.includes('4K'))return 2160;
+  if(t==='HD')return 720;
+  return 9999;
+}
+function cinemaUniqueResolved(values,keyFn){
+  const out=[],seen=new Set();
+  for(const value of values){
+    const key=keyFn(value);
+    if(key===undefined||key===null||key===''||seen.has(String(key)))continue;
+    seen.add(String(key));
+    out.push(key);
+  }
+  return out;
+}
+function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
   const list=document.getElementById('cinemaSourceList');
   const title=document.getElementById('cinemaSourceTitle');
   if(!list)return;
   const provider=normalizeLazyProviderName(group.name);
-  if(title)title.textContent=provider+' · ВИДЕО';
+  const isSeries=infos.some(x=>x.season>0||x.episode>0);
+
+  let filtered=infos;
+  if(selection.season)filtered=filtered.filter(x=>x.season===selection.season||!x.season);
+  if(selection.voice)filtered=filtered.filter(x=>x.voice===selection.voice);
+  if(selection.episode)filtered=filtered.filter(x=>x.episode===selection.episode||!x.episode);
+
+  const seasons=cinemaUniqueResolved(filtered.filter(x=>x.season>0),x=>x.season).sort((a,b)=>a-b);
+  const voices=cinemaUniqueResolved(filtered,x=>x.voice).filter(Boolean);
+  const episodes=cinemaUniqueResolved(filtered.filter(x=>x.episode>0),x=>x.episode).sort((a,b)=>a-b);
+
+  let nextStage='quality';
+  if(isSeries&&!selection.season&&seasons.length)nextStage='season';
+  else if(!selection.voice&&voices.length>1)nextStage='voice';
+  else if(isSeries&&!selection.episode&&episodes.length)nextStage='episode';
+
   list.innerHTML='';
-  if(!rows.length){
-    const empty=document.createElement('div');
-    empty.className='cinemaSourceEmpty';
-    empty.textContent=provider+' не вернул реальные варианты видео.';
-    list.appendChild(empty);
-  }else{
-    const qualityRank=q=>{
-      const t=String(q||'').toUpperCase();
-      if(t.includes('360'))return 360;
-      if(t.includes('480'))return 480;
-      if(t.includes('720'))return 720;
-      if(t.includes('1080')&&t.includes('ULTRA'))return 1081;
-      if(t.includes('1080'))return 1080;
-      if(t.includes('1440')||t.includes('2K'))return 1440;
-      if(t.includes('2160')||t.includes('4K'))return 2160;
-      return 9999;
-    };
-    rows=[...rows].sort((a,b)=>{
-      const aq=String(a?.quality||'')+' '+String(a?.name||'');
-      const bq=String(b?.quality||'')+' '+String(b?.name||'');
-      return qualityRank(aq)-qualityRank(bq);
-    });
-    rows.forEach((row,i)=>{
+
+  const addBack=(text,fn)=>{
+    const back=document.createElement('button');
+    back.className='cinemaSourceClose';
+    back.textContent=text;
+    back.onclick=fn;
+    list.appendChild(back);
+  };
+
+  if(nextStage==='season'){
+    if(title)title.textContent=provider+' · СЕЗОН';
+    seasons.forEach(season=>{
       const btn=document.createElement('button');
       btn.className='cinemaSourceBtn';
       const label=document.createElement('span');
+      label.textContent='Сезон '+season;
       const meta=document.createElement('small');
-      let quality=String(row?.quality||'').trim();
-      if(quality&&/^\d+$/.test(quality))quality=quality+'p';
-      const format=String(row?.format||'').trim().toUpperCase();
-      const rawName=String(row?.name||'').trim();
-      label.textContent=(format&&format!=='AUTO'&&quality)
-        ?(format+' · '+quality)
-        :(quality||rawName||('Вариант '+(i+1)));
-      meta.textContent=(rawName&&rawName!==label.textContent)
-        ?rawName
-        :'Готово к воспроизведению';
-      btn.appendChild(label);
-      btn.appendChild(meta);
-      btn.onclick=()=>{
-        const realUrl=String(row?.url||'').trim();
-        if(!realUrl){meta.textContent='Поток недоступен';return}
-        meta.textContent='Открываю…';
-        window.__abajOpenExternalMedia(realUrl,String(cinemaSourcePickerMovie?.title||label.textContent||'Кино'));
-        setTimeout(()=>closeCinemaSourcePicker(false),120);
-      };
+      const count=new Set(filtered.filter(x=>x.season===season).map(x=>x.episode).filter(Boolean)).size;
+      meta.textContent=count?count+' серий':'Открыть';
+      btn.append(label,meta);
+      btn.onclick=()=>cinemaRenderResolvedRows(group,infos,'season',{...selection,season});
       list.appendChild(btn);
     });
+    addBack('← Источники',renderCinemaSourceGroups);
+    setTimeout(()=>focusCinemaSourceButton(0),20);
+    return;
   }
-  const back=document.createElement('button');
-  back.className='cinemaSourceClose';
-  back.textContent='← Источники';
-  back.onclick=renderCinemaSourceGroups;
-  list.appendChild(back);
+
+  if(nextStage==='voice'){
+    if(title)title.textContent=provider+' · ОЗВУЧКА';
+    voices.forEach(voice=>{
+      const btn=document.createElement('button');
+      btn.className='cinemaSourceBtn';
+      const label=document.createElement('span');
+      label.textContent=voice;
+      const meta=document.createElement('small');
+      const voiceRows=filtered.filter(x=>x.voice===voice);
+      const q=cinemaQualitySummary(voiceRows.map(x=>x.row));
+      meta.textContent=q||'Открыть';
+      btn.append(label,meta);
+      btn.onclick=()=>cinemaRenderResolvedRows(group,infos,'voice',{...selection,voice});
+      list.appendChild(btn);
+    });
+    addBack(selection.season?'← Сезоны':'← Источники',()=>{
+      if(selection.season)cinemaRenderResolvedRows(group,infos,'root',{});
+      else renderCinemaSourceGroups();
+    });
+    setTimeout(()=>focusCinemaSourceButton(0),20);
+    return;
+  }
+
+  if(nextStage==='episode'){
+    if(title)title.textContent=provider+' · СЕРИИ';
+    episodes.forEach(episode=>{
+      const btn=document.createElement('button');
+      btn.className='cinemaSourceBtn';
+      const label=document.createElement('span');
+      label.textContent='Серия '+episode;
+      const meta=document.createElement('small');
+      const epRows=filtered.filter(x=>x.episode===episode);
+      meta.textContent=cinemaQualitySummary(epRows.map(x=>x.row))||'Открыть';
+      btn.append(label,meta);
+      btn.onclick=()=>cinemaRenderResolvedRows(group,infos,'episode',{...selection,episode});
+      list.appendChild(btn);
+    });
+    addBack(selection.voice?'← Озвучка':(selection.season?'← Сезон':'← Источники'),()=>{
+      if(selection.voice){
+        const base={...selection};delete base.voice;delete base.episode;
+        cinemaRenderResolvedRows(group,infos,'season',base);
+      }else if(selection.season){
+        const base={...selection};delete base.episode;
+        cinemaRenderResolvedRows(group,infos,'season',base);
+      }else renderCinemaSourceGroups();
+    });
+    setTimeout(()=>focusCinemaSourceButton(0),20);
+    return;
+  }
+
+  if(title){
+    const parts=[provider];
+    if(selection.season)parts.push('СЕЗОН '+selection.season);
+    if(selection.episode)parts.push('СЕРИЯ '+selection.episode);
+    parts.push('КАЧЕСТВО');
+    title.textContent=parts.join(' · ');
+  }
+
+  const qualityRows=[...filtered].sort((a,b)=>cinemaQualityRank(a.quality)-cinemaQualityRank(b.quality));
+  const seenUrls=new Set();
+  let rendered=0;
+  qualityRows.forEach((info,i)=>{
+    const row=info.row;
+    const realUrl=String(row?.url||'').trim();
+    if(!realUrl||seenUrls.has(realUrl))return;
+    seenUrls.add(realUrl);
+    rendered++;
+    const btn=document.createElement('button');
+    btn.className='cinemaSourceBtn';
+    const label=document.createElement('span');
+    const meta=document.createElement('small');
+    label.textContent=info.quality||info.format||('Вариант '+(i+1));
+    meta.textContent=(info.format&&info.format!=='AUTO'?info.format+' · ':'')+'Открыть в Abaj TV';
+    btn.append(label,meta);
+    btn.onclick=()=>{
+      meta.textContent='Открываю…';
+      const playTitle=String(cinemaSourcePickerMovie?.title||info.raw||'Кино');
+      closeCinemaSourcePicker(false);
+      window.__abajOpenExternalMedia(realUrl,playTitle);
+    };
+    list.appendChild(btn);
+  });
+
+  if(!rendered){
+    const empty=document.createElement('div');
+    empty.className='cinemaSourceEmpty';
+    empty.textContent=provider+' не вернул прямой поток для выбранного варианта.';
+    list.appendChild(empty);
+  }
+
+  addBack(
+    selection.episode?'← Серии':(selection.voice?'← Озвучка':(selection.season?'← Сезоны':'← Источники')),
+    ()=>{
+      if(selection.episode){
+        const base={...selection};delete base.episode;
+        cinemaRenderResolvedRows(group,infos,'voice',base);
+      }else if(selection.voice){
+        const base={...selection};delete base.voice;
+        cinemaRenderResolvedRows(group,infos,'season',base);
+      }else if(selection.season){
+        cinemaRenderResolvedRows(group,infos,'root',{});
+      }else{
+        renderCinemaSourceGroups();
+      }
+    }
+  );
   setTimeout(()=>focusCinemaSourceButton(0),20);
+}
+function renderResolvedProviderOptions(group,rows){
+  const provider=normalizeLazyProviderName(group.name);
+  const normalized=(Array.isArray(rows)?rows:[]).filter(row=>String(row?.url||'').trim());
+  if(!normalized.length){
+    const list=document.getElementById('cinemaSourceList');
+    const title=document.getElementById('cinemaSourceTitle');
+    if(title)title.textContent=provider+' · ВИДЕО';
+    if(list){
+      list.innerHTML='<div class="cinemaSourceEmpty">'+provider+' не вернул реальные варианты видео.</div>';
+      const back=document.createElement('button');
+      back.className='cinemaSourceClose';
+      back.textContent='← Источники';
+      back.onclick=renderCinemaSourceGroups;
+      list.appendChild(back);
+      setTimeout(()=>focusCinemaSourceButton(0),20);
+    }
+    return;
+  }
+  const infos=normalized.map(cinemaResolvedRowInfo);
+  cinemaRenderResolvedRows(group,infos,'root',{});
 }
 
 function filmixVideoOptionsAsync(item){
