@@ -1434,6 +1434,20 @@ public class MainActivity extends Activity {
                 if(nativeProbePlayer.isPlaying())nativeProbePlayer.pause();else nativeProbePlayer.play();
             });
         }
+        @JavascriptInterface public void nativeSeekBy(int seconds){
+            if(!isTv)return;
+            runOnUiThread(()->{
+                try{
+                    if(nativeProbePlayer==null)return;
+                    long current=Math.max(0L,nativeProbePlayer.getCurrentPosition());
+                    long target=current+(long)seconds*1000L;
+                    long duration=nativeProbePlayer.getDuration();
+                    if(duration>0L)target=Math.min(duration,Math.max(0L,target));
+                    else target=Math.max(0L,target);
+                    nativeProbePlayer.seekTo(target);
+                }catch(Exception ignored){}
+            });
+        }
         @JavascriptInterface public void setNativeAdMuted(boolean muted){
             if(!isTv)return;
             runOnUiThread(()->{
@@ -2290,7 +2304,15 @@ public class MainActivity extends Activity {
                 return true;
             }
             if(code==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||code==KeyEvent.KEYCODE_SPACE){
-                webView.evaluateJavascript("(function(){var v=document.getElementById('video');if(v){if(v.paused){v.play()}else{v.pause()}}})()",null);
+                webView.evaluateJavascript("if(typeof togglePlayerPlayback==='function')togglePlayerPlayback()",null);
+                return true;
+            }
+            if(code==KeyEvent.KEYCODE_MEDIA_REWIND){
+                webView.evaluateJavascript("if(typeof seekPlayerBy==='function')seekPlayerBy(-10)",null);
+                return true;
+            }
+            if(code==KeyEvent.KEYCODE_MEDIA_FAST_FORWARD){
+                webView.evaluateJavascript("if(typeof seekPlayerBy==='function')seekPlayerBy(10)",null);
                 return true;
             }
             if(code==KeyEvent.KEYCODE_MEDIA_NEXT||code==KeyEvent.KEYCODE_CHANNEL_UP||code==KeyEvent.KEYCODE_PAGE_DOWN){
