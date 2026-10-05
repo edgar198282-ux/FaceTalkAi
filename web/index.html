@@ -3621,7 +3621,10 @@ function updatePlayerRemaining(){
 }
 setInterval(updatePlayerRemaining,15000);
 setInterval(()=>{
-  if(isCinemaPlaybackOpen())updatePlayerRemaining();
+  if(isCinemaPlaybackOpen()){
+    updatePlayerRemaining();
+    saveCinemaProgress(false);
+  }
 },1000);
 function epgProgress(p){
   if(!p||!p.start||!p.stop||p.stop<=p.start)return 0;
@@ -5178,7 +5181,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       v.removeAttribute('src');
       try{v.load()}catch(e){}
       markFrameReady(true);
-      setTimeout(updatePlayerRemaining,80);
+      setTimeout(()=>{applyCinemaResume();updatePlayerRemaining()},80);
     };
     nativeMedia3ErrorHandler=(reason)=>{
       if(attemptToken!==streamAttemptToken)return;
@@ -5332,7 +5335,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
           v.removeEventListener('playing',onPlaying);
           markFrameReady();
         };
-        if(!v.paused&&v.readyState>=3)markFrameReady();
+        if(!v.paused&&v.readyState>=3){markFrameReady();setTimeout(applyCinemaResume,80)}
         else v.addEventListener('playing',onPlaying,{once:true});
       }).catch(()=>{});
     });
@@ -5755,6 +5758,7 @@ function openTvRailFocused(){
 }
 function closePlayer(){
 
+  if(isCinemaPlaybackOpen())saveCinemaProgress(true);
   clearCinemaStartupTimer();
   nativeMedia3FirstFrameHandler=null;
   nativeMedia3ErrorHandler=null;
@@ -5899,6 +5903,68 @@ function togglePlayerPlayback(){
 }
 document.addEventListener('play',e=>{if(e.target&&e.target.id==='video')updatePlayerPlaybackUi()},true);
 document.addEventListener('pause',e=>{if(e.target&&e.target.id==='video')updatePlayerPlaybackUi()},true);
+
+async function loadCinemaResume(itemId,mediaId,fallback=0){
+  const base=Math.max(0,Number(fallback||0));
+  if(!itemId)return base;
+  try{
+    const q=new URLSearchParams({item_id:String(itemId),media_id:String(mediaId||'')});
+    const r=await fetch('/api/cinema/progress?'+q.toString(),{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)return base;
+    const d=await r.json();
+    const p=Number(d?.progress?.position||0);
+    return Number.isFinite(p)&&p>0?p:base;
+  }catch(e){return base}
+}
+async function saveCinemaProgress(force=false){
+  if(!current||!String(current.id||'').startsWith('cinema:external:')||!current.cinemaItemId)return;
+  const now=Date.now();
+  if(!force&&now-Number(current.cinemaProgressSavedAt||0)<12000)return;
+  let pos=0,dur=0;
+  if(nativeMedia3Active&&window.AbajNative){
+    try{
+      if(typeof AbajNative.nativePositionMs==='function')pos=Number(AbajNative.nativePositionMs()||0)/1000;
+      if(typeof AbajNative.nativeDurationMs==='function')dur=Number(AbajNative.nativeDurationMs()||0)/1000;
+    }catch(e){}
+  }else{
+    const v=document.getElementById('video');
+    if(v){
+      pos=Math.max(0,Number(v.currentTime||0));
+      dur=Number.isFinite(v.duration)&&v.duration>0?Number(v.duration):0;
+    }
+  }
+  if(!(pos>0)||!(dur>0))return;
+  current.cinemaProgressSavedAt=now;
+  try{
+    await fetch('/api/cinema/progress',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',...authHeaders()},
+      body:JSON.stringify({
+        item_id:String(current.cinemaItemId||''),
+        media_id:String(current.cinemaMediaId||''),
+        position:pos,
+        duration:dur
+      }),
+      keepalive:true,
+      cache:'no-store'
+    });
+  }catch(e){}
+}
+function applyCinemaResume(){
+  if(!current||!String(current.id||'').startsWith('cinema:external:')||current.cinemaResumeApplied)return;
+  const resume=Math.max(0,Number(current.cinemaResume||0));
+  current.cinemaResumeApplied=true;
+  if(!(resume>5))return;
+  if(nativeMedia3Active&&window.AbajNative&&typeof AbajNative.nativeSeekBy==='function'){
+    try{AbajNative.nativeSeekBy(Math.round(resume))}catch(e){}
+  }else{
+    const v=document.getElementById('video');
+    if(!v)return;
+    const seek=()=>{try{if(Number.isFinite(v.duration)&&v.duration>resume+10)v.currentTime=resume}catch(e){}};
+    if(v.readyState>=1)seek();else v.addEventListener('loadedmetadata',seek,{once:true});
+  }
+  showTvShortcut('Продолжить с '+fmtPlaybackClock(resume));
+}
 
 function isCinemaPlaybackOpen(){
   const p=document.getElementById('playerView');
@@ -8633,7 +8699,7 @@ function playCinemaSource(index){
     note.textContent='Этот источник пока не отдал прямой поток. Окно не закрываю — можно выбрать другой источник.';
   }
 }
-window.__abajOpenExternalMedia=function(url,title,provider='',headers={},fallbacks=[]){
+window.__abajOpenExternalMedia=function(url,title,provider='',headers={},fallbacks=[],cinemaMeta={}){
   setTimeout(refreshCinemaTrackValues,0);
   const raw=String(url||'').trim();
   if(!(raw.toLowerCase().startsWith('http://')||raw.toLowerCase().startsWith('https://')||raw.toLowerCase().startsWith('content:')))return;
@@ -8662,7 +8728,12 @@ window.__abajOpenExternalMedia=function(url,title,provider='',headers={},fallbac
     cinemaHeaders:(headers&&typeof headers==='object')?headers:{},
     cinemaFallbacks:uniqueFallbacks,
     cinemaFallbackIndex:0,
-    cinemaTriedUrls:[raw]
+    cinemaTriedUrls:[raw],
+    cinemaItemId:String(cinemaMeta?.item_id||''),
+    cinemaMediaId:String(cinemaMeta?.media_id||''),
+    cinemaResume:Number(cinemaMeta?.resume||0),
+    cinemaResumeApplied:false,
+    cinemaProgressSavedAt:0
   };
   try{
     cinemaMode=true;
@@ -9187,7 +9258,16 @@ async function watchCinemaDetail(){
       const detail=document.getElementById('cinemaDetail');
       if(detail)detail.classList.remove('open');
       const mediaLabel=media?kinoMediaLabel(media,0):'';
-      window.__abajOpenExternalMedia(resolved.url,String(item.title||'Кино')+(mediaLabel?' · '+mediaLabel:''),'KINOPUB',resolved.headers||{});
+      const fallbackResume=Math.max(0,Number(media?.watching?.time||media?.time||0));
+      const resume=await loadCinemaResume(String(item.id||''),kinoMediaId(media),fallbackResume);
+      window.__abajOpenExternalMedia(
+        resolved.url,
+        String(item.title||'Кино')+(mediaLabel?' · '+mediaLabel:''),
+        'KINOPUB',
+        resolved.headers||{},
+        [],
+        {item_id:String(item.id||''),media_id:kinoMediaId(media),resume}
+      );
       return;
     }
     const modal=ensureCinemaSourceModal();
