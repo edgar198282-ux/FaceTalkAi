@@ -597,63 +597,122 @@ public class MainActivity extends Activity {
     private org.json.JSONArray resolveLazyArticleVideoTree(Object articleObj,ClassLoader cl){
         org.json.JSONArray empty=new org.json.JSONArray();
         if(articleObj==null||cl==null)return empty;
-        final java.util.concurrent.atomic.AtomicReference<Object> videoTree=new java.util.concurrent.atomic.AtomicReference<>();
+        final java.util.List<Object> candidates=
+            java.util.Collections.synchronizedList(new java.util.ArrayList<Object>());
+        final java.util.concurrent.atomic.AtomicReference<Object> preferredVideo=
+            new java.util.concurrent.atomic.AtomicReference<>();
         try{
             Class<?> callbackClass=Class.forName(
                 "com.lazycatsoftware.lazymediadeluxe.models.service.OooO00o$OooO00o",true,cl
             );
             java.util.concurrent.CountDownLatch baseDone=new java.util.concurrent.CountDownLatch(1);
-            java.util.concurrent.CountDownLatch videoDone=new java.util.concurrent.CountDownLatch(1);
             Object callback=java.lang.reflect.Proxy.newProxyInstance(
                 cl,new Class<?>[]{callbackClass},(proxy,method,args)->{
                     String n=method.getName();
                     if("OooO0o0".equals(n)||"OooO0o".equals(n))baseDone.countDown();
-                    if("OooO0Oo".equals(n)&&args!=null&&args.length>=2&&args[0]!=null){
-                        String type=String.valueOf(args[0]).toLowerCase(java.util.Locale.US);
-                        if("video".equals(type)){
-                            videoTree.set(args[1]);
-                            videoDone.countDown();
-                        }
+                    if("OooO0Oo".equals(n)&&args!=null&&args.length>=2&&args[1]!=null){
+                        Object tree=args[1];
+                        candidates.add(tree);
+                        try{
+                            Object typeObj=args[0];
+                            String type=typeObj==null?"":String.valueOf(typeObj);
+                            if(typeObj instanceof java.lang.Enum){
+                                type=((java.lang.Enum<?>)typeObj).name()+" "+type;
+                            }
+                            if(type.toLowerCase(java.util.Locale.US).contains("video")){
+                                preferredVideo.compareAndSet(null,tree);
+                            }
+                        }catch(Throwable ignored){}
                     }
                     return null;
                 }
             );
+
             java.lang.reflect.Method taskParse=null;
             for(java.lang.reflect.Method m:articleObj.getClass().getMethods()){
                 Class<?>[] pt=m.getParameterTypes();
-                if("taskParse".equals(m.getName())&&pt.length==1&&pt[0].isAssignableFrom(callbackClass)){taskParse=m;break;}
+                if("taskParse".equals(m.getName())&&pt.length==1&&pt[0].isAssignableFrom(callbackClass)){
+                    taskParse=m; break;
+                }
             }
             if(taskParse==null)return empty;
             taskParse.setAccessible(true);
             taskParse.invoke(articleObj,callback);
             try{baseDone.await(10,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
 
-            Class<?> v41=Class.forName("obf.v41",true,cl);
-            Object[] types=(Object[])v41.getMethod("values").invoke(null);
-            if(types!=null&&types.length>0){
+            try{
+                Class<?> v41=Class.forName("obf.v41",true,cl);
+                Object[] types=(Object[])v41.getMethod("values").invoke(null);
                 java.lang.reflect.Method detect=null;
                 for(java.lang.reflect.Method m:articleObj.getClass().getMethods()){
                     Class<?>[] pt=m.getParameterTypes();
-                    if("detectContent".equals(m.getName())&&pt.length==1&&pt[0]==v41){detect=m;break;}
+                    if("detectContent".equals(m.getName())&&pt.length==1&&pt[0]==v41){
+                        detect=m; break;
+                    }
                 }
-                if(detect!=null){
+                if(detect!=null&&types!=null){
                     detect.setAccessible(true);
-                    // Different LazyMedia providers expose video under different
-                    // content types. Probing only values()[0] made FILMIX/ZOMBIE/
-                    // ZETFLIX frequently look empty while the LazyMedia app itself
-                    // could still play them.
                     for(Object type:types){
                         try{detect.invoke(articleObj,type);}catch(Throwable ignored){}
                     }
-                    try{videoDone.await(12,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
+                    // Providers dispatch content callbacks asynchronously. Do not wait
+                    // for a literal "video" enum name; give every returned tree time to arrive.
+                    try{Thread.sleep(2200L);}catch(InterruptedException ignored){}
+                }
+            }catch(Throwable e){
+                Log.w("AbajCinema","LazyMedia content detection failed: "+
+                    e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            }
+
+            java.util.ArrayList<Object> ordered=new java.util.ArrayList<>();
+            Object preferred=preferredVideo.get();
+            if(preferred!=null)ordered.add(preferred);
+            synchronized(candidates){
+                for(Object c:candidates){
+                    if(c!=null&&c!=preferred)ordered.add(c);
                 }
             }
-            Object tree=videoTree.get();
-            org.json.JSONArray rows=serializeLazyFolderRows(tree,"");
+
+            org.json.JSONArray best=new org.json.JSONArray();
+            for(Object tree:ordered){
+                if(tree==null)continue;
+
+                // Keep LazyMedia's folder structure when available (series / seasons).
+                org.json.JSONArray rows=serializeLazyFolderRows(tree,"");
+                if(rows!=null&&rows.length()>0){
+                    if(rows.length()>best.length())best=rows;
+                    boolean hasStream=false;
+                    for(int i=0;i<rows.length();i++){
+                        org.json.JSONObject row=rows.optJSONObject(i);
+                        if(row!=null&&!row.optString("url","").trim().isEmpty()){
+                            hasStream=true; break;
+                        }
+                    }
+                    if(hasStream){
+                        Log.i("AbajCinema","video tree direct rows="+rows.length());
+                        break;
+                    }
+                }
+
+                // Some providers wrap j30/URLs inside non-k30 objects. Walk the
+                // complete object graph and expand LazyMedia folders recursively.
+                org.json.JSONArray deep=new org.json.JSONArray();
+                collectLazyMediaUrls(
+                    tree,"",0,new java.util.HashSet<Integer>(),deep
+                );
+                if(deep.length()>best.length())best=deep;
+                if(deep.length()>0){
+                    Log.i("AbajCinema","video tree deep rows="+deep.length());
+                    break;
+                }
+            }
+
             try{articleObj.getClass().getMethod("stopAllTasks").invoke(articleObj);}catch(Throwable ignored){}
-            return rows;
+            Log.i("AbajCinema","video tree candidates="+ordered.size()+" rows="+best.length());
+            return best;
         }catch(Throwable e){
-            Log.w("AbajCinema","LazyMedia video tree failed "+e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            Log.w("AbajCinema","LazyMedia video tree failed "+
+                e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
             return empty;
         }
     }
@@ -986,6 +1045,9 @@ public class MainActivity extends Activity {
             try{
                 if(wanted.equals(String.valueOf(server)))return server;
             }catch(Throwable ignored){}
+            try{
+                if(wanted.equals(String.valueOf(server.hashCode())))return server;
+            }catch(Throwable ignored){}
             for(String methodName:new String[]{"OooO0OO","OooO0Oo","OooO0oO","OooO0oo"}){
                 try{
                     java.lang.reflect.Method m=bv.getDeclaredMethod(methodName);
@@ -1018,6 +1080,12 @@ public class MainActivity extends Activity {
                 Log.w("AbajCinema","unknown LazyMedia provider source="+source);
                 return out;
             }
+            try{
+                String serverName=server instanceof java.lang.Enum
+                    ?((java.lang.Enum<?>)server).name():String.valueOf(server);
+                Log.i("AbajCinema","provider source="+source+" resolved="+serverName+
+                    " hash="+server.hashCode());
+            }catch(Throwable ignored){}
 
             Class<?> modelClass=Class.forName(
                 "com.lazycatsoftware.lazymediadeluxe.models.service.OooO0O0",true,cl
