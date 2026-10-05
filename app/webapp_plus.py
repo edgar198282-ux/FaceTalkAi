@@ -166,6 +166,31 @@ def _kinopub_normalize(item):
         'source': 'KINOPUB',
     }
 
+async def api_cinema_source_state(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    source = str(await get_setting('cinema_global_source', 'none') or 'none').strip().lower()
+    if source not in ('none','lazy','kinopub'):
+        source = 'none'
+    return web.json_response({'ok':True,'source':source}, headers={'Cache-Control':'no-store, max-age=0'})
+
+async def api_admin_cinema_source_state(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    if not _is_admin_user(user):
+        return web.json_response({'ok':False,'error':'forbidden'}, status=403)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    source = str(body.get('source') or 'none').strip().lower()
+    if source not in ('none','lazy','kinopub'):
+        return web.json_response({'ok':False,'error':'bad_source'}, status=400)
+    await set_setting('cinema_global_source', source)
+    return web.json_response({'ok':True,'source':source}, headers={'Cache-Control':'no-store, max-age=0'})
+
 async def api_kinopub_status(request):
     user = await _user_from_request(request)
     if not user:
@@ -2218,6 +2243,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/status', api_app_auth_status); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/open', api_tv_pair_open); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
+    app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
     app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
