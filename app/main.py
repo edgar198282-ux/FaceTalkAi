@@ -9,6 +9,7 @@ from io import BytesIO
 from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
 
 import qrcode
+import aiohttp
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
@@ -91,6 +92,49 @@ async def _bot_start_link(payload: str = "") -> str:
         return ''
     return f"https://t.me/{username}?start={payload}" if payload else f"https://t.me/{username}"
 
+async def _send_apk_file(chat_id: int, kind: str, lang: str = "ru"):
+    is_tv = kind == "tv"
+    url = _tv_apk_download_url() if is_tv else _apk_download_url()
+    filename = "AbajTV-TV-compat.apk" if is_tv else "AbajTV-latest.apk"
+    status_text = {
+        "hy": "⬇️ APK-ը պատրաստվում է…",
+        "ru": "⬇️ Готовлю APK…",
+        "en": "⬇️ Preparing APK…",
+    }.get(lang, "⬇️ Готовлю APK…")
+    status = await bot.send_message(chat_id, status_text)
+    try:
+        timeout = aiohttp.ClientTimeout(total=180, connect=20, sock_read=120)
+        headers = {"User-Agent": "AbajTV-Bot/1.0", "Accept": "application/octet-stream"}
+        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+            async with session.get(url, allow_redirects=True) as resp:
+                if resp.status != 200:
+                    raise RuntimeError(f"HTTP {resp.status}")
+                data = await resp.read()
+        if len(data) < 300000:
+            raise RuntimeError(f"APK too small: {len(data)}")
+        doc = BufferedInputFile(data, filename=filename)
+        caption = {
+            "hy": "✅ Abaj TV APK\nTelegram-ից անմիջապես ներբեռնեք ֆայլը։",
+            "ru": "✅ Abaj TV APK\nСкачайте файл прямо из Telegram.",
+            "en": "✅ Abaj TV APK\nDownload the file directly from Telegram.",
+        }.get(lang, "✅ Abaj TV APK\nСкачайте файл прямо из Telegram.")
+        sent = await bot.send_document(chat_id=chat_id, document=doc, caption=caption)
+        await _track_message(sent.chat.id, sent.message_id)
+    except Exception as exc:
+        logging.exception("APK send failed: %r", exc)
+        fail = {
+            "hy": "❌ APK-ը չհաջողվեց ուղարկել։ Փորձեք կրկին։",
+            "ru": "❌ Не удалось отправить APK. Попробуйте ещё раз.",
+            "en": "❌ Failed to send APK. Please try again.",
+        }.get(lang, "❌ Не удалось отправить APK. Попробуйте ещё раз.")
+        sent = await bot.send_message(chat_id, fail)
+        await _track_message(sent.chat.id, sent.message_id)
+    finally:
+        try:
+            await bot.delete_message(chat_id=chat_id, message_id=status.message_id)
+        except Exception:
+            pass
+
 async def _tv_apk_qr_photo() -> tuple[BufferedInputFile | None, str]:
     link = await _bot_start_link('tv_apk')
     if not link:
@@ -113,11 +157,11 @@ def start_keyboard(user_id: int | None = None, lang: str = "ru"):
         rows.append([
             InlineKeyboardButton(
                 text={"hy":"📱 Հեռախոս APK","ru":"📱 Телефон APK","en":"📱 Phone APK"}.get(lang, "📱 Телефон APK"),
-                url=apk_url
+                callback_data="apk:phone"
             ),
             InlineKeyboardButton(
                 text={"hy":"📺 Android TV APK","ru":"📺 Android TV APK","en":"📺 Android TV APK"}.get(lang, "📺 Android TV APK"),
-                url=tv_apk_url
+                callback_data="apk:tv"
             )
         ])
     rows.append([
@@ -353,7 +397,7 @@ async def start_handler(m: Message):
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
                 InlineKeyboardButton(
                     text={'hy':'⬇️ Ներբեռնել TV APK','ru':'⬇️ Скачать TV APK','en':'⬇️ Download TV APK'}.get(lang, '⬇️ Скачать TV APK'),
-                    url=tv_apk_url,
+                    callback_data='apk:tv',
                 )
             ]]),
         )
@@ -380,6 +424,13 @@ async def tv_pair_code_handler(m: Message):
         return
     lang = await get_user_language(m.from_user.id) or _telegram_lang(m.from_user)
     await _confirm_tv_pair_code(m, code, lang)
+
+@dp.callback_query(F.data.in_({'apk:phone','apk:tv'}))
+async def apk_file_callback(q: CallbackQuery):
+    await q.answer()
+    lang = await get_user_language(q.from_user.id) or _telegram_lang(q.from_user)
+    kind = 'tv' if q.data == 'apk:tv' else 'phone'
+    await _send_apk_file(q.message.chat.id, kind, lang)
 
 @dp.callback_query(F.data.startswith('lang:'))
 async def language_handler(q: CallbackQuery):
@@ -620,7 +671,7 @@ async def download_apk(m: Message):
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(
                 text={'hy':'📱 Ներբեռնել APK','ru':'📱 Скачать APK','en':'📱 Download APK'}.get(lang, '📱 Скачать APK'),
-                url=apk_url,
+                callback_data='apk:phone',
             )
         ]]),
     )
@@ -635,7 +686,7 @@ async def download_tv_apk(m: Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
             text={'hy':'⬇️ Ներբեռնել TV APK','ru':'⬇️ Скачать TV APK','en':'⬇️ Download TV APK'}.get(lang, '⬇️ Скачать TV APK'),
-            url=tv_apk_url,
+            callback_data='apk:tv',
         )],
         *([[InlineKeyboardButton(
             text={'hy':'🤖 Բացել Abaj TV բոտը','ru':'🤖 Открыть бота Abaj TV','en':'🤖 Open Abaj TV bot'}.get(lang, '🤖 Открыть бота Abaj TV'),
