@@ -4854,15 +4854,21 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       if(attemptToken!==streamAttemptToken||!current||current.id!==ch.id)return;
       nativeMedia3FirstFrameHandler=null;
       nativeMedia3ErrorHandler=null;
+      // Cinema is already playing in the native Media3 PlayerView.
+      // Mark it active so play/pause, seek and progress controls target Media3
+      // instead of the now-empty HTML <video>.
+      setNativeMedia3Visible(true);
       try{v.pause()}catch(e){}
       v.removeAttribute('src');
       try{v.load()}catch(e){}
       markFrameReady(true);
+      setTimeout(updatePlayerRemaining,80);
     };
     nativeMedia3ErrorHandler=(reason)=>{
       if(attemptToken!==streamAttemptToken)return;
       nativeMedia3FirstFrameHandler=null;
       nativeMedia3ErrorHandler=null;
+      setNativeMedia3Visible(false);
       err.textContent='Видео не открылось: '+String(reason||'ошибка потока');
     };
     try{
