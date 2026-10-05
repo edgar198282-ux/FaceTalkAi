@@ -645,6 +645,25 @@ async def api_cinema_progress(request):
         'updated_at':int(time.time()),
     }
     await set_setting(f'cinema_progress:{uid}:{item_id}:{media_id}', json.dumps(data,separators=(',',':')))
+
+    watching = await _cinema_library_read(uid, 'watching')
+    changed = False
+    next_rows = []
+    for row in watching:
+        if str(row.get('id') or '').strip() == item_id:
+            if completed:
+                changed = True
+                continue
+            row = dict(row)
+            row['position'] = data['position']
+            row['duration'] = data['duration']
+            row['media_id'] = media_id
+            row['updated_at'] = data['updated_at']
+            changed = True
+        next_rows.append(row)
+    if changed:
+        await _cinema_library_write(uid, 'watching', next_rows[:100])
+
     return web.json_response({'ok':True,'progress':data}, headers={'Cache-Control':'no-store'})
 
 async def api_cinema_library(request):
