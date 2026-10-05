@@ -1336,6 +1336,9 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 <div class="settingsModal" id="tvSettingsModal" onclick="if(event.target===this)closeTvSettings()">
   <div class="settingsCard">
     <div class="settingsTitle" id="settingsTitle">⚙ Настройки</div>
+    <button id="activationBotLink" onclick="openActivationBot()" style="width:100%;border:0;border-radius:14px;background:#0d87e7;color:#fff;padding:12px 14px;margin:0 0 10px;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px">
+      🤖 Для активации переходите в бот @FaceTalkID_bot
+    </button>
     <div class="adminRow" style="display:block;margin-bottom:10px;background:#eaf6ff">
       <div style="display:flex;justify-content:space-between;gap:12px"><b id="settingsStatusLabel">Статус</b><b id="settingsStatusValue" style="color:#16865b">—</b></div>
       <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px"><span id="settingsUntilLabel">Доступ до</span><b id="settingsUntilValue">—</b></div>
@@ -2632,6 +2635,7 @@ function paintTvSettings(){
   const appearanceLabel=document.getElementById('settingsAppearanceLabel');
   const appearanceLight=document.getElementById('appearanceLightBtn');
   const appearanceDark=document.getElementById('appearanceDarkBtn');
+  const activationBotLink=document.getElementById('activationBotLink');
   if(auto)auto.textContent=(tvAutoStartLast?'✓ ':'✕ ')+t.auto;
   if(bad)bad.textContent=(tvHideUnreliable?'✓ ':'✕ ')+t.hide;
   if(adult){
@@ -2656,6 +2660,13 @@ function paintTvSettings(){
   if(appearanceDark)appearanceDark.textContent=appLang==='hy'?'🌙 Մուգ':(appLang==='en'?'🌙 Dark':'🌙 Тёмный');
   if(appearanceLight)appearanceLight.classList.toggle('active',appAppearanceMode==='light');
   if(appearanceDark)appearanceDark.classList.toggle('active',appAppearanceMode==='dark');
+  if(activationBotLink){
+    activationBotLink.textContent=appLang==='hy'
+      ?'🤖 Ակտիվացման համար անցեք բոտ՝ @FaceTalkID_bot'
+      :(appLang==='en'
+        ?'🤖 For activation, open the bot @FaceTalkID_bot'
+        :'🤖 Для активации переходите в бот @FaceTalkID_bot');
+  }
   applyAppLanguage();
 }
 function applyAppearanceMode(){
@@ -2685,6 +2696,16 @@ function resetThemeHue(){
   localStorage.setItem('abaj_tv_theme_hue','204');
   applyThemeHue();
   paintTvSettings();
+}
+function openActivationBot(){
+  const url='https://t.me/FaceTalkID_bot';
+  try{
+    if(window.AbajNative&&typeof AbajNative.openUrl==='function'){
+      AbajNative.openUrl(url);
+      return;
+    }
+  }catch(e){}
+  window.open(url,'_blank','noopener');
 }
 function openSupportAdmin(){
   closeTvSettings();
