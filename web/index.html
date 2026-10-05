@@ -6891,6 +6891,15 @@ function writeCinemaCache(items){
   try{localStorage.setItem(cinemaCacheKey(),JSON.stringify({ts:Date.now(),items:(items||[]).slice(0,80)}))}catch(e){}
 }
 function cinemaItemLooksSeries(item){
+  const rows=Array.isArray(item?.media_rows)?item.media_rows:[];
+  if(rows.length){
+    if(rows.length>1)return true;
+    const row=rows[0]||{};
+    const rowTitle=String(row?.title||'').toLowerCase();
+    if(row?.season!=null||/(season|сезон)/i.test(rowTitle))return true;
+    const items=Array.isArray(row?.items)?row.items:[];
+    if(items.some(x=>x?.season!=null||x?.number!=null))return true;
+  }
   const t=(String(item?.type||'')+' '+String(item?.kind||'')+' '+String(item?.content_type||'')+' '+String(item?.subtitle||'')+' '+String(item?.title||'')).toLowerCase();
   return /(сериал|series|serial|tv[\s_-]*series|season|сезон|episode|эпизод)/i.test(t);
 }
@@ -9332,7 +9341,7 @@ function kinoMediaLabel(media,index){
   const season=media?.season!=null?'S'+media.season:'';
   const number=media?.number!=null?'E'+media.number:'';
   const title=String(media?.title||media?.name||'').trim();
-  return [season,number].filter(Boolean).join(' ')||title||('Видео '+(index+1));
+  return (season+number)||title||('Видео '+(index+1));
 }
 function renderKinoPubMediaRows(item){
   const host=document.getElementById('cinemaKpMediaRows');
@@ -9425,6 +9434,8 @@ function renderCinemaSeasonEpisodes(row){
   back.onclick=()=>openCinemaSeasons();
   list.appendChild(back);
   row.items.forEach((media,index)=>{
+    if(media&&media.season==null)media.season=row.season??1;
+    if(media&&media.number==null)media.number=index+1;
     const btn=document.createElement('button');
     btn.className='cinemaEpisodeRow'+(kinoMediaId(media)===kinoMediaId(cinemaSelectedKinoMedia)?' active':'');
     const label=kinoMediaLabel(media,index);
@@ -9580,8 +9591,14 @@ function renderCinemaDetail(item){
   const seasonsBtn=document.getElementById('cinemaDetailSeasons');
   const rows=cinemaSeasonRows(item);
   const hasRows=rows.length>0;
-  const isSeries=cinemaItemLooksSeries(item)&&hasRows;
-  if(isSeries&&!cinemaSelectedKinoMedia)cinemaSelectedKinoMedia=rows[0]?.items?.[0]||null;
+  const isSeries=hasRows&&cinemaItemLooksSeries({...item,media_rows:rows});
+  if(isSeries&&!cinemaSelectedKinoMedia){
+    const firstRow=rows[0]||{};
+    const first=firstRow?.items?.[0]||null;
+    if(first&&first.season==null)first.season=firstRow.season??1;
+    if(first&&first.number==null)first.number=1;
+    cinemaSelectedKinoMedia=first;
+  }
   if(watchBtn&&cinemaSource==='kinopub'){
     watchBtn.textContent=isSeries
       ?('СМОТРЕТЬ '+(cinemaSelectedKinoMedia?kinoMediaLabel(cinemaSelectedKinoMedia,0):'S1E1'))
