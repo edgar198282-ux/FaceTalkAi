@@ -1020,26 +1020,38 @@ body.cinemaMode .top{display:none!important}
 .cinemaDetailAction:focus,.cinemaDetailBack:focus{outline:none;box-shadow:0 0 0 3px #38b9ff;background:#238ec4}
 .cinemaDetailAction:disabled{opacity:.65}
 .cinemaDetailBody{padding:0 26px 34px;margin-top:-34px;position:relative;z-index:2}
-.cinemaDetailTitle{font-size:34px;font-weight:700;margin:0 0 15px}
-.cinemaDetailBadges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.cinemaDetailTitle{
+  font-size:34px;font-weight:700;line-height:1.12;margin:0 0 12px;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden
+}
+.cinemaDetailBadges{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
 .cinemaDetailBadge{
   border:1px solid #75c6ef;border-radius:6px;padding:3px 8px;color:#d7f3ff;font-size:12px;font-weight:650
 }
-.cinemaDetailDescription{font-size:17px;line-height:1.45;margin-bottom:14px;color:#e4f5ff;max-width:1180px}
-.cinemaDetailTools{display:flex;justify-content:flex-end;gap:18px;font-size:27px;color:#7fd7ff;margin:-30px 8px 10px}
-.cinemaDetailFacts{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 18px;max-width:1050px;font-size:15px;line-height:1.35}
+.cinemaDetailDescription{font-size:16px;line-height:1.45;margin-bottom:13px;color:#e4f5ff;max-width:980px}
+.cinemaDetailTools{display:flex;justify-content:flex-end;gap:14px;font-size:23px;color:#7fd7ff;margin:-24px 6px 8px}
+.cinemaDetailFacts{display:grid;grid-template-columns:104px minmax(0,1fr);gap:7px 16px;max-width:980px;font-size:14px;line-height:1.35}
 .cinemaDetailFacts .k{color:#7ec6e9}.cinemaDetailFacts .v{color:#e9f8ff}
 .cinemaDetailFacts a{color:#dff6ff;text-decoration:underline}
 @media(max-width:760px){
-  .cinemaDetailHero{min-height:42vh}
-  .cinemaDetailActions{bottom:38px;gap:8px}
-  .cinemaDetailAction{min-width:120px;height:42px;font-size:12.5px;padding:0 12px}
-  .cinemaDetailBody{padding:0 14px 24px;margin-top:-18px}
-  .cinemaDetailTitle{font-size:22px;line-height:1.12;margin-bottom:11px}
-  .cinemaDetailBadge{font-size:11px;padding:2px 7px}
-  .cinemaDetailDescription{font-size:13.5px;line-height:1.42}
-  .cinemaDetailTools{font-size:22px;gap:14px;margin:-20px 6px 8px}
-  .cinemaDetailFacts{grid-template-columns:82px 1fr;font-size:12.5px;gap:6px 10px}
+  .cinemaDetailHero{min-height:36vh}
+  .cinemaDetailHeroPoster{left:6%;top:8%;height:68%;max-width:38%}
+  .cinemaDetailBack{left:12px;top:12px;width:40px;height:40px;font-size:24px}
+  .cinemaDetailActions{left:12px;right:12px;bottom:24px;transform:none;gap:8px}
+  .cinemaDetailAction{flex:1;min-width:0;height:40px;font-size:12px;padding:0 9px}
+  .cinemaDetailBody{padding:0 12px 22px;margin-top:-10px}
+  .cinemaDetailTitle{font-size:21px;line-height:1.12;margin-bottom:9px;max-height:47px}
+  .cinemaDetailBadges{gap:6px;margin-bottom:10px}
+  .cinemaDetailBadge{font-size:10.5px;padding:2px 6px}
+  .cinemaDetailDescription{font-size:13px;line-height:1.4;margin-bottom:11px;max-width:none}
+  .cinemaDetailTools{font-size:20px;gap:12px;margin:-14px 4px 6px}
+  .cinemaDetailFacts{grid-template-columns:76px 1fr;font-size:12px;gap:5px 8px}
+}
+@media(max-width:430px){
+  .cinemaDetailHero{min-height:34vh}
+  .cinemaDetailAction{height:38px;font-size:11.5px}
+  .cinemaDetailTitle{font-size:20px;max-height:45px}
+  .cinemaDetailDescription{font-size:12.5px}
 }
 </style>
 </head>
@@ -8446,19 +8458,20 @@ function renderCinemaDetail(item){
   }
   title.textContent=cinemaDetailText(item,'title','name')||'Фильм';
 
+  const year=cinemaDetailText(item,'year','suggest_production_year','production_year');
+  const rating=cinemaDetailText(item,'imdb','rating','kp','content_rating','suggest_rating');
   const badgeList=[];
+  if(year)badgeList.push(year);
+  if(rating)badgeList.push('★ '+rating);
   const q=cinemaDetailText(item,'quality');
   if(q)badgeList.push(q);
   const audio=cinemaDetailText(item,'audio','sound');
   if(audio)badgeList.push(audio);
   if(item?.subtitles||item?.cc)badgeList.push('CC');
   if(!badgeList.length)badgeList.push('HD');
-  badges.innerHTML=badgeList.map(x=>'<span class="cinemaDetailBadge">'+String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>').join('');
+  badges.innerHTML=[...new Set(badgeList)].map(x=>'<span class="cinemaDetailBadge">'+String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>').join('');
 
   desc.textContent=cinemaDetailText(item,'description','plot','overview','summary','content_description','subtitle','suggest_text_2')||'';
-
-  const year=cinemaDetailText(item,'year','suggest_production_year','production_year');
-  const rating=cinemaDetailText(item,'imdb','rating','kp','content_rating','suggest_rating');
   const original=cinemaDetailText(item,'original_title','originalTitle','title_original','original','original_name');
   const duration=cinemaDetailText(item,'duration','runtime','suggest_duration');
   const country=cinemaDetailText(item,'country','countryOfOrigin','production_country');
