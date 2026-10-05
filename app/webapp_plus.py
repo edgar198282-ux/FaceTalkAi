@@ -796,6 +796,9 @@ async def api_kinopub_section(request):
     elif section == 'cartoons':
         params={'genre':23,'page':page,'perpage':perpage,'sort':sort}
         path='/v1/items'
+    elif section == 'anime':
+        params={'genre':25,'page':page,'perpage':perpage,'sort':sort}
+        path='/v1/items'
     else:
         params={**mapping.get(section, {'type':'movie'}),'page':page,'perpage':perpage,'sort':sort}
         path='/v1/items'
