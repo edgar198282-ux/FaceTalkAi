@@ -749,8 +749,13 @@ public class MainActivity extends Activity {
                     if(ctor==null)continue;
                     ctor.setAccessible(true);
                     Object articleObj=ctor.newInstance(model);
+                    usedClass=className;
+                    Log.i("AbajCinema","parser instantiated: "+requested+" class="+className+
+                        " article="+article+" title="+title);
 
                     org.json.JSONArray candidate=resolveLazyArticleOptions(articleObj,cl);
+                    Log.i("AbajCinema","parser result: "+requested+" class="+className+
+                        " streams="+candidate.length());
                     if(candidate.length()>0){
                         for(int i=0;i<candidate.length();i++)out.put(candidate.opt(i));
                         usedClass=className;
@@ -761,6 +766,8 @@ public class MainActivity extends Activity {
                         Throwable t=((java.lang.reflect.InvocationTargetException)e).getTargetException();
                         lastError=t!=null?t:e;
                     }else lastError=e;
+                    Log.w("AbajCinema","parser failed: "+requested+" class="+className+" "+
+                        lastError.getClass().getSimpleName()+" "+String.valueOf(lastError.getMessage()));
                 }
             }
 
