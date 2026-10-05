@@ -6223,10 +6223,13 @@ function connectLazyMediaFromAdmin(){
   if(cinemaMode)loadCinemaCatalog(true);
 }
 function disconnectLazyMediaFromAdmin(){
-  cinemaSource='abaj';
-  localStorage.setItem('abaj_cinema_source','abaj');
+  cinemaSource='none';
+  localStorage.setItem('abaj_cinema_source','none');
   cinemaLoaded=false;
+  try{localStorage.removeItem(cinemaCacheKey())}catch(e){}
   refreshLazyMediaAdminStatus();
+  refreshKinoPubAdminStatus();
+  if(cinemaMode)loadCinemaCatalog(true);
 }
 function getKinoPubInfo(){
   try{
@@ -6272,11 +6275,13 @@ function connectKinoPubFromAdmin(){
   if(cinemaMode)loadCinemaCatalog(true);
 }
 function disconnectKinoPubFromAdmin(){
-  cinemaSource=getLazyMediaInfo().installed?'lazy':'abaj';
-  localStorage.setItem('abaj_cinema_source',cinemaSource);
+  cinemaSource='none';
+  localStorage.setItem('abaj_cinema_source','none');
   cinemaLoaded=false;
+  try{localStorage.removeItem(cinemaCacheKey())}catch(e){}
   refreshKinoPubAdminStatus();
   refreshLazyMediaAdminStatus();
+  if(cinemaMode)loadCinemaCatalog(true);
 }
 function kinoPubCatalogAsync(query){
   return new Promise(resolve=>{
@@ -6406,6 +6411,11 @@ async function searchCinemaLazyMedia(raw){
   const q=String(raw||'').trim();
   const seq=++cinemaSearchSeq;
   const status=document.getElementById('cinemaStatus');
+  if(cinemaSource==='none'&&q){
+    renderCinemaCatalog([],{search:true});
+    if(status)status.textContent='Источник кино отключён.';
+    return;
+  }
   if(!q){
     cinemaLoaded=false;
     syncCinemaTypeUi();
@@ -6697,9 +6707,13 @@ async function loadCinemaCatalog(force=false){
     return;
   }
 
-  if(localLazyInfo.installed&&cinemaSource!=='lazy'&&cinemaSource!=='abaj'){
-    cinemaSource='lazy';
-    localStorage.setItem('abaj_cinema_source','lazy');
+  if(cinemaSource==='none'){
+    cinemaLoaded=false;
+    renderCinemaCatalog([]);
+    if(status)status.textContent='Источник кино отключён.';
+    refreshLazyMediaAdminStatus();
+    refreshKinoPubAdminStatus();
+    return;
   }
 
   if(cinemaSource==='lazy'){
