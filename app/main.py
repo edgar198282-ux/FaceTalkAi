@@ -390,17 +390,7 @@ async def start_handler(m: Message):
         return
 
     if payload == 'tv_apk':
-        tv_apk_url = _tv_apk_download_url()
-        await _answer(
-            m,
-            {'hy':'📺 Abaj TV Android TV APK','ru':'📺 Abaj TV для Android TV','en':'📺 Abaj TV for Android TV'}.get(lang, '📺 Abaj TV для Android TV'),
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(
-                    text={'hy':'⬇️ Ներբեռնել TV APK','ru':'⬇️ Скачать TV APK','en':'⬇️ Download TV APK'}.get(lang, '⬇️ Скачать TV APK'),
-                    callback_data='apk:tv',
-                )
-            ]]),
-        )
+        await _send_apk_file(m.chat.id, 'tv', lang)
         return
 
     if payload.startswith('tv_'):
@@ -662,47 +652,14 @@ async def download_apk(m: Message):
     await _track_incoming(m)
     lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
     await _ensure_latest_menu(m, lang)
-    apk_url = _apk_download_url()
-    if not apk_url:
-        return
-    await _answer(
-        m,
-        {'hy':'📱 Ներբեռնեք Abaj TV APK-ը','ru':'📱 Скачайте APK Abaj TV','en':'📱 Download Abaj TV APK'}.get(lang, '📱 Скачайте APK Abaj TV'),
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(
-                text={'hy':'📱 Ներբեռնել APK','ru':'📱 Скачать APK','en':'📱 Download APK'}.get(lang, '📱 Скачать APK'),
-                callback_data='apk:phone',
-            )
-        ]]),
-    )
+    await _send_apk_file(m.chat.id, 'phone', lang)
 
 @dp.message(F.text.in_({'📺 Ներբեռնել APK TV-ի համար','📺 Скачать APK для TV','📺 Download APK for TV','🖥️ Ներբեռնել TV APK','🖥️ Скачать TV APK','🖥️ Download TV APK'}))
 async def download_tv_apk(m: Message):
     await _track_incoming(m)
     lang = await get_user_language(m.from_user.id if m.from_user else 0) or _telegram_lang(m.from_user)
     await _ensure_latest_menu(m, lang)
-    tv_apk_url = _tv_apk_download_url()
-    qr_photo, start_link = await _tv_apk_qr_photo()
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text={'hy':'⬇️ Ներբեռնել TV APK','ru':'⬇️ Скачать TV APK','en':'⬇️ Download TV APK'}.get(lang, '⬇️ Скачать TV APK'),
-            callback_data='apk:tv',
-        )],
-        *([[InlineKeyboardButton(
-            text={'hy':'🤖 Բացել Abaj TV բոտը','ru':'🤖 Открыть бота Abaj TV','en':'🤖 Open Abaj TV bot'}.get(lang, '🤖 Открыть бота Abaj TV'),
-            url=start_link,
-        )]] if start_link else []),
-    ])
-    caption = {
-        'hy':'📺 Android TV APK\n\n📷 Սկանավորեք QR կոդը՝ Abaj TV բոտը անմիջապես բացելու համար։',
-        'ru':'📺 APK для Android TV\n\n📷 Сканируйте QR-код — сразу откроется бот Abaj TV.',
-        'en':'📺 Android TV APK\n\n📷 Scan the QR code to open the Abaj TV bot directly.',
-    }.get(lang, '📺 APK для Android TV\n\n📷 Сканируйте QR-код — сразу откроется бот Abaj TV.')
-    if qr_photo:
-        sent = await bot.send_photo(chat_id=m.chat.id, photo=qr_photo, caption=caption, reply_markup=keyboard)
-        await _track_message(sent.chat.id, sent.message_id)
-    else:
-        await _answer(m, caption, reply_markup=keyboard)
+    await _send_apk_file(m.chat.id, 'tv', lang)
 
 @dp.message(F.text.in_({'📷 QR TV-ի համար','📷 QR для TV','📷 QR for TV'}))
 async def show_tv_qr(m: Message):
