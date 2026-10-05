@@ -265,6 +265,92 @@ async def api_kinopub_disconnect(request):
     await set_setting(f'kinopub_auth:{uid}', '')
     return web.json_response({'ok':True}, headers={'Cache-Control':'no-store'})
 
+def _kinopub_walk(obj):
+    if isinstance(obj, dict):
+        yield obj
+        for value in obj.values():
+            yield from _kinopub_walk(value)
+    elif isinstance(obj, list):
+        for value in obj:
+            yield from _kinopub_walk(value)
+
+def _kinopub_stream_from_obj(obj):
+    if not isinstance(obj, dict):
+        return ''
+    url = obj.get('url')
+    if isinstance(url, str) and url.startswith(('http://','https://')):
+        return url
+    if isinstance(url, dict):
+        for key in ('hls4','hls2','hls','http','dash'):
+            value = url.get(key)
+            if isinstance(value, str) and value.startswith(('http://','https://')):
+                return value
+    for key in ('hls4','hls2','hls','http','stream','stream_url','video_url'):
+        value = obj.get(key)
+        if isinstance(value, str) and value.startswith(('http://','https://')):
+            return value
+    return ''
+
+def _kinopub_first_media_id(data):
+    for obj in _kinopub_walk(data):
+        for key in ('media_id','mid'):
+            value = obj.get(key)
+            if value not in (None,''):
+                return str(value)
+        if obj.get('files') and obj.get('id') not in (None,''):
+            return str(obj.get('id'))
+    return ''
+
+def _kinopub_first_file_token(data):
+    for obj in _kinopub_walk(data):
+        value = obj.get('file')
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ''
+
+async def api_kinopub_play(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    token = await _kinopub_access_token(uid)
+    if not token:
+        return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
+    item_id = str(request.query.get('id') or '').strip()
+    if not item_id:
+        return web.json_response({'ok':False,'error':'missing_item_id'}, status=400)
+
+    status, item = await _kinopub_api('GET', '/v1/items/' + item_id, params={'access_token':token})
+    if status >= 400:
+        return web.json_response({'ok':False,'error':'kinopub_item_failed','status':status}, status=502)
+
+    direct = ''
+    for obj in _kinopub_walk(item):
+        direct = _kinopub_stream_from_obj(obj)
+        if direct:
+            return web.json_response({'ok':True,'url':direct,'provider':'KINOPUB'}, headers={'Cache-Control':'no-store'})
+
+    media_id = _kinopub_first_media_id(item)
+    if media_id:
+        status, media = await _kinopub_api('GET','/v1/items/media-links',params={'access_token':token,'mid':media_id})
+        if status < 400:
+            for obj in _kinopub_walk(media):
+                direct = _kinopub_stream_from_obj(obj)
+                if direct:
+                    return web.json_response({'ok':True,'url':direct,'provider':'KINOPUB'}, headers={'Cache-Control':'no-store'})
+            file_token = _kinopub_first_file_token(media)
+            if file_token:
+                for stream_type in ('hls4','hls2','hls','http'):
+                    st, video = await _kinopub_api('GET','/v1/items/media-video-link',params={
+                        'access_token':token,'file':file_token,'type':stream_type
+                    })
+                    if st < 400:
+                        direct = _kinopub_stream_from_obj(video)
+                        if direct:
+                            return web.json_response({'ok':True,'url':direct,'provider':'KINOPUB'}, headers={'Cache-Control':'no-store'})
+
+    return web.json_response({'ok':False,'error':'kinopub_stream_not_found'}, status=404)
+
 async def api_kinopub_catalog(request):
     user = await _user_from_request(request)
     if not user:
@@ -2124,7 +2210,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/status', api_app_auth_status); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/open', api_tv_pair_open); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
-    app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog)
+    app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
