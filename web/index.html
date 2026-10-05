@@ -7002,6 +7002,7 @@ function syncCinemaTypeUi(){
   }
 }
 let cinemaShellCategory='all';
+let cinemaShellKind=cinemaType==='series'?'series':'movies';
 function closeCinemaShellMenus(){
   document.getElementById('cinemaSideMenu')?.classList.remove('open');
   document.getElementById('cinemaCategoryMenu')?.classList.remove('open');
@@ -7028,32 +7029,66 @@ function setCinemaShellTitle(text){
   const el=document.getElementById('cinemaShellTitle');
   if(el)el.textContent=String(text||'КИНО').toUpperCase();
 }
+function cinemaKindInfo(){
+  const map={
+    movies:{label:'ФИЛЬМЫ',section:'movies',query:'фильмы'},
+    series:{label:'СЕРИАЛЫ',section:'series',query:'сериалы'},
+    cartoons:{label:'МУЛЬТФИЛЬМЫ',section:'cartoons',query:'мультфильмы'},
+    anime:{label:'АНИМЕ',section:'anime',query:'аниме'},
+    docs:{label:'ДОК.ФИЛЬМЫ',section:'docmovies',query:'документальные фильмы'},
+    docseries:{label:'ДОК.СЕРИАЛЫ',section:'docseries',query:'документальные сериалы'},
+    tvshows:{label:'ТВ ШОУ',section:'tvshows',query:'тв шоу'},
+    concerts:{label:'КОНЦЕРТЫ',section:'concerts',query:'концерты'},
+    collections:{label:'ПОДБОРКИ',section:'collections',query:'подборки фильмов'}
+  };
+  return map[cinemaShellKind]||map.movies;
+}
 function syncCinemaCategoryLabels(){
-  const prefix=cinemaType==='series'?'СЕРИАЛЫ':'ФИЛЬМЫ';
+  const info=cinemaKindInfo();
   const labels={all:'ВСЕ',new:'НОВИНКИ',popular:'ПОПУЛЯРНЫЕ',hot:'ГОРЯЧИЕ','4k':'4K'};
   document.querySelectorAll('.cinemaCategoryItem').forEach(btn=>{
     const key=btn.dataset.cinemaCategory;
-    if(labels[key])btn.textContent=prefix+' '+labels[key];
+    if(labels[key])btn.textContent=info.label+' '+labels[key];
   });
 }
 function setCinemaShellCategory(category){
   cinemaShellCategory=category||'all';
   syncCinemaCategoryLabels();
   document.querySelectorAll('.cinemaCategoryItem').forEach(x=>x.classList.toggle('active',x.dataset.cinemaCategory===cinemaShellCategory));
-  const prefix=cinemaType==='series'?'СЕРИАЛЫ':'ФИЛЬМЫ';
-  const labels={all:prefix+' ВСЕ',new:prefix+' НОВИНКИ',popular:prefix+' ПОПУЛЯРНЫЕ',hot:prefix+' ГОРЯЧИЕ','4k':prefix+' 4K'};
-  setCinemaShellTitle(labels[cinemaShellCategory]||prefix+' ВСЕ');
+  const info=cinemaKindInfo();
+  const labels={all:info.label+' ВСЕ',new:info.label+' НОВИНКИ',popular:info.label+' ПОПУЛЯРНЫЕ',hot:info.label+' ГОРЯЧИЕ','4k':info.label+' 4K'};
+  setCinemaShellTitle(labels[cinemaShellCategory]||info.label+' ВСЕ');
   closeCinemaShellMenus();
+
   if(cinemaSource==='kinopub'){
-    if(cinemaShellCategory==='all'){loadKinoPubSection(cinemaType==='series'?'series':'movies');return}
-    if(cinemaShellCategory==='new'){loadKinoPubSection('fresh',{type:cinemaType});return}
-    if(cinemaShellCategory==='popular'){loadKinoPubSection('popular',{type:cinemaType});return}
-    if(cinemaShellCategory==='hot'){loadKinoPubSection('hot',{type:cinemaType});return}
-    if(cinemaShellCategory==='4k'){loadKinoPubSection('4k');return}
+    if(cinemaShellCategory==='all'){loadKinoPubSection(info.section);return}
+    if(cinemaShellCategory==='new'){
+      if(cinemaShellKind==='movies'||cinemaShellKind==='series')loadKinoPubSection('fresh',{type:cinemaShellKind});
+      else loadKinoPubSection(info.section,{sort:'new'});
+      return;
+    }
+    if(cinemaShellCategory==='popular'){
+      if(cinemaShellKind==='movies'||cinemaShellKind==='series')loadKinoPubSection('popular',{type:cinemaShellKind});
+      else loadKinoPubSection(info.section,{sort:'popular'});
+      return;
+    }
+    if(cinemaShellCategory==='hot'){
+      if(cinemaShellKind==='movies'||cinemaShellKind==='series')loadKinoPubSection('hot',{type:cinemaShellKind});
+      else loadKinoPubSection(info.section,{sort:'hot'});
+      return;
+    }
+    if(cinemaShellCategory==='4k'){
+      if(cinemaShellKind==='movies'||cinemaShellKind==='series')loadKinoPubSection('4k',{type:cinemaShellKind});
+      else loadKinoPubSection(info.section,{sort:'4k'});
+      return;
+    }
   }
-  if(cinemaShellCategory==='all'||cinemaShellCategory==='new'){setCinemaType(cinemaType);return}
-  const noun=cinemaType==='series'?'сериалы':'фильмы';
-  const q=cinemaShellCategory==='popular'?'популярные '+noun:cinemaShellCategory==='hot'?'горячие '+noun:'4K '+noun;
+
+  const q=cinemaShellCategory==='all'?info.query:
+    cinemaShellCategory==='new'?('новинки '+info.query):
+    cinemaShellCategory==='popular'?('популярные '+info.query):
+    cinemaShellCategory==='hot'?('горячие '+info.query):
+    ('4K '+info.query);
   searchCinemaLazyMedia(q);
 }
 function syncCinemaSourceUi(){
@@ -7344,26 +7379,26 @@ function cinemaKpNav(action){
 function cinemaSideAction(action){
   closeCinemaShellMenus();
   document.querySelectorAll('.cinemaMenuItem[data-cinema-main]').forEach(x=>x.classList.toggle('active',x.dataset.cinemaMain===action));
-  if(cinemaSource==='kinopub'){
-    if(action==='watching'||action==='bookmarks'||action==='history'){loadCinemaLibrary(action);return}
-    if(action==='movies'){cinemaType='movies';localStorage.setItem('abaj_cinema_type','movies');loadKinoPubSection('movies');return}
-    if(action==='series'){cinemaType='series';localStorage.setItem('abaj_cinema_type','series');loadKinoPubSection('series');return}
-    if(action==='cartoons'){loadKinoPubSection('cartoons');return}
-    if(action==='anime'){loadKinoPubSection('anime');return}
-    if(action==='4k'){loadKinoPubSection('4k');return}
-    if(action==='docs'){loadKinoPubSection('docmovies');return}
-    if(action==='docseries'){loadKinoPubSection('docseries');return}
-    if(action==='tvshows'){loadKinoPubSection('tvshows');return}
-    if(action==='concerts'){loadKinoPubSection('concerts');return}
-    if(action==='collections'){loadKinoPubSection('collections');return}
+  if(action==='watching'||action==='bookmarks'||action==='history'){
+    if(cinemaSource==='kinopub'){loadCinemaLibrary(action);return}
   }
-  if(action==='movies'){setCinemaShellTitle('ФИЛЬМЫ НОВИНКИ');setCinemaType('movies');return}
-  if(action==='series'){setCinemaShellTitle('СЕРИАЛЫ НОВИНКИ');setCinemaType('series');return}
-  if(action==='cartoons'){setCinemaShellTitle('МУЛЬТФИЛЬМЫ');searchCinemaLazyMedia('мультфильм');return}
-  if(action==='4k'){setCinemaShellTitle('ФИЛЬМЫ 4K');searchCinemaLazyMedia('4K фильм');return}
-  if(action==='docs'){setCinemaShellTitle('ДОК.ФИЛЬМЫ');searchCinemaLazyMedia('документальный фильм');return}
-  if(action==='docseries'){setCinemaShellTitle('ДОК.СЕРИАЛЫ');searchCinemaLazyMedia('документальный сериал');return}
-  if(action==='collections'){setCinemaShellTitle('ПОДБОРКИ');searchCinemaLazyMedia('подборка фильмов');return}
+
+  const supported=['movies','series','cartoons','anime','docs','docseries','tvshows','concerts','collections'];
+  if(supported.includes(action)){
+    cinemaShellKind=action;
+    cinemaShellCategory='all';
+    if(action==='movies'){cinemaType='movies';localStorage.setItem('abaj_cinema_type','movies')}
+    if(action==='series'){cinemaType='series';localStorage.setItem('abaj_cinema_type','series')}
+    syncCinemaCategoryLabels();
+    setCinemaShellCategory('all');
+    return;
+  }
+
+  if(action==='4k'){
+    cinemaShellKind=cinemaType==='series'?'series':'movies';
+    setCinemaShellCategory('4k');
+    return;
+  }
   if(action==='bookmarks'&&window.AbajNative&&typeof AbajNative.openLazyMediaSection==='function'){AbajNative.openLazyMediaSection('bookmarks');return}
   if(action==='history'&&window.AbajNative&&typeof AbajNative.openLazyMediaSection==='function'){AbajNative.openLazyMediaSection('history');return}
   if(action==='watching'){setCinemaShellTitle('Я СМОТРЮ');searchCinemaLazyMedia('');}
