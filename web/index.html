@@ -1151,13 +1151,13 @@ body.cinemaKinopub .cinemaKpNav{display:flex}
     <aside class="cinemaShellSide" id="cinemaSideMenu">
       <div class="cinemaSideProfile">
         <div class="cinemaSideAvatar">◉</div>
-        <div><div class="cinemaSideUser">Abaj TV</div><div class="cinemaSideMeta">Кино</div></div>
+        <div><div class="cinemaSideUser">Abaj TV</div><div class="cinemaSideMeta" id="cinemaSideMeta">Кино</div></div>
       </div>
       <div class="cinemaSideItems">
         <button class="cinemaMenuItem cinemaTvReturn" id="cinemaTvReturnBtn" onclick="toggleCinemaMode()"><span>▣</span><span>ТВ</span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('watching')"><span>◉</span><span>Я СМОТРЮ</span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('bookmarks')"><span>▭</span><span>ЗАКЛАДКИ</span></button>
-        <button class="cinemaMenuItem" onclick="cinemaSideAction('history')"><span>◴</span><span>ИСТОРИЯ</span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('watching')"><span>◉</span><span>Я СМОТРЮ <b id="cinemaWatchingCount"></b></span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('bookmarks')"><span>▭</span><span>ЗАКЛАДКИ <b id="cinemaBookmarksCount"></b></span></button>
+        <button class="cinemaMenuItem" onclick="cinemaSideAction('history')"><span>◴</span><span>ИСТОРИЯ <b id="cinemaHistoryCount"></b></span></button>
         <button class="cinemaMenuItem active" data-cinema-main="movies" onclick="cinemaSideAction('movies')"><span>◉</span><span>ФИЛЬМЫ</span></button>
         <button class="cinemaMenuItem" data-cinema-main="series" onclick="cinemaSideAction('series')"><span>▣</span><span>СЕРИАЛЫ</span></button>
         <button class="cinemaMenuItem" onclick="cinemaSideAction('cartoons')"><span>☆</span><span>МУЛЬТФИЛЬМЫ</span></button>
@@ -1190,7 +1190,10 @@ body.cinemaKinopub .cinemaKpNav{display:flex}
     <div class="cinemaDetailBody">
       <h1 class="cinemaDetailTitle" id="cinemaDetailTitle">Фильм</h1>
       <div class="cinemaDetailBadges" id="cinemaDetailBadges"></div>
-      <div class="cinemaDetailTools"><span>◉</span><span>▢</span></div>
+      <div class="cinemaDetailTools">
+        <button id="cinemaBookmarkBtn" onclick="toggleCinemaBookmark()" style="border:0;background:transparent;color:inherit;font:inherit;font-weight:900;cursor:pointer">☆ В ЗАКЛАДКИ</button>
+        <span id="cinemaHistoryMark">◴ История</span>
+      </div>
       <div class="cinemaDetailDescription" id="cinemaDetailDescription"></div>
       <div class="cinemaDetailFacts" id="cinemaDetailFacts"></div>
     </div>
@@ -2135,6 +2138,7 @@ async function kinoPubCatalogAsync(query=''){
     const r=await fetch(url,{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return [];
     const d=await r.json();
+    kinopubCatalogTotal=Number.isFinite(Number(d.total))?Number(d.total):null;
     return Array.isArray(d.items)?d.items:[];
   }catch(e){return []}
 }
@@ -6707,10 +6711,85 @@ function syncCinemaSourceUi(){
   document.body.classList.toggle('cinemaKinopub',cinemaMode&&cinemaSource==='kinopub');
   document.querySelectorAll('.cinemaKpNavBtn').forEach(btn=>btn.classList.toggle('active',btn.dataset.kpNav==='home'&&cinemaSource==='kinopub'));
 }
+let kinoPubOverview=null;
+let kinopubCatalogTotal=null;
+
+async function loadKinoPubOverview(){
+  if(cinemaSource!=='kinopub'||!cinemaAccessEnabled)return;
+  try{
+    const r=await fetch('/api/kinopub/overview',{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)return;
+    const d=await r.json();
+    kinoPubOverview=d;
+    const meta=document.getElementById('cinemaSideMeta');
+    const m=Number.isFinite(Number(d.movies_total))?Number(d.movies_total):null;
+    const sr=Number.isFinite(Number(d.series_total))?Number(d.series_total):null;
+    if(meta)meta.textContent=(m!==null||sr!==null)?('KinoPub · '+(m!==null?m+' фильмов':'')+(m!==null&&sr!==null?' · ':'')+(sr!==null?sr+' сериалов':'')):'KinoPub';
+  }catch(e){}
+}
+async function refreshCinemaLibraryCounts(){
+  if(cinemaSource!=='kinopub'||!cinemaAccessEnabled)return;
+  await Promise.all(['watching','bookmarks','history'].map(async section=>{
+    try{
+      const r=await fetch('/api/cinema/library?section='+section,{headers:authHeaders(),cache:'no-store'});
+      if(!r.ok)return;
+      const d=await r.json();
+      const id=section==='watching'?'cinemaWatchingCount':(section==='bookmarks'?'cinemaBookmarksCount':'cinemaHistoryCount');
+      const el=document.getElementById(id);
+      if(el)el.textContent=d.count?'('+d.count+')':'';
+    }catch(e){}
+  }));
+}
+async function loadCinemaLibrary(section){
+  closeCinemaShellMenus();
+  const titleMap={watching:'Я СМОТРЮ',bookmarks:'ЗАКЛАДКИ',history:'ИСТОРИЯ'};
+  setCinemaShellTitle(titleMap[section]||'КИНО');
+  const status=document.getElementById('cinemaStatus');
+  if(status)status.textContent='Загрузка…';
+  try{
+    const r=await fetch('/api/cinema/library?section='+encodeURIComponent(section),{headers:authHeaders(),cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    renderCinemaCatalog(Array.isArray(d.items)?d.items:[],{library:true});
+    if(status)status.textContent=(titleMap[section]||'Раздел')+' · '+Number(d.count||0);
+  }catch(e){
+    renderCinemaCatalog([]);
+    if(status)status.textContent='Раздел временно недоступен.';
+  }
+}
+async function toggleCinemaBookmark(){
+  const item=cinemaDetailMovie;
+  if(!item||cinemaSource!=='kinopub')return;
+  const btn=document.getElementById('cinemaBookmarkBtn');
+  if(btn)btn.disabled=true;
+  try{
+    const r=await fetch('/api/cinema/library/bookmark',{
+      method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},
+      body:JSON.stringify({item})
+    });
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&btn)btn.textContent=d.added?'★ В ЗАКЛАДКАХ':'☆ В ЗАКЛАДКИ';
+    await refreshCinemaLibraryCounts();
+  }catch(e){}
+  if(btn)btn.disabled=false;
+}
+async function rememberCinemaWatch(item){
+  if(!item||cinemaSource!=='kinopub')return;
+  try{
+    await fetch('/api/cinema/library/watch',{
+      method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},
+      body:JSON.stringify({item})
+    });
+    refreshCinemaLibraryCounts();
+  }catch(e){}
+}
+
 function cinemaKpNav(action){
   document.querySelectorAll('.cinemaKpNavBtn').forEach(btn=>btn.classList.toggle('active',btn.dataset.kpNav===action));
   if(action==='home'){
     cinemaLoaded=false;
+    loadKinoPubOverview();
+    refreshCinemaLibraryCounts();
     loadCinemaCatalog(true);
     return;
   }
@@ -6721,7 +6800,7 @@ function cinemaKpNav(action){
     return;
   }
   if(action==='history'){
-    openKinoPubFromAdmin();
+    loadCinemaLibrary('history');
     return;
   }
   if(action==='settings'){
@@ -6731,6 +6810,16 @@ function cinemaKpNav(action){
 function cinemaSideAction(action){
   closeCinemaShellMenus();
   document.querySelectorAll('.cinemaMenuItem[data-cinema-main]').forEach(x=>x.classList.toggle('active',x.dataset.cinemaMain===action));
+  if(cinemaSource==='kinopub'){
+    if(action==='watching'||action==='bookmarks'||action==='history'){loadCinemaLibrary(action);return}
+    if(action==='movies'){setCinemaShellTitle('ФИЛЬМЫ');cinemaType='movies';localStorage.setItem('abaj_cinema_type','movies');cinemaLoaded=false;loadCinemaCatalog(true);return}
+    if(action==='series'){setCinemaShellTitle('СЕРИАЛЫ');cinemaType='series';localStorage.setItem('abaj_cinema_type','series');cinemaLoaded=false;loadCinemaCatalog(true);return}
+    if(action==='cartoons'){setCinemaShellTitle('МУЛЬТФИЛЬМЫ');searchCinemaLazyMedia('мультфильм');return}
+    if(action==='4k'){setCinemaShellTitle('4K');searchCinemaLazyMedia('4K');return}
+    if(action==='docs'){setCinemaShellTitle('ДОК.ФИЛЬМЫ');searchCinemaLazyMedia('документальный');return}
+    if(action==='docseries'){setCinemaShellTitle('ДОК.СЕРИАЛЫ');searchCinemaLazyMedia('документальный сериал');return}
+    if(action==='collections'){setCinemaShellTitle('ПОДБОРКИ');loadCinemaCatalog(true);return}
+  }
   if(action==='movies'){setCinemaShellTitle('ФИЛЬМЫ НОВИНКИ');setCinemaType('movies');return}
   if(action==='series'){setCinemaShellTitle('СЕРИАЛЫ НОВИНКИ');setCinemaType('series');return}
   if(action==='cartoons'){setCinemaShellTitle('МУЛЬТФИЛЬМЫ');searchCinemaLazyMedia('мультфильм');return}
@@ -6848,7 +6937,10 @@ function renderCinemaCatalog(items,options={}){
     grid.innerHTML='<div style="grid-column:1/-1;padding:24px 8px;color:#9fc5d8;font-size:16px">Нет данных для показа</div>';
     return;
   }
-  if(status&&!options.search)status.textContent=rows.length+(cinemaType==='series'?' сериалов':' фильмов');
+  if(status&&!options.search){
+    if(cinemaSource==='kinopub'&&kinopubCatalogTotal!==null)status.textContent='Показано '+rows.length+' из '+kinopubCatalogTotal+(cinemaType==='series'?' сериалов':' фильмов');
+    else status.textContent=rows.length+(cinemaType==='series'?' сериалов':' фильмов');
+  }
   rows.forEach(item=>{
     const card=document.createElement('button');
     card.className='cinemaPosterCard';
@@ -6878,6 +6970,8 @@ async function loadCinemaCatalog(force=false){
   }
 
   if(cinemaSource==='kinopub'){
+    loadKinoPubOverview();
+    refreshCinemaLibraryCounts();
     if(kinoPubExplicitlyDisabled()){
       cinemaLoaded=false;
       renderCinemaCatalog([]);
@@ -8633,6 +8727,7 @@ async function watchCinemaDetail(){
     const resolved=await resolveKinoPubInternalStream(item);
     if(watchBtn){watchBtn.disabled=false;watchBtn.textContent='СМОТРЕТЬ ФИЛЬМ'}
     if(resolved&&resolved.url){
+      await rememberCinemaWatch(item);
       const detail=document.getElementById('cinemaDetail');
       if(detail)detail.classList.remove('open');
       window.__abajOpenExternalMedia(resolved.url,String(item.title||'Кино'),'KINOPUB',resolved.headers||{});
