@@ -897,8 +897,8 @@ body.cinemaMode .titleRow{margin-bottom:0}
 body.cinemaMode .top{display:none!important}
 .cinemaScreen{padding:0!important;background:#07131f!important;overflow:auto!important}
 .cinemaShellBar{
-  position:sticky;top:0;z-index:40;height:72px;display:flex;align-items:center;gap:18px;
-  padding:0 24px;background:rgba(5,18,30,.98);border-bottom:1px solid rgba(79,166,220,.14);
+  position:sticky;top:0;z-index:645;height:64px;display:flex;align-items:center;gap:10px;
+  padding:0 18px;background:#111;border-bottom:1px solid rgba(255,255,255,.05);
   box-sizing:border-box
 }
 .cinemaShellBtn{
@@ -909,14 +909,13 @@ body.cinemaMode .top{display:none!important}
   outline:none;box-shadow:0 0 0 3px #31a8ff;background:#12324b
 }
 .cinemaShellTitle{
-  flex:0 1 auto;min-width:230px;color:#9ed9ff;font-size:20px;font-weight:500;
+  flex:0 1 auto;min-width:0;color:#d7d7d7;font-size:22px;font-weight:500;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 }
-.cinemaShellDrop{font-size:16px;color:#78bde9;margin-left:-8px}
+.cinemaShellDrop{font-size:16px;color:#e8e8e8;margin-left:-4px;width:34px!important;min-width:34px!important}
 .cinemaShellSpacer{flex:1}
 .cinemaShellActions{display:flex;align-items:center;gap:8px}
-.cinemaKpNav{display:none;align-items:center;gap:4px}
-body.cinemaKinopub .cinemaKpNav{display:flex}
+.cinemaKpNav{display:none!important}
 .cinemaKpNavBtn{height:40px;border:0;border-radius:10px;background:transparent;color:#b8d8e8;padding:0 12px;font-size:14px;font-weight:700}
 .cinemaKpNavBtn:hover,.cinemaKpNavBtn:focus,.cinemaKpNavBtn.active{outline:none;background:#16394f;color:#fff;box-shadow:0 0 0 2px rgba(65,174,241,.55)}
 @media(max-width:900px){.cinemaKpNavBtn{padding:0 8px;font-size:12px}.cinemaKpNav{gap:2px}}
@@ -996,9 +995,9 @@ body.cinemaKinopub .cinemaKpNav{display:flex}
 body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMoreBtn{display:none!important}
 @media(max-width:1100px){.cinemaPosterGrid{grid-template-columns:repeat(5,minmax(0,1fr))!important}}
 @media(max-width:760px){
-  .cinemaShellBar{height:58px;padding:0 10px;gap:8px}
-  .cinemaShellBtn{width:40px;height:40px;min-width:40px;font-size:23px}
-  .cinemaShellTitle{min-width:0;font-size:17px;flex:1}
+  .cinemaShellBar{height:60px;padding:0 12px;gap:6px}
+  .cinemaShellBtn{width:42px;height:42px;min-width:42px;font-size:25px}
+  .cinemaShellTitle{min-width:0;font-size:21px;flex:0 1 auto}
   .cinemaShellDrop{font-size:14px;margin-left:0}
   .cinemaShellBody{padding:10px 10px 72px}
   .cinemaPosterGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px 10px!important}
@@ -1182,7 +1181,8 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
       </div>
     </div>
     <div class="cinemaShellCategory" id="cinemaCategoryMenu">
-      <button class="cinemaCategoryItem active" data-cinema-category="new" onclick="setCinemaShellCategory('new')">ФИЛЬМЫ НОВИНКИ</button>
+      <button class="cinemaCategoryItem active" data-cinema-category="all" onclick="setCinemaShellCategory('all')">ФИЛЬМЫ ВСЕ</button>
+      <button class="cinemaCategoryItem" data-cinema-category="new" onclick="setCinemaShellCategory('new')">ФИЛЬМЫ НОВИНКИ</button>
       <button class="cinemaCategoryItem" data-cinema-category="popular" onclick="setCinemaShellCategory('popular')">ФИЛЬМЫ ПОПУЛЯРНЫЕ</button>
       <button class="cinemaCategoryItem" data-cinema-category="hot" onclick="setCinemaShellCategory('hot')">ФИЛЬМЫ ГОРЯЧИЕ</button>
       <button class="cinemaCategoryItem" data-cinema-category="4k" onclick="setCinemaShellCategory('4k')">ФИЛЬМЫ 4K</button>
@@ -6945,6 +6945,7 @@ function handleUnifiedSearchEnter(){
   closeTvSearch(true);
 }
 function syncCinemaTypeUi(){
+  syncCinemaCategoryLabels();
   document.querySelectorAll('.cinemaTypeCard').forEach(btn=>{
     btn.classList.toggle('active',btn.dataset.cinemaType===cinemaType);
   });
@@ -6954,7 +6955,7 @@ function syncCinemaTypeUi(){
     setCinemaShellTitle(cinemaType==='series'?'СЕРИАЛЫ НОВИНКИ':'ФИЛЬМЫ НОВИНКИ');
   }
 }
-let cinemaShellCategory='new';
+let cinemaShellCategory='all';
 function closeCinemaShellMenus(){
   document.getElementById('cinemaSideMenu')?.classList.remove('open');
   document.getElementById('cinemaCategoryMenu')?.classList.remove('open');
@@ -6981,20 +6982,32 @@ function setCinemaShellTitle(text){
   const el=document.getElementById('cinemaShellTitle');
   if(el)el.textContent=String(text||'КИНО').toUpperCase();
 }
+function syncCinemaCategoryLabels(){
+  const prefix=cinemaType==='series'?'СЕРИАЛЫ':'ФИЛЬМЫ';
+  const labels={all:'ВСЕ',new:'НОВИНКИ',popular:'ПОПУЛЯРНЫЕ',hot:'ГОРЯЧИЕ','4k':'4K'};
+  document.querySelectorAll('.cinemaCategoryItem').forEach(btn=>{
+    const key=btn.dataset.cinemaCategory;
+    if(labels[key])btn.textContent=prefix+' '+labels[key];
+  });
+}
 function setCinemaShellCategory(category){
-  cinemaShellCategory=category||'new';
+  cinemaShellCategory=category||'all';
+  syncCinemaCategoryLabels();
   document.querySelectorAll('.cinemaCategoryItem').forEach(x=>x.classList.toggle('active',x.dataset.cinemaCategory===cinemaShellCategory));
-  const labels={new:'ФИЛЬМЫ НОВИНКИ',popular:'ФИЛЬМЫ ПОПУЛЯРНЫЕ',hot:'ФИЛЬМЫ ГОРЯЧИЕ','4k':'ФИЛЬМЫ 4K'};
-  setCinemaShellTitle(labels[cinemaShellCategory]||'ФИЛЬМЫ');
+  const prefix=cinemaType==='series'?'СЕРИАЛЫ':'ФИЛЬМЫ';
+  const labels={all:prefix+' ВСЕ',new:prefix+' НОВИНКИ',popular:prefix+' ПОПУЛЯРНЫЕ',hot:prefix+' ГОРЯЧИЕ','4k':prefix+' 4K'};
+  setCinemaShellTitle(labels[cinemaShellCategory]||prefix+' ВСЕ');
   closeCinemaShellMenus();
   if(cinemaSource==='kinopub'){
+    if(cinemaShellCategory==='all'){loadKinoPubSection(cinemaType==='series'?'series':'movies');return}
     if(cinemaShellCategory==='new'){loadKinoPubSection('fresh',{type:cinemaType});return}
     if(cinemaShellCategory==='popular'){loadKinoPubSection('popular',{type:cinemaType});return}
     if(cinemaShellCategory==='hot'){loadKinoPubSection('hot',{type:cinemaType});return}
     if(cinemaShellCategory==='4k'){loadKinoPubSection('4k');return}
   }
-  if(cinemaShellCategory==='new'){setCinemaType('movies');return}
-  const q=cinemaShellCategory==='popular'?'популярные фильмы':cinemaShellCategory==='hot'?'горячие фильмы':'4K фильм';
+  if(cinemaShellCategory==='all'||cinemaShellCategory==='new'){setCinemaType(cinemaType);return}
+  const noun=cinemaType==='series'?'сериалы':'фильмы';
+  const q=cinemaShellCategory==='popular'?'популярные '+noun:cinemaShellCategory==='hot'?'горячие '+noun:'4K '+noun;
   searchCinemaLazyMedia(q);
 }
 function syncCinemaSourceUi(){
