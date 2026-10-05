@@ -909,6 +909,25 @@ async def api_kinopub_section(request):
         path='/v1/items'
 
     status, rows, total, data = await _kinopub_section_page(token,path=path,params=params)
+
+    if section in ('fresh','popular','hot') and (status >= 400 or not rows):
+        fallback_sort = {
+            'fresh':'updated-',
+            'popular':'views-',
+            'hot':'rating-',
+        }.get(section,'updated-')
+        fallback_params={
+            'type':params.get('type','movie'),
+            'page':page,
+            'perpage':perpage,
+            'sort':fallback_sort,
+        }
+        fb_status, fb_rows, fb_total, fb_data = await _kinopub_section_page(
+            token,path='/v1/items',params=fallback_params
+        )
+        if fb_status < 400 and fb_rows:
+            status, rows, total, data = fb_status, fb_rows, fb_total, fb_data
+
     if status >= 400:
         return web.json_response({'ok':False,'error':'kinopub_section_failed','status':status}, status=502)
 
