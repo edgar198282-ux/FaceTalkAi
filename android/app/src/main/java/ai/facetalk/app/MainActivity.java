@@ -565,6 +565,7 @@ public class MainActivity extends Activity {
             java.util.concurrent.CountDownLatch baseDone=new java.util.concurrent.CountDownLatch(1);
             java.util.concurrent.CountDownLatch contentDone=new java.util.concurrent.CountDownLatch(1);
             java.util.concurrent.atomic.AtomicInteger pendingContentCallbacks=new java.util.concurrent.atomic.AtomicInteger(0);
+            java.util.concurrent.atomic.AtomicBoolean explicitContentPhase=new java.util.concurrent.atomic.AtomicBoolean(false);
             Object callback=java.lang.reflect.Proxy.newProxyInstance(
                 cl,
                 new Class<?>[]{callbackClass},
@@ -587,10 +588,9 @@ public class MainActivity extends Activity {
                     if("OooO0o0".equals(n)||"OooO0o".equals(n)){
                         baseDone.countDown();
                     }
-                    if("OooO0Oo".equals(n)){
-                        if(pendingContentCallbacks.get()>0){
-                            if(pendingContentCallbacks.decrementAndGet()<=0)contentDone.countDown();
-                        }else{
+                    if("OooO0Oo".equals(n)&&explicitContentPhase.get()){
+                        if(pendingContentCallbacks.get()>0&&
+                           pendingContentCallbacks.decrementAndGet()<=0){
                             contentDone.countDown();
                         }
                     }
@@ -626,6 +626,7 @@ public class MainActivity extends Activity {
                     if(detectContent!=null&&contentTypes!=null&&contentTypes.length>0){
                         detectContent.setAccessible(true);
                         pendingContentCallbacks.set(contentTypes.length);
+                        explicitContentPhase.set(true);
                         for(Object contentType:contentTypes){
                             try{
                                 detectContent.invoke(articleObj,contentType);
