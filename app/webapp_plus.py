@@ -515,9 +515,10 @@ async def api_kinopub_item(request):
     item_id=str(request.query.get('id') or '').strip()
     if not item_id:
         return web.json_response({'ok':False,'error':'missing_item_id'},status=400)
-    status,item=await _kinopub_api('GET','/v1/items/'+item_id,params={'access_token':token})
-    if status>=400 or not isinstance(item,dict):
+    status,item_payload=await _kinopub_api('GET','/v1/items/'+item_id,params={'access_token':token})
+    if status>=400 or not isinstance(item_payload,dict):
         return web.json_response({'ok':False,'error':'kinopub_item_failed','status':status},status=502)
+    item=item_payload.get('item') if isinstance(item_payload.get('item'),dict) else item_payload
     rows=[]
     for row in _kinopub_media_rows(item):
         rows.append({
@@ -540,6 +541,16 @@ async def api_kinopub_item(request):
                 related.append(normalized)
         if related:
             break
+    if not related:
+        try:
+            sim_status, sim_data = await _kinopub_api('GET','/v1/items/similar',params={'access_token':token,'id':item_id})
+            if sim_status < 400:
+                for row in _kinopub_extract_items(sim_data):
+                    normalized = _kinopub_normalize(row)
+                    if normalized:
+                        related.append(normalized)
+        except Exception:
+            pass
 
     return web.json_response({
         'ok':True,
@@ -596,9 +607,10 @@ async def api_kinopub_play(request):
     if not item_id:
         return web.json_response({'ok':False,'error':'missing_item_id'}, status=400)
 
-    status, item = await _kinopub_api('GET', '/v1/items/' + item_id, params={'access_token':token})
+    status, item_payload = await _kinopub_api('GET', '/v1/items/' + item_id, params={'access_token':token})
     if status >= 400:
         return web.json_response({'ok':False,'error':'kinopub_item_failed','status':status}, status=502)
+    item = item_payload.get('item') if isinstance(item_payload,dict) and isinstance(item_payload.get('item'),dict) else item_payload
 
     direct = ''
     for obj in _kinopub_walk(item):
