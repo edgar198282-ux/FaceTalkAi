@@ -6864,11 +6864,10 @@ async function loadCinemaCatalog(force=false){
   }
 
   if(cinemaSource==='kinopub'){
-    const kpInfo=getKinoPubInfo();
-    if(!kpInfo.installed||kinoPubExplicitlyDisabled()){
+    if(kinoPubExplicitlyDisabled()){
       cinemaLoaded=false;
       renderCinemaCatalog([]);
-      if(status)status.textContent=kpInfo.installed?'KinoPub отключён.':'KinoPub не найден на устройстве.';
+      if(status)status.textContent='KinoPub отключён.';
       refreshKinoPubAdminStatus();
       return;
     }
