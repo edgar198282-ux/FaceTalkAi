@@ -6861,6 +6861,24 @@ function renderCinemaSourceGroups(){
   prefetchCinemaSourceQualities();
 }
 
+async function resolveProviderAcrossItems(group){
+  const provider=normalizeLazyProviderName(group?.name||'');
+  const items=Array.isArray(group?.items)?group.items:[];
+  if(!provider||!items.length)return [];
+  for(const item of items.slice(0,6)){
+    try{
+      let rows=await cinemaProviderOptionsAsync(item,provider);
+      if((!rows||!rows.length)&&provider==='FILMIX'){
+        rows=await filmixVideoOptionsAsync(item).catch(()=>[]);
+      }
+      if(Array.isArray(rows)&&rows.length){
+        group.resolvedFromItem=item;
+        return rows;
+      }
+    }catch(e){}
+  }
+  return [];
+}
 async function prefetchCinemaSourceQualities(){
   for(const group of cinemaSourceGroups){
     if(!group||group.resolvedOptions||group.qualityChecked||!group.items?.[0])continue;
@@ -6869,7 +6887,7 @@ async function prefetchCinemaSourceQualities(){
     if(!provider||provider==='ENCYCLOPEDIA')continue;
     group.qualityChecked=true;
     let rows=[];
-    try{rows=await cinemaProviderOptionsAsync(group.items[0],provider)}catch(e){}
+    try{rows=await resolveProviderAcrossItems(group)}catch(e){}
     if(!Array.isArray(rows)||!rows.length)continue;
     group.resolvedOptions=rows;
     const q=cinemaQualitySummary(rows);
@@ -7467,8 +7485,7 @@ async function openCinemaSourceGroup(index){
     if(title)title.textContent=provider+' · ВИДЕО';
     if(list)list.innerHTML='<div class="cinemaSourceBusy">Ищу реальные варианты '+provider+'…</div>';
     let rows=Array.isArray(group.resolvedOptions)?group.resolvedOptions:[];
-    if(!rows.length)rows=await cinemaProviderOptionsAsync(group.items[0],provider);
-    if(!rows.length&&provider==='FILMIX')rows=await filmixVideoOptionsAsync(group.items[0]);
+    if(!rows.length)rows=await resolveProviderAcrossItems(group);
     if(rows.length){
       group.resolvedOptions=rows;
       renderResolvedProviderOptions(group,rows);
@@ -7675,12 +7692,8 @@ async function cinemaV2FindSources(movie){
       return group;
     }
     const provider=normalizeLazyProviderName(group.name);
-    const base=group.items[0];
     let rows=[];
-    try{rows=await cinemaProviderOptionsAsync(base,provider)}catch(e){}
-    if((!rows||!rows.length)&&provider==='FILMIX'){
-      try{rows=await filmixVideoOptionsAsync(base)}catch(e){}
-    }
+    try{rows=await resolveProviderAcrossItems(group)}catch(e){}
     if(Array.isArray(rows)&&rows.length){
       group.resolvedOptions=rows;
       group.playable=true;
@@ -7782,22 +7795,21 @@ async function cinemaV2Resolve(group,item,meta){
     return;
   }
   try{
-    const rows=await cinemaProviderOptionsAsync(item,provider);
+    let rows=await cinemaProviderOptionsAsync(item,provider);
+    if((!rows||!rows.length)&&provider==='FILMIX'){
+      meta.textContent='Получаю варианты FILMIX…';
+      rows=await filmixVideoOptionsAsync(item).catch(()=>[]);
+    }
+    if((!rows||!rows.length)&&Array.isArray(group.items)&&group.items.length>1){
+      meta.textContent='Проверяю другие варианты '+provider+'…';
+      rows=await resolveProviderAcrossItems(group);
+    }
     if(Array.isArray(rows)&&rows.length){
       group.resolvedOptions=rows;
       renderResolvedProviderOptions(group,rows);
       return;
     }
   }catch(e){}
-  if(provider==='FILMIX'){
-    meta.textContent='Получаю варианты FILMIX…';
-    const rows=await filmixVideoOptionsAsync(item).catch(()=>[]);
-    if(Array.isArray(rows)&&rows.length){
-      group.resolvedOptions=rows;
-      renderResolvedProviderOptions(group,rows);
-      return;
-    }
-  }
   meta.textContent='Источник найден. Воспроизведение этого сервиса подключается заново.';
 }
 let cinemaDetailMovie=null;
