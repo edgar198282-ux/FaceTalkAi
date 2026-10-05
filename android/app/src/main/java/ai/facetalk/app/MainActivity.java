@@ -460,7 +460,22 @@ public class MainActivity extends Activity {
             );
             java.lang.reflect.Field singleton=baseAppClass.getDeclaredField("OooO0oO");
             singleton.setAccessible(true);
-            if(singleton.get(null)!=null)return;
+
+            Object current=singleton.get(null);
+            if(current!=null){
+                try{
+                    java.lang.reflect.Method contextMethod=baseAppClass.getMethod("OooO0Oo");
+                    Object ctx=contextMethod.invoke(null);
+                    if(ctx instanceof Context){
+                        Log.i("AbajCinema","LazyMedia runtime already valid");
+                        return;
+                    }
+                }catch(Throwable broken){
+                    Log.w("AbajCinema","LazyMedia runtime stale, rebuilding: "+
+                        broken.getClass().getSimpleName());
+                }
+                try{singleton.set(null,null);}catch(Throwable ignored){}
+            }
 
             final Context packageContext=lazy;
             ContextWrapper isolatedContext=new ContextWrapper(packageContext){
@@ -473,8 +488,20 @@ public class MainActivity extends Activity {
             );
             attach.setAccessible(true);
             attach.invoke(app,isolatedContext);
+
             singleton.set(null,app);
-            Log.i("AbajCinema","LazyMedia runtime context attached");
+
+            try{
+                java.lang.reflect.Method onCreate=baseAppClass.getMethod("onCreate");
+                onCreate.invoke(app);
+            }catch(Throwable ignored){}
+
+            java.lang.reflect.Method contextMethod=baseAppClass.getMethod("OooO0Oo");
+            Object verified=contextMethod.invoke(null);
+            if(!(verified instanceof Context)){
+                throw new IllegalStateException("LazyMedia context verification failed");
+            }
+            Log.i("AbajCinema","LazyMedia runtime context attached and verified");
         }catch(Throwable e){
             Throwable root=e;
             if(e instanceof java.lang.reflect.InvocationTargetException){
