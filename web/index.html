@@ -3801,6 +3801,17 @@ function handleAppBack(){
 }
 function handleTvBack(){
   if(!nativeTv)return handleAppBack();
+  if(cinemaDetailOpen()){
+    closeCinemaDetail();
+    return true;
+  }
+  if(cinemaSourcePickerOpen()){
+    closeCinemaSourcePicker();
+    if(cinemaDetailMovie){
+      renderCinemaDetail(cinemaDetailMovie);
+    }
+    return true;
+  }
   const pair=document.getElementById('tvPair');
   if(pair&&pair.classList.contains('open')){
     pair.classList.remove('open');
@@ -5552,6 +5563,19 @@ function tvNativeOkUp(){
 }
 function tvNativeRemote(action){
   if(!nativeTv)return;
+  if(cinemaDetailOpen()){
+    if(action==='left'||action==='right'||action==='up'||action==='down'){
+      moveCinemaDetailFocus(action);
+      return;
+    }
+    if(action==='ok'){
+      const el=document.activeElement;
+      if(el&&typeof el.click==='function')el.click();
+      else document.getElementById('cinemaDetailWatch')?.click();
+      return;
+    }
+    return;
+  }
   if(cinemaSourcePickerOpen()){
     if(action==='up')focusCinemaSourceButton(-1);
     else if(action==='down')focusCinemaSourceButton(1);
@@ -5720,18 +5744,31 @@ function cinemaDetailFocusable(){
     .filter(el=>el.offsetParent!==null);
 }
 function moveCinemaDetailFocus(direction){
-  const items=cinemaDetailFocusable();
-  if(!items.length)return;
+  const back=document.getElementById('cinemaDetailBack');
+  const watch=document.getElementById('cinemaDetailWatch');
+  const trailer=document.getElementById('cinemaDetailTrailer');
   const active=document.activeElement;
-  let index=items.indexOf(active);
-  if(index<0){
-    const watch=document.getElementById('cinemaDetailWatch');
-    (watch||items[0]).focus();
-    return;
+  let target=null;
+
+  if(active===back){
+    if(direction==='down'||direction==='right')target=watch||trailer;
+    else target=back;
+  }else if(active===watch){
+    if(direction==='left')target=back;
+    else if(direction==='right')target=trailer||watch;
+    else if(direction==='up')target=back;
+    else target=watch;
+  }else if(active===trailer){
+    if(direction==='left')target=watch||back;
+    else if(direction==='up')target=back;
+    else target=trailer;
+  }else{
+    target=watch||trailer||back;
   }
-  if(direction==='left'||direction==='up')index=(index-1+items.length)%items.length;
-  else index=(index+1)%items.length;
-  items[index].focus();
+
+  if(!target)return;
+  try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
+  try{target.scrollIntoView({block:'center',inline:'center',behavior:'auto'})}catch(_){}
 }
 document.addEventListener('keydown',e=>{
   if(nativeTv&&tvLastAutoTimer)cancelLastChannelAutoStart(true);
@@ -7380,7 +7417,14 @@ function renderCinemaDetail(item){
 
   detail.classList.add('open');
   document.getElementById('cinemaScreen')?.style.setProperty('display','none');
-  setTimeout(()=>document.getElementById('cinemaDetailWatch')?.focus(),30);
+  requestAnimationFrame(()=>{
+    setTimeout(()=>{
+      const watch=document.getElementById('cinemaDetailWatch');
+      if(watch){
+        try{watch.focus({preventScroll:true})}catch(_){try{watch.focus()}catch(__){}}
+      }
+    },60);
+  });
 }
 function closeCinemaDetail(){
   const detail=document.getElementById('cinemaDetail');
