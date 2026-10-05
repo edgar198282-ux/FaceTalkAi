@@ -1317,10 +1317,10 @@ body.cinemaMode .top{display:none!important}
         <b>KinoPub</b>
         <span id="kinoPubAdminStatus" class="adminMeta">Проверка…</span>
       </div>
-      <div class="adminMeta" id="kinoPubAdminMeta" style="margin-top:6px">Авторизация KinoPub проверяется отдельно в тестовой ветке. Рабочий IPTV не затрагивается.</div>
+      <div class="adminMeta" id="kinoPubAdminMeta" style="margin-top:6px">Если KinoPub уже установлен на этом устройстве, Abaj TV подключит его без новой регистрации.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-        <button onclick="loginKinoPubFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#087fe1;color:#fff;font-weight:900">Войти в KinoPub</button>
-        <button onclick="connectKinoPubFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#16a05d;color:#fff;font-weight:900">Использовать как источник</button>
+        <button onclick="openKinoPubFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#087fe1;color:#fff;font-weight:900">Открыть KinoPub</button>
+        <button onclick="connectKinoPubFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#16a05d;color:#fff;font-weight:900">Подключить как источник</button>
         <button onclick="disconnectKinoPubFromAdmin()" style="grid-column:1/-1;min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Отключить KinoPub</button>
       </div>
     </div>
@@ -2020,94 +2020,80 @@ function closeAdmin(){
   const panel=document.getElementById('adminPanel');
   if(panel)panel.classList.remove('open');
 }
-let kinoPubAuthPollTimer=null;
-let kinoPubRemoteStatus={authenticated:false,pending:false,user_code:'',verification_uri:'https://kino.pub/device'};
-
-async function refreshKinoPubAdminStatus(){
+function getKinoPubInfo(){
+  try{
+    if(window.AbajNative&&typeof AbajNative.kinoPubInfo==='function'){
+      return JSON.parse(AbajNative.kinoPubInfo()||'{}');
+    }
+  }catch(e){}
+  return {installed:false};
+}
+function kinoPubExplicitlyDisabled(){
+  return localStorage.getItem('abaj_kinopub_disabled')==='1';
+}
+function autoConnectInstalledKinoPub(){
+  const info=getKinoPubInfo();
+  if(!info.installed||kinoPubExplicitlyDisabled())return false;
+  if(cinemaSource==='none'){
+    cinemaSource='kinopub';
+    localStorage.setItem('abaj_cinema_source','kinopub');
+  }
+  return cinemaSource==='kinopub';
+}
+function refreshKinoPubAdminStatus(){
   const st=document.getElementById('kinoPubAdminStatus');
   const meta=document.getElementById('kinoPubAdminMeta');
-  try{
-    const r=await fetch('/api/kinopub/status',{headers:authHeaders(),cache:'no-store'});
-    if(r.ok)kinoPubRemoteStatus=await r.json();
-  }catch(e){}
-  const active=cinemaSource==='kinopub'&&!!kinoPubRemoteStatus.authenticated;
+  const info=getKinoPubInfo();
+  const disabled=kinoPubExplicitlyDisabled();
+  const active=info.installed&&!disabled&&cinemaSource==='kinopub';
   if(st){
-    st.textContent=active?'Подключено':(kinoPubRemoteStatus.authenticated?'Авторизован':(kinoPubRemoteStatus.pending?'Ожидает подтверждение':'Не подключён'));
-    st.style.color=active?'#16865b':(kinoPubRemoteStatus.authenticated?'#0b5f9e':(kinoPubRemoteStatus.pending?'#c28a13':'#a33'));
+    st.textContent=active?'Подключено автоматически':(info.installed?(disabled?'Отключено':'Установлено'):'Не найдено');
+    st.style.color=active?'#16865b':(info.installed?(disabled?'#6f8798':'#0b5f9e'):'#a33');
   }
   if(meta){
-    if(kinoPubRemoteStatus.pending&&kinoPubRemoteStatus.user_code){
-      meta.textContent='Откройте '+(kinoPubRemoteStatus.verification_uri||'https://kino.pub/device')+' и введите код '+kinoPubRemoteStatus.user_code;
-    }else if(kinoPubRemoteStatus.authenticated){
-      meta.textContent=active?'KinoPub используется как источник раздела «Кино».':'KinoPub авторизован. Нажмите «Использовать как источник».';
-    }else{
-      meta.textContent='Нажмите «Войти в KinoPub», затем подтвердите код на странице KinoPub.';
-    }
+    meta.textContent=info.installed
+      ?('KinoPub '+(info.version||'')+(active?' найден на устройстве и используется как источник Кино.':(disabled?' отключён вручную и сам не подключится.':' найден на устройстве.')))
+      :'KinoPub не найден на этом устройстве.';
   }
 }
-
-async function loginKinoPubFromAdmin(){
-  const st=document.getElementById('kinoPubAdminStatus');
-  const meta=document.getElementById('kinoPubAdminMeta');
+function openKinoPubFromAdmin(){
   try{
-    if(st){st.textContent='Получаю код…';st.style.color='#0b5f9e'}
-    const r=await fetch('/api/kinopub/auth/start',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()}});
-    const d=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(d.error||'auth_start_failed');
-    kinoPubRemoteStatus={authenticated:false,pending:true,user_code:String(d.user_code||''),verification_uri:String(d.verification_uri||'https://kino.pub/device')};
-    if(meta)meta.textContent='Откройте '+kinoPubRemoteStatus.verification_uri+' и введите код '+kinoPubRemoteStatus.user_code;
-    await refreshKinoPubAdminStatus();
-    if(kinoPubAuthPollTimer)clearInterval(kinoPubAuthPollTimer);
-    kinoPubAuthPollTimer=setInterval(async()=>{
-      try{
-        const pr=await fetch('/api/kinopub/auth/poll',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()}});
-        const pd=await pr.json().catch(()=>({}));
-        if(pd.authenticated){
-          clearInterval(kinoPubAuthPollTimer);kinoPubAuthPollTimer=null;
-          kinoPubRemoteStatus={authenticated:true,pending:false,user_code:'',verification_uri:'https://kino.pub/device'};
-          await refreshKinoPubAdminStatus();
-        }else if(pd.expired){
-          clearInterval(kinoPubAuthPollTimer);kinoPubAuthPollTimer=null;
-          kinoPubRemoteStatus={authenticated:false,pending:false,user_code:'',verification_uri:'https://kino.pub/device'};
-          await refreshKinoPubAdminStatus();
-        }
-      }catch(e){}
-    },4000);
-  }catch(e){
-    if(st){st.textContent='Ошибка входа';st.style.color='#a33'}
-    if(meta)meta.textContent='Не удалось получить код KinoPub: '+String(e&&e.message||e);
-  }
+    if(window.AbajNative&&typeof AbajNative.openKinoPub==='function')AbajNative.openKinoPub();
+  }catch(e){}
 }
-
-async function connectKinoPubFromAdmin(){
-  await refreshKinoPubAdminStatus();
-  if(!kinoPubRemoteStatus.authenticated){
-    await loginKinoPubFromAdmin();
-    return;
-  }
+function connectKinoPubFromAdmin(){
+  const info=getKinoPubInfo();
+  if(!info.installed){refreshKinoPubAdminStatus();return}
+  localStorage.removeItem('abaj_kinopub_disabled');
   cinemaSource='kinopub';
   localStorage.setItem('abaj_cinema_source','kinopub');
   cinemaLoaded=false;
   refreshLazyMediaAdminStatus();
-  await refreshKinoPubAdminStatus();
+  refreshKinoPubAdminStatus();
   if(cinemaMode)loadCinemaCatalog(true);
 }
-
-async function disconnectKinoPubFromAdmin(){
-  try{await fetch('/api/kinopub/disconnect',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()}})}catch(e){}
-  if(kinoPubAuthPollTimer){clearInterval(kinoPubAuthPollTimer);kinoPubAuthPollTimer=null}
-  kinoPubRemoteStatus={authenticated:false,pending:false,user_code:'',verification_uri:'https://kino.pub/device'};
+function disconnectKinoPubFromAdmin(){
+  localStorage.setItem('abaj_kinopub_disabled','1');
   cinemaSource='none';
   localStorage.setItem('abaj_cinema_source','none');
   cinemaLoaded=false;
   try{localStorage.removeItem(cinemaCacheKey())}catch(e){}
   refreshLazyMediaAdminStatus();
-  await refreshKinoPubAdminStatus();
+  refreshKinoPubAdminStatus();
   if(cinemaMode)loadCinemaCatalog(true);
 }
-
 async function kinoPubCatalogAsync(query=''){
+  let localRows=[];
   try{
+    if(window.AbajNative&&typeof AbajNative.kinoPubCatalog==='function'){
+      const rows=JSON.parse(AbajNative.kinoPubCatalog(String(query||''))||'[]');
+      if(Array.isArray(rows))localRows=rows;
+    }
+  }catch(e){}
+  if(localRows.length)return localRows;
+  try{
+    const st=await fetch('/api/kinopub/status',{headers:authHeaders(),cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
+    if(!st||!st.authenticated)return [];
     const url='/api/kinopub/catalog?type='+encodeURIComponent(cinemaType||'movies')+'&q='+encodeURIComponent(String(query||''));
     const r=await fetch(url,{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return [];
@@ -6356,6 +6342,13 @@ const storedCinemaSource=String(localStorage.getItem('abaj_cinema_source')||'').
 let cinemaSource=['lazy','kinopub','none'].includes(storedCinemaSource)?storedCinemaSource:'none';
 if(cinemaSource==='none')localStorage.setItem('abaj_cinema_source','none');
 let cinemaType=localStorage.getItem('abaj_cinema_type')||'movies';
+setTimeout(()=>{
+  if(autoConnectInstalledKinoPub()){
+    cinemaLoaded=false;
+    refreshKinoPubAdminStatus();
+    if(cinemaMode)loadCinemaCatalog(true);
+  }
+},80);
 
 function getLazyMediaInfo(){
   try{
@@ -6780,11 +6773,12 @@ async function loadCinemaCatalog(force=false){
   }
 
   if(cinemaSource==='kinopub'){
-    await refreshKinoPubAdminStatus();
-    if(!kinoPubRemoteStatus.authenticated){
+    const kpInfo=getKinoPubInfo();
+    if(!kpInfo.installed||kinoPubExplicitlyDisabled()){
       cinemaLoaded=false;
       renderCinemaCatalog([]);
-      if(status)status.textContent='KinoPub не авторизован. Откройте админ-настройки и выполните вход.';
+      if(status)status.textContent=kpInfo.installed?'KinoPub отключён.':'KinoPub не найден на устройстве.';
+      refreshKinoPubAdminStatus();
       return;
     }
     if(status)status.textContent='KinoPub · загрузка каталога…';
@@ -8501,6 +8495,18 @@ async function watchCinemaDetail(){
   const item=cinemaDetailMovie;
   if(!item)return;
   const watchBtn=document.getElementById('cinemaDetailWatch');
+  if(cinemaSource==='kinopub'||String(item.source||'').toUpperCase()==='KINOPUB'){
+    try{
+      if(window.AbajNative&&typeof AbajNative.openKinoPubItem==='function'){
+        const ok=AbajNative.openKinoPubItem(String(item.intent||item.url||item.id||''),String(item.title||''));
+        if(ok)return;
+      }
+      if(window.AbajNative&&typeof AbajNative.openKinoPub==='function'){
+        AbajNative.openKinoPub();
+        return;
+      }
+    }catch(e){}
+  }
   if(watchBtn){
     watchBtn.disabled=true;
     watchBtn.textContent='ИЩУ ИСТОЧНИКИ…';
