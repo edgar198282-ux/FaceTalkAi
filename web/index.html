@@ -1056,7 +1056,14 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   border:1px solid #75c6ef;border-radius:6px;padding:3px 8px;color:#d7f3ff;font-size:12px;font-weight:650
 }
 .cinemaDetailDescription{font-size:17px;line-height:1.45;margin-bottom:14px;color:#e4f5ff;max-width:1180px}
-.cinemaDetailTools{display:flex;justify-content:flex-end;gap:18px;font-size:27px;color:#7fd7ff;margin:-30px 8px 10px}
+.cinemaDetailTools{display:flex;justify-content:flex-end;margin:-30px 8px 10px}
+.cinemaDetailTools #cinemaBookmarkBtn{
+  width:42px;height:42px;border:0;border-radius:50%;padding:0;
+  background:transparent;color:#7fd7ff;font-size:30px;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer
+}
+.cinemaDetailTools #cinemaBookmarkBtn.bookmarked{color:#ff5d78}
+.cinemaDetailTools #cinemaBookmarkBtn:focus{outline:none;box-shadow:0 0 0 3px #38b9ff}
 .cinemaDetailFacts{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 18px;max-width:1050px;font-size:15px;line-height:1.35}
 .cinemaDetailFacts .k{color:#7ec6e9}.cinemaDetailFacts .v{color:#e9f8ff}
 .cinemaDetailFacts a{color:#dff6ff;text-decoration:underline}
@@ -1221,8 +1228,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
       <h1 class="cinemaDetailTitle" id="cinemaDetailTitle">Фильм</h1>
       <div class="cinemaDetailBadges" id="cinemaDetailBadges"></div>
       <div class="cinemaDetailTools">
-        <button id="cinemaBookmarkBtn" onclick="toggleCinemaBookmark()" style="border:0;background:transparent;color:inherit;font:inherit;font-weight:900;cursor:pointer">☆ В ЗАКЛАДКИ</button>
-        <span id="cinemaHistoryMark">◴ История</span>
+        <button id="cinemaBookmarkBtn" onclick="toggleCinemaBookmark()" aria-label="Закладка" title="Закладка">♡</button>
       </div>
       <div class="cinemaDetailDescription" id="cinemaDetailDescription"></div>
       <div class="cinemaDetailFacts" id="cinemaDetailFacts"></div>
@@ -7190,7 +7196,12 @@ async function toggleCinemaBookmark(){
       body:JSON.stringify({item})
     });
     const d=await r.json().catch(()=>({}));
-    if(r.ok&&btn)btn.textContent=d.added?'★ В ЗАКЛАДКАХ':'☆ В ЗАКЛАДКИ';
+    if(r.ok&&btn){
+      btn.textContent=d.added?'♥':'♡';
+      btn.classList.toggle('bookmarked',!!d.added);
+      btn.title=d.added?'Убрать из закладок':'Добавить в закладки';
+      btn.setAttribute('aria-label',btn.title);
+    }
     await refreshCinemaLibraryCounts();
   }catch(e){}
   if(btn)btn.disabled=false;
