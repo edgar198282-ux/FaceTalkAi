@@ -428,7 +428,7 @@ public class MainActivity extends Activity {
                     java.lang.reflect.Field urlField=c.getDeclaredField("OooOOoo");
                     urlField.setAccessible(true);
                     Object uv=urlField.get(node);
-                    String u=uv==null?"":String.valueOf(uv).trim().replace("\/","/");
+                    String u=uv==null?"":String.valueOf(uv).trim().replace("\\/","/");
                     if(u.startsWith("http://")||u.startsWith("https://")){
                         String label=path==null?"":path.trim();
                         try{
