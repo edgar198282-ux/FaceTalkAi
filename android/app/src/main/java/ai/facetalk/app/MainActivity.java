@@ -1378,6 +1378,12 @@ public class MainActivity extends Activity {
             runOnUiThread(()->{
                 try{
                     if(nativeProbePlayer!=null)nativeProbePlayer.setVolume(muted?0f:1f);
+                    // Media3 PlayerView normally uses a SurfaceView. Its surface can
+                    // punch through the transparent WebView even when our HTML ad
+                    // overlay is visible. Hide the native video layer completely
+                    // during provider ads so only the ABAJ banner is visible.
+                    if(nativeProbeView!=null)nativeProbeView.setVisibility(muted?View.INVISIBLE:View.VISIBLE);
+                    if(webView!=null&&muted)webView.bringToFront();
                 }catch(Exception ignored){}
             });
         }
