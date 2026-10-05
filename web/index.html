@@ -3313,10 +3313,46 @@ function updatePlayerChannelHud(){
     if(!playerChannelHudTimer&&!hud.dataset.shownOnce)showPlayerChannelHudForThreeSeconds();
   }
 }
+function fmtPlaybackClock(sec){
+  sec=Math.max(0,Math.floor(Number(sec)||0));
+  const h=Math.floor(sec/3600);
+  const m=Math.floor((sec%3600)/60);
+  const s=sec%60;
+  return h>0
+    ?String(h)+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')
+    :String(m)+':'+String(s).padStart(2,'0');
+}
 function updatePlayerRemaining(){
   const el=document.getElementById('playerRemaining');
   const timeline=document.getElementById('playerTimelineFill');
   if(!el)return;
+
+  if(isCinemaPlaybackOpen()){
+    let pos=0,dur=0;
+    if(nativeMedia3Active&&window.AbajNative){
+      try{
+        if(typeof AbajNative.nativePositionMs==='function')pos=Number(AbajNative.nativePositionMs()||0)/1000;
+        if(typeof AbajNative.nativeDurationMs==='function')dur=Number(AbajNative.nativeDurationMs()||0)/1000;
+      }catch(e){}
+    }
+    if(!(dur>0)){
+      const v=document.getElementById('video');
+      if(v){
+        pos=Math.max(0,Number(v.currentTime||0));
+        if(Number.isFinite(v.duration)&&v.duration>0)dur=v.duration;
+      }
+    }
+    if(dur>0){
+      el.textContent=fmtPlaybackClock(pos)+' / '+fmtPlaybackClock(dur);
+      if(timeline)timeline.style.width=Math.max(0,Math.min(100,(pos/dur)*100))+'%';
+    }else{
+      el.textContent=pos>0?fmtPlaybackClock(pos):'';
+      if(timeline)timeline.style.width='0%';
+    }
+    updatePlayerChannelHud();
+    return;
+  }
+
   if(!current||!current.epg_now||!current.epg_now.stop){
     el.textContent='';
     if(timeline)timeline.style.width='0%';
@@ -3340,6 +3376,9 @@ function updatePlayerRemaining(){
   updatePlayerChannelHud();
 }
 setInterval(updatePlayerRemaining,15000);
+setInterval(()=>{
+  if(isCinemaPlaybackOpen())updatePlayerRemaining();
+},1000);
 function epgProgress(p){
   if(!p||!p.start||!p.stop||p.stop<=p.start)return 0;
   const now=Date.now()/1000;
@@ -5435,6 +5474,7 @@ function seekPlayerBy(seconds){
     }catch(e){return false}
   }
   showTvShortcut((delta<0?'−':'+')+Math.abs(Math.round(delta))+' сек');
+  setTimeout(updatePlayerRemaining,60);
   showTvPlayerUi(true);
   return true;
 }
