@@ -7573,7 +7573,7 @@ function cinemaV2RenderSources(movie,groups){
     meta.textContent=q||'Видео доступно';
     btn.appendChild(label);
     btn.appendChild(meta);
-    btn.onclick=()=>openCinemaSourceGroup(index);
+    btn.onclick=()=>cinemaV2OpenSource(index);
     list.appendChild(btn);
   });
   const close=document.createElement('button');
