@@ -519,13 +519,9 @@ _ottclub_stats = {
 _compact_response_cache = {"key": None, "body": b"", "expires_at": 0.0}
 
 def _estimated_ottclub_duration() -> int:
-    values = sorted(int(x) for x in _ottclub_duration_samples if 4 <= int(x) <= 120)
-    if not values:
-        return 15
-    mid = len(values) // 2
-    if len(values) % 2:
-        return max(5, min(90, values[mid]))
-    return max(5, min(90, round((values[mid - 1] + values[mid]) / 2)))
+    # OTT Club provider promos are treated as a full 30-second ad break.
+    # Keep this fixed so old short OCR samples never uncover the provider ad early.
+    return 30
 
 
 def _finish_ottclub_duration(state: dict, now: int):
