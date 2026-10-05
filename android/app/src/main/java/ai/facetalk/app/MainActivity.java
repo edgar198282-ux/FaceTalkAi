@@ -293,9 +293,59 @@ public class MainActivity extends Activity {
     }
     private void resolveCinemaStreamInternal(String rawIntent,String provider,String transport,String quality,String requestId){
         final String source=cinemaSourceId(rawIntent);
+        final String normalizedProvider=provider==null?"":provider.trim().toUpperCase(java.util.Locale.US);
+
+        // First ask the installed LazyMedia parser for its real video tree.
+        // This preserves provider logic such as translation/season/episode/quality
+        // and avoids guessing a stream from an embedded web page.
+        if(!normalizedProvider.isEmpty()){
+            try{
+                org.json.JSONArray nativeRows="FILMIX".equals(normalizedProvider)
+                    ?lazyFilmixReflectOptions(rawIntent)
+                    :lazyProviderReflectOptions(rawIntent,normalizedProvider);
+                if(nativeRows!=null&&nativeRows.length()>0){
+                    java.util.ArrayList<String[]> candidates=new java.util.ArrayList<>();
+                    for(int i=0;i<nativeRows.length();i++){
+                        org.json.JSONObject row=nativeRows.optJSONObject(i);
+                        if(row==null)continue;
+                        String u=row.optString("url","");
+                        if(!(u.startsWith("http://")||u.startsWith("https://")))continue;
+                        String q=row.optString("quality","");
+                        String f=row.optString("format","");
+                        String n=row.optString("name","");
+                        candidates.add(new String[]{u,q,f,n});
+                    }
+                    if(!candidates.isEmpty()){
+                        String wantedTransport=transport==null?"":transport.trim().toUpperCase(java.util.Locale.US);
+                        String wantedQuality=quality==null?"":quality.trim().toUpperCase(java.util.Locale.US);
+                        String best="";
+                        for(String[] c:candidates){
+                            String u=c[0],q=c[1].toUpperCase(java.util.Locale.US),f=c[2].toUpperCase(java.util.Locale.US),n=c[3].toUpperCase(java.util.Locale.US);
+                            boolean transportOk=wantedTransport.isEmpty()||"AUTO".equals(wantedTransport)||
+                                f.contains(wantedTransport)||
+                                ("HLS".equals(wantedTransport)&&u.toLowerCase(java.util.Locale.US).contains(".m3u8"))||
+                                ("DASH".equals(wantedTransport)&&u.toLowerCase(java.util.Locale.US).contains(".mpd"))||
+                                ("MP4".equals(wantedTransport)&&u.toLowerCase(java.util.Locale.US).contains(".mp4"));
+                            boolean qualityOk=wantedQuality.isEmpty()||q.contains(wantedQuality)||n.contains(wantedQuality);
+                            if(transportOk&&qualityOk){best=u;break;}
+                            if(best.isEmpty()&&transportOk)best=u;
+                            if(best.isEmpty())best=u;
+                        }
+                        if(!best.isEmpty()){
+                            finishCinemaResolve(requestId,best);
+                            return;
+                        }
+                    }
+                }
+            }catch(Throwable e){
+                Log.w("AbajCinema","native provider resolve fallback "+normalizedProvider+" "+
+                    e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            }
+        }
+
         final String articleUrl=cinemaArticleUrl(rawIntent,provider);
         if(articleUrl.isEmpty()){
-            if("1".equals(source)||"FILMIX".equals(provider)){
+            if("FILMIX".equals(normalizedProvider)){
                 resolveFilmixStreamInternal(rawIntent,transport,quality,requestId);
             }else{
                 finishCinemaResolve(requestId,"");
