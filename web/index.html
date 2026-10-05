@@ -7307,9 +7307,32 @@ async function cinemaV2FindSources(movie){
   for(const rows of batches){
     for(const item of (Array.isArray(rows)?rows:[]))add(item);
   }
-  return LAZYMEDIA_PROVIDER_ORDER
+  const found=LAZYMEDIA_PROVIDER_ORDER
     .map(name=>groups.get(name))
     .filter(group=>group&&group.items.length);
+
+  const checked=await Promise.all(found.map(async group=>{
+    if(group.items.some(x=>String(x?.url||'').trim())){
+      group.playable=true;
+      return group;
+    }
+    const provider=normalizeLazyProviderName(group.name);
+    const base=group.items[0];
+    let rows=[];
+    try{rows=await cinemaProviderOptionsAsync(base,provider)}catch(e){}
+    if((!rows||!rows.length)&&provider==='FILMIX'){
+      try{rows=await filmixVideoOptionsAsync(base)}catch(e){}
+    }
+    if(Array.isArray(rows)&&rows.length){
+      group.resolvedOptions=rows;
+      group.playable=true;
+      return group;
+    }
+    group.playable=false;
+    return null;
+  }));
+
+  return checked.filter(Boolean);
 }
 function cinemaV2RenderSources(movie,groups){
   const modal=ensureCinemaSourceModal();
@@ -7329,7 +7352,7 @@ function cinemaV2RenderSources(movie,groups){
   if(!list)return;
   list.innerHTML='';
   if(!groups.length){
-    list.innerHTML='<div class="cinemaSourceEmpty">Для этого фильма LazyMedia не нашёл доступных источников.</div>';
+    list.innerHTML='<div class="cinemaSourceEmpty">Для этого фильма LazyMedia не вернул рабочих видеоисточников.</div>';
     return;
   }
   groups.forEach((group,index)=>{
@@ -7338,7 +7361,8 @@ function cinemaV2RenderSources(movie,groups){
     const label=document.createElement('span');
     label.textContent=group.name;
     const meta=document.createElement('small');
-    meta.textContent='Источник доступен';
+    const q=cinemaQualitySummary(group.resolvedOptions||[]);
+    meta.textContent=q||'Видео доступно';
     btn.appendChild(label);
     btn.appendChild(meta);
     btn.onclick=()=>openCinemaSourceGroup(index);
