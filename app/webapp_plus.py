@@ -210,6 +210,7 @@ def _kinopub_normalize(item):
         'quality': str(item.get('quality') or item.get('video_quality') or ''),
         'audio': str(item.get('audio') or item.get('audio_codec') or ''),
         'subtitles': item.get('subtitles') or '',
+        'trailer': _kinopub_trailer_url(item),
         'source': 'KINOPUB',
     }
 
@@ -452,6 +453,39 @@ def _kinopub_media_rows(item):
     if not rows and isinstance(item,dict) and isinstance(item.get('files'),list):
         rows.append({'title':'Фильм','items':[item]})
     return rows
+
+def _kinopub_trailer_url(item):
+    if not isinstance(item, dict):
+        return ''
+    direct_keys = ('trailer','trailer_url','trailerUrl','youtube','youtube_url','youtubeUrl','video_trailer')
+    for key in direct_keys:
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        if isinstance(value, dict):
+            for sub in ('url','link','embed','embedUrl','src','youtube','id'):
+                v = value.get(sub)
+                if isinstance(v, str) and v.strip():
+                    if sub == 'id' and re.fullmatch(r'[A-Za-z0-9_-]{6,}', v.strip()):
+                        return 'https://www.youtube.com/watch?v=' + v.strip()
+                    return v.strip()
+        if isinstance(value, list):
+            for row in value:
+                if isinstance(row, str) and row.strip():
+                    return row.strip()
+                if isinstance(row, dict):
+                    for sub in ('url','link','embed','embedUrl','src','youtube','id'):
+                        v = row.get(sub)
+                        if isinstance(v, str) and v.strip():
+                            if sub == 'id' and re.fullmatch(r'[A-Za-z0-9_-]{6,}', v.strip()):
+                                return 'https://www.youtube.com/watch?v=' + v.strip()
+                            return v.strip()
+    for key, value in item.items():
+        if 'trailer' not in str(key).lower() and 'youtube' not in str(key).lower():
+            continue
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ''
 
 def _kinopub_media_summary(media):
     if not isinstance(media,dict):
