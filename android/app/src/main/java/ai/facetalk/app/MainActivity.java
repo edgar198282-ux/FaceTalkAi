@@ -262,7 +262,7 @@ public class MainActivity extends Activity {
                 c.setRequestProperty("Accept","application/json");
                 c.setRequestProperty("X-Requested-With","XMLHttpRequest");
                 c.setRequestProperty("Referer","https://filmix.moe/");
-                c.setRequestProperty("User-Agent",webView!=null?webView.getSettings().getUserAgentString():"Mozilla/5.0");
+                c.setRequestProperty("User-Agent","Mozilla/5.0 (Android) AbajTV/"+BuildConfig.VERSION_NAME);
                 String cookie=CookieManager.getInstance().getCookie("https://filmix.moe/");
                 if(cookie!=null&&!cookie.trim().isEmpty())c.setRequestProperty("Cookie",cookie);
                 InputStream in=(c.getResponseCode()>=200&&c.getResponseCode()<400)?c.getInputStream():c.getErrorStream();
@@ -1297,7 +1297,7 @@ public class MainActivity extends Activity {
                         c.setRequestProperty("Accept","application/json");
                         c.setRequestProperty("X-Requested-With","XMLHttpRequest");
                         c.setRequestProperty("Referer","https://filmix.moe/");
-                        c.setRequestProperty("User-Agent",webView!=null?webView.getSettings().getUserAgentString():"Mozilla/5.0");
+                        c.setRequestProperty("User-Agent","Mozilla/5.0 (Android) AbajTV/"+BuildConfig.VERSION_NAME);
                         int code=c.getResponseCode();
                         InputStream in=code>=200&&code<400?c.getInputStream():c.getErrorStream();
                         if(in!=null){
