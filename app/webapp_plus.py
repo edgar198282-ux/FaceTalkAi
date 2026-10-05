@@ -58,6 +58,245 @@ _edem_cache = {}
 _edem_sessions = {}
 _edem_stream_tokens = {}
 
+KINOPUB_API_BASE = (os.getenv('KINOPUB_API_BASE_URL') or 'https://api.service-kp.com').rstrip('/')
+KINOPUB_CLIENT_ID = (os.getenv('KINOPUB_API_CLIENT_ID') or 'xbmc').strip()
+KINOPUB_CLIENT_SECRET = (os.getenv('KINOPUB_API_CLIENT_SECRET') or 'cgg3gtifu46urtfp2zp1nqtba0k2ezxh').strip()
+
+async def _kinopub_api(method, path, params=None, json_body=None, timeout=20):
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
+        async with session.request(method, KINOPUB_API_BASE + path, params=params, json=json_body) as resp:
+            raw = await resp.text(errors='ignore')
+            try:
+                data = json.loads(raw or '{}')
+            except Exception:
+                data = {}
+            return resp.status, data
+
+async def _kinopub_tokens(uid):
+    raw = await get_setting(f'kinopub_tokens:{uid}', '')
+    try:
+        data = json.loads(raw or '{}')
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+async def _kinopub_save_tokens(uid, data):
+    access = str(data.get('access_token') or '').strip()
+    if not access:
+        return {}
+    current = await _kinopub_tokens(uid)
+    refresh = str(data.get('refresh_token') or current.get('refresh_token') or '').strip()
+    try:
+        expires_in = int(data.get('expires_in') or 0)
+    except Exception:
+        expires_in = 0
+    payload = {
+        'access_token': access,
+        'refresh_token': refresh,
+        'expires_at': int(time.time()) + expires_in if expires_in > 0 else 0,
+        'updated_at': int(time.time()),
+    }
+    await set_setting(f'kinopub_tokens:{uid}', json.dumps(payload, separators=(',', ':')))
+    return payload
+
+async def _kinopub_access_token(uid):
+    tokens = await _kinopub_tokens(uid)
+    access = str(tokens.get('access_token') or '').strip()
+    refresh = str(tokens.get('refresh_token') or '').strip()
+    expires_at = int(tokens.get('expires_at') or 0)
+    if access and (not expires_at or expires_at > int(time.time()) + 90):
+        return access
+    if not refresh:
+        return access
+    status, data = await _kinopub_api('POST', '/oauth2/token', params={
+        'grant_type':'refresh_token',
+        'client_id':KINOPUB_CLIENT_ID,
+        'client_secret':KINOPUB_CLIENT_SECRET,
+        'refresh_token':refresh,
+    })
+    if status < 400 and not data.get('error'):
+        fresh = await _kinopub_save_tokens(uid, data)
+        return str(fresh.get('access_token') or '')
+    await set_setting(f'kinopub_tokens:{uid}', '')
+    return ''
+
+def _kinopub_extract_items(data):
+    if isinstance(data, list):
+        return [x for x in data if isinstance(x, dict)]
+    if not isinstance(data, dict):
+        return []
+    for key in ('items','results','data'):
+        value = data.get(key)
+        if isinstance(value, list):
+            return [x for x in value if isinstance(x, dict)]
+        if isinstance(value, dict) and isinstance(value.get('items'), list):
+            return [x for x in value.get('items') if isinstance(x, dict)]
+    return []
+
+def _kinopub_poster(item):
+    value = item.get('poster')
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    for key in ('posters','images'):
+        value = item.get(key)
+        if isinstance(value, dict):
+            for name in ('big','poster','full','wide'):
+                url = value.get(name)
+                if isinstance(url, str) and url.strip():
+                    return url.strip()
+    return ''
+
+def _kinopub_kind(item):
+    raw = ' '.join(str(item.get(k) or '') for k in ('type','subtype')).lower()
+    return 'series' if any(x in raw for x in ('serial','series','tv')) else 'movies'
+
+def _kinopub_normalize(item):
+    title = str(item.get('title') or item.get('name') or '').strip()
+    if not title:
+        return None
+    return {
+        'id': str(item.get('id') or ''),
+        'title': title,
+        'original_title': str(item.get('original_title') or ''),
+        'year': item.get('year') or '',
+        'poster': _kinopub_poster(item),
+        'description': str(item.get('plot') or item.get('description') or ''),
+        'rating': item.get('imdb_rating') or item.get('rating') or '',
+        'kind': _kinopub_kind(item),
+        'source': 'KINOPUB',
+    }
+
+async def api_kinopub_status(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    tokens = await _kinopub_tokens(uid)
+    raw = await get_setting(f'kinopub_auth:{uid}', '')
+    auth = {}
+    try:
+        auth = json.loads(raw or '{}')
+    except Exception:
+        pass
+    pending = bool(auth.get('code')) and int(auth.get('expires_at') or 0) > int(time.time())
+    return web.json_response({
+        'ok':True,
+        'authenticated':bool(tokens.get('access_token') or tokens.get('refresh_token')),
+        'pending':pending,
+        'user_code':str(auth.get('user_code') or ''),
+        'verification_uri':str(auth.get('verification_uri') or 'https://kino.pub/device'),
+    }, headers={'Cache-Control':'no-store'})
+
+async def api_kinopub_auth_start(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    status, data = await _kinopub_api('POST', '/oauth2/device', params={
+        'grant_type':'device_code',
+        'client_id':KINOPUB_CLIENT_ID,
+        'client_secret':KINOPUB_CLIENT_SECRET,
+    })
+    code = str(data.get('code') or data.get('device_code') or '').strip()
+    user_code = str(data.get('user_code') or '').strip()
+    if status >= 400 or not code or not user_code:
+        return web.json_response({'ok':False,'error':str(data.get('error_description') or data.get('error') or 'kinopub_auth_start_failed')}, status=502)
+    try:
+        expires_in = int(data.get('expires_in') or 600)
+        interval = max(2, int(data.get('interval') or 5))
+    except Exception:
+        expires_in, interval = 600, 5
+    auth = {
+        'code':code,
+        'user_code':user_code,
+        'verification_uri':str(data.get('verification_uri') or data.get('verification_url') or 'https://kino.pub/device'),
+        'interval':interval,
+        'expires_at':int(time.time()) + max(60, expires_in),
+    }
+    await set_setting(f'kinopub_auth:{uid}', json.dumps(auth, separators=(',', ':')))
+    return web.json_response({
+        'ok':True,
+        'user_code':user_code,
+        'verification_uri':auth['verification_uri'],
+        'interval':interval,
+        'expires_at':auth['expires_at'],
+    }, headers={'Cache-Control':'no-store'})
+
+async def api_kinopub_auth_poll(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    raw = await get_setting(f'kinopub_auth:{uid}', '')
+    try:
+        auth = json.loads(raw or '{}')
+    except Exception:
+        auth = {}
+    code = str(auth.get('code') or '')
+    if not code:
+        return web.json_response({'ok':False,'error':'no_pending_auth'}, status=400)
+    if int(auth.get('expires_at') or 0) <= int(time.time()):
+        return web.json_response({'ok':True,'authenticated':False,'expired':True}, headers={'Cache-Control':'no-store'})
+    status, data = await _kinopub_api('POST', '/oauth2/device', params={
+        'grant_type':'device_token',
+        'client_id':KINOPUB_CLIENT_ID,
+        'client_secret':KINOPUB_CLIENT_SECRET,
+        'code':code,
+    })
+    error = str(data.get('error') or '')
+    if error in ('authorization_pending','slow_down'):
+        return web.json_response({'ok':True,'authenticated':False,'pending':True}, headers={'Cache-Control':'no-store'})
+    if error in ('code_expired','authorization_expired'):
+        return web.json_response({'ok':True,'authenticated':False,'expired':True}, headers={'Cache-Control':'no-store'})
+    if status >= 400 or error:
+        return web.json_response({'ok':False,'error':str(data.get('error_description') or error or 'kinopub_auth_failed')}, status=502)
+    tokens = await _kinopub_save_tokens(uid, data)
+    if not tokens:
+        return web.json_response({'ok':False,'error':'kinopub_token_missing'}, status=502)
+    await set_setting(f'kinopub_auth:{uid}', '')
+    return web.json_response({'ok':True,'authenticated':True}, headers={'Cache-Control':'no-store'})
+
+async def api_kinopub_disconnect(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    await set_setting(f'kinopub_tokens:{uid}', '')
+    await set_setting(f'kinopub_auth:{uid}', '')
+    return web.json_response({'ok':True}, headers={'Cache-Control':'no-store'})
+
+async def api_kinopub_catalog(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    token = await _kinopub_access_token(uid)
+    if not token:
+        return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
+    query = str(request.query.get('q') or '').strip()
+    requested_kind = str(request.query.get('type') or '').strip().lower()
+    path = '/v1/items/search' if query else '/v1/items'
+    params = {'access_token':token, 'perpage':60, 'page':0}
+    if query:
+        params['q'] = query
+    else:
+        params['sort'] = 'updated-'
+    status, data = await _kinopub_api('GET', path, params=params)
+    if status == 401:
+        await set_setting(f'kinopub_tokens:{uid}', '')
+        return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
+    if status >= 400:
+        return web.json_response({'ok':False,'error':'kinopub_catalog_failed','status':status}, status=502)
+    rows = []
+    for item in _kinopub_extract_items(data):
+        row = _kinopub_normalize(item)
+        if not row:
+            continue
+        if requested_kind in ('movies','series') and row['kind'] != requested_kind:
+            continue
+        rows.append(row)
+    return web.json_response({'ok':True,'items':rows,'count':len(rows)}, headers={'Cache-Control':'no-store'})
+
 
 def _apk_target(channel='stable'):
     channel = 'beta' if str(channel or '').lower() == 'beta' else 'stable'
@@ -1885,6 +2124,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/app-auth/telegram-start', api_app_auth_start); app.router.add_get('/api/app-auth/status', api_app_auth_status); app.router.add_get('/api/app-auth/complete', api_app_auth_complete)
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/open', api_tv_pair_open); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
+    app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
