@@ -458,6 +458,105 @@ public class MainActivity extends Activity {
         }catch(Throwable ignored){}
     }
 
+    private org.json.JSONArray resolveLazyArticleOptions(Object articleObj,ClassLoader cl){
+        org.json.JSONArray out=new org.json.JSONArray();
+        if(articleObj==null||cl==null)return out;
+        try{
+            Class<?> callbackClass=Class.forName(
+                "com.lazycatsoftware.lazymediadeluxe.models.service.OooO00o$OooO00o",true,cl
+            );
+            java.util.concurrent.CountDownLatch done=new java.util.concurrent.CountDownLatch(1);
+            Object callback=java.lang.reflect.Proxy.newProxyInstance(
+                cl,
+                new Class<?>[]{callbackClass},
+                (proxy,method,args)->{
+                    try{
+                        if(args!=null){
+                            for(Object arg:args){
+                                if(arg!=null){
+                                    synchronized(out){
+                                        collectLazyMediaUrls(
+                                            arg,method.getName(),0,
+                                            new java.util.HashSet<Integer>(),out
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }catch(Throwable ignored){}
+                    String n=method.getName();
+                    if("OooO0o0".equals(n)||"OooO0o".equals(n)||
+                       "OooO0OO".equals(n)||"OooO00o".equals(n)){
+                        done.countDown();
+                    }
+                    return null;
+                }
+            );
+
+            java.lang.reflect.Method taskParse=null;
+            for(java.lang.reflect.Method m:articleObj.getClass().getMethods()){
+                Class<?>[] pt=m.getParameterTypes();
+                if("taskParse".equals(m.getName())&&pt.length==1&&
+                   pt[0].isAssignableFrom(callbackClass)){
+                    taskParse=m;
+                    break;
+                }
+            }
+            if(taskParse!=null){
+                taskParse.setAccessible(true);
+                taskParse.invoke(articleObj,callback);
+                try{done.await(9,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
+            }
+
+            Class<?> contentTypeClass=Class.forName("obf.v41",true,cl);
+            Object[] contentTypes=(Object[])contentTypeClass.getMethod("values").invoke(null);
+            Object doc=null;
+            try{
+                java.lang.reflect.Method getDoc=articleObj.getClass().getMethod("getJsoupDoc");
+                doc=getDoc.invoke(articleObj);
+            }catch(Throwable ignored){}
+
+            java.lang.reflect.Method parseContent=null;
+            for(java.lang.reflect.Method m:articleObj.getClass().getMethods()){
+                Class<?>[] pt=m.getParameterTypes();
+                if("parseContent".equals(m.getName())&&pt.length==2&&pt[1]==contentTypeClass){
+                    parseContent=m;
+                    break;
+                }
+            }
+            if(parseContent!=null&&contentTypes!=null){
+                parseContent.setAccessible(true);
+                for(Object contentType:contentTypes){
+                    try{
+                        int before;
+                        synchronized(out){before=out.length();}
+                        Object parsed=parseContent.invoke(articleObj,doc,contentType);
+                        if(parsed!=null){
+                            synchronized(out){
+                                collectLazyMediaUrls(
+                                    parsed,String.valueOf(contentType),0,
+                                    new java.util.HashSet<Integer>(),out
+                                );
+                            }
+                        }
+                        int after;
+                        synchronized(out){after=out.length();}
+                        if(after>before)break;
+                    }catch(Throwable ignored){}
+                }
+            }
+
+            try{
+                java.lang.reflect.Method stop=articleObj.getClass().getMethod("stopAllTasks");
+                stop.invoke(articleObj);
+            }catch(Throwable ignored){}
+        }catch(Throwable e){
+            Log.w("AbajCinema","LazyMedia task parse failed: "+
+                e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+        }
+        return out;
+    }
+
     private org.json.JSONArray lazyProviderReflectOptions(String rawIntent,String provider){
         org.json.JSONArray out=new org.json.JSONArray();
         try{
@@ -545,28 +644,7 @@ public class MainActivity extends Activity {
                     ctor.setAccessible(true);
                     Object articleObj=ctor.newInstance(model);
 
-                    java.lang.reflect.Method parse=null;
-                    for(java.lang.reflect.Method m:articleClass.getMethods()){
-                        if("parseCustom".equals(m.getName())&&m.getParameterTypes().length==0){
-                            parse=m;
-                            break;
-                        }
-                    }
-                    if(parse==null){
-                        for(java.lang.reflect.Method m:articleClass.getDeclaredMethods()){
-                            if("parseCustom".equals(m.getName())&&m.getParameterTypes().length==0){
-                                parse=m;
-                                break;
-                            }
-                        }
-                    }
-                    if(parse==null)continue;
-                    parse.setAccessible(true);
-                    Object parsed=parse.invoke(articleObj);
-                    if(parsed==null)continue;
-
-                    org.json.JSONArray candidate=new org.json.JSONArray();
-                    collectLazyMediaUrls(parsed,"",0,new java.util.HashSet<Integer>(),candidate);
+                    org.json.JSONArray candidate=resolveLazyArticleOptions(articleObj,cl);
                     if(candidate.length()>0){
                         for(int i=0;i<candidate.length();i++)out.put(candidate.opt(i));
                         usedClass=className;
