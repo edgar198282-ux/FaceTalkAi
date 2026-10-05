@@ -427,7 +427,7 @@ public class MainActivity extends Activity {
                 try{
                     java.lang.reflect.Method urlMethod=c.getMethod("OooOo0o");
                     Object uv=urlMethod.invoke(node);
-                    String u=uv==null?"":String.valueOf(uv).trim().replace("\/","/");
+                    String u=uv==null?"":String.valueOf(uv).trim();
                     if(u.startsWith("http://")||u.startsWith("https://")){
                         String label=path==null?"":path.trim();
                         try{
