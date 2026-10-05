@@ -3806,10 +3806,7 @@ function handleTvBack(){
     return true;
   }
   if(cinemaSourcePickerOpen()){
-    closeCinemaSourcePicker();
-    if(cinemaDetailMovie){
-      renderCinemaDetail(cinemaDetailMovie);
-    }
+    closeCinemaSourcePicker(true);
     return true;
   }
   const pair=document.getElementById('tvPair');
@@ -6629,12 +6626,25 @@ function cinemaSourcePickerOpen(){
   const modal=document.getElementById('cinemaSourceModal');
   return !!(modal&&modal.classList.contains('open'));
 }
-function closeCinemaSourcePicker(){
+function closeCinemaSourcePicker(restoreDetail=true){
+  const movie=cinemaSourcePickerMovie||cinemaDetailMovie;
   const modal=document.getElementById('cinemaSourceModal');
   if(modal)modal.classList.remove('open');
   cinemaSourcePickerItems=[];
   cinemaSourceGroups=[];
+  if(!restoreDetail){
+    cinemaSourcePickerMovie=null;
+    return;
+  }
+  if(movie){
+    cinemaSourcePickerMovie=movie;
+    cinemaDetailMovie=movie;
+    renderCinemaDetail(movie);
+    return;
+  }
   cinemaSourcePickerMovie=null;
+  const screen=document.getElementById('cinemaScreen');
+  if(screen&&cinemaMode)screen.style.display='block';
 }
 function focusCinemaSourceButton(step=0){
   const modal=document.getElementById('cinemaSourceModal');
@@ -6867,7 +6877,7 @@ function renderResolvedProviderOptions(group,rows){
         if(!realUrl){meta.textContent='Поток недоступен';return}
         meta.textContent='Открываю…';
         window.__abajOpenExternalMedia(realUrl,String(cinemaSourcePickerMovie?.title||label.textContent||'Кино'));
-        setTimeout(()=>closeCinemaSourcePicker(),120);
+        setTimeout(()=>closeCinemaSourcePicker(false),120);
       };
       list.appendChild(btn);
     });
