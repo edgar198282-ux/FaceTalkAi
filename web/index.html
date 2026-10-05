@@ -7685,11 +7685,16 @@ async function cinemaV2FindSources(movie){
     .map(name=>groups.get(name))
     .filter(group=>group&&group.items.length);
 
-  const checked=await Promise.all(found.map(async group=>{
+  // LazyMedia parsers share one application/runtime. Running several provider
+  // parsers in parallel can reset that shared runtime under another active parser.
+  // Resolve sequentially for deterministic results.
+  const checked=[];
+  for(const group of found){
     if(group.items.some(x=>cinemaIsDirectStreamUrl(x?.url))){
       group.playable=true;
       cinemaDiag('direct_stream',{title:movie?.title,provider:group.name,rows:group.items.length,playable:true});
-      return group;
+      checked.push(group);
+      continue;
     }
     const provider=normalizeLazyProviderName(group.name);
     let rows=[];
@@ -7698,12 +7703,12 @@ async function cinemaV2FindSources(movie){
       group.resolvedOptions=rows;
       group.playable=true;
       cinemaDiag('provider_resolved',{title:movie?.title,provider,rows:rows.length,playable:true});
-      return group;
+    }else{
+      group.playable=false;
+      cinemaDiag('provider_empty',{title:movie?.title,provider,rows:0,playable:false});
     }
-    group.playable=false;
-    cinemaDiag('provider_empty',{title:movie?.title,provider,rows:0,playable:false});
-    return group;
-  }));
+    checked.push(group);
+  }
 
   const playable=checked.filter(group=>group&&group.playable);
   cinemaDiag('source_scan_done',{title:movie?.title,rows:playable.length,playable:playable.length>0,message:'found '+playable.length+' playable providers'});
