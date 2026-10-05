@@ -6861,15 +6861,21 @@ function renderCinemaSourceGroups(){
   prefetchCinemaSourceQualities();
 }
 
+function withTimeout(promise,ms,fallback=[]){
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise(resolve=>setTimeout(()=>resolve(fallback),Math.max(1000,Number(ms||0))))
+  ]);
+}
 async function resolveProviderAcrossItems(group){
   const provider=normalizeLazyProviderName(group?.name||'');
   const items=Array.isArray(group?.items)?group.items:[];
   if(!provider||!items.length)return [];
   for(const item of items.slice(0,6)){
     try{
-      let rows=await cinemaProviderOptionsAsync(item,provider);
+      let rows=await withTimeout(cinemaProviderOptionsAsync(item,provider),14000,[]);
       if((!rows||!rows.length)&&provider==='FILMIX'){
-        rows=await filmixVideoOptionsAsync(item).catch(()=>[]);
+        rows=await withTimeout(filmixVideoOptionsAsync(item).catch(()=>[]),12000,[]);
       }
       if(Array.isArray(rows)&&rows.length){
         group.resolvedFromItem=item;
