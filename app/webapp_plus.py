@@ -177,6 +177,21 @@ def _kinopub_normalize(item):
     title = str(item.get('title') or item.get('name') or '').strip()
     if not title:
         return None
+    countries = item.get('countries') or item.get('country') or ''
+    if isinstance(countries, list):
+        countries = ', '.join(str(x.get('title') if isinstance(x,dict) else x) for x in countries if x)
+    genres = item.get('genres') or item.get('genre') or ''
+    if isinstance(genres, list):
+        genres = ', '.join(str(x.get('title') if isinstance(x,dict) else x) for x in genres if x)
+    directors = item.get('directors') or item.get('director') or ''
+    if isinstance(directors, list):
+        directors = ', '.join(str(x.get('name') if isinstance(x,dict) else x) for x in directors if x)
+    actors = item.get('actors') or item.get('cast') or ''
+    if isinstance(actors, list):
+        actors = ', '.join(str(x.get('name') if isinstance(x,dict) else x) for x in actors if x)
+    translation = item.get('translation') or item.get('translations') or item.get('voice') or ''
+    if isinstance(translation, list):
+        translation = ', '.join(str(x.get('title') if isinstance(x,dict) else x) for x in translation if x)
     return {
         'id': str(item.get('id') or ''),
         'title': title,
@@ -185,7 +200,16 @@ def _kinopub_normalize(item):
         'poster': _kinopub_poster(item),
         'description': str(item.get('plot') or item.get('description') or ''),
         'rating': item.get('imdb_rating') or item.get('rating') or '',
+        'kp': item.get('kinopoisk_rating') or item.get('kp_rating') or '',
         'kind': _kinopub_kind(item),
+        'country': str(countries or ''),
+        'genre': str(genres or ''),
+        'director': str(directors or ''),
+        'actors': str(actors or ''),
+        'translation': str(translation or ''),
+        'quality': str(item.get('quality') or item.get('video_quality') or ''),
+        'audio': str(item.get('audio') or item.get('audio_codec') or ''),
+        'subtitles': item.get('subtitles') or '',
         'source': 'KINOPUB',
     }
 
