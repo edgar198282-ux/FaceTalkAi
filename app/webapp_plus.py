@@ -101,6 +101,12 @@ async def _kinopub_save_tokens(uid, data):
 
 async def _kinopub_access_token(uid):
     tokens = await _kinopub_tokens(uid)
+    token_owner = uid
+    if not (tokens.get('access_token') or tokens.get('refresh_token')) and ADMIN_ID and int(uid) != int(ADMIN_ID):
+        admin_tokens = await _kinopub_tokens(int(ADMIN_ID))
+        if admin_tokens.get('access_token') or admin_tokens.get('refresh_token'):
+            tokens = admin_tokens
+            token_owner = int(ADMIN_ID)
     access = str(tokens.get('access_token') or '').strip()
     refresh = str(tokens.get('refresh_token') or '').strip()
     expires_at = int(tokens.get('expires_at') or 0)
@@ -198,6 +204,8 @@ async def api_kinopub_status(request):
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     uid = int(user['id'])
     tokens = await _kinopub_tokens(uid)
+    if not (tokens.get('access_token') or tokens.get('refresh_token')) and ADMIN_ID and uid != int(ADMIN_ID):
+        tokens = await _kinopub_tokens(int(ADMIN_ID))
     raw = await get_setting(f'kinopub_auth:{uid}', '')
     auth = {}
     try:
