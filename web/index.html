@@ -3809,6 +3809,20 @@ function handleTvBack(){
     closeCinemaSourcePicker(true);
     return true;
   }
+  if(cinemaSideMenuOpen()){
+    toggleCinemaSideMenu();
+    focusCinemaElement(document.getElementById('cinemaMenuBtn'));
+    return true;
+  }
+  if(cinemaCategoryMenuOpen()){
+    toggleCinemaCategoryMenu();
+    focusCinemaElement(document.getElementById('cinemaCategoryBtn'));
+    return true;
+  }
+  if(cinemaMode){
+    toggleCinemaMode();
+    return true;
+  }
   const pair=document.getElementById('tvPair');
   if(pair&&pair.classList.contains('open')){
     pair.classList.remove('open');
@@ -5241,7 +5255,12 @@ function closePlayer(){
   }
   toggleTvRail(false);
   current=null;currentIndex=-1;
-  if(closingCinemaExternal)cinemaExternalChannel=null;
+  if(closingCinemaExternal){
+    cinemaExternalChannel=null;
+    if(cinemaMode&&cinemaDetailMovie){
+      setTimeout(()=>renderCinemaDetail(cinemaDetailMovie),80);
+    }
+  }
   if(nativeTv&&closingId){
     const cards=[...document.querySelectorAll('.channel')];
     const idx=cards.findIndex(x=>x.dataset.id===closingId);
@@ -5573,6 +5592,31 @@ function tvNativeRemote(action){
     }
     return;
   }
+  if(cinemaSideMenuOpen()){
+    const items=cinemaFocusable();
+    if(!items.length)return;
+    let i=items.indexOf(document.activeElement);
+    if(i<0)i=0;
+    if(action==='up')i=(i-1+items.length)%items.length;
+    else if(action==='down')i=(i+1)%items.length;
+    else if(action==='left'){toggleCinemaSideMenu();focusCinemaElement(document.getElementById('cinemaMenuBtn'));return}
+    else if(action==='right'){toggleCinemaSideMenu();focusCinemaElement(document.querySelector('.cinemaPosterCard')||document.getElementById('cinemaMenuBtn'));return}
+    else if(action==='ok'){const el=items[i]||document.activeElement;if(el&&typeof el.click==='function')el.click();return}
+    focusCinemaElement(items[i]);
+    return;
+  }
+  if(cinemaCategoryMenuOpen()){
+    const items=cinemaFocusable();
+    if(!items.length)return;
+    let i=items.indexOf(document.activeElement);
+    if(i<0)i=0;
+    if(action==='up')i=(i-1+items.length)%items.length;
+    else if(action==='down')i=(i+1)%items.length;
+    else if(action==='left'||action==='right'){toggleCinemaCategoryMenu();focusCinemaElement(document.getElementById('cinemaCategoryBtn'));return}
+    else if(action==='ok'){const el=items[i]||document.activeElement;if(el&&typeof el.click==='function')el.click();return}
+    focusCinemaElement(items[i]);
+    return;
+  }
   if(cinemaSourcePickerOpen()){
     if(action==='up')focusCinemaSourceButton(-1);
     else if(action==='down')focusCinemaSourceButton(1);
@@ -5662,24 +5706,6 @@ function tvNativeRemote(action){
     return;
   }
   if(cinemaMode){
-    const active=document.activeElement;
-    const inCinema=!!(active&&active.closest&&active.closest('#cinemaScreen'));
-    if(!tvHeaderCollapsed&&!inCinema){
-      if(action==='down'){
-        setTvHeaderCollapsed(true,false);
-        requestAnimationFrame(()=>focusCinemaElement(document.querySelector('.cinemaTypeCard.active')||document.querySelector('.cinemaTypeCard')));
-        return;
-      }
-      if(action==='left'||action==='right'||action==='up'){
-        moveTvTopSpatial(action);
-        return;
-      }
-      if(action==='ok'){
-        if(active&&typeof active.click==='function')active.click();
-        return;
-      }
-      return;
-    }
     if(action==='left'||action==='right'||action==='up'||action==='down'){
       moveCinemaFocus(action);
       return;
@@ -5687,6 +5713,7 @@ function tvNativeRemote(action){
     if(action==='ok'){
       const el=document.activeElement;
       if(el&&typeof el.click==='function')el.click();
+      else focusCinemaElement(document.querySelector('.cinemaPosterCard')||document.getElementById('cinemaMenuBtn'));
       return;
     }
     return;
@@ -6229,8 +6256,23 @@ function setCinemaType(type){
   }
   loadCinemaCatalog(true);
 }
+function cinemaSideMenuOpen(){
+  return !!document.getElementById('cinemaSideMenu')?.classList.contains('open');
+}
+function cinemaCategoryMenuOpen(){
+  return !!document.getElementById('cinemaCategoryMenu')?.classList.contains('open');
+}
 function cinemaFocusable(){
-  return [...document.querySelectorAll('#cinemaScreen .cinemaShellBtn,#cinemaScreen .cinemaMenuItem,#cinemaScreen .cinemaCategoryItem,#cinemaScreen .cinemaPosterCard')].filter(el=>el.offsetParent!==null);
+  const selector=cinemaSideMenuOpen()
+    ?'#cinemaSideMenu .cinemaMenuItem'
+    :(cinemaCategoryMenuOpen()
+      ?'#cinemaCategoryMenu .cinemaCategoryItem'
+      :'#cinemaScreen .cinemaShellBtn,#cinemaScreen .cinemaPosterCard');
+  return [...document.querySelectorAll(selector)].filter(el=>{
+    if(el.offsetParent===null)return false;
+    const r=el.getBoundingClientRect();
+    return r.width>0&&r.height>0&&r.right>0&&r.bottom>0&&r.left<window.innerWidth&&r.top<window.innerHeight;
+  });
 }
 function focusCinemaElement(el){
   if(!el)return;
@@ -6242,7 +6284,9 @@ function moveCinemaFocus(direction){
   if(!items.length)return;
   let current=document.activeElement;
   if(!items.includes(current)){
-    focusCinemaElement(items[0]);
+    const selected=document.querySelector('.cinemaPosterCard[data-cinema-selected="1"]');
+    const firstPoster=document.querySelector('.cinemaPosterCard');
+    focusCinemaElement(selected||firstPoster||items[0]);
     return;
   }
   const a=current.getBoundingClientRect();
@@ -6410,7 +6454,11 @@ async function loadCinemaCatalog(force=false){
         if(status)status.textContent='Источники LazyMedia сейчас не ответили.';
       }
     }
-    setTimeout(()=>{if(nativeTv&&cinemaMode&&!cinemaFocusable().includes(document.activeElement))focusCinemaElement(document.querySelector('.cinemaTypeCard.active')||document.querySelector('.cinemaTypeCard'))},30);
+    setTimeout(()=>{
+      if(nativeTv&&cinemaMode&&!cinemaFocusable().includes(document.activeElement)){
+        focusCinemaElement(document.querySelector('.cinemaPosterCard[data-cinema-selected="1"]')||document.querySelector('.cinemaPosterCard')||document.getElementById('cinemaMenuBtn'));
+      }
+    },60);
     return;
   }
 
@@ -7010,8 +7058,9 @@ function renderCinemaFormatOptions(group,item){
     btn.appendChild(meta);
     btn.onclick=()=>{
       if(url){
-        closeCinemaSourcePicker();
-        window.__abajOpenExternalMedia(url,String(f.item?.title||cinemaSourcePickerMovie?.title||'Кино'));
+        const playTitle=String(f.item?.title||cinemaSourcePickerMovie?.title||'Кино');
+        closeCinemaSourcePicker(false);
+        window.__abajOpenExternalMedia(url,playTitle);
         return;
       }
       const intent=String(f.item?.intent||'').trim();
@@ -7053,7 +7102,7 @@ window.__abajCinemaResolved=function(requestId,url){
   if(stream){
     if(pending.meta)pending.meta.textContent='Поток найден · открываю…';
     window.__abajOpenExternalMedia(stream,pending.title||'Кино');
-    setTimeout(()=>closeCinemaSourcePicker(),120);
+    setTimeout(()=>closeCinemaSourcePicker(false),120);
     return;
   }
   if(pending.meta)pending.meta.textContent='Поток не найден';
@@ -7291,7 +7340,7 @@ function cinemaV2RenderSources(movie,groups){
     meta.textContent='Источник доступен';
     btn.appendChild(label);
     btn.appendChild(meta);
-    btn.onclick=()=>cinemaV2OpenSource(index);
+    btn.onclick=()=>openCinemaSourceGroup(index);
     list.appendChild(btn);
   });
   const close=document.createElement('button');
@@ -7494,9 +7543,10 @@ function playCinemaTrailer(){
 }
 function cinemaMergeMetadata(base,extra){
   const out={...(base||{})};
+  const preferExtra=new Set(['backdrop','background','fanart','description','plot','overview','rating','imdb','kp','duration','runtime','genre','genres','country','director','directors','actors','cast','trailer','trailer_url','poster']);
   for(const [k,v] of Object.entries(extra||{})){
     if(v===undefined||v===null||String(v).trim()==='')continue;
-    if(out[k]===undefined||out[k]===null||String(out[k]).trim()==='')out[k]=v;
+    if(preferExtra.has(k)||out[k]===undefined||out[k]===null||String(out[k]).trim()==='')out[k]=v;
   }
   return out;
 }
@@ -7555,11 +7605,13 @@ function toggleCinemaMode(){
   if(cinemaMode){
     try{closeTvSearch(false)}catch(e){}
     try{closeTvSettings()}catch(e){}
+    closeCinemaShellMenus();
     loadCinemaCatalog();
     setTimeout(()=>{
-      const btn=document.getElementById('cinemaToggleBtn');
-      if(btn&&nativeTv)btn.focus();
-    },80);
+      if(nativeTv){
+        focusCinemaElement(document.querySelector('.cinemaPosterCard[data-cinema-selected="1"]')||document.querySelector('.cinemaPosterCard')||document.getElementById('cinemaMenuBtn'));
+      }
+    },120);
   }else{
     setTimeout(()=>{
       const btn=document.getElementById('listBtn');
