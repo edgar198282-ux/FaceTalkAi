@@ -567,7 +567,7 @@ public class MainActivity extends Activity {
         return out;
     }
 
-    private org.json.JSONArray expandLazyCinemaFolder(String token){
+    private synchronized org.json.JSONArray expandLazyCinemaFolder(String token){
         Object folder=lazyCinemaNodes.get(token==null?"":token);
         if(folder==null)return new org.json.JSONArray();
         try{
@@ -774,6 +774,14 @@ public class MainActivity extends Activity {
 
             Object current=singleton.get(null);
             if(current!=null){
+                try{
+                    java.lang.reflect.Method contextMethod=baseAppClass.getMethod("OooO0Oo");
+                    Object verified=contextMethod.invoke(null);
+                    if(verified instanceof Context){
+                        Log.d("AbajCinema","LazyMedia runtime reused");
+                        return;
+                    }
+                }catch(Throwable ignored){}
                 try{singleton.set(null,null);}catch(Throwable ignored){}
             }
 
@@ -958,7 +966,7 @@ public class MainActivity extends Activity {
         return out;
     }
 
-    private org.json.JSONArray lazyProviderReflectOptions(String rawIntent,String provider){
+    private synchronized org.json.JSONArray lazyProviderReflectOptions(String rawIntent,String provider){
         org.json.JSONArray out=new org.json.JSONArray();
         try{
             String source=cinemaSourceId(rawIntent);
@@ -1145,7 +1153,7 @@ public class MainActivity extends Activity {
         return "";
     }
 
-    private org.json.JSONObject lazyArticleReflectDetails(String rawIntent,String provider){
+    private synchronized org.json.JSONObject lazyArticleReflectDetails(String rawIntent,String provider){
         org.json.JSONObject out=new org.json.JSONObject();
         try{
             String source=cinemaSourceId(rawIntent);
@@ -1289,7 +1297,7 @@ public class MainActivity extends Activity {
         return out;
     }
 
-    private org.json.JSONArray lazyFilmixReflectOptions(String rawIntent){
+    private synchronized org.json.JSONArray lazyFilmixReflectOptions(String rawIntent){
         org.json.JSONArray out=new org.json.JSONArray();
         try{
             String movieId=decodeCinemaIntentPart(rawIntent,1);
