@@ -425,9 +425,10 @@ public class MainActivity extends Activity {
             Class<?> c=node.getClass();
             if("obf.j30".equals(c.getName())){
                 try{
-                    java.lang.reflect.Method urlMethod=c.getMethod("OooOo0o");
-                    Object uv=urlMethod.invoke(node);
-                    String u=uv==null?"":String.valueOf(uv).trim();
+                    java.lang.reflect.Field urlField=c.getDeclaredField("OooOOoo");
+                    urlField.setAccessible(true);
+                    Object uv=urlField.get(node);
+                    String u=uv==null?"":String.valueOf(uv).trim().replace("\/","/");
                     if(u.startsWith("http://")||u.startsWith("https://")){
                         String label=path==null?"":path.trim();
                         try{
