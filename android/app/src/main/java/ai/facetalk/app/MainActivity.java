@@ -547,8 +547,7 @@ public class MainActivity extends Activity {
                         }
                     }catch(Throwable ignored){}
                     String n=method.getName();
-                    if("OooO0o0".equals(n)||"OooO0o".equals(n)||
-                       "OooO0OO".equals(n)||"OooO00o".equals(n)){
+                    if("OooO0Oo".equals(n)){
                         done.countDown();
                     }
                     return null;
@@ -567,7 +566,7 @@ public class MainActivity extends Activity {
             if(taskParse!=null){
                 taskParse.setAccessible(true);
                 taskParse.invoke(articleObj,callback);
-                try{done.await(9,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
+                try{done.await(12,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
             }
 
             try{
