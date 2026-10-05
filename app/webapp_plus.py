@@ -354,6 +354,26 @@ def _kinopub_first_file_token(data):
             return value.strip()
     return ''
 
+def _kinopub_direct_stream_response(request, url):
+    direct = str(url or '').strip()
+    try:
+        parsed = urlparse(direct)
+    except Exception:
+        parsed = None
+    if not parsed or parsed.scheme not in ('http','https') or not parsed.netloc:
+        return None
+    own_host = str(request.host or '').split(':',1)[0].lower()
+    stream_host = str(parsed.hostname or '').lower()
+    if own_host and stream_host == own_host:
+        return None
+    return web.json_response({
+        'ok':True,
+        'url':direct,
+        'provider':'KINOPUB',
+        'direct':True,
+        'proxied':False,
+    }, headers={'Cache-Control':'no-store'})
+
 async def api_kinopub_play(request):
     user = await _user_from_request(request)
     if not user:
@@ -376,7 +396,9 @@ async def api_kinopub_play(request):
     for obj in _kinopub_walk(item):
         direct = _kinopub_stream_from_obj(obj)
         if direct:
-            return web.json_response({'ok':True,'url':direct,'provider':'KINOPUB'}, headers={'Cache-Control':'no-store'})
+            response = _kinopub_direct_stream_response(request, direct)
+            if response is not None:
+                return response
 
     media_id = _kinopub_first_media_id(item)
     if media_id:
@@ -385,7 +407,9 @@ async def api_kinopub_play(request):
             for obj in _kinopub_walk(media):
                 direct = _kinopub_stream_from_obj(obj)
                 if direct:
-                    return web.json_response({'ok':True,'url':direct,'provider':'KINOPUB'}, headers={'Cache-Control':'no-store'})
+                    response = _kinopub_direct_stream_response(request, direct)
+                    if response is not None:
+                        return response
             file_token = _kinopub_first_file_token(media)
             if file_token:
                 for stream_type in ('hls4','hls2','hls','http'):
@@ -395,7 +419,9 @@ async def api_kinopub_play(request):
                     if st < 400:
                         direct = _kinopub_stream_from_obj(video)
                         if direct:
-                            return web.json_response({'ok':True,'url':direct,'provider':'KINOPUB'}, headers={'Cache-Control':'no-store'})
+                            response = _kinopub_direct_stream_response(request, direct)
+                            if response is not None:
+                                return response
 
     return web.json_response({'ok':False,'error':'kinopub_stream_not_found'}, status=404)
 
