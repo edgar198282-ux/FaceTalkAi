@@ -6771,7 +6771,7 @@ function renderCinemaCatalog(items,options={}){
     const card=document.createElement('button');
     card.className='cinemaPosterCard';
     const poster=String(item.poster||'');
-    const sub=String(item.subtitle||item.year||'')+(item.quality?' · '+String(item.quality):'');
+    const sub=cinemaPublicText(item.subtitle||item.year||'')+(item.quality?' · '+cinemaPublicText(item.quality):'');
     card.innerHTML=(poster?'<img class="cinemaPosterImg" loading="lazy" src="'+poster.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaPosterFallback">🎞️</div>')+
       '<div class="cinemaPosterMeta"><div class="cinemaPosterTitle">'+String(item.title||'Фильм').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
       '<div class="cinemaPosterSub">'+sub.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div></div>';
@@ -8423,6 +8423,17 @@ function cinemaDetailText(item,...keys){
   }
   return '';
 }
+function cinemaPublicText(value){
+  return String(value??'')
+    .replace(/\bKinoPub\b/gi,'')
+    .replace(/\bKino\s*Pub\b/gi,'')
+    .replace(/Кино\s*Паб/gi,'')
+    .replace(/Кинопаб/gi,'')
+    .replace(/\s*[·|—-]\s*(?=$)/g,'')
+    .replace(/^\s*[·|—-]\s*/g,'')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+}
 function cinemaDetailBackdrop(item){
   return cinemaDetailText(item,'backdrop','background','fanart','poster_wide')||'';
 }
@@ -8456,27 +8467,27 @@ function renderCinemaDetail(item){
     heroPoster.src=poster||'';
     heroPoster.style.display=(!bg&&poster)?'block':'none';
   }
-  title.textContent=cinemaDetailText(item,'title','name')||'Фильм';
+  title.textContent=cinemaPublicText(cinemaDetailText(item,'title','name'))||'Фильм';
 
   const year=cinemaDetailText(item,'year','suggest_production_year','production_year');
   const rating=cinemaDetailText(item,'imdb','rating','kp','content_rating','suggest_rating');
   const badgeList=[];
   if(year)badgeList.push(year);
   if(rating)badgeList.push('★ '+rating);
-  const q=cinemaDetailText(item,'quality');
+  const q=cinemaPublicText(cinemaDetailText(item,'quality'));
   if(q)badgeList.push(q);
-  const audio=cinemaDetailText(item,'audio','sound');
+  const audio=cinemaPublicText(cinemaDetailText(item,'audio','sound'));
   if(audio)badgeList.push(audio);
   if(item?.subtitles||item?.cc)badgeList.push('CC');
   if(!badgeList.length)badgeList.push('HD');
   badges.innerHTML=[...new Set(badgeList)].map(x=>'<span class="cinemaDetailBadge">'+String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>').join('');
 
-  desc.textContent=cinemaDetailText(item,'description','plot','overview','summary','content_description','subtitle','suggest_text_2')||'';
+  desc.textContent=cinemaPublicText(cinemaDetailText(item,'description','plot','overview','summary','content_description','subtitle','suggest_text_2'))||'';
   const original=cinemaDetailText(item,'original_title','originalTitle','title_original','original','original_name');
   const duration=cinemaDetailText(item,'duration','runtime','suggest_duration');
   const country=cinemaDetailText(item,'country','countryOfOrigin','production_country');
   const genre=cinemaDetailText(item,'genre','genres','canonical_genre','content_genre');
-  const translation=cinemaDetailText(item,'translation','translator','audio','voice','dub');
+  const translation=cinemaPublicText(cinemaDetailText(item,'translation','translator','audio','voice','dub'));
   const director=cinemaDetailText(item,'director','directors');
   const cast=cinemaDetailText(item,'actors','actor','cast','roles');
 
