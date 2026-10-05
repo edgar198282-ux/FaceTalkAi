@@ -1439,14 +1439,32 @@ public class MainActivity extends Activity {
             runOnUiThread(()->{
                 try{
                     if(nativeProbePlayer==null)return;
+                    boolean seekable=nativeProbePlayer.isCurrentMediaItemSeekable();
                     long current=Math.max(0L,nativeProbePlayer.getCurrentPosition());
-                    long target=current+(long)seconds*1000L;
                     long duration=nativeProbePlayer.getDuration();
+                    if(!seekable){
+                        Log.w("AbajCinema","seek blocked not_seekable pos="+current+" dur="+duration+" url="+nativeProbeUrl);
+                        if(webView!=null){
+                            webView.evaluateJavascript(
+                                "if(typeof cinemaDiag==='function')cinemaDiag('seek_unavailable',{message:'native media item not seekable'})",
+                                null
+                            );
+                        }
+                        return;
+                    }
+                    long target=current+(long)seconds*1000L;
                     if(duration>0L)target=Math.min(duration,Math.max(0L,target));
                     else target=Math.max(0L,target);
                     nativeProbePlayer.seekTo(target);
-                }catch(Exception ignored){}
+                    Log.i("AbajCinema","seek "+seconds+"s from="+current+" to="+target+" dur="+duration);
+                }catch(Exception e){
+                    Log.w("AbajCinema","seek failed "+e.getClass().getSimpleName());
+                }
             });
+        }
+        @JavascriptInterface public boolean nativeIsSeekable(){
+            try{return nativeProbePlayer!=null&&nativeProbePlayer.isCurrentMediaItemSeekable();}
+            catch(Exception e){return false;}
         }
         @JavascriptInterface public long nativePositionMs(){
             try{return nativeProbePlayer==null?0L:Math.max(0L,nativeProbePlayer.getCurrentPosition());}
