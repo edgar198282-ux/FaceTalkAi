@@ -7864,8 +7864,19 @@ async function enrichCinemaMovie(item){
 async function openCinemaMovie(item){
   if(!item)return;
   renderCinemaDetail(item);
+  const openedId=String(item?.id||item?.intent||'');
   const enriched=await enrichCinemaMovie(item);
-  if(cinemaDetailMovie===item||String(cinemaDetailMovie?.id||'')===String(item?.id||'')){
+  const currentId=String(cinemaDetailMovie?.id||cinemaDetailMovie?.intent||'');
+  if(currentId!==openedId)return;
+
+  cinemaDetailMovie=enriched;
+  if(cinemaSourcePickerMovie&&String(cinemaSourcePickerMovie?.id||cinemaSourcePickerMovie?.intent||'')===openedId){
+    cinemaSourcePickerMovie=enriched;
+  }
+
+  const player=document.getElementById('playerView');
+  const playerOpen=!!(player&&player.classList.contains('open'));
+  if(cinemaDetailOpen()&&!cinemaSourcePickerOpen()&&!playerOpen){
     renderCinemaDetail(enriched);
   }
 }
