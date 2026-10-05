@@ -1085,12 +1085,14 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 }
 .cinemaDetailShare:focus{outline:none;box-shadow:0 0 0 3px #38b9ff}
 .cinemaDetailActions{
-  position:absolute;z-index:3;left:50%;bottom:74px;transform:translateX(-50%);
-  display:flex;gap:16px
+  position:absolute;z-index:3;left:18px;right:18px;bottom:74px;transform:none;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px
 }
+.cinemaDetailActions.hasSeasons{grid-template-columns:repeat(3,minmax(0,1fr))}
 .cinemaDetailAction{
-  min-width:170px;height:54px;border:1px solid rgba(155,220,255,.22);border-radius:2px;
-  background:rgba(33,120,168,.64);color:#eaf8ff;font-size:17px;font-weight:650;padding:0 22px
+  min-width:0;width:100%;height:54px;border:1px solid rgba(155,220,255,.22);border-radius:2px;
+  background:rgba(33,120,168,.64);color:#eaf8ff;font-size:17px;font-weight:650;padding:0 10px;
+  display:flex;align-items:center;justify-content:center;text-align:center;white-space:normal;line-height:1.12
 }
 .cinemaDetailAction:focus,.cinemaDetailBack:focus{outline:none;box-shadow:0 0 0 3px #38b9ff;background:#238ec4}
 .cinemaDetailAction:disabled{opacity:.65}
@@ -1127,8 +1129,8 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaSimilarMeta{font-size:11px;color:#8eb7cc;margin-top:3px}
 @media(max-width:760px){
   .cinemaDetailHero{min-height:44vh}
-  .cinemaDetailActions{bottom:42px;gap:9px}
-  .cinemaDetailAction{min-width:128px;height:44px;font-size:13px;padding:0 14px}
+  .cinemaDetailActions{left:10px;right:10px;bottom:42px;gap:9px}
+  .cinemaDetailAction{min-width:0;height:46px;font-size:13px;padding:0 7px}
   .cinemaDetailBody{padding:0 14px 24px;margin-top:-20px}
   .cinemaDetailTitle{font-size:24px}.cinemaDetailDescription{font-size:14px}
   .cinemaDetailFacts{grid-template-columns:86px 1fr;font-size:13px;gap:6px 10px}
@@ -7578,7 +7580,19 @@ function renderCinemaCatalog(items,options={}){
     const card=document.createElement('button');
     card.className='cinemaPosterCard';
     const poster=String(item.poster||'');
-    const sub=cinemaPublicText(item.subtitle||item.year||'')+(item.quality?' · '+cinemaPublicText(item.quality):'');
+    let sub='';
+    if(String(item.source||'').toUpperCase().startsWith('KINOPUB')){
+      const parts=[];
+      const year=cinemaPublicText(item.year||'');
+      const imdb=cinemaPublicText(item.imdb||item.rating||'');
+      const kp=cinemaPublicText(item.kp||item.kinopoisk_rating||item.kp_rating||'');
+      if(year)parts.push(year);
+      if(imdb)parts.push('IMDb: '+imdb);
+      if(kp)parts.push('КП: '+kp);
+      sub=parts.join(' ');
+    }else{
+      sub=cinemaPublicText(item.subtitle||item.year||'')+(item.quality?' · '+cinemaPublicText(item.quality):'');
+    }
     const position=Math.max(0,Number(item.position||0));
     const duration=Math.max(0,Number(item.duration||0));
     const progress=duration>0&&position>0?Math.max(1,Math.min(99,Math.round(position/duration*100))):0;
@@ -9605,6 +9619,8 @@ function renderCinemaDetail(item){
       :(hasRows?'СМОТРЕТЬ':'СМОТРЕТЬ');
   }
   if(seasonsBtn)seasonsBtn.style.display=isSeries?'inline-flex':'none';
+  const actions=document.querySelector('#cinemaDetail .cinemaDetailActions');
+  if(actions)actions.classList.toggle('hasSeasons',isSeries);
   const mediaHost=document.getElementById('cinemaKpMediaRows');
   if(mediaHost&&isSeries)mediaHost.style.display='none';
   renderCinemaSimilar(item);
