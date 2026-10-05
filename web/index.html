@@ -6480,6 +6480,7 @@ let cinemaResolvePending=new Map();
 let cinemaSourceIgnoreUntil=0;
 let filmixVideoPending=new Map();
 let cinemaProviderOptionsPending=new Map();
+let cinemaArticleDetailsPending=new Map();
 let lazyProviderRegistry=[];
 let lazyProviderRegistryAt=0;
 let lazyProviderIdMap={};
@@ -7541,6 +7542,65 @@ function playCinemaTrailer(){
     setTimeout(()=>btn.textContent=old,1800);
   }
 }
+function cinemaArticleDetailsAsync(item,provider){
+  return new Promise(resolve=>{
+    if(!item||!window.AbajNative||typeof AbajNative.cinemaArticleDetailsAsync!=='function'){
+      resolve({});
+      return;
+    }
+    const requestId='details_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    const timer=setTimeout(()=>{
+      cinemaArticleDetailsPending.delete(requestId);
+      resolve({});
+    },12000);
+    cinemaArticleDetailsPending.set(requestId,{resolve,timer});
+    try{
+      AbajNative.cinemaArticleDetailsAsync(
+        String(item.intent||''),
+        String(provider||''),
+        requestId
+      );
+    }catch(e){
+      clearTimeout(timer);
+      cinemaArticleDetailsPending.delete(requestId);
+      resolve({});
+    }
+  });
+}
+window.__abajCinemaArticleDetails=function(requestId,provider,details){
+  const p=cinemaArticleDetailsPending.get(String(requestId||''));
+  if(!p)return;
+  clearTimeout(p.timer);
+  cinemaArticleDetailsPending.delete(String(requestId||''));
+  p.resolve(details&&typeof details==='object'?details:{});
+};
+
+function cinemaNormalizeLazyDetails(details){
+  const d={...(details||{})};
+  const raw=[
+    d.raw_OooOO0,d.raw_OooOO0O,d.raw_OooOOo0,d.raw_OooOOo,
+    d.raw_OooO0oo,d.raw_OooOo0,d.raw_OooOo0O
+  ].map(x=>String(x||'').trim()).filter(Boolean);
+  const joined=raw.join(' · ');
+  if(!d.duration){
+    const m=joined.match(/(?:^|\D)(\d{1,3})\s*(?:мин|minutes?|min)(?:\D|$)/i);
+    if(m)d.duration=m[1]+' мин.';
+  }
+  if(!d.genre){
+    const m=joined.match(/(?:жанр|genre)\s*[:：]?\s*([^·|\n]{3,120})/i);
+    if(m)d.genre=m[1].trim();
+  }
+  if(!d.country){
+    const m=joined.match(/(?:страна|country)\s*[:：]?\s*([^·|\n]{2,100})/i);
+    if(m)d.country=m[1].trim();
+  }
+  if(!d.translation){
+    const m=joined.match(/(?:перевод|озвучка|translation|voice)\s*[:：]?\s*([^·|\n]{2,120})/i);
+    if(m)d.translation=m[1].trim();
+  }
+  return d;
+}
+
 function cinemaMergeMetadata(base,extra){
   const out={...(base||{})};
   const preferExtra=new Set(['backdrop','background','fanart','description','plot','overview','rating','imdb','kp','duration','runtime','genre','genres','country','director','directors','actors','cast','trailer','trailer_url','poster']);
@@ -7566,27 +7626,40 @@ async function enrichCinemaMovie(item){
   let best={...(item||{})};
   const title=String(item?.title||'').trim();
   if(!title)return best;
-  const year=cinemaYear(item);
+
+  await loadLazyProviderIdMap().catch(()=>{});
+  const provider=cinemaV2ProviderName(item)||normalizeLazyProviderName(cinemaProviderName(item));
+
+  let exact={};
   try{
-    const rows=await lazyMediaSearchAsync(title);
-    const base=cinemaComparableTitle(title);
-    for(const row of (Array.isArray(rows)?rows:[])){
-      const rt=cinemaComparableTitle(row?.title||'');
-      const ry=cinemaYear(row);
-      const titleMatch=base&&rt&&(rt===base||rt.includes(base)||base.includes(rt));
-      const yearMatch=!year||!ry||Math.abs(year-ry)<=1;
-      if(!titleMatch||!yearMatch)continue;
-      const candidate=cinemaMergeMetadata(item,row);
-      if(cinemaMetadataScore(candidate)>cinemaMetadataScore(best))best=candidate;
+    exact=cinemaNormalizeLazyDetails(await cinemaArticleDetailsAsync(item,provider));
+    if(exact&&Object.keys(exact).length){
+      best=cinemaMergeMetadata(best,exact);
     }
   }catch(e){}
-  try{
-    const r=await fetch('/api/cinema/meta?title='+encodeURIComponent(title)+'&year='+encodeURIComponent(year||''),{cache:'no-store'});
-    if(r.ok){
-      const meta=await r.json();
-      if(meta&&meta.found)best=cinemaMergeMetadata(best,meta);
-    }
-  }catch(e){}
+
+  const exactImdb=String(exact?.imdb||best?.imdb_id||'').trim();
+  if(/^tt\d+$/i.test(exactImdb)){
+    try{
+      const r=await fetch('/api/cinema/meta?imdb_id='+encodeURIComponent(exactImdb),{cache:'no-store'});
+      if(r.ok){
+        const meta=await r.json();
+        if(meta&&meta.found){
+          const externalVisual={
+            backdrop:meta.backdrop||'',
+            poster:meta.poster||'',
+            trailer:meta.trailer||'',
+            country:meta.country||'',
+            genre:meta.genre||'',
+            duration:meta.duration||'',
+            original_title:meta.original_title||''
+          };
+          best=cinemaMergeMetadata(best,externalVisual);
+        }
+      }
+    }catch(e){}
+  }
+
   return best;
 }
 async function openCinemaMovie(item){
