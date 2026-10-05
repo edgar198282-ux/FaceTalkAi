@@ -1333,7 +1333,7 @@ body.cinemaMode .top{display:none!important}
   <div class="videoWrap" onclick="handlePlayerSurfaceClick(event)">
     <div class="playerBrand" onclick="dismissMobilePlayerLoading(event)"><img class="playerLoadingLogo" src="/static/abaj_tv_logo.jpg" alt="ABAJ TV"></div>
     <video id="video" preload="auto" playsinline webkit-playsinline disablepictureinpicture controlslist="nofullscreen nodownload noremoteplayback"></video>
-    <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:#020817 url('/static/abaj_tv_ad_banner.svg') center center/cover no-repeat;align-items:center;justify-content:center;text-align:center;color:white;padding:0;box-sizing:border-box;pointer-events:none;overflow:hidden"></div>
+    <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:#020817 url('/static/abaj_tv_ad_banner.svg') center center/contain no-repeat;align-items:center;justify-content:center;text-align:center;color:white;padding:4%;box-sizing:border-box;pointer-events:none;overflow:hidden"></div>
     <div id="playerChannelHud" class="playerChannelHud">
       <img id="playerChannelHudLogo" class="playerChannelHudLogo" alt="">
       <div id="playerChannelHudFallback" class="playerChannelHudFallback" style="display:none">TV</div>
