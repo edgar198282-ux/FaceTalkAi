@@ -895,7 +895,10 @@ def _cinema_title_score(query, candidate):
 async def api_cinema_meta(request):
     title = str(request.query.get("title") or "").strip()
     year_raw = str(request.query.get("year") or "").strip()
-    if not title:
+    exact_imdb_id = str(request.query.get("imdb_id") or "").strip()
+    if exact_imdb_id and not re.fullmatch(r"tt\d+", exact_imdb_id, re.I):
+        return web.json_response({"ok":False,"error":"invalid_imdb_id"}, status=400)
+    if not title and not exact_imdb_id:
         return web.json_response({"ok":False,"error":"title_required"}, status=400)
     try:
         wanted_year = int(year_raw) if year_raw.isdigit() else 0
@@ -913,31 +916,36 @@ async def api_cinema_meta(request):
             best = None
             best_score = -1
 
-            try:
-                suggest_url = "https://v2.sg.media-imdb.com/suggestion/x/" + quote(title) + ".json"
-                async with session.get(suggest_url, allow_redirects=True) as resp:
-                    data = await resp.json(content_type=None) if resp.status < 400 else {}
-                candidates = data.get("d") if isinstance(data, dict) else []
-                for pos, row in enumerate(candidates if isinstance(candidates, list) else []):
-                    if not isinstance(row, dict):
-                        continue
-                    imdb_id = str(row.get("id") or "")
-                    if not imdb_id.startswith("tt"):
-                        continue
-                    row_year = int(row.get("y") or 0) if str(row.get("y") or "").isdigit() else 0
-                    if wanted_year and row_year and abs(wanted_year-row_year) > 1:
-                        continue
-                    score = max(0, 90 - pos * 12)
-                    score += _cinema_title_score(title, row.get("l") or "") // 4
-                    if wanted_year and row_year == wanted_year:
-                        score += 55
-                    elif wanted_year and row_year:
-                        score += 20
-                    if score > best_score:
-                        best_score = score
-                        best = row
-            except Exception:
-                pass
+            if exact_imdb_id:
+                best = {"id": exact_imdb_id, "l": title, "y": year_raw}
+                best_score = 1000
+
+            if not best:
+                try:
+                    suggest_url = "https://v2.sg.media-imdb.com/suggestion/x/" + quote(title) + ".json"
+                    async with session.get(suggest_url, allow_redirects=True) as resp:
+                        data = await resp.json(content_type=None) if resp.status < 400 else {}
+                    candidates = data.get("d") if isinstance(data, dict) else []
+                    for pos, row in enumerate(candidates if isinstance(candidates, list) else []):
+                        if not isinstance(row, dict):
+                            continue
+                        imdb_id = str(row.get("id") or "")
+                        if not imdb_id.startswith("tt"):
+                            continue
+                        row_year = int(row.get("y") or 0) if str(row.get("y") or "").isdigit() else 0
+                        if wanted_year and row_year and abs(wanted_year-row_year) > 1:
+                            continue
+                        score = max(0, 90 - pos * 12)
+                        score += _cinema_title_score(title, row.get("l") or "") // 4
+                        if wanted_year and row_year == wanted_year:
+                            score += 55
+                        elif wanted_year and row_year:
+                            score += 20
+                        if score > best_score:
+                            best_score = score
+                            best = row
+                    except Exception:
+                    pass
 
             if not best:
                 for meta_type in ("movie","series"):
