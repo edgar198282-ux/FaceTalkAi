@@ -7333,17 +7333,17 @@ function renderCinemaDetail(item){
   if(!badgeList.length)badgeList.push('HD');
   badges.innerHTML=badgeList.map(x=>'<span class="cinemaDetailBadge">'+String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>').join('');
 
-  desc.textContent=cinemaDetailText(item,'description','plot','overview','subtitle')||'';
+  desc.textContent=cinemaDetailText(item,'description','plot','overview','summary','content_description','subtitle','suggest_text_2')||'';
 
-  const year=cinemaDetailText(item,'year');
-  const rating=cinemaDetailText(item,'imdb','rating','kp');
-  const original=cinemaDetailText(item,'original_title','originalTitle','title_original');
-  const duration=cinemaDetailText(item,'duration','runtime');
-  const country=cinemaDetailText(item,'country');
-  const genre=cinemaDetailText(item,'genre','genres');
-  const translation=cinemaDetailText(item,'translation','translator','audio');
-  const director=cinemaDetailText(item,'director');
-  const cast=cinemaDetailText(item,'actors','cast','roles');
+  const year=cinemaDetailText(item,'year','suggest_production_year','production_year');
+  const rating=cinemaDetailText(item,'imdb','rating','kp','content_rating','suggest_rating');
+  const original=cinemaDetailText(item,'original_title','originalTitle','title_original','original','original_name');
+  const duration=cinemaDetailText(item,'duration','runtime','suggest_duration');
+  const country=cinemaDetailText(item,'country','countryOfOrigin','production_country');
+  const genre=cinemaDetailText(item,'genre','genres','canonical_genre','content_genre');
+  const translation=cinemaDetailText(item,'translation','translator','audio','voice','dub');
+  const director=cinemaDetailText(item,'director','directors');
+  const cast=cinemaDetailText(item,'actors','actor','cast','roles');
 
   facts.innerHTML=
     cinemaDetailFact('Рейтинг',rating)+
@@ -7416,9 +7416,53 @@ function playCinemaTrailer(){
     setTimeout(()=>btn.textContent=old,1800);
   }
 }
+function cinemaMergeMetadata(base,extra){
+  const out={...(base||{})};
+  for(const [k,v] of Object.entries(extra||{})){
+    if(v===undefined||v===null||String(v).trim()==='')continue;
+    if(out[k]===undefined||out[k]===null||String(out[k]).trim()==='')out[k]=v;
+  }
+  return out;
+}
+function cinemaMetadataScore(item){
+  const keys=[
+    'description','plot','overview','genre','genres','country','director','actors','cast',
+    'rating','imdb','kp','duration','runtime','original_title','originalTitle','translation',
+    'translator','trailer','trailer_url','backdrop','background','fanart'
+  ];
+  let score=0;
+  for(const key of keys){
+    if(item&&item[key]!==undefined&&item[key]!==null&&String(item[key]).trim())score++;
+  }
+  return score;
+}
+async function enrichCinemaMovie(item){
+  let best={...(item||{})};
+  const title=String(item?.title||'').trim();
+  if(!title)return best;
+  try{
+    const rows=await lazyMediaSearchAsync(title);
+    const base=cinemaComparableTitle(title);
+    const year=cinemaYear(item);
+    for(const row of (Array.isArray(rows)?rows:[])){
+      const rt=cinemaComparableTitle(row?.title||'');
+      const ry=cinemaYear(row);
+      const titleMatch=base&&rt&&(rt===base||rt.includes(base)||base.includes(rt));
+      const yearMatch=!year||!ry||Math.abs(year-ry)<=1;
+      if(!titleMatch||!yearMatch)continue;
+      const candidate=cinemaMergeMetadata(item,row);
+      if(cinemaMetadataScore(candidate)>cinemaMetadataScore(best))best=candidate;
+    }
+  }catch(e){}
+  return best;
+}
 async function openCinemaMovie(item){
   if(!item)return;
   renderCinemaDetail(item);
+  const enriched=await enrichCinemaMovie(item);
+  if(cinemaDetailMovie===item||String(cinemaDetailMovie?.id||'')===String(item?.id||'')){
+    renderCinemaDetail(enriched);
+  }
 }
 function toggleCinemaMode(){
   cinemaMode=!cinemaMode;
