@@ -570,44 +570,6 @@ public class MainActivity extends Activity {
                 try{done.await(9,java.util.concurrent.TimeUnit.SECONDS);}catch(InterruptedException ignored){}
             }
 
-            Class<?> contentTypeClass=Class.forName("obf.v41",true,cl);
-            Object[] contentTypes=(Object[])contentTypeClass.getMethod("values").invoke(null);
-            Object doc=null;
-            try{
-                java.lang.reflect.Method getDoc=articleObj.getClass().getMethod("getJsoupDoc");
-                doc=getDoc.invoke(articleObj);
-            }catch(Throwable ignored){}
-
-            java.lang.reflect.Method parseContent=null;
-            for(java.lang.reflect.Method m:articleObj.getClass().getMethods()){
-                Class<?>[] pt=m.getParameterTypes();
-                if("parseContent".equals(m.getName())&&pt.length==2&&pt[1]==contentTypeClass){
-                    parseContent=m;
-                    break;
-                }
-            }
-            if(parseContent!=null&&contentTypes!=null){
-                parseContent.setAccessible(true);
-                for(Object contentType:contentTypes){
-                    try{
-                        int before;
-                        synchronized(out){before=out.length();}
-                        Object parsed=parseContent.invoke(articleObj,doc,contentType);
-                        if(parsed!=null){
-                            synchronized(out){
-                                collectLazyMediaUrls(
-                                    parsed,String.valueOf(contentType),0,
-                                    new java.util.HashSet<Integer>(),out
-                                );
-                            }
-                        }
-                        int after;
-                        synchronized(out){after=out.length();}
-                        if(after>before)break;
-                    }catch(Throwable ignored){}
-                }
-            }
-
             try{
                 java.lang.reflect.Method stop=articleObj.getClass().getMethod("stopAllTasks");
                 stop.invoke(articleObj);
@@ -675,6 +637,17 @@ public class MainActivity extends Activity {
             }
 
             java.util.LinkedHashSet<String> classNames=new java.util.LinkedHashSet<>();
+            String contentPkg="com.lazycatsoftware.mediaservices.content.";
+            if("FILMIX".equals(requested))classNames.add(contentPkg+"FILMIX_Article");
+            else if("HDREZKA".equals(requested))classNames.add(contentPkg+"HDREZKA_Article");
+            else if("KINODB".equals(requested))classNames.add(contentPkg+"KINODB_Article");
+            else if("ZETFLIX".equals(requested))classNames.add(contentPkg+"ZETFLIX_Article");
+            else if("SEASONVAR".equals(requested))classNames.add(contentPkg+"SEASONVAR_Article");
+            else if("ZONA".equals(requested))classNames.add(contentPkg+"ZONA_Article");
+            else if("ZOMBIE".equals(requested))classNames.add(contentPkg+"ZOMBIE_Article");
+            else if("OCTOPUS".equals(requested))classNames.add(contentPkg+"OCTOPUS_Article");
+            else if("ANILIBRIA(V1)".equals(requested)||"ANILIBRIA_V1".equals(requested))classNames.add(contentPkg+"ANILIBRIA_V1_Article");
+            else if("ANILIBRIA(V3)".equals(requested)||"ANILIBRIA_V3".equals(requested))classNames.add(contentPkg+"ANILIBRIA_V3_Article");
             for(String key:providerKeys){
                 String normalized=(key==null?"":key)
                     .trim()
@@ -813,6 +786,17 @@ public class MainActivity extends Activity {
             }
 
             java.util.LinkedHashSet<String> classNames=new java.util.LinkedHashSet<>();
+            String contentPkg="com.lazycatsoftware.mediaservices.content.";
+            if("FILMIX".equals(requested))classNames.add(contentPkg+"FILMIX_Article");
+            else if("HDREZKA".equals(requested))classNames.add(contentPkg+"HDREZKA_Article");
+            else if("KINODB".equals(requested))classNames.add(contentPkg+"KINODB_Article");
+            else if("ZETFLIX".equals(requested))classNames.add(contentPkg+"ZETFLIX_Article");
+            else if("SEASONVAR".equals(requested))classNames.add(contentPkg+"SEASONVAR_Article");
+            else if("ZONA".equals(requested))classNames.add(contentPkg+"ZONA_Article");
+            else if("ZOMBIE".equals(requested))classNames.add(contentPkg+"ZOMBIE_Article");
+            else if("OCTOPUS".equals(requested))classNames.add(contentPkg+"OCTOPUS_Article");
+            else if("ANILIBRIA(V1)".equals(requested)||"ANILIBRIA_V1".equals(requested))classNames.add(contentPkg+"ANILIBRIA_V1_Article");
+            else if("ANILIBRIA(V3)".equals(requested)||"ANILIBRIA_V3".equals(requested))classNames.add(contentPkg+"ANILIBRIA_V3_Article");
             for(String key:providerKeys){
                 String normalized=(key==null?"":key)
                     .trim().toUpperCase(java.util.Locale.US)
