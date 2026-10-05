@@ -22,7 +22,7 @@
   --theme-hue:204;
 }
 *{box-sizing:border-box}
-html,body{
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}\nhtml,body{
   margin:0;height:100%;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
   background:linear-gradient(180deg,hsl(var(--theme-hue) 82% 66%) 0%,hsl(var(--theme-hue) 78% 56%) 42%,hsl(var(--theme-hue) 70% 49%) 100%);
@@ -1031,12 +1031,15 @@ body.cinemaMode .top{display:none!important}
 .cinemaDetailFacts .k{color:#7ec6e9}.cinemaDetailFacts .v{color:#e9f8ff}
 .cinemaDetailFacts a{color:#dff6ff;text-decoration:underline}
 @media(max-width:760px){
-  .cinemaDetailHero{min-height:44vh}
-  .cinemaDetailActions{bottom:42px;gap:9px}
-  .cinemaDetailAction{min-width:128px;height:44px;font-size:13px;padding:0 14px}
-  .cinemaDetailBody{padding:0 14px 24px;margin-top:-20px}
-  .cinemaDetailTitle{font-size:24px}.cinemaDetailDescription{font-size:14px}
-  .cinemaDetailFacts{grid-template-columns:86px 1fr;font-size:13px;gap:6px 10px}
+  .cinemaDetailHero{min-height:42vh}
+  .cinemaDetailActions{bottom:38px;gap:8px}
+  .cinemaDetailAction{min-width:120px;height:42px;font-size:12.5px;padding:0 12px}
+  .cinemaDetailBody{padding:0 14px 24px;margin-top:-18px}
+  .cinemaDetailTitle{font-size:22px;line-height:1.12;margin-bottom:11px}
+  .cinemaDetailBadge{font-size:11px;padding:2px 7px}
+  .cinemaDetailDescription{font-size:13.5px;line-height:1.42}
+  .cinemaDetailTools{font-size:22px;gap:14px;margin:-20px 6px 8px}
+  .cinemaDetailFacts{grid-template-columns:82px 1fr;font-size:12.5px;gap:6px 10px}
 }
 </style>
 </head>
@@ -1311,17 +1314,17 @@ body.cinemaMode .top{display:none!important}
       </div>
     </div>
 
-    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Кино · KinoPub</div>
+    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Кино · источник</div>
     <div class="adminRow" style="display:block">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-        <b>KinoPub</b>
+        <b>Источник кино</b>
         <span id="kinoPubAdminStatus" class="adminMeta">Проверка…</span>
       </div>
-      <div class="adminMeta" id="kinoPubAdminMeta" style="margin-top:6px">Авторизация KinoPub проверяется отдельно в тестовой ветке. Рабочий IPTV не затрагивается.</div>
+      <div class="adminMeta" id="kinoPubAdminMeta" style="margin-top:6px">Авторизация источника кино проверяется отдельно. Рабочий IPTV не затрагивается.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-        <button onclick="loginKinoPubFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#087fe1;color:#fff;font-weight:900">Войти в KinoPub</button>
+        <button onclick="loginKinoPubFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#087fe1;color:#fff;font-weight:900">Войти</button>
         <button onclick="connectKinoPubFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#16a05d;color:#fff;font-weight:900">Использовать как источник</button>
-        <button onclick="disconnectKinoPubFromAdmin()" style="grid-column:1/-1;min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Отключить KinoPub</button>
+        <button onclick="disconnectKinoPubFromAdmin()" style="grid-column:1/-1;min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Отключить источник</button>
       </div>
     </div>
 
@@ -2039,9 +2042,9 @@ async function refreshKinoPubAdminStatus(){
     if(kinoPubRemoteStatus.pending&&kinoPubRemoteStatus.user_code){
       meta.textContent='Откройте '+(kinoPubRemoteStatus.verification_uri||'https://kino.pub/device')+' и введите код '+kinoPubRemoteStatus.user_code;
     }else if(kinoPubRemoteStatus.authenticated){
-      meta.textContent=active?'KinoPub используется как источник раздела «Кино».':'KinoPub авторизован. Нажмите «Использовать как источник».';
+      meta.textContent=active?'Источник используется в разделе «Кино».':'Источник авторизован. Нажмите «Использовать как источник».';
     }else{
-      meta.textContent='Нажмите «Войти в KinoPub», затем подтвердите код на странице KinoPub.';
+      meta.textContent='Нажмите «Войти», затем подтвердите код на странице авторизации.';
     }
   }
 }
@@ -2075,7 +2078,7 @@ async function loginKinoPubFromAdmin(){
     },4000);
   }catch(e){
     if(st){st.textContent='Ошибка входа';st.style.color='#a33'}
-    if(meta)meta.textContent='Не удалось получить код KinoPub: '+String(e&&e.message||e);
+    if(meta)meta.textContent='Не удалось получить код авторизации: '+String(e&&e.message||e);
   }
 }
 
@@ -6515,11 +6518,11 @@ async function searchCinemaLazyMedia(raw){
     return;
   }
   if(cinemaSource==='kinopub'&&q){
-    if(status)status.textContent='KinoPub: поиск '+q+'…';
+    if(status)status.textContent='Поиск '+q+'…';
     const rows=await kinoPubCatalogAsync(q);
     if(seq!==cinemaSearchSeq)return;
     renderCinemaCatalog(rows,{search:true});
-    if(status)status.textContent=rows.length?('KinoPub · найдено '+rows.length):'KinoPub · ничего не найдено';
+    if(status)status.textContent=rows.length?('Найдено '+rows.length):'Ничего не найдено';
     return;
   }
   if(!q){
@@ -6784,19 +6787,19 @@ async function loadCinemaCatalog(force=false){
     if(!kinoPubRemoteStatus.authenticated){
       cinemaLoaded=false;
       renderCinemaCatalog([]);
-      if(status)status.textContent='KinoPub не авторизован. Откройте админ-настройки и выполните вход.';
+      if(status)status.textContent='Источник кино не авторизован. Откройте админ-настройки и выполните вход.';
       return;
     }
-    if(status)status.textContent='KinoPub · загрузка каталога…';
+    if(status)status.textContent='Загрузка каталога…';
     const rows=await kinoPubCatalogAsync('');
     cinemaLoaded=rows.length>0;
     if(rows.length){
       writeCinemaCache(rows);
       renderCinemaCatalog(rows);
-      if(status)status.textContent='KinoPub · найдено '+rows.length;
+      if(status)status.textContent='Найдено '+rows.length;
     }else{
       renderCinemaCatalog([]);
-      if(status)status.textContent='KinoPub подключён, но каталог пуст.';
+      if(status)status.textContent='Источник подключён, но каталог пуст.';
     }
     return;
   }
