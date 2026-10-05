@@ -1667,6 +1667,180 @@ public class MainActivity extends Activity {
                 }catch(Exception ignored){return "{\"installed\":false}";}
             }
         }
+        @JavascriptInterface public String kinoPubInfo(){
+            try{
+                android.content.pm.PackageInfo pi=getPackageManager().getPackageInfo("com.kinopub",0);
+                JSONObject o=new JSONObject();
+                o.put("installed",true);
+                o.put("version",pi.versionName==null?"":pi.versionName);
+                return o.toString();
+            }catch(Exception e){
+                try{
+                    JSONObject o=new JSONObject();
+                    o.put("installed",false);
+                    return o.toString();
+                }catch(Exception ignored){return "{\"installed\":false}";}
+            }
+        }
+        @JavascriptInterface public boolean openKinoPub(){
+            try{
+                Intent launch=getPackageManager().getLaunchIntentForPackage("com.kinopub");
+                if(launch==null){
+                    launch=new Intent();
+                    launch.setClassName("com.kinopub","com.kinopub.activity.LaunchActivity");
+                }
+                final Intent target=launch;
+                runOnUiThread(()->{
+                    try{startActivity(target);}catch(Exception ignored){}
+                });
+                return true;
+            }catch(Exception e){return false;}
+        }
+        @JavascriptInterface public boolean openKinoPubSection(String section){
+            try{
+                String s=section==null?"":section.trim().toLowerCase(java.util.Locale.US);
+                String activity="";
+                if("auth".equals(s)||"activate".equals(s))activity="com.kinopub.activity.ActivateActivity";
+                else if("search".equals(s))activity="com.kinopub.activity.SearchActivity";
+                else if("bookmarks".equals(s))activity="com.kinopub.activity.BookmarksActivity";
+                else if("history".equals(s))activity="com.kinopub.history.HistoryActivity";
+                else if("catalog".equals(s)||"home".equals(s))activity="com.kinopub.activity.LaunchActivity";
+                else return openKinoPub();
+                Intent i=new Intent();
+                i.setClassName("com.kinopub",activity);
+                runOnUiThread(()->{
+                    try{startActivity(i);}catch(Exception e){
+                        try{
+                            Intent launch=getPackageManager().getLaunchIntentForPackage("com.kinopub");
+                            if(launch!=null)startActivity(launch);
+                        }catch(Exception ignored){}
+                    }
+                });
+                return true;
+            }catch(Exception e){return false;}
+        }
+        @JavascriptInterface public String kinoPubCatalog(String rawQuery){
+            final String query=rawQuery==null?"":rawQuery.trim();
+            org.json.JSONArray out=new org.json.JSONArray();
+            java.util.LinkedHashSet<String> seen=new java.util.LinkedHashSet<>();
+            try{
+                android.content.pm.PackageInfo pi=getPackageManager().getPackageInfo(
+                    "com.kinopub",android.content.pm.PackageManager.GET_PROVIDERS
+                );
+                android.content.pm.ProviderInfo[] providers=pi.providers;
+                if(providers==null)return "[]";
+                for(android.content.pm.ProviderInfo provider:providers){
+                    if(provider==null||provider.authority==null||provider.authority.trim().isEmpty())continue;
+                    String providerName=provider.name==null?"":provider.name;
+                    if(!provider.exported&&!providerName.endsWith("VideoProvider"))continue;
+                    String[] authorities=provider.authority.split(";");
+                    for(String authority0:authorities){
+                        String authority=authority0==null?"":authority0.trim();
+                        if(authority.isEmpty())continue;
+                        java.util.ArrayList<Uri> uris=new java.util.ArrayList<>();
+                        Uri base=Uri.parse("content://"+authority);
+                        uris.add(base);
+                        uris.add(Uri.withAppendedPath(base,"videos"));
+                        uris.add(Uri.withAppendedPath(base,"items"));
+                        uris.add(Uri.withAppendedPath(base,"catalog"));
+                        if(!query.isEmpty()){
+                            uris.add(Uri.parse(base.toString()+"/search/"+Uri.encode(query)));
+                            uris.add(Uri.parse(base.toString()+"/search_suggest_query/"+Uri.encode(query)));
+                        }
+                        for(Uri uri:uris){
+                            if(out.length()>=180)break;
+                            Cursor cur=null;
+                            try{
+                                cur=getContentResolver().query(uri,null,null,null,null);
+                                if(cur==null)continue;
+                                String[] cols=cur.getColumnNames();
+                                int rows=0;
+                                while(cur.moveToNext()&&out.length()<180&&rows<180){
+                                    rows++;
+                                    JSONObject o=new JSONObject();
+                                    if(cols!=null){
+                                        for(int ci=0;ci<cols.length;ci++){
+                                            String cn=cols[ci];
+                                            if(cn==null||cn.trim().isEmpty())continue;
+                                            try{
+                                                int type=cur.getType(ci);
+                                                if(type==Cursor.FIELD_TYPE_NULL)continue;
+                                                if(type==Cursor.FIELD_TYPE_INTEGER)o.put(cn,cur.getLong(ci));
+                                                else if(type==Cursor.FIELD_TYPE_FLOAT)o.put(cn,cur.getDouble(ci));
+                                                else if(type==Cursor.FIELD_TYPE_STRING)o.put(cn,cur.getString(ci));
+                                            }catch(Throwable ignored){}
+                                        }
+                                    }
+                                    String title=jsonText(o,"title","name","video_name","suggest_text_1","_display_name");
+                                    if(title.isEmpty())continue;
+                                    if(!query.isEmpty()){
+                                        String low=(title+" "+jsonText(o,"subtitle","description","suggest_text_2"))
+                                            .toLowerCase(java.util.Locale.US);
+                                        if(!low.contains(query.toLowerCase(java.util.Locale.US)))continue;
+                                    }
+                                    String poster=jsonText(o,"poster","poster_url","image","image_url","cover","thumb","thumbnail","suggest_result_card_image");
+                                    String year=jsonText(o,"year","production_year","suggest_production_year");
+                                    String intent=jsonText(o,"intent","url","link","uri","suggest_intent_data");
+                                    String id=jsonText(o,"id","_id","video_id","item_id");
+                                    if(intent.isEmpty()&&!id.isEmpty()){
+                                        try{intent=Uri.withAppendedPath(uri,id).toString();}catch(Throwable ignored){}
+                                    }
+                                    String key=!intent.isEmpty()?intent:(title+"|"+year+"|"+poster);
+                                    if(seen.contains(key))continue;
+                                    seen.add(key);
+                                    o.put("title",title);
+                                    if(!poster.isEmpty())o.put("poster",poster);
+                                    if(!year.isEmpty())o.put("year",year);
+                                    if(!intent.isEmpty()){
+                                        o.put("intent",intent);
+                                        o.put("id",intent);
+                                    }else if(!id.isEmpty())o.put("id",id);
+                                    o.put("source","KINOPUB");
+                                    out.put(o);
+                                }
+                            }catch(Throwable ignored){
+                            }finally{
+                                if(cur!=null)try{cur.close();}catch(Exception ignored){}
+                            }
+                        }
+                    }
+                }
+            }catch(Throwable e){
+                Log.w("AbajCinema","KinoPub catalog unavailable: "+e.getClass().getSimpleName()+" "+String.valueOf(e.getMessage()));
+            }
+            return out.toString();
+        }
+        @JavascriptInterface public boolean openKinoPubItem(String rawUri,String rawTitle){
+            try{
+                final String uriText=rawUri==null?"":rawUri.trim();
+                final String title=rawTitle==null?"":rawTitle.trim();
+                Intent i=null;
+                if(!uriText.isEmpty()){
+                    try{
+                        Uri uri=Uri.parse(uriText);
+                        i=new Intent(Intent.ACTION_VIEW,uri);
+                        i.setPackage("com.kinopub");
+                    }catch(Exception ignored){}
+                }
+                if(i==null&&!title.isEmpty()){
+                    i=new Intent(Intent.ACTION_SEARCH);
+                    i.setPackage("com.kinopub");
+                    i.putExtra(SearchManager.QUERY,title);
+                }
+                if(i==null)return openKinoPub();
+                final Intent target=i;
+                runOnUiThread(()->{
+                    try{startActivity(target);}catch(Exception e){
+                        try{
+                            Intent launch=getPackageManager().getLaunchIntentForPackage("com.kinopub");
+                            if(launch!=null)startActivity(launch);
+                        }catch(Exception ignored){}
+                    }
+                });
+                return true;
+            }catch(Exception e){return false;}
+        }
+
         @JavascriptInterface public boolean openLazyMedia(){
             try{
                 Intent launch=getPackageManager().getLaunchIntentForPackage("com.lazycatsoftware.lmd");
