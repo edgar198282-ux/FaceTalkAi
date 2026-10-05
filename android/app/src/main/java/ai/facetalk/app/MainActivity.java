@@ -922,6 +922,22 @@ public class MainActivity extends Activity {
                         o.put("id",intent);
                         Log.i("AbajCinemaIntent","title="+(t1Col>=0?cur.getString(t1Col):"")+" intent="+intent);
                     }
+                    try{
+                        String[] cols=cur.getColumnNames();
+                        if(cols!=null){
+                            for(int ci=0;ci<cols.length;ci++){
+                                String cn=cols[ci];
+                                if(cn==null||cn.trim().isEmpty()||o.has(cn))continue;
+                                try{
+                                    int type=cur.getType(ci);
+                                    if(type==Cursor.FIELD_TYPE_NULL)continue;
+                                    if(type==Cursor.FIELD_TYPE_INTEGER)o.put(cn,cur.getLong(ci));
+                                    else if(type==Cursor.FIELD_TYPE_FLOAT)o.put(cn,cur.getDouble(ci));
+                                    else o.put(cn,cur.getString(ci));
+                                }catch(Throwable ignored){}
+                            }
+                        }
+                    }catch(Throwable ignored){}
                     out.put(o); count++;
                 }
             }catch(Exception ignored){}finally{
