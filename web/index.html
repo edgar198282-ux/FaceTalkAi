@@ -3983,12 +3983,14 @@ function setFreeAdOverlay(active,seconds){
   if(active){
     freeAdMuteBefore=!!(v&&v.muted);
     if(v)v.muted=true;
+    try{if(window.AbajNative&&typeof AbajNative.setNativeAdMuted==='function')AbajNative.setNativeAdMuted(true)}catch(e){}
     if(overlay)overlay.style.display='flex';
     startFreeAdCountdown(Number(seconds)>0?seconds:30);
     // No internal ad sound. Provider audio remains muted while our banner is visible.
   }else{
     if(overlay)overlay.style.display='none';
     if(v)v.muted=freeAdMuteBefore;
+    try{if(window.AbajNative&&typeof AbajNative.setNativeAdMuted==='function')AbajNative.setNativeAdMuted(false)}catch(e){}
     stopFreeAdCountdown();
     // No internal ad sound to stop.
   }
