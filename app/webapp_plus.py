@@ -553,6 +553,59 @@ async def api_cinema_library_watch(request):
         await _cinema_library_write(uid, section, rows[:limit])
     return web.json_response({'ok':True}, headers={'Cache-Control':'no-store'})
 
+def _kinopub_extract_references(data):
+    if isinstance(data, list):
+        rows = data
+    elif isinstance(data, dict):
+        rows = []
+        for key in ('items','results','data','genres','types'):
+            value = data.get(key)
+            if isinstance(value, list):
+                rows = value
+                break
+            if isinstance(value, dict):
+                for subkey in ('items','results','data'):
+                    nested = value.get(subkey)
+                    if isinstance(nested, list):
+                        rows = nested
+                        break
+                if rows:
+                    break
+    else:
+        rows = []
+    out = []
+    for row in rows:
+        if isinstance(row, dict):
+            rid = row.get('id')
+            title = row.get('title') or row.get('name')
+            if rid is None or not str(title or '').strip():
+                continue
+            out.append({'id':str(rid),'title':str(title).strip()})
+        elif isinstance(row, str) and row.strip():
+            out.append({'id':row.strip(),'title':row.strip()})
+    return out
+
+async def api_kinopub_filters(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
+    token = await _kinopub_access_token(uid)
+    if not token:
+        return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
+    requested_type = str(request.query.get('type') or '').strip()
+    type_param = 'serial' if requested_type in ('series','serial') else ('movie' if requested_type in ('movies','movie') else '')
+    async def fetch_ref(path, params=None):
+        status, data = await _kinopub_api('GET', path, params={'access_token':token, **(params or {})})
+        return _kinopub_extract_references(data) if status < 400 else []
+    types, genres = await asyncio.gather(
+        fetch_ref('/v1/types'),
+        fetch_ref('/v1/genres', {'type':type_param} if type_param else {})
+    )
+    return web.json_response({'ok':True,'types':types,'genres':genres}, headers={'Cache-Control':'private, max-age=1800'})
+
 async def api_kinopub_catalog(request):
     user = await _user_from_request(request)
     if not user:
@@ -565,8 +618,19 @@ async def api_kinopub_catalog(request):
         return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
     query = str(request.query.get('q') or '').strip()
     requested_kind = str(request.query.get('type') or '').strip().lower()
+    genre = str(request.query.get('genre') or '').strip()
+    try:
+        page = max(0, int(request.query.get('page') or 0))
+        perpage = max(12, min(60, int(request.query.get('perpage') or 30)))
+    except Exception:
+        page, perpage = 0, 30
     path = '/v1/items/search' if query else '/v1/items'
-    params = {'access_token':token, 'perpage':60, 'page':0}
+    params = {'access_token':token, 'perpage':perpage, 'page':page}
+    api_type = 'serial' if requested_kind in ('series','serial') else ('movie' if requested_kind in ('movies','movie') else '')
+    if api_type:
+        params['type'] = api_type
+    if genre:
+        params['genre'] = genre
     if query:
         params['q'] = query
     else:
@@ -585,7 +649,12 @@ async def api_kinopub_catalog(request):
         if requested_kind in ('movies','series') and row['kind'] != requested_kind:
             continue
         rows.append(row)
-    return web.json_response({'ok':True,'items':rows,'count':len(rows),'total':_kinopub_total_from_data(data)}, headers={'Cache-Control':'no-store'})
+    total = _kinopub_total_from_data(data)
+    return web.json_response({
+        'ok':True,'items':rows,'count':len(rows),'total':total,
+        'page':page,'perpage':perpage,
+        'has_more':bool(len(rows) >= perpage and (total is None or (page + 1) * perpage < total)),
+    }, headers={'Cache-Control':'no-store'})
 
 
 def _apk_target(channel='stable'):
@@ -2424,7 +2493,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
     app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play)
-    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch)
+    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
