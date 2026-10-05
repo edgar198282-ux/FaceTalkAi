@@ -3,6 +3,8 @@ import hashlib
 import hmac
 import json
 import os
+import re
+import html
 import time
 from urllib.parse import quote, urlencode, urlparse
 
@@ -344,7 +346,6 @@ def _edem_store_stream(uid: int, device_id: str, url: str) -> str:
 def _rewrite_edem_hls(text: str, base: str, uid: int, device_id: str) -> str:
     from urllib.parse import urljoin
     import re
-import html
     out = []
     for raw in text.splitlines():
         line = raw.strip()
