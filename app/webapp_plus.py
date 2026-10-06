@@ -269,14 +269,11 @@ async def api_admin_cinema_source_state(request):
     await set_setting('cinema_global_source', source)
     return web.json_response({'ok':True,'source':source}, headers={'Cache-Control':'no-store, max-age=0'})
 
-async def api_kinopub_status(request):
-    user = await _user_from_request(request)
-    if not user:
-        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
-    uid = int(user['id'])
-    if not await _cinema_access_allowed(uid):
-        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
+async def _kinopub_validate_saved_connection(uid):
+    uid = int(uid)
+    token_owner = uid
     tokens = await _kinopub_tokens(uid)
+
     if not (tokens.get('access_token') or tokens.get('refresh_token')):
         owner_uid = 0
         try:
@@ -286,7 +283,46 @@ async def api_kinopub_status(request):
         if not owner_uid and ADMIN_ID:
             owner_uid = int(ADMIN_ID)
         if owner_uid and uid != owner_uid:
-            tokens = await _kinopub_tokens(owner_uid)
+            owner_tokens = await _kinopub_tokens(owner_uid)
+            if owner_tokens.get('access_token') or owner_tokens.get('refresh_token'):
+                tokens = owner_tokens
+                token_owner = owner_uid
+
+    if not (tokens.get('access_token') or tokens.get('refresh_token')):
+        return False, token_owner, False
+
+    access = await _kinopub_access_token(uid)
+    if not access:
+        return False, token_owner, False
+
+    status, data = await _kinopub_api('GET','/v1/items',params={
+        'access_token':access,
+        'page':1,
+        'perpage':1,
+    })
+    error = str(data.get('error') or '').lower() if isinstance(data,dict) else ''
+    invalid = status in (401,403) or error in (
+        'invalid_token','invalid_grant','unauthorized','access_denied'
+    )
+    if invalid:
+        await set_setting(f'kinopub_tokens:{token_owner}', '')
+        return False, token_owner, True
+    if status >= 400:
+        # Do not break an existing connection on a temporary KinoPub outage.
+        return True, token_owner, False
+    return True, token_owner, False
+
+async def api_kinopub_status(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
+    if ADMIN_ID and uid == int(ADMIN_ID):
+        await set_setting('kinopub_owner_uid', str(uid))
+
+    authenticated, token_owner, revoked = await _kinopub_validate_saved_connection(uid)
     raw = await get_setting(f'kinopub_auth:{uid}', '')
     auth = {}
     try:
@@ -296,8 +332,10 @@ async def api_kinopub_status(request):
     pending = bool(auth.get('code')) and int(auth.get('expires_at') or 0) > int(time.time())
     return web.json_response({
         'ok':True,
-        'authenticated':bool(tokens.get('access_token') or tokens.get('refresh_token')),
+        'authenticated':bool(authenticated),
         'pending':pending,
+        'revoked':bool(revoked),
+        'owner':bool(ADMIN_ID and token_owner == int(ADMIN_ID)),
         'user_code':str(auth.get('user_code') or ''),
         'verification_uri':str(auth.get('verification_uri') or 'https://kino.pub/device'),
     }, headers={'Cache-Control':'no-store'})
@@ -307,6 +345,9 @@ async def api_kinopub_auth_start(request):
     if not user:
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     uid = int(user['id'])
+    if ADMIN_ID and uid == int(ADMIN_ID):
+        await set_setting('kinopub_owner_uid', str(uid))
+        await set_setting(f'kinopub_auth:{uid}', '')
     status, data = await _kinopub_api('POST', '/oauth2/device', params={
         'grant_type':'device_code',
         'client_id':KINOPUB_CLIENT_ID,
