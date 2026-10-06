@@ -100,30 +100,39 @@ async def _kinopub_save_tokens(uid, data):
     return payload
 
 async def _kinopub_access_token(uid):
+    async def resolve(owner, tokens):
+        access = str(tokens.get('access_token') or '').strip()
+        refresh = str(tokens.get('refresh_token') or '').strip()
+        expires_at = int(tokens.get('expires_at') or 0)
+
+        if access and (not expires_at or expires_at > int(time.time()) + 90):
+            return access
+
+        if refresh:
+            status, data = await _kinopub_api('POST', '/oauth2/token', params={
+                'grant_type':'refresh_token',
+                'client_id':KINOPUB_CLIENT_ID,
+                'client_secret':KINOPUB_CLIENT_SECRET,
+                'refresh_token':refresh,
+            })
+            if status < 400 and not data.get('error'):
+                fresh = await _kinopub_save_tokens(owner, data)
+                return str(fresh.get('access_token') or '')
+        return ''
+
     tokens = await _kinopub_tokens(uid)
-    token_owner = uid
-    if not (tokens.get('access_token') or tokens.get('refresh_token')) and ADMIN_ID and int(uid) != int(ADMIN_ID):
+    token = await resolve(uid, tokens)
+    if token:
+        return token
+
+    if ADMIN_ID and int(uid) != int(ADMIN_ID):
         admin_tokens = await _kinopub_tokens(int(ADMIN_ID))
-        if admin_tokens.get('access_token') or admin_tokens.get('refresh_token'):
-            tokens = admin_tokens
-            token_owner = int(ADMIN_ID)
-    access = str(tokens.get('access_token') or '').strip()
-    refresh = str(tokens.get('refresh_token') or '').strip()
-    expires_at = int(tokens.get('expires_at') or 0)
-    if access and (not expires_at or expires_at > int(time.time()) + 90):
-        return access
-    if not refresh:
-        return access
-    status, data = await _kinopub_api('POST', '/oauth2/token', params={
-        'grant_type':'refresh_token',
-        'client_id':KINOPUB_CLIENT_ID,
-        'client_secret':KINOPUB_CLIENT_SECRET,
-        'refresh_token':refresh,
-    })
-    if status < 400 and not data.get('error'):
-        fresh = await _kinopub_save_tokens(token_owner, data)
-        return str(fresh.get('access_token') or '')
-    await set_setting(f'kinopub_tokens:{token_owner}', '')
+        token = await resolve(int(ADMIN_ID), admin_tokens)
+        if token:
+            return token
+
+    # Never erase stored refresh/access tokens on a transient refresh failure.
+    # This lets the next request retry instead of making the whole cinema catalog disappear.
     return ''
 
 def _kinopub_total_from_data(data):
