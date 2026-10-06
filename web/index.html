@@ -5366,9 +5366,10 @@ function handleAppBack(){
     return true;
   }
   if(cinemaDetailOpen()){closeCinemaDetail();return true}
+  if(cinemaSideMenuOpen()){toggleCinemaSideMenu();return true}
   if(cinemaCategoryMenuOpen()){toggleCinemaCategoryMenu();return true}
   if(cinemaMode){
-    if(!cinemaSideMenuOpen())toggleCinemaSideMenu();
+    toggleCinemaSideMenu();
     return true;
   }
   if(tvSettingPickerOpen()){closeTvSettingPicker(false);return true}
