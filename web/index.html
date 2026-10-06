@@ -6499,15 +6499,51 @@ function tvSettingsFocusables(){
     return r.width>0&&r.height>0&&getComputedStyle(el).visibility!=='hidden';
   });
 }
+function focusTvSettingsElement(el){
+  if(!el)return;
+  try{el.focus({preventScroll:true})}catch(_){try{el.focus()}catch(__){}}
+  try{el.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
+}
 function moveTvSettingsFocusSpatial(direction){
   const items=tvSettingsFocusables();
   if(!items.length)return;
   let current=document.activeElement;
   if(!items.includes(current)){
-    current=items[0];
-    try{current.focus({preventScroll:true})}catch(_){try{current.focus()}catch(__){}}
+    focusTvSettingsElement(items[0]);
     return;
   }
+
+  const id=current.id||'';
+  const langIds=['langHyBtn','langRuBtn','langEnBtn'];
+  const langIndex=langIds.indexOf(id);
+  const light=document.getElementById('appearanceLightBtn');
+  const dark=document.getElementById('appearanceDarkBtn');
+  const auto=document.getElementById('tvAutoStartBtn');
+
+  if(langIndex>=0){
+    if(direction==='left'){focusTvSettingsElement(document.getElementById(langIds[Math.max(0,langIndex-1)]));return}
+    if(direction==='right'){focusTvSettingsElement(document.getElementById(langIds[Math.min(langIds.length-1,langIndex+1)]));return}
+    if(direction==='down'){
+      focusTvSettingsElement(langIndex>=2?dark:light);
+      return;
+    }
+  }
+
+  if(id==='appearanceLightBtn'||id==='appearanceDarkBtn'){
+    if(direction==='left'||direction==='right'){
+      focusTvSettingsElement(id==='appearanceLightBtn'?dark:light);
+      return;
+    }
+    if(direction==='up'){
+      focusTvSettingsElement(document.getElementById(id==='appearanceDarkBtn'?'langEnBtn':'langRuBtn')||document.getElementById('langHyBtn'));
+      return;
+    }
+    if(direction==='down'){
+      focusTvSettingsElement(auto);
+      return;
+    }
+  }
+
   const a=current.getBoundingClientRect();
   const ax=a.left+a.width/2,ay=a.top+a.height/2;
   let best=null,bestScore=Infinity;
@@ -6522,19 +6558,10 @@ function moveTvSettingsFocusSpatial(direction){
     else if(direction==='left'&&dx<-8){valid=true;primary=-dx;secondary=Math.abs(dy)}
     else if(direction==='right'&&dx>8){valid=true;primary=dx;secondary=Math.abs(dy)}
     if(!valid)continue;
-    const score=primary+secondary*1.35;
+    const score=primary+secondary*1.9;
     if(score<bestScore){bestScore=score;best=el}
   }
-  if(!best){
-    const detail=document.getElementById('cinemaDetail');
-    if(detail&&(direction==='down'||direction==='up')){
-      const step=Math.max(180,Math.round(window.innerHeight*0.62));
-      detail.scrollBy({top:direction==='down'?step:-step,behavior:'auto'});
-    }
-    return;
-  }
-  try{best.focus({preventScroll:true})}catch(_){try{best.focus()}catch(__){}}
-  try{best.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
+  if(best)focusTvSettingsElement(best);
 }
 
 function tvNativeRemote(action){
