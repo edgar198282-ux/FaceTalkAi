@@ -3546,6 +3546,11 @@ async function load(){
       if(key.includes('shoghakat')||key.includes('շողակաթ'))return false;
       return x.status==='ONLINE'&&(!tvHideUnreliable||!x.unreliable);
     });
+    if(!edemStatus.active){
+      const am=base.filter(x=>String(x&&x.country||'').toUpperCase()==='AM').slice(0,5);
+      const ru=base.filter(x=>String(x&&x.country||'').toUpperCase()==='RU').slice(0,5);
+      base=[...am,...ru];
+    }
     if(Array.isArray(ed.channels)&&ed.channels.length){
       base=base.concat(ed.channels.map(x=>({...x,personal:true,provider:'Edem'})));
     }
@@ -6825,6 +6830,7 @@ document.addEventListener('keyup',e=>{
 
 let cinemaMode=localStorage.getItem('abaj_cinema_mode')==='1';
 let cinemaAccessEnabled=true;
+let cinemaPlaybackAllowed=true;
 let cinemaLoaded=false;
 const storedCinemaSource=String(localStorage.getItem('abaj_cinema_source')||'').toLowerCase();
 let cinemaSource=['lazy','kinopub','none'].includes(storedCinemaSource)?storedCinemaSource:'none';
@@ -6837,6 +6843,7 @@ async function loadGlobalCinemaSource(){
     if(!r.ok)return cinemaSource;
     const d=await r.json();
     cinemaAccessEnabled=d.cinema_enabled!==false;
+    cinemaPlaybackAllowed=d.playback_allowed!==false;
     const btn=document.getElementById('cinemaToggleBtn');
     if(btn)btn.style.display=cinemaAccessEnabled?'':'none';
     if(!cinemaAccessEnabled){
@@ -9770,6 +9777,20 @@ async function watchCinemaDetail(){
   const item=cinemaDetailMovie;
   if(!item)return;
   const watchBtn=document.getElementById('cinemaDetailWatch');
+  if(!cinemaPlaybackAllowed){
+    const msg=appLang==='hy'
+      ?'Ֆիլմերի դիտումը հասանելի է վճարովի տարբերակում։ Կարող եք ազատ դիտել կատալոգը։'
+      :(appLang==='en'
+        ?'Movie playback is available in the paid version. You can browse the catalog for free.'
+        :'Просмотр фильмов доступен в платной версии. Каталог можно листать бесплатно.');
+    if(watchBtn){
+      const oldText=watchBtn.textContent;
+      watchBtn.textContent=appLang==='hy'?'ՊԱՀԱՆՋՎՈՒՄ Է ՄՈՒՏՔ':(appLang==='en'?'SUBSCRIPTION REQUIRED':'НУЖНА ПОДПИСКА');
+      setTimeout(()=>{watchBtn.textContent=oldText},1800);
+    }
+    alert(msg);
+    return;
+  }
   if(cinemaSource==='kinopub'||String(item.source||'').toUpperCase()==='KINOPUB'){
     if(watchBtn){watchBtn.disabled=true;watchBtn.textContent='ОТКРЫВАЮ…'}
     const media=cinemaSelectedKinoMedia;
