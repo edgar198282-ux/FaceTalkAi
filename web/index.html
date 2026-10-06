@@ -2755,11 +2755,28 @@ async function checkAdmin(){
     }
   }catch(e){}
 }
+let returnToAdminAfterEdemSettings=false;
 function openSettings(){
-  document.getElementById('settingsModal').classList.add('open');
+  const admin=document.getElementById('adminPanel');
+  const modal=document.getElementById('settingsModal');
+  if(!modal)return;
+  returnToAdminAfterEdemSettings=!!admin?.classList.contains('open');
+  if(returnToAdminAfterEdemSettings)admin.classList.remove('open');
+  modal.classList.add('open');
   setTimeout(()=>document.getElementById('edemUid')?.focus(),60);
 }
-function closeSettings(){document.getElementById('settingsModal').classList.remove('open')}
+function closeSettings(){
+  const modal=document.getElementById('settingsModal');
+  if(modal)modal.classList.remove('open');
+  if(returnToAdminAfterEdemSettings){
+    returnToAdminAfterEdemSettings=false;
+    const admin=document.getElementById('adminPanel');
+    if(admin){
+      admin.classList.add('open');
+      if(nativeTv)setTimeout(()=>focusAdminControl(adminFocusable()[0]),80);
+    }
+  }
+}
 
 let adminAccessUsers=[];
 function adminPanelOpen(){
