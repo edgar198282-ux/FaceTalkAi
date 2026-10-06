@@ -4361,6 +4361,14 @@ function handleTvBack(){
     closeCinemaSourcePicker(true);
     return true;
   }
+  if(cinemaSeasonsOpen()){
+    if(cinemaSeasonsEpisodeMode){
+      openCinemaSeasons();
+      return true;
+    }
+    closeCinemaSeasons();
+    return true;
+  }
   if(cinemaTrackMenuOpen()){
     closeCinemaTrackMenu();
     return true;
@@ -6805,7 +6813,8 @@ document.addEventListener('keydown',e=>{
   if(cinemaSeasonsOpen()){
     if(e.key==='Escape'||e.key==='Backspace'){
       e.preventDefault();
-      closeCinemaSeasons();
+      if(cinemaSeasonsEpisodeMode)openCinemaSeasons();
+      else closeCinemaSeasons();
       return;
     }
     if(nativeTv&&(e.key==='ArrowUp'||e.key==='ArrowDown')){
@@ -9825,6 +9834,7 @@ function cinemaSeasonRows(item){
     .filter(row=>row.items.length);
 }
 function closeCinemaSeasons(){
+  cinemaSeasonsEpisodeMode=false;
   if(!cinemaHistoryPop&&history.state&&history.state.abajCinemaLayer==='seasons'){
     try{history.back();return}catch(e){}
   }
@@ -9834,6 +9844,7 @@ function closeCinemaSeasons(){
   if(detail)detail.classList.add('open');
 }
 function renderCinemaSeasonEpisodes(row){
+  cinemaSeasonsEpisodeMode=true;
   const list=document.getElementById('cinemaSeasonsList');
   const title=document.getElementById('cinemaSeasonsTitle');
   if(!list||!row)return;
@@ -9871,6 +9882,7 @@ function renderCinemaSeasonEpisodes(row){
   },40);
 }
 function openCinemaSeasons(){
+  cinemaSeasonsEpisodeMode=false;
   const item=cinemaDetailMovie;
   const rows=cinemaSeasonRows(item);
   if(!rows.length)return;
@@ -10334,6 +10346,7 @@ async function enrichCinemaMovie(item){
   return best;
 }
 let cinemaHistoryPop=false;
+let cinemaSeasonsEpisodeMode=false;
 function pushCinemaHistoryLayer(layer){
   if(cinemaHistoryPop)return;
   try{
@@ -10357,6 +10370,7 @@ window.addEventListener('popstate',()=>{
   try{
     const seasons=document.getElementById('cinemaSeasons');
     if(seasons&&seasons.classList.contains('open')){
+      cinemaSeasonsEpisodeMode=false;
       seasons.classList.remove('open');
       document.getElementById('cinemaDetail')?.classList.add('open');
       return;
