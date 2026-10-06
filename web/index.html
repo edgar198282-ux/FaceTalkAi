@@ -1609,17 +1609,6 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
       <button class="ctrl playerCircleCtrl" onclick="toggleFullscreen()" title="На весь экран"><span class="playerCtrlIcon">⛶</span><small>Экран</small></button>
       <button class="ctrl playerCircleCtrl tvChannelCtrl" onclick="playNext()" title="Следующий канал"><span class="playerCtrlIcon">|▶</span><small>След. канал</small></button>
     </div>
-    <div class="playerUtilityControls cinemaTrackControls" id="cinemaTrackControls">
-      <button tabindex="0" class="ctrl playerUtilityCtrl" id="cinemaQualityBtn" onclick="openCinemaTrackMenu('quality')">
-        <span class="playerUtilityIcon">4K</span><span><b>Качество</b><small id="cinemaQualityValue">Auto</small></span><span class="playerUtilityArrow">›</span>
-      </button>
-      <button tabindex="0" class="ctrl playerUtilityCtrl" id="cinemaAudioBtn" onclick="openCinemaTrackMenu('audio')">
-        <span class="playerUtilityIcon">♫</span><span><b>Аудио</b><small id="cinemaAudioValue">Auto</small></span><span class="playerUtilityArrow">›</span>
-      </button>
-      <button tabindex="0" class="ctrl playerUtilityCtrl" id="cinemaSubtitleBtn" onclick="openCinemaTrackMenu('subtitles')">
-        <span class="playerUtilityIcon">CC</span><span><b>Субтитры</b><small id="cinemaSubtitleValue">Выкл.</small></span><span class="playerUtilityArrow">›</span>
-      </button>
-    </div>
     <div id="playerError" style="color:#ff7680;text-align:center;font-size:13px;margin-top:10px"></div>
   </div>
 </div>
@@ -5496,7 +5485,9 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   // sports/HD/FHD/4K alike). The current player remains visible until Media3
   // renders a real frame, so failed native attempts never create a blank screen.
   const teamTvFast=tvIsTeamCloudChannel(ch);
-  const nativeRace=!!(!cinemaPlayback&&tvNativeRaceEligible(ch,src)&&window.AbajNative&&typeof AbajNative.nativeProbeStart==='function');
+  const isCinemaStream=String(ch.id||'').startsWith('cinema:')||
+    !!(cinemaExternalChannel&&String(cinemaExternalChannel.id||'')===String(ch.id||''));
+  const nativeRace=!!(!isCinemaStream&&tvNativeRaceEligible(ch,src)&&window.AbajNative&&typeof AbajNative.nativeProbeStart==='function');
   if(nativeRace){
     nativeMedia3FirstFrameHandler=(elapsed,hasAudio)=>{
       if(attemptToken!==streamAttemptToken||!current||current.id!==ch.id)return;
@@ -6450,7 +6441,6 @@ function playerControlRows(){
   const seek=document.getElementById('playerSeekRange');
   if(seek&&seek.offsetParent!==null)rows.push([seek]);
   rows.push(visible('#playerView .playerPrimaryControls'));
-  rows.push(visible('#playerView .playerUtilityControls'));
   return rows.filter(r=>r.length);
 }
 function focusPlayerControlSpatial(direction){
@@ -6763,42 +6753,6 @@ function tvNativeRemote(action){
     }
     if(action==='left'||action==='right'||action==='up'||action==='down'){
       showTvPlayerUi(true);
-
-      if(isCinemaPlaybackOpen()){
-        const active=document.activeElement;
-        const primary=active&&active.closest?active.closest('.playerPrimaryControls .ctrl'):null;
-        const utility=active&&active.closest?active.closest('.playerUtilityControls .ctrl'):null;
-
-        if(action==='down'&&primary){
-          const target=document.getElementById('cinemaQualityBtn');
-          if(target){
-            try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
-            rememberPlayerControl(target);
-            return;
-          }
-        }
-
-        if(action==='up'&&utility){
-          const target=document.getElementById('playerPlayPause')||document.querySelector('.playerPrimaryControls .ctrl');
-          if(target){
-            try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
-            rememberPlayerControl(target);
-            return;
-          }
-        }
-
-        if(utility&&(action==='left'||action==='right')){
-          const ids=['cinemaQualityBtn','cinemaAudioBtn','cinemaSubtitleBtn'];
-          const i=Math.max(0,ids.indexOf(utility.id));
-          const j=action==='right'?Math.min(ids.length-1,i+1):Math.max(0,i-1);
-          const target=document.getElementById(ids[j]);
-          if(target){
-            try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
-            rememberPlayerControl(target);
-            return;
-          }
-        }
-      }
 
       focusPlayerControlSpatial(action);
       return;
