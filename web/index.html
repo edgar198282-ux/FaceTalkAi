@@ -7656,6 +7656,12 @@ function warmCinemaItemImages(item,high=false){
   warmCinemaImage(posterUrl(item),high);
   warmCinemaImage(cinemaDetailBackdrop(item),high);
 }
+function prefetchKinoPubDetail(item){
+  if(cinemaSource!=='kinopub'||!item?.id)return;
+  loadKinoPubItemDetails(item).then(detail=>{
+    warmCinemaItemImages(detail,true);
+  }).catch(()=>{});
+}
 function primeCinemaPosterNetwork(items){
   const urls=(Array.isArray(items)?items:[]).map(posterUrl).filter(Boolean);
   const origins=[];
@@ -8399,7 +8405,10 @@ function renderCinemaCatalog(items,options={}){
       '<div class="cinemaPosterSub">'+sub.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
       (progress?'<div class="cinemaPosterProgress" title="Просмотрено '+progress+'%"><span style="width:'+progress+'%"></span></div>':'')+
       '</div>';
-    const warm=()=>warmCinemaItemImages(item,true);
+    const warm=()=>{
+      warmCinemaItemImages(item,true);
+      prefetchKinoPubDetail(item);
+    };
     card.addEventListener('pointerenter',warm,{passive:true});
     card.addEventListener('touchstart',warm,{passive:true,once:true});
     card.addEventListener('focus',warm,{passive:true});
@@ -8412,6 +8421,12 @@ function renderCinemaCatalog(items,options={}){
     };
     grid.appendChild(card);
   });
+  if(cinemaSource==='kinopub'){
+    const prefetchRows=rows.slice(0,nativeTv?6:4);
+    const runPrefetch=()=>prefetchRows.forEach((item,index)=>setTimeout(()=>prefetchKinoPubDetail(item),index*140));
+    if('requestIdleCallback' in window)requestIdleCallback(runPrefetch,{timeout:1200});
+    else setTimeout(runPrefetch,350);
+  }
   if(nativeTv&&cinemaFocusFirstPosterOnRender){
     cinemaFocusFirstPosterOnRender=false;
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
