@@ -7292,7 +7292,7 @@ function primeCinemaPosterNetwork(items){
     link.crossOrigin='anonymous';
     document.head.appendChild(link);
   }
-  urls.slice(0,8).forEach(url=>{
+  urls.slice(0,(nativeTv?12:8)).forEach(url=>{
     if(cinemaPosterPreloaded.has(url))return;
     cinemaPosterPreloaded.add(url);
     const link=document.createElement('link');
@@ -7302,7 +7302,7 @@ function primeCinemaPosterNetwork(items){
     link.fetchPriority='high';
     document.head.appendChild(link);
   });
-  (Array.isArray(items)?items:[]).slice(0,18).forEach((item,index)=>warmCinemaItemImages(item,index<10));
+  (Array.isArray(items)?items:[]).slice(0,(nativeTv?24:18)).forEach((item,index)=>warmCinemaItemImages(item,index<(nativeTv?14:10)));
 }
 function setCinemaBackgrounds(currentItems){
   const current=(Array.isArray(currentItems)?currentItems:[]);
@@ -9729,6 +9729,33 @@ function cinemaDetailBackdrop(item){
 function cinemaDetailPoster(item){
   return cinemaDetailText(item,'poster','image','image_url')||posterUrl(item)||'';
 }
+let cinemaHeroLoadToken=0;
+function applyCinemaHeroImage(hero,poster,bg){
+  if(!hero)return;
+  const token=++cinemaHeroLoadToken;
+  const fallback=String(poster||'').trim();
+  const backdrop=String(bg||'').trim();
+
+  if(fallback){
+    hero.style.backgroundImage='url("'+fallback.replace(/"/g,'%22')+'")';
+    hero.style.backgroundPosition='center 28%';
+    hero.style.backgroundSize='cover';
+  }else{
+    hero.style.backgroundImage='';
+  }
+
+  if(!backdrop)return;
+  if(backdrop===fallback)return;
+
+  const img=new Image();
+  img.decoding='async';
+  try{img.fetchPriority='high'}catch(e){}
+  img.onload=()=>{
+    if(token!==cinemaHeroLoadToken)return;
+    hero.style.backgroundImage='url("'+backdrop.replace(/"/g,'%22')+'")';
+  };
+  img.src=backdrop;
+}
 function cinemaDetailFact(label,value){
   if(!value)return '';
   const esc=x=>String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
@@ -10041,10 +10068,11 @@ function renderCinemaDetail(item){
   const poster=cinemaDetailPoster(item);
   const heroPoster=document.getElementById('cinemaDetailHeroPoster');
   hero.classList.toggle('posterFallback',!bg&&!!poster);
-  hero.style.backgroundImage=bg?'url("'+bg.replace(/"/g,'%22')+'")':'';
+  applyCinemaHeroImage(hero,poster,bg);
   if(poster)hero.style.setProperty('--cinema-detail-poster','url("'+poster.replace(/"/g,'%22')+'")');
   else hero.style.removeProperty('--cinema-detail-poster');
   if(heroPoster){
+    try{heroPoster.fetchPriority='high'}catch(e){}
     heroPoster.src=poster||'';
     heroPoster.style.display=(!bg&&poster)?'block':'none';
   }
