@@ -10673,7 +10673,10 @@ function renderCinemaDetail(item){
   const actions=document.querySelector('#cinemaDetail .cinemaDetailActions');
   if(actions)actions.classList.toggle('hasSeasons',isSeries);
   const mediaHost=document.getElementById('cinemaKpMediaRows');
-  if(mediaHost&&isSeries)mediaHost.style.display='none';
+  if(mediaHost){
+    mediaHost.style.display='none';
+    if(!isSeries)mediaHost.innerHTML='';
+  }
   renderCinemaSimilar(item);
 
   detail.classList.add('open');
