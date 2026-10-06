@@ -12213,5 +12213,41 @@ setInterval(()=>{if(document.hidden)return;const p=document.getElementById('play
   }
 }
 </style>
+
+<style id="mobile-header-unify-fix">
+@media (max-width:700px){
+  body:not(.nativeTv) #mobileHeaderMenuBtn{
+    display:none!important;
+  }
+  body:not(.nativeTv) .icons{
+    gap:6px!important;
+    align-items:center!important;
+  }
+  body:not(.nativeTv) #cinemaToggleBtn,
+  body:not(.nativeTv) #refreshBtn,
+  body:not(.nativeTv) #tvSettingsBtn{
+    width:40px!important;
+    height:40px!important;
+    min-width:40px!important;
+    min-height:40px!important;
+    padding:0!important;
+    border-radius:12px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    box-sizing:border-box!important;
+    font-size:19px!important;
+  }
+  body:not(.nativeTv) #cinemaToggleBtn #cinemaToggleIcon{
+    width:100%!important;
+    height:100%!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    font-size:20px!important;
+    line-height:1!important;
+  }
+}
+</style>
 </body>
 </html>
