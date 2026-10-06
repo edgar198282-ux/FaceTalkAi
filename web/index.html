@@ -7127,26 +7127,47 @@ function syncMobileLandscapePlayerUi(){
   const v=document.getElementById('video');
   const player=document.getElementById('playerView');
   if(!v||!player)return;
-  const landscape=window.matchMedia&&window.matchMedia('(orientation: landscape)').matches&&window.innerHeight<=520;
+
   const active=player.classList.contains('open');
-  const useLandscapeUi=!!(landscape&&active);
+  const isTvPlayback=active&&!player.classList.contains('cinemaPlayback');
+  const landscape=(window.matchMedia&&window.matchMedia('(orientation: landscape)').matches)||(window.innerWidth>window.innerHeight);
+  const useLandscapeUi=!!(isTvPlayback&&landscape);
+
   if(player.classList.contains('pureFullscreen')){
     v.controls=false;
     try{v.removeAttribute('controls')}catch(e){}
     return;
   }
 
-  // Mobile always uses ABAJ TV controls. Native browser/video controls can
-  // enter their own fullscreen and hide our interface, so keep them disabled.
   v.controls=false;
   try{v.removeAttribute('controls')}catch(e){}
+
   if(useLandscapeUi){
     setAppFullscreen(true);
+    document.body.classList.add('mobileLandscapePlayer');
+    try{
+      if(!document.fullscreenElement&&!document.webkitFullscreenElement){
+        if(player.requestFullscreen){
+          const p=player.requestFullscreen();
+          if(p&&typeof p.catch==='function')p.catch(()=>{});
+        }else if(player.webkitRequestFullscreen){
+          player.webkitRequestFullscreen();
+        }
+      }
+    }catch(e){}
   }else{
+    document.body.classList.remove('mobileLandscapePlayer');
     player.classList.remove('videoFill');
     if(active&&player.classList.contains('appFullscreen'))setAppFullscreen(false);
+    try{
+      if(document.fullscreenElement&&document.fullscreenElement===player){
+        const p=document.exitFullscreen();
+        if(p&&typeof p.catch==='function')p.catch(()=>{});
+      }else if(document.webkitFullscreenElement===player&&document.webkitExitFullscreen){
+        document.webkitExitFullscreen();
+      }
+    }catch(e){}
   }
-  document.body.classList.toggle('mobileLandscapePlayer',useLandscapeUi);
 }
 window.addEventListener('resize',()=>setTimeout(syncMobileLandscapePlayerUi,60),{passive:true});
 window.addEventListener('orientationchange',()=>setTimeout(syncMobileLandscapePlayerUi,180),{passive:true});
@@ -11867,11 +11888,7 @@ if(nativeTv){
   setInterval(sendNativeHeartbeat,2000);
 }
 function syncPlayerFullscreenToOrientation(){
-  if(nativeTv)return;
-  const player=document.getElementById('playerView');
-  if(!player||!player.classList.contains('open'))return;
-  const landscape=window.innerWidth>window.innerHeight;
-  setAppFullscreen(landscape);
+  syncMobileLandscapePlayerUi();
 }
 window.addEventListener('orientationchange',()=>setTimeout(syncPlayerFullscreenToOrientation,180),{passive:true});
 window.addEventListener('resize',()=>{
