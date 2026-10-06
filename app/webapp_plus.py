@@ -188,6 +188,29 @@ def _kinopub_poster(item):
                     return url.strip()
     return ''
 
+def _kinopub_backdrop(item):
+    for key in ('backdrop','background','fanart','poster_wide','wide_poster'):
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    for key in ('posters','images','backgrounds','backdrops'):
+        value = item.get(key)
+        if isinstance(value, dict):
+            for name in ('wide','backdrop','background','fanart','full','big'):
+                url = value.get(name)
+                if isinstance(url, str) and url.strip():
+                    return url.strip()
+        elif isinstance(value, list):
+            for row in value:
+                if isinstance(row, str) and row.strip():
+                    return row.strip()
+                if isinstance(row, dict):
+                    for name in ('url','src','wide','backdrop','full','big'):
+                        url = row.get(name)
+                        if isinstance(url, str) and url.strip():
+                            return url.strip()
+    return ''
+
 def _kinopub_kind(item):
     raw = ' '.join(str(item.get(k) or '') for k in ('type','subtype')).lower()
     return 'series' if any(x in raw for x in ('serial','series','tv')) else 'movies'
@@ -217,6 +240,7 @@ def _kinopub_normalize(item):
         'original_title': str(item.get('original_title') or ''),
         'year': item.get('year') or '',
         'poster': _kinopub_poster(item),
+        'backdrop': _kinopub_backdrop(item),
         'description': str(item.get('plot') or item.get('description') or ''),
         'rating': item.get('imdb_rating') or item.get('rating') or '',
         'kp': item.get('kinopoisk_rating') or item.get('kp_rating') or '',
@@ -633,7 +657,7 @@ async def api_kinopub_item(request):
         'item':normalized_item,
         'media_rows':rows,
         'related':related[:24],
-    },headers={'Cache-Control':'no-store'})
+    },headers={'Cache-Control':'private, max-age=300'})
 
 async def api_kinopub_play(request):
     user = await _user_from_request(request)
