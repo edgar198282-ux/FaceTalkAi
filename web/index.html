@@ -2206,23 +2206,33 @@ function autoConnectInstalledKinoPub(){
   }
   return cinemaSource==='kinopub';
 }
-function refreshKinoPubAdminStatus(){
+async function refreshKinoPubAdminStatus(){
   const st=document.getElementById('kinoPubAdminStatus');
   const meta=document.getElementById('kinoPubAdminMeta');
-  const info=getKinoPubInfo();
-  const disabled=kinoPubExplicitlyDisabled();
-  const bridgeMissing=!!info.needs_app_update;
-  const active=info.installed&&!disabled&&cinemaSource==='kinopub';
-  if(st){
-    st.textContent=bridgeMissing?'Обновите Abaj TV':(active?'Подключено автоматически':(info.installed?(disabled?'Отключено':'Установлено'):'Не найдено'));
-    st.style.color=bridgeMissing?'#c28a13':(active?'#16865b':(info.installed?(disabled?'#6f8798':'#0b5f9e'):'#a33'));
-  }
-  if(meta){
-    meta.textContent=bridgeMissing
-      ?'Эта версия Abaj TV ещё не умеет проверять источник кино. Установите последнее обновление Abaj TV.'
-      :(info.installed
-        ?((info.version||'')+(active?'Источник найден на устройстве и используется в разделе «Кино».':(disabled?'Источник отключён вручную и сам не подключится.':'Источник найден на устройстве.')))
-        :'Источник кино не найден на этом устройстве.');
+  if(st){st.textContent='Проверка…';st.style.color='#6f8798'}
+  try{
+    const r=await fetch('/api/kinopub/status',{headers:authHeaders(),cache:'no-store'});
+    const d=r.ok?await r.json():null;
+    if(d&&d.authenticated){
+      if(st){st.textContent='Подключено';st.style.color='#16865b'}
+      if(meta)meta.textContent='Аккаунт KinoPub привязан к Abaj TV. Подключение проверено на сервере.';
+      return;
+    }
+    if(d&&d.revoked){
+      if(st){st.textContent='Устройство удалено';st.style.color='#c24848'}
+      if(meta)meta.textContent='Устройство удалено в KinoPub. Нажмите «Подключить», чтобы привязать его заново.';
+      return;
+    }
+    if(d&&d.pending){
+      if(st){st.textContent='Ожидает подтверждения';st.style.color='#c28a13'}
+      if(meta)meta.textContent='Код: '+String(d.user_code||'')+'. Подтвердите устройство в KinoPub.';
+      return;
+    }
+    if(st){st.textContent='Не подключено';st.style.color='#a33'}
+    if(meta)meta.textContent='Нажмите «Подключить», затем подтвердите устройство в KinoPub.';
+  }catch(e){
+    if(st){st.textContent='Ошибка проверки';st.style.color='#a33'}
+    if(meta)meta.textContent='Не удалось проверить подключение KinoPub.';
   }
 }
 function openKinoPubFromAdmin(){
@@ -2231,27 +2241,65 @@ function openKinoPubFromAdmin(){
   }catch(e){}
 }
 async function connectKinoPubFromAdmin(){
-  const info=getKinoPubInfo();
-  if(info.needs_app_update){
-    try{location.href='facetalk://check-update'}catch(e){}
-    refreshKinoPubAdminStatus();
-    return;
+  const st=document.getElementById('kinoPubAdminStatus');
+  const meta=document.getElementById('kinoPubAdminMeta');
+  try{
+    if(st){st.textContent='Подключение…';st.style.color='#c28a13'}
+    const r=await fetch('/api/kinopub/auth/start',{
+      method:'POST',
+      headers:authHeaders(),
+      cache:'no-store'
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok)throw new Error(d.error||'auth_start_failed');
+
+    const code=String(d.user_code||'');
+    const uri=String(d.verification_uri||'https://kino.pub/device');
+    if(meta)meta.textContent='Код: '+code+'. Откройте KinoPub и подтвердите устройство.';
+
+    try{
+      if(window.AbajNative&&typeof AbajNative.openUrl==='function')AbajNative.openUrl(uri);
+      else window.open(uri,'_blank','noopener');
+    }catch(e){}
+
+    const interval=Math.max(2,Number(d.interval||5))*1000;
+    const deadline=Number(d.expires_at||0)*1000;
+    while(Date.now()<(deadline||Date.now()+600000)){
+      await new Promise(resolve=>setTimeout(resolve,interval));
+      const p=await fetch('/api/kinopub/auth/poll',{
+        method:'POST',
+        headers:authHeaders(),
+        cache:'no-store'
+      });
+      const pd=await p.json().catch(()=>({}));
+      if(pd&&pd.authenticated){
+        localStorage.removeItem('abaj_kinopub_disabled');
+        cinemaSource='kinopub';
+        localStorage.setItem('abaj_cinema_source','kinopub');
+        await saveGlobalCinemaSource('kinopub');
+        cinemaLoaded=false;
+        cinemaDetailMovie=null;
+        cinemaSourcePickerMovie=null;
+        closeCinemaSourcePicker(false);
+        syncCinemaSourceUi();
+        await refreshKinoPubAdminStatus();
+        if(cinemaMode)loadCinemaCatalog(true);
+        return;
+      }
+      if(pd&&pd.expired)break;
+      if(!p.ok&&!pd.pending)throw new Error(pd.error||'auth_poll_failed');
+    }
+    if(st){st.textContent='Код истёк';st.style.color='#a33'}
+    if(meta)meta.textContent='Код авторизации истёк. Нажмите «Подключить» ещё раз.';
+  }catch(e){
+    if(st){st.textContent='Не подключено';st.style.color='#a33'}
+    if(meta)meta.textContent='Не удалось подключить KinoPub. Нажмите «Подключить» и повторите подтверждение.';
   }
-  if(!info.installed){refreshKinoPubAdminStatus();return}
-  localStorage.removeItem('abaj_kinopub_disabled');
-  cinemaSource='kinopub';
-  localStorage.setItem('abaj_cinema_source','kinopub');
-  await saveGlobalCinemaSource('kinopub');
-  cinemaLoaded=false;
-  cinemaDetailMovie=null;
-  cinemaSourcePickerMovie=null;
-  closeCinemaSourcePicker(false);
-  refreshLazyMediaAdminStatus();
-  refreshKinoPubAdminStatus();
-  syncCinemaSourceUi();
-  if(cinemaMode)loadCinemaCatalog(true);
 }
 async function disconnectKinoPubFromAdmin(){
+  try{
+    await fetch('/api/kinopub/disconnect',{method:'POST',headers:authHeaders(),cache:'no-store'});
+  }catch(e){}
   localStorage.setItem('abaj_kinopub_disabled','1');
   cinemaSource='none';
   localStorage.setItem('abaj_cinema_source','none');
@@ -2259,7 +2307,7 @@ async function disconnectKinoPubFromAdmin(){
   cinemaLoaded=false;
   try{localStorage.removeItem(cinemaCacheKey())}catch(e){}
   refreshLazyMediaAdminStatus();
-  refreshKinoPubAdminStatus();
+  await refreshKinoPubAdminStatus();
   if(cinemaMode)loadCinemaCatalog(true);
 }
 async function kinoPubCatalogAsync(query='',opts={}){
