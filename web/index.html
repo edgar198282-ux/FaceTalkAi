@@ -10480,8 +10480,9 @@ function renderCinemaDetail(item){
   if(sourceBadge)badgeList.push(sourceBadge);
   const rowsForBadges=cinemaSeasonRows(item);
   const mediaForBadges=cinemaSelectedKinoMedia||rowsForBadges[0]?.items?.[0]||null;
-  const q=cinemaPublicText(cinemaDetailText(item,'quality'))||
+  let q=cinemaPublicText(cinemaDetailText(item,'quality'))||
     (Array.isArray(mediaForBadges?.files)&&mediaForBadges.files.length?'1080p–2160p':'');
+  if(/^\d{3,4}$/i.test(String(q||'').trim()))q=String(q).trim()+'p';
   if(q)badgeList.push(q);
   const audio=cinemaPublicText(cinemaDetailText(item,'audio','sound'))||
     (Array.isArray(mediaForBadges?.audios)&&mediaForBadges.audios.length?'AC3':'');
