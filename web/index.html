@@ -5358,6 +5358,18 @@ function handleAppBack(){
   if(cinemaTrackMenuOpen()){closeCinemaTrackMenu();return true}
   const player=document.getElementById('playerView');
   if(player&&player.classList.contains('open')){closePlayer();return true}
+  if(cinemaSourcePickerOpen()){closeCinemaSourcePicker(true);return true}
+  if(cinemaSeasonsOpen()){
+    if(cinemaSeasonsEpisodeMode){openCinemaSeasons();return true}
+    closeCinemaSeasons();
+    return true;
+  }
+  if(cinemaDetailOpen()){closeCinemaDetail();return true}
+  if(cinemaCategoryMenuOpen()){toggleCinemaCategoryMenu();return true}
+  if(cinemaMode){
+    if(!cinemaSideMenuOpen())toggleCinemaSideMenu();
+    return true;
+  }
   if(tvSettingPickerOpen()){closeTvSettingPicker(false);return true}
   if(tvSettingsOpen()){closeTvSettings();return true}
   const admin=document.getElementById('adminPanel');
