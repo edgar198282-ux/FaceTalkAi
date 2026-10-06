@@ -1029,8 +1029,7 @@ async def api_kinopub_section(request):
     shortcut = ''
     if section in ('fresh','popular','hot'):
         shortcut = section
-        api_type = str(request.query.get('type') or 'movie').strip().lower()
-        if api_type == 'series': api_type='serial'
+        api_type = requested_type or 'movie'
         params={'type':api_type,'page':page,'perpage':perpage}
         path=f'/v1/items/{shortcut}'
     elif section == 'cartoons':
