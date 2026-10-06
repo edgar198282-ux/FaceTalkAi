@@ -6898,17 +6898,25 @@ function writeCinemaCache(items){
   try{localStorage.setItem(cinemaCacheKey(),JSON.stringify({ts:Date.now(),items:(items||[]).slice(0,80)}))}catch(e){}
 }
 function cinemaItemLooksSeries(item){
-  const t=(String(item?.type||'')+' '+String(item?.kind||'')+' '+String(item?.content_type||'')+' '+String(item?.subtitle||'')).toLowerCase();
-  if(/(сериал|series|serial|tv[\s_-]*series)/i.test(t))return true;
+  const kind=String(item?.kind||'').toLowerCase();
+  const type=String(item?.type||item?.content_type||'').toLowerCase();
+  if(/^(movies?|movie|film)$/.test(kind)||/^(movies?|movie|film)$/.test(type))return false;
+  if(/(series|serial|tv[\s_-]*series)/i.test(kind+' '+type))return true;
 
   const rows=Array.isArray(item?.media_rows)?item.media_rows:[];
-  if(rows.length>1)return true;
+  if(rows.length>1){
+    const seasonal=rows.filter(row=>{
+      const season=Number(row?.season||0);
+      const title=String(row?.title||'').toLowerCase();
+      return season>0||/(season|сезон)/i.test(title);
+    });
+    if(seasonal.length>1)return true;
+  }
   if(rows.length===1){
     const row=rows[0]||{};
+    const season=Number(row?.season||0);
     const rowTitle=String(row?.title||'').toLowerCase();
-    if(row?.season!=null||/(season|сезон)/i.test(rowTitle))return true;
-    const items=Array.isArray(row?.items)?row.items:[];
-    if(items.some(x=>x?.season!=null))return true;
+    if(season>0||/(season|сезон)/i.test(rowTitle))return true;
   }
   return false;
 }
@@ -9442,6 +9450,9 @@ function cinemaSeasonRows(item){
     .filter(row=>row.items.length);
 }
 function closeCinemaSeasons(){
+  if(!cinemaHistoryPop&&history.state&&history.state.abajCinemaLayer==='seasons'){
+    try{history.back();return}catch(e){}
+  }
   const screen=document.getElementById('cinemaSeasons');
   if(screen)screen.classList.remove('open');
   const detail=document.getElementById('cinemaDetail');
@@ -9481,6 +9492,7 @@ function openCinemaSeasons(){
   const item=cinemaDetailMovie;
   const rows=cinemaSeasonRows(item);
   if(!rows.length)return;
+  pushCinemaHistoryLayer('seasons');
   const screen=document.getElementById('cinemaSeasons');
   const list=document.getElementById('cinemaSeasonsList');
   const title=document.getElementById('cinemaSeasonsTitle');
@@ -9649,15 +9661,10 @@ function renderCinemaDetail(item){
   });
 }
 function closeCinemaDetail(){
-  const detail=document.getElementById('cinemaDetail');
-  if(detail)detail.classList.remove('open');
-  const screen=document.getElementById('cinemaScreen');
-  if(screen&&cinemaMode)screen.style.display='block';
-  setTimeout(()=>{
-    const cards=[...document.querySelectorAll('.cinemaPosterCard')];
-    const target=cards.find(card=>card.dataset&&card.dataset.cinemaSelected==='1')||cards[0];
-    if(target)target.focus();
-  },20);
+  if(!cinemaHistoryPop&&history.state&&history.state.abajCinemaLayer==='detail'){
+    try{history.back();return}catch(e){}
+  }
+  closeCinemaDetailInternal();
 }
 async function resolveKinoPubInternalStream(item,media=null){
   const direct=String(media?.url||item?.url||item?.stream||item?.stream_url||'').trim();
@@ -9923,8 +9930,45 @@ async function enrichCinemaMovie(item){
 
   return best;
 }
+let cinemaHistoryPop=false;
+function pushCinemaHistoryLayer(layer){
+  if(cinemaHistoryPop)return;
+  try{
+    if(history.state&&history.state.abajCinemaLayer===layer)return;
+    history.pushState({...((history.state&&typeof history.state==='object')?history.state:{}),abajCinemaLayer:layer},'');
+  }catch(e){}
+}
+function closeCinemaDetailInternal(){
+  const detail=document.getElementById('cinemaDetail');
+  if(detail)detail.classList.remove('open');
+  const screen=document.getElementById('cinemaScreen');
+  if(screen&&cinemaMode)screen.style.display='block';
+  setTimeout(()=>{
+    const cards=[...document.querySelectorAll('.cinemaPosterCard')];
+    const target=cards.find(card=>card.dataset&&card.dataset.cinemaSelected==='1')||cards[0];
+    if(target)target.focus();
+  },20);
+}
+window.addEventListener('popstate',()=>{
+  cinemaHistoryPop=true;
+  try{
+    const seasons=document.getElementById('cinemaSeasons');
+    if(seasons&&seasons.classList.contains('open')){
+      seasons.classList.remove('open');
+      document.getElementById('cinemaDetail')?.classList.add('open');
+      return;
+    }
+    if(cinemaDetailOpen()){
+      closeCinemaDetailInternal();
+      return;
+    }
+  }finally{
+    setTimeout(()=>{cinemaHistoryPop=false},0);
+  }
+});
 async function openCinemaMovie(item){
   if(!item)return;
+  pushCinemaHistoryLayer('detail');
   cinemaSelectedKinoMedia=null;
   renderCinemaDetail(item);
   const openedId=String(item?.id||item?.intent||'');
