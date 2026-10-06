@@ -6489,6 +6489,22 @@ async function loadCinemaResume(itemId,mediaId,fallback=0){
     return Number.isFinite(p)&&p>0?p:base;
   }catch(e){return base}
 }
+async function refreshCinemaDetailResume(item,media){
+  if(!item?.id)return;
+  const mediaId=kinoMediaId(media);
+  const resume=await loadCinemaResume(String(item.id),mediaId,0);
+  if(!(resume>5))return;
+  const detail=document.getElementById('cinemaDetail');
+  if(!detail||!detail.classList.contains('open'))return;
+  const currentId=String(cinemaDetailMovie?.id||'');
+  if(currentId!==String(item.id))return;
+  const btn=document.getElementById('cinemaDetailWatch');
+  if(!btn)return;
+  const label=fmtPlaybackClock(resume);
+  btn.textContent=appLang==='hy'
+    ?('ՇԱՐՈՒՆԱԿԵԼ '+label)
+    :(appLang==='en'?('CONTINUE '+label):('ПРОДОЛЖИТЬ '+label));
+}
 async function saveCinemaProgress(force=false){
   if(!current||!String(current.id||'').startsWith('cinema:external:')||!current.cinemaItemId)return;
   const now=Date.now();
@@ -6515,6 +6531,8 @@ async function saveCinemaProgress(force=false){
       body:JSON.stringify({
         item_id:String(current.cinemaItemId||''),
         media_id:String(current.cinemaMediaId||''),
+        season:current.cinemaSeason??null,
+        episode:current.cinemaEpisode??null,
         position:pos,
         duration:dur
       }),
@@ -9779,6 +9797,8 @@ window.__abajOpenExternalMedia=function(url,title,provider='',headers={},fallbac
     cinemaTriedUrls:[raw],
     cinemaItemId:String(cinemaMeta?.item_id||''),
     cinemaMediaId:String(cinemaMeta?.media_id||''),
+    cinemaSeason:cinemaMeta?.season??null,
+    cinemaEpisode:cinemaMeta?.episode??null,
     cinemaResume:Number(cinemaMeta?.resume||0),
     cinemaResumeApplied:false,
     cinemaProgressSavedAt:0
@@ -10560,6 +10580,7 @@ function renderCinemaDetail(item){
     watchBtn.textContent=isSeries
       ?(watchPrefix+(cinemaSelectedKinoMedia?kinoMediaLabel(cinemaSelectedKinoMedia,0):'S1E1'))
       :cinemaT().watchMovie;
+    refreshCinemaDetailResume(item,cinemaSelectedKinoMedia);
   }
   if(seasonsBtn)seasonsBtn.style.display=isSeries?'inline-flex':'none';
   const actions=document.querySelector('#cinemaDetail .cinemaDetailActions');
@@ -10639,7 +10660,13 @@ async function watchCinemaDetail(){
         'KINOPUB',
         resolved.headers||{},
         [],
-        {item_id:String(item.id||''),media_id:kinoMediaId(media),resume}
+        {
+          item_id:String(item.id||''),
+          media_id:kinoMediaId(media),
+          season:media?.season??null,
+          episode:media?.number??null,
+          resume
+        }
       );
       return;
     }
