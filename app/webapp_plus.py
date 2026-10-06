@@ -740,13 +740,15 @@ async def api_cinema_progress(request):
     next_rows = []
     for row in watching:
         if str(row.get('id') or '').strip() == item_id:
-            if completed:
+            row = dict(row)
+            is_series = str(row.get('kind') or '').lower() in ('series','serial')
+            if completed and not is_series:
                 changed = True
                 continue
-            row = dict(row)
             row['position'] = data['position']
             row['duration'] = data['duration']
             row['media_id'] = media_id
+            row['completed_media_id'] = media_id if completed else ''
             row['updated_at'] = data['updated_at']
             changed = True
         next_rows.append(row)
@@ -777,6 +779,9 @@ async def api_cinema_library_bookmark(request):
         return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
     body = await request.json()
     item = body.get('item') if isinstance(body,dict) else None
+    media_id = str(body.get('media_id') or '').strip() if isinstance(body,dict) else ''
+    season = body.get('season') if isinstance(body,dict) else None
+    episode = body.get('episode') if isinstance(body,dict) else None
     if not isinstance(item,dict):
         return web.json_response({'ok':False,'error':'bad_item'}, status=400)
     item_id = str(item.get('id') or '').strip()
@@ -815,6 +820,12 @@ async def api_cinema_library_watch(request):
     key = item_id or title.casefold()
     compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
     compact['watched_at'] = int(time.time())
+    if media_id:
+        compact['media_id'] = media_id
+    if season is not None:
+        compact['season'] = season
+    if episode is not None:
+        compact['episode'] = episode
     for section, limit in (('history',200),('watching',100)):
         rows = await _cinema_library_read(uid, section)
         rows = [x for x in rows if (str(x.get('id') or '').strip() or str(x.get('title') or '').strip().casefold()) != key]
