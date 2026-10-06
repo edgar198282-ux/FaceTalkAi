@@ -951,10 +951,19 @@ body.cinemaMode .top{display:none!important}
   outline:none;box-shadow:0 0 0 3px #31a8ff;background:#12324b
 }
 .cinemaShellTitle{
-  flex:0 1 auto;min-width:0;color:#d7d7d7;font-size:22px;font-weight:500;
+  flex:0 1 auto;min-width:0;color:#d7d7d7;font-size:17px;font-weight:650;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 }
-.cinemaShellDrop{font-size:16px;color:#e8e8e8;margin-left:-4px;width:34px!important;min-width:34px!important}
+.cinemaShellDrop{font-size:14px;color:#e8e8e8;margin-left:-5px;width:28px!important;min-width:28px!important}
+.cinemaShellBrandAnim{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:center;margin-left:2px;
+  font-size:17px;font-weight:950;line-height:1;white-space:nowrap;letter-spacing:-.35px
+}
+.cinemaShellBrandAnim .titleWord{gap:0}
+.cinemaShellBrandAnim .titleWord+ .titleWord{margin-left:5px}
+.cinemaShellBrandAnim .titleWord>span{
+  filter:drop-shadow(0 0 3px rgba(255,255,255,.9)) drop-shadow(0 0 7px rgba(0,225,255,.75)) drop-shadow(0 0 10px rgba(255,70,215,.64))
+}
 .cinemaShellSpacer{flex:1}
 .cinemaShellActions{display:flex;align-items:center;gap:8px}
 .cinemaKpNav{display:none!important}
@@ -964,8 +973,9 @@ body.cinemaMode .top{display:none!important}
 @media(max-width:430px){
   .cinemaShellBar{height:56px;padding:0 12px;gap:7px}
   #cinemaMenuBtn{width:34px;height:34px;min-width:34px;font-size:22px;border-radius:8px}
-  .cinemaShellTitle{font-size:19px}
-  .cinemaShellDrop{width:28px!important;min-width:28px!important;font-size:14px}
+  .cinemaShellTitle{font-size:15px;max-width:118px}
+  .cinemaShellDrop{width:24px!important;min-width:24px!important;font-size:13px}
+  .cinemaShellBrandAnim{font-size:15px;margin-left:0}
   .cinemaShellCategory{top:56px;left:54px;width:218px;padding:3px 0}
   .cinemaCategoryItem{min-height:38px;padding:7px 11px;font-size:14px}
 }
@@ -1089,8 +1099,9 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 @media(max-width:760px){
   .cinemaShellBar{height:60px;padding:0 12px;gap:6px}
   .cinemaShellBtn{width:42px;height:42px;min-width:42px;font-size:25px}
-  .cinemaShellTitle{min-width:0;font-size:21px;flex:0 1 auto}
-  .cinemaShellDrop{font-size:14px;margin-left:0}
+  .cinemaShellTitle{min-width:0;font-size:17px;flex:0 1 auto}
+  .cinemaShellDrop{font-size:13px;margin-left:-3px}
+  .cinemaShellBrandAnim{font-size:17px}
   .cinemaShellBody{padding:10px 10px 72px}
   .cinemaPosterGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px 10px!important}
   .cinemaPosterTitle{font-size:13px!important}.cinemaPosterSub{font-size:10px!important}
@@ -1421,6 +1432,7 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
       <button class="cinemaShellBtn" id="cinemaMenuBtn" onclick="toggleCinemaSideMenu()" aria-label="Меню">☰</button>
       <div class="cinemaShellTitle" id="cinemaShellTitle">ФИЛЬМЫ НОВИНКИ</div>
       <button class="cinemaShellBtn cinemaShellDrop" id="cinemaCategoryBtn" onclick="toggleCinemaCategoryMenu()" aria-label="Категория">▾</button>
+      <div class="cinemaShellBrandAnim" aria-label="ABAJ TV"><span class="titleWord"><span>A</span><span>B</span><span>A</span><span>J</span></span><span class="titleWord"><span>T</span><span>V</span></span></div>
       <div class="cinemaShellSpacer"></div>
       <div class="cinemaShellActions">
         <div class="cinemaKpNav" id="cinemaKpNav">
