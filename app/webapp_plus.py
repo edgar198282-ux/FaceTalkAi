@@ -721,6 +721,66 @@ async def api_kinopub_play(request):
 
     return web.json_response({'ok':False,'error':'kinopub_stream_not_found'}, status=404)
 
+async def api_kinopub_download(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    if not await _cinema_playback_allowed(uid):
+        return web.json_response({'ok':False,'error':'subscription_required'}, status=403)
+    token = await _kinopub_access_token(uid)
+    if not token:
+        return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
+
+    item_id = str(request.query.get('id') or '').strip()
+    media_id = str(request.query.get('mid') or '').strip()
+    if not item_id and not media_id:
+        return web.json_response({'ok':False,'error':'missing_item_id'}, status=400)
+
+    file_token = ''
+    if media_id:
+        status, media = await _kinopub_api('GET','/v1/items/media-links',params={
+            'access_token':token,'mid':media_id
+        })
+        if status < 400:
+            file_token = _kinopub_first_file_token(media)
+
+    if not file_token and item_id:
+        status, item_payload = await _kinopub_api('GET','/v1/items/' + item_id, params={
+            'access_token':token
+        })
+        if status >= 400:
+            return web.json_response({'ok':False,'error':'kinopub_item_failed','status':status}, status=502)
+        item = item_payload.get('item') if isinstance(item_payload,dict) and isinstance(item_payload.get('item'),dict) else item_payload
+        file_token = _kinopub_first_file_token(item)
+        if not file_token:
+            resolved_mid = _kinopub_first_media_id(item)
+            if resolved_mid:
+                status, media = await _kinopub_api('GET','/v1/items/media-links',params={
+                    'access_token':token,'mid':resolved_mid
+                })
+                if status < 400:
+                    file_token = _kinopub_first_file_token(media)
+
+    if not file_token:
+        return web.json_response({'ok':False,'error':'kinopub_download_not_found'}, status=404)
+
+    status, video = await _kinopub_api('GET','/v1/items/media-video-link',params={
+        'access_token':token,'file':file_token,'type':'http'
+    })
+    if status >= 400:
+        return web.json_response({'ok':False,'error':'kinopub_download_failed','status':status}, status=502)
+    direct = _kinopub_stream_from_obj(video)
+    if not direct or not direct.startswith(('http://','https://')):
+        return web.json_response({'ok':False,'error':'kinopub_download_not_found'}, status=404)
+
+    return web.json_response({
+        'ok':True,
+        'url':direct,
+        'provider':'KINOPUB',
+        'download':True,
+    }, headers={'Cache-Control':'no-store'})
+
 async def api_kinopub_overview(request):
     user = await _user_from_request(request)
     if not user:
@@ -3031,7 +3091,7 @@ async def start_webapp(bot):
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/open', api_tv_pair_open); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
-    app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play); app.router.add_get('/api/kinopub/item', api_kinopub_item)
+    app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play); app.router.add_get('/api/kinopub/download', api_kinopub_download); app.router.add_get('/api/kinopub/item', api_kinopub_item)
     app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items); app.router.add_get('/api/cinema/progress', api_cinema_progress); app.router.add_post('/api/cinema/progress', api_cinema_progress)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
