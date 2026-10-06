@@ -7307,7 +7307,14 @@ async function loadMoreKinoPubCatalog(){
     if(kinopubCurrentSectionOptions.type)params.set('type',String(kinopubCurrentSectionOptions.type));
     if(kinopubCurrentSectionOptions.sort)params.set('sort',String(kinopubCurrentSectionOptions.sort));
     const r=await fetch('/api/kinopub/section?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
-    if(r.ok){data=await r.json();rows=Array.isArray(data.items)?data.items:[]}
+    if(r.ok){
+      data=await r.json();
+      rows=Array.isArray(data.items)?data.items:[];
+      if(kinopubCurrentSection==='4k'&&kinopubCurrentSectionOptions.type){
+        const wantSeries=String(kinopubCurrentSectionOptions.type)==='series';
+        rows=rows.filter(item=>wantSeries?cinemaItemLooksSeries(item):!cinemaItemLooksSeries(item));
+      }
+    }
   }catch(e){}
   if(rows.length){
     const seen=new Set(kinopubCatalogItems.map(x=>String(x.id||x.title||'')));
