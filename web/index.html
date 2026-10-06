@@ -11120,10 +11120,32 @@ async function toggleCinemaMode(){
       }
     },120);
   }else{
-    setTimeout(()=>{
-      const btn=document.getElementById('listBtn');
-      if(btn&&nativeTv)btn.focus();
-    },60);
+    cinemaFocusFirstPosterOnRender=false;
+    closeCinemaShellMenus();
+    try{
+      const active=document.activeElement;
+      if(active&&active.closest&&(
+        active.closest('#cinemaScreen')||
+        active.closest('#cinemaDetail')||
+        active.closest('#cinemaSeasons')||
+        active.closest('#cinemaSourceModal')
+      ))active.blur();
+    }catch(e){}
+    if(nativeTv){
+      setTvHeaderCollapsed(true,false);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        const cards=[...document.querySelectorAll('.channel')];
+        if(!cards.length){
+          setTvHeaderCollapsed(false,true);
+          return;
+        }
+        let idx=Math.max(0,Math.min(focusIndex,cards.length-1));
+        const savedId=String(localStorage.getItem('abaj_tv_focus_channel')||'');
+        const savedIndex=savedId?cards.findIndex(x=>String(x.dataset?.id||'')===savedId):-1;
+        if(savedIndex>=0)idx=savedIndex;
+        setTvFocus(idx,true);
+      }));
+    }
   }
 }
 if(cinemaMode){
