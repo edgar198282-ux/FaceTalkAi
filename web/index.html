@@ -7395,6 +7395,7 @@ function syncCinemaTypeUi(){
 }
 let cinemaShellCategory='all';
 let cinemaShellKind=cinemaType==='series'?'series':'movies';
+let cinemaFocusFirstPosterOnRender=false;
 function closeCinemaShellMenus(){
   document.getElementById('cinemaSideMenu')?.classList.remove('open');
   document.getElementById('cinemaCategoryMenu')?.classList.remove('open');
@@ -7444,6 +7445,7 @@ function syncCinemaCategoryLabels(){
   });
 }
 function setCinemaShellCategory(category){
+  if(nativeTv)cinemaFocusFirstPosterOnRender=true;
   cinemaShellCategory=category||'all';
   syncCinemaCategoryLabels();
   document.querySelectorAll('.cinemaCategoryItem').forEach(x=>x.classList.toggle('active',x.dataset.cinemaCategory===cinemaShellCategory));
@@ -7792,6 +7794,7 @@ function cinemaKpNav(action){
   }
 }
 function cinemaSideAction(action){
+  if(nativeTv)cinemaFocusFirstPosterOnRender=true;
   closeCinemaShellMenus();
   document.querySelectorAll('.cinemaMenuItem[data-cinema-main]').forEach(x=>x.classList.toggle('active',x.dataset.cinemaMain===action));
   if(action==='watching'||action==='bookmarks'||action==='history'){
@@ -7985,6 +7988,16 @@ function renderCinemaCatalog(items,options={}){
     };
     grid.appendChild(card);
   });
+  if(nativeTv&&cinemaFocusFirstPosterOnRender){
+    cinemaFocusFirstPosterOnRender=false;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      const first=grid.querySelector('.cinemaPosterCard');
+      if(first){
+        first.dataset.cinemaSelected='1';
+        focusCinemaElement(first);
+      }
+    }));
+  }
 }
 async function loadCinemaCatalog(force=false){
   await loadGlobalCinemaSource();
