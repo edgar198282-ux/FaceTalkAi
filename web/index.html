@@ -1105,8 +1105,8 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   background:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.08) 50%,rgba(22,28,32,.76) 82%,#20282d 100%)
 }
 .cinemaDetailBack{
-  position:absolute;left:18px;top:18px;z-index:4;width:48px;height:48px;border:0;border-radius:50%;
-  background:rgba(24,31,35,.72);color:#fff;font-size:31px;display:flex;align-items:center;justify-content:center;
+  position:absolute;left:16px;top:16px;z-index:4;width:40px;height:40px;border:0;border-radius:50%;
+  background:rgba(24,31,35,.72);color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;
   box-shadow:0 4px 18px rgba(0,0,0,.25)
 }
 .cinemaDetailShare{
@@ -1169,8 +1169,8 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   .cinemaDetailDescription{font-size:16px;line-height:1.46}
   .cinemaDetailFacts{grid-template-columns:130px 1fr;font-size:16px;gap:12px 16px}
   .cinemaDetailBadge{font-size:12px;padding:4px 9px}
-  .cinemaDetailBack,.cinemaDetailShare{width:46px;height:46px;top:14px}
-  .cinemaDetailBack{left:14px}.cinemaDetailShare{right:14px}
+  .cinemaDetailBack{width:38px;height:38px;top:14px;left:14px;font-size:25px}
+  .cinemaDetailShare{width:46px;height:46px;top:14px;right:14px}
 }
 @media(max-width:430px){
   .cinemaDetailHero{min-height:43vh}
@@ -1325,7 +1325,6 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
     <div class="cinemaDetailHero" id="cinemaDetailHero">
       <img class="cinemaDetailHeroPoster" id="cinemaDetailHeroPoster" loading="eager" decoding="async" fetchpriority="high" alt="">
       <button class="cinemaDetailBack" id="cinemaDetailBack" onclick="closeCinemaDetail()" aria-label="Назад">←</button>
-      <button class="cinemaDetailShare" id="cinemaDetailShare" onclick="downloadCinemaDetail()" aria-label="Скачать" title="Скачать">⇩</button>
       <div class="cinemaDetailActions">
         <button class="cinemaDetailAction" id="cinemaDetailWatch" onclick="watchCinemaDetail()">СМОТРЕТЬ ФИЛЬМ</button>
         <button class="cinemaDetailAction" id="cinemaDetailSeasons" onclick="openCinemaSeasons()" style="display:none">СЕЗОНЫ</button>
