@@ -6756,8 +6756,15 @@ function cinemaDetailFocusable(){
     .filter(el=>el.offsetParent!==null);
 }
 function moveCinemaDetailFocus(direction){
+  const detail=document.getElementById('cinemaDetail');
   const items=cinemaDetailFocusable();
-  if(!items.length)return;
+  if(!items.length){
+    if(detail&&(direction==='down'||direction==='up')){
+      const step=Math.max(180,Math.round(window.innerHeight*.58));
+      detail.scrollBy({top:direction==='down'?step:-step,behavior:'auto'});
+    }
+    return;
+  }
   let current=document.activeElement;
   if(!items.includes(current)){
     current=document.getElementById('cinemaDetailWatch')||items[0];
@@ -6781,6 +6788,22 @@ function moveCinemaDetailFocus(direction){
     const score=primary+secondary*1.8;
     if(score<bestScore){bestScore=score;best=el}
   });
+
+  if(direction==='down'||direction==='up'){
+    const step=Math.max(180,Math.round(window.innerHeight*.58));
+    if(!best){
+      if(detail)detail.scrollBy({top:direction==='down'?step:-step,behavior:'auto'});
+      return;
+    }
+    const br=best.getBoundingClientRect();
+    const farDown=direction==='down'&&br.top>window.innerHeight-90;
+    const farUp=direction==='up'&&br.bottom<90;
+    if((farDown||farUp)&&detail){
+      detail.scrollBy({top:farDown?step:-step,behavior:'auto'});
+      return;
+    }
+  }
+
   if(!best)return;
   try{best.focus({preventScroll:true})}catch(_){try{best.focus()}catch(__){}}
   try{best.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
