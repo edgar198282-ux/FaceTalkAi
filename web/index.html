@@ -208,7 +208,22 @@ button{cursor:pointer}
   display:block!important;opacity:1!important;pointer-events:auto!important
 }
 .playerView.pureFullscreen.showPureControls .playerPrimaryControls{
-  display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:8px!important;max-width:560px!important;margin:0 auto!important
+  display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:10px!important;max-width:520px!important;margin:2px auto 0!important
+}
+.playerView.pureFullscreen.cinemaPlayback.showPureControls .playerPrimaryControls{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;max-width:430px!important;gap:12px!important
+}
+.nativeTv .playerView.pureFullscreen.showPureControls .playerCircleCtrl{
+  min-height:64px!important;padding:0!important;gap:4px!important
+}
+.nativeTv .playerView.pureFullscreen.showPureControls .playerCircleCtrl .playerCtrlIcon{
+  width:44px!important;height:44px!important;font-size:18px!important
+}
+.nativeTv .playerView.pureFullscreen.showPureControls .playerPlayCtrl .playerCtrlIcon{
+  width:50px!important;height:50px!important;font-size:22px!important;margin-top:-3px!important
+}
+.nativeTv .playerView.pureFullscreen.showPureControls .playerCircleCtrl small{
+  font-size:10px!important;line-height:1!important
 }
 .playerView.pureFullscreen.showPureControls .playerMeta{
   display:flex!important;opacity:1!important;pointer-events:none!important;
