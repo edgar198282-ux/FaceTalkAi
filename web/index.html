@@ -1213,7 +1213,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .nativeTv .cinemaDetailAction{min-width:154px;height:40px;font-size:12px;border-radius:7px;padding:0 14px}
 .nativeTv .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:142px}
 .cinemaDetailAction:disabled{opacity:.65}
-.cinemaDetailBody{padding:16px 6.5% 38px;margin-top:-1px;position:relative;z-index:2}
+.cinemaDetailBody{padding:16px 6.5% 38px;margin-top:-10px;position:relative;z-index:3;border-top:0!important}
 .cinemaDetailTitle{font-size:31px;font-weight:500;line-height:1.15;margin:0 0 20px;color:#f4f4f4}
 .cinemaDetailBadges{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .cinemaDetailBadge{
@@ -1252,7 +1252,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   .cinemaDetailActions{left:50%;right:auto;bottom:14px;gap:8px;max-width:92%}
   .cinemaDetailAction{min-width:138px;height:39px;font-size:12px;padding:0 12px}
   .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:126px}
-  .cinemaDetailBody{padding:18px 9% 28px;margin-top:0}
+  .cinemaDetailBody{padding:18px 9% 28px;margin-top:-10px;border-top:0!important}
   .cinemaDetailTitle{font-size:28px;line-height:1.12;margin-bottom:20px}
   .cinemaDetailDescription{font-size:16px;line-height:1.46}
   .cinemaDetailFacts{grid-template-columns:130px 1fr;font-size:16px;gap:12px 16px}
@@ -1305,6 +1305,7 @@ body:not(.darkMode) .cinemaMenuItem{color:#173f59!important}
 body:not(.darkMode) .cinemaMenuItem.active,body:not(.darkMode) .cinemaMenuItem:focus{background:#18aee0!important;color:#fff!important}
 body:not(.darkMode) .cinemaMenuItem.cinemaTvReturn{background:#e5f3fb!important;border-top-color:#bfdceb!important}
 body:not(.darkMode) .cinemaDetail,body:not(.darkMode) .cinemaDetailBody{background:#eef6fb!important;color:#173b52!important}
+body:not(.darkMode) .cinemaDetailBody{box-shadow:0 -12px 18px rgba(238,246,251,.92)!important}
 body:not(.darkMode) .cinemaDetailHero::after{
   background:linear-gradient(180deg,rgba(238,246,251,0) 0%,rgba(238,246,251,.10) 30%,rgba(238,246,251,.68) 76%,#eef6fb 100%)!important
 }
