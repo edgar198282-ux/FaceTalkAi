@@ -7417,12 +7417,17 @@ async function toggleCinemaBookmark(){
   }catch(e){}
   if(btn)btn.disabled=false;
 }
-async function rememberCinemaWatch(item){
+async function rememberCinemaWatch(item,media=null){
   if(!item||cinemaSource!=='kinopub')return;
   try{
     await fetch('/api/cinema/library/watch',{
       method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},
-      body:JSON.stringify({item})
+      body:JSON.stringify({
+        item,
+        media_id:kinoMediaId(media),
+        season:media?.season??null,
+        episode:media?.number??null
+      })
     });
     refreshCinemaLibraryCounts();
   }catch(e){}
@@ -9694,7 +9699,7 @@ async function watchCinemaDetail(){
     const resolved=await resolveKinoPubInternalStream(item,media);
     if(watchBtn){watchBtn.disabled=false;watchBtn.textContent=cinemaItemLooksSeries(item)?('СМОТРЕТЬ '+(cinemaSelectedKinoMedia?kinoMediaLabel(cinemaSelectedKinoMedia,0):'S1E1')):'СМОТРЕТЬ'}
     if(resolved&&resolved.url){
-      await rememberCinemaWatch(item);
+      await rememberCinemaWatch(item,media);
       const detail=document.getElementById('cinemaDetail');
       if(detail)detail.classList.remove('open');
       const mediaLabel=media?kinoMediaLabel(media,0):'';
