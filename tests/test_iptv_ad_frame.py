@@ -106,12 +106,31 @@ class PlayerFrames(unittest.IsolatedAsyncioTestCase):
 
     @unittest.skipUnless(shutil.which('tesseract'), 'Tesseract not installed')
     async def test_real_ocr_on_uploaded_player_frames(self):
-        for text, active, reason in [('OTT CLUB', True, 'ottclub'), ('CINERAMA', True, 'cinerama_placeholder'), ('NEWS LIVE', False, '')]:
+        for text, active, reason in [('OTT CLUB', True, 'ottclub'), ('CINERAMA', True, 'cinerama_placeholder'), ('NEWS LIVE', False, ''), ('Не успел?\nПросто перемотай', True, 'ottclub')]:
             response = await self.send(frame=image_frame(text))
             self.assertEqual(response.status, 200)
             result = await response.json()
             self.assertEqual((result['active'], result['reason']), (active, reason), text)
             self.assertEqual(response.headers['Cache-Control'], 'no-store')
+
+
+class PromoSignatures(unittest.TestCase):
+    def test_recorded_id_promo_ocr(self):
+        item = {'url': 'http://stream.mcquack.net/205/index.m3u8'}
+        for text in (
+            'HE YCnEJI? Mpocto i = CEC 01:08:58 all | HE YCnEJI? npocto nepemoran',
+            'Не успел? Просто перемотай',
+            'НЕ УСПЕЛ? ПРОСТО ПЕРЕМОТАЙ',
+            'НЕ УСПЕЛ? ПPOCTO ПEPEMOTАЙ',
+        ):
+            self.assertTrue(iptv._ottclub_promo_hit(text, item), text)
+            self.assertFalse(iptv._ottclub_promo_hit(text, {'url': 'https://example.com/news.m3u8'}), text)
+        for text in ('Не успел?', 'Просто перемотай', 'Не успел? Сегодня новости', 'Не успел сказать прощай. Нажми на паузу, перемотай'):
+            self.assertFalse(iptv._ottclub_promo_hit(text, item), text)
+
+    def test_multilingual_ocr_keeps_brand_matches(self):
+        self.assertTrue(iptv._ottclub_text_hit('ОТТ CLUВ'))
+        self.assertTrue(iptv._cinerama_text_hit('СINЕRАМА'))
 
 
 if __name__ == '__main__':

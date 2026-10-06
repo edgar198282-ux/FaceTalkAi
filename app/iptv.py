@@ -688,7 +688,7 @@ async def _ocr_ottclub_frame(frame: bytes, width: int, height: int, *, strict=Fa
     proc = None
     try:
         proc = await asyncio.create_subprocess_exec(
-            "tesseract", "stdin", "stdout", "--psm", "11", "-l", "eng",
+            "tesseract", "stdin", "stdout", "--psm", "11", "-l", "eng+rus",
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
@@ -709,8 +709,11 @@ async def _ocr_ottclub_frame(frame: bytes, width: int, height: int, *, strict=Fa
         return ""
 
 
+_OCR_LATIN_LOOKALIKES = str.maketrans("АВЕКМНОРСТУХ", "ABEKMHOPCTYX")
+
+
 def _cinerama_text_hit(text: str) -> bool:
-    raw = str(text or "").upper()
+    raw = str(text or "").upper().translate(_OCR_LATIN_LOOKALIKES)
     compact = re.sub(r"[^A-Z0-9]+", "", raw)
     normalized = compact.replace("1", "I").replace("0", "O")
     return (
@@ -721,7 +724,7 @@ def _cinerama_text_hit(text: str) -> bool:
 
 
 def _ottclub_text_hit(text: str) -> bool:
-    raw = str(text or "").upper()
+    raw = str(text or "").upper().translate(_OCR_LATIN_LOOKALIKES)
     compact = re.sub(r"[^A-Z0-9]+", "", raw)
     # Tesseract may confuse O/0, I/1 and B/8 on TV graphics.
     normalized = (
@@ -754,6 +757,20 @@ def _ottclub_text_hit(text: str) -> bool:
     return bool(ott_token and any(marker in raw or marker.replace(" ", "") in normalized for marker in promo_markers))
 
 
+def _ottclub_promo_hit(text: str, item: dict) -> bool:
+    if _ottclub_text_hit(text):
+        return True
+    host = (urlparse(str(item.get("url") or "")).hostname or "").lower()
+    if not (host == "stream.mcquack.net" or "ottclub" in host or "ott-club" in host):
+        return False
+    compact = re.sub(r"[^A-ZА-Я0-9]+", "", str(text or "").upper().replace("Ё", "Е"))
+    visual = compact.translate(_OCR_LATIN_LOOKALIKES)
+    # This OTT promo has a rewind slogan instead of a readable brand name.
+    missed = bool(re.search(r"HEYC(?:N|П|II)E(?:JI|Л|L|N|П)", visual))
+    rewind = bool(re.search(r"[MNП]POCTO[NП]EPEMO[TRГ]A[NЙИI]", visual))
+    return bool(missed and rewind)
+
+
 async def _quick_ottclub_probe(item: dict):
     cid = str(item.get("id") or "")
     url = str(item.get("url") or "")
@@ -780,7 +797,7 @@ async def _quick_ottclub_probe(item: dict):
         if len(stdout) < frame_size:
             return
         text = await _ocr_ottclub_frame(stdout[:frame_size], width, height)
-        hit = _ottclub_text_hit(text)
+        hit = _ottclub_promo_hit(text, item)
         cinerama_hit = _cinerama_text_hit(text)
         now = int(time.time())
         compact_text = re.sub(r"\s+", " ", str(text or "")).strip()[:500]
@@ -909,7 +926,7 @@ async def _server_burned_ad_probe(item: dict) -> dict:
         )))
 
         texts = await asyncio.gather(*(_ocr_ottclub_frame(frame, width, height) for frame in frames))
-        hits = sum(1 for text in texts if _ottclub_text_hit(text))
+        hits = sum(1 for text in texts if _ottclub_promo_hit(text, item))
         cinerama_hits = sum(1 for text in texts if _cinerama_text_hit(text))
         compact_text = " | ".join(
             re.sub(r"\s+", " ", str(text or "")).strip()[:180]
@@ -2634,7 +2651,7 @@ async def api_ad_frame(request):
         except Exception:
             _ad_frame_stats["errors"] += 1
             return web.json_response({"ok": False, "error": "ocr unavailable"}, status=503, headers=headers)
-    ott = _ottclub_text_hit(text)
+    ott = _ottclub_promo_hit(text, item)
     cin = _cinerama_text_hit(text)
     now = time.time()
     _ad_frame_seen[cid] = now
