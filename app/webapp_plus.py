@@ -360,6 +360,32 @@ async def api_kinopub_status(request):
     except Exception:
         pass
     pending = bool(auth.get('code')) and int(auth.get('expires_at') or 0) > int(time.time())
+    subscription_days = None
+    subscription_active = None
+    if ADMIN_ID and uid == int(ADMIN_ID) and authenticated:
+        try:
+            token = await _kinopub_access_token(uid)
+            if token:
+                status, profile = await _kinopub_api('GET', '/v1/user', params={'access_token': token})
+                if status < 400 and isinstance(profile, dict):
+                    kp_user = profile.get('user') if isinstance(profile.get('user'), dict) else {}
+                    sub = kp_user.get('subscription') if isinstance(kp_user.get('subscription'), dict) else {}
+                    if sub:
+                        subscription_active = bool(sub.get('active'))
+                        try:
+                            if sub.get('days') is not None:
+                                subscription_days = max(0.0, float(sub.get('days')))
+                        except Exception:
+                            subscription_days = None
+                        if subscription_days is None:
+                            try:
+                                end_time = float(sub.get('end_time') or 0)
+                                if end_time > 0:
+                                    subscription_days = max(0.0, (end_time - time.time()) / 86400.0)
+                            except Exception:
+                                pass
+        except Exception:
+            pass
     return web.json_response({
         'ok':True,
         'authenticated':bool(authenticated),
@@ -368,6 +394,8 @@ async def api_kinopub_status(request):
         'owner':bool(ADMIN_ID and token_owner == int(ADMIN_ID)),
         'user_code':str(auth.get('user_code') or ''),
         'verification_uri':str(auth.get('verification_uri') or 'https://kino.pub/device'),
+        'subscription_days':subscription_days,
+        'subscription_active':subscription_active,
     }, headers={'Cache-Control':'no-store'})
 
 async def api_kinopub_auth_start(request):
