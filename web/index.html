@@ -7020,6 +7020,39 @@ function posterUrl(item){
   const p=String(item?.poster||'').trim();
   return /^https?:\/\//i.test(p)?p:'';
 }
+const cinemaPosterPreconnected=new Set();
+const cinemaPosterPreloaded=new Set();
+function primeCinemaPosterNetwork(items){
+  const urls=(Array.isArray(items)?items:[]).map(posterUrl).filter(Boolean);
+  const origins=[];
+  for(const url of urls){
+    try{
+      const origin=new URL(url,location.href).origin;
+      if(origin&&origin!==location.origin&&!cinemaPosterPreconnected.has(origin)){
+        cinemaPosterPreconnected.add(origin);
+        origins.push(origin);
+      }
+    }catch(e){}
+    if(origins.length>=4)break;
+  }
+  for(const origin of origins){
+    const link=document.createElement('link');
+    link.rel='preconnect';
+    link.href=origin;
+    link.crossOrigin='anonymous';
+    document.head.appendChild(link);
+  }
+  urls.slice(0,8).forEach(url=>{
+    if(cinemaPosterPreloaded.has(url))return;
+    cinemaPosterPreloaded.add(url);
+    const link=document.createElement('link');
+    link.rel='preload';
+    link.as='image';
+    link.href=url;
+    link.fetchPriority='high';
+    document.head.appendChild(link);
+  });
+}
 function setCinemaBackgrounds(currentItems){
   const current=(Array.isArray(currentItems)?currentItems:[]);
   const currentPoster=current.map(posterUrl).find(Boolean)||'';
@@ -7674,6 +7707,7 @@ function renderCinemaCatalog(items,options={}){
   if(!grid)return;
   grid.innerHTML='';
   const rows=Array.isArray(items)?items:[];
+  primeCinemaPosterNetwork(rows);
   setCinemaBackgrounds(rows);
   if(!rows.length){
     if(status)status.textContent='Каталог пока недоступен.';
@@ -7684,7 +7718,7 @@ function renderCinemaCatalog(items,options={}){
     if(cinemaSource==='kinopub'&&kinopubCatalogTotal!==null)status.textContent='Показано '+rows.length+' из '+kinopubCatalogTotal+(cinemaType==='series'?' сериалов':' фильмов');
     else status.textContent=rows.length+(cinemaType==='series'?' сериалов':' фильмов');
   }
-  rows.forEach(item=>{
+  rows.forEach((item,index)=>{
     const card=document.createElement('button');
     card.className='cinemaPosterCard';
     const poster=String(item.poster||'');
@@ -7704,7 +7738,8 @@ function renderCinemaCatalog(items,options={}){
     const position=Math.max(0,Number(item.position||0));
     const duration=Math.max(0,Number(item.duration||0));
     const progress=duration>0&&position>0?Math.max(1,Math.min(99,Math.round(position/duration*100))):0;
-    card.innerHTML=(poster?'<img class="cinemaPosterImg" loading="lazy" src="'+poster.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaPosterFallback">🎞️</div>')+
+    const eager=index<12;
+    card.innerHTML=(poster?'<img class="cinemaPosterImg" loading="'+(eager?'eager':'lazy')+'" decoding="async" fetchpriority="'+(eager?'high':'low')+'" src="'+poster.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaPosterFallback">🎞️</div>')+
       '<div class="cinemaPosterMeta"><div class="cinemaPosterTitle">'+cinemaDisplayTitle(item).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
       '<div class="cinemaPosterSub">'+sub.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
       (progress?'<div class="cinemaPosterProgress" title="Просмотрено '+progress+'%"><span style="width:'+progress+'%"></span></div>':'')+
