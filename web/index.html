@@ -1611,13 +1611,13 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
       <button class="ctrl playerCircleCtrl tvChannelCtrl" onclick="playNext()" title="Следующий канал"><span class="playerCtrlIcon">|▶</span><small>След. канал</small></button>
     </div>
     <div class="playerUtilityControls cinemaTrackControls" id="cinemaTrackControls">
-      <button class="ctrl playerUtilityCtrl" id="cinemaQualityBtn" onclick="openCinemaTrackMenu('quality')">
+      <button tabindex="0" class="ctrl playerUtilityCtrl" id="cinemaQualityBtn" onclick="openCinemaTrackMenu('quality')">
         <span class="playerUtilityIcon">4K</span><span><b>Качество</b><small id="cinemaQualityValue">Auto</small></span><span class="playerUtilityArrow">›</span>
       </button>
-      <button class="ctrl playerUtilityCtrl" id="cinemaAudioBtn" onclick="openCinemaTrackMenu('audio')">
+      <button tabindex="0" class="ctrl playerUtilityCtrl" id="cinemaAudioBtn" onclick="openCinemaTrackMenu('audio')">
         <span class="playerUtilityIcon">♫</span><span><b>Аудио</b><small id="cinemaAudioValue">Auto</small></span><span class="playerUtilityArrow">›</span>
       </button>
-      <button class="ctrl playerUtilityCtrl" id="cinemaSubtitleBtn" onclick="openCinemaTrackMenu('subtitles')">
+      <button tabindex="0" class="ctrl playerUtilityCtrl" id="cinemaSubtitleBtn" onclick="openCinemaTrackMenu('subtitles')">
         <span class="playerUtilityIcon">CC</span><span><b>Субтитры</b><small id="cinemaSubtitleValue">Выкл.</small></span><span class="playerUtilityArrow">›</span>
       </button>
     </div>
@@ -4842,7 +4842,7 @@ function startFreeAdWatch(ch){
   const shieldStartedAt=freeAdShieldStartedAt;
   const shieldSawPositive=freeAdShieldSawPositive;
   stopFreeAdWatch();
-  if(!ch||ch.personal)return;
+  if(!ch||ch.personal||String(ch.id||'').startsWith('cinema:'))return;
   if(keepInstantShield){
     freeAdShieldChannel=String(ch.id||'');
     freeAdShieldStartedAt=shieldStartedAt;
@@ -5497,7 +5497,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   // sports/HD/FHD/4K alike). The current player remains visible until Media3
   // renders a real frame, so failed native attempts never create a blank screen.
   const teamTvFast=tvIsTeamCloudChannel(ch);
-  const nativeRace=!!(tvNativeRaceEligible(ch,src)&&window.AbajNative&&typeof AbajNative.nativeProbeStart==='function');
+  const nativeRace=!!(!cinemaPlayback&&tvNativeRaceEligible(ch,src)&&window.AbajNative&&typeof AbajNative.nativeProbeStart==='function');
   if(nativeRace){
     nativeMedia3FirstFrameHandler=(elapsed,hasAudio)=>{
       if(attemptToken!==streamAttemptToken||!current||current.id!==ch.id)return;
@@ -6458,7 +6458,10 @@ function focusPlayerControlSpatial(direction){
   const rows=playerControlRows();
   if(!rows.length)return false;
   let active=document.activeElement;
-  if(active&&active.tagName==='SELECT'&&active.closest)active=active.closest('.ctrl');
+  if(active&&active.closest){
+    const ctrl=active.closest('.ctrl');
+    if(ctrl)active=ctrl;
+  }
 
   const utilityIds=['cinemaQualityBtn','cinemaAudioBtn','cinemaSubtitleBtn'];
   const utilityIndex=active&&active.id?utilityIds.indexOf(active.id):-1;
@@ -6510,6 +6513,7 @@ function focusPlayerControlSpatial(direction){
     if(dist<best){best=dist;target=el}
   });
   try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
+  if(target&&target.classList&&target.classList.contains('playerUtilityCtrl'))target.dataset.tvFocused='1';
   rememberPlayerControl(target);
   return true;
 }
