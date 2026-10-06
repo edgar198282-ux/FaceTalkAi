@@ -4998,32 +4998,63 @@ function epgProgress(p){
   return Math.max(0,Math.min(100,((now-p.start)/(p.stop-p.start))*100));
 }
 function channelFallbackLogo(ch){
-  const name=String((ch&&ch.name)||'TV').trim();
-  const clean=name
+  const rawName=String((ch&&ch.name)||'TV').trim();
+  const name=rawName
     .replace(/\([^)]*\)/g,' ')
     .replace(/\[[^\]]*\]/g,' ')
     .replace(/\b(?:FHD|FULL\s*HD|UHD|4K|HD|1080P|720P|2160P)\b/gi,' ')
-    .replace(/[^0-9A-Za-zА-Яа-яЁёԱ-Ֆա-ֆ]+/g,' ')
     .replace(/\s+/g,' ')
-    .trim();
-  const words=clean.split(' ').filter(Boolean);
-  let initials='';
-  if(words.length>=2)initials=(words[0][0]||'')+(words[1][0]||'');
-  else initials=(clean.slice(0,2)||'TV');
-  initials=initials.toUpperCase();
+    .trim()||'TV';
   const group=String((ch&&ch.group)||'').toLowerCase();
-  const icon=group.includes('sport')?'⚽':
-    (group.includes('news')?'▤':
-    ((group.includes('movie')||group.includes('film')||group.includes('кино'))?'▶':
-    ((group.includes('music')||group.includes('музык'))?'♪':
-    ((group.includes('kids')||group.includes('дет')||group.includes('cartoon'))?'★':'TV'))));
-  return '<div class="logoFallback logoFallbackAuto"><span class="logoFallbackIcon">'+esc(icon)+'</span><b>'+esc(initials)+'</b></div>';
+  const kind=group.includes('sport')?'sport':
+    (group.includes('news')?'news':
+    ((group.includes('movie')||group.includes('film')||group.includes('кино'))?'movie':
+    ((group.includes('music')||group.includes('музык'))?'music':
+    ((group.includes('kids')||group.includes('дет')||group.includes('cartoon')||group.includes('мульт'))?'kids':'general'))));
+  const palettes={
+    movie:['#06162f','#0b4f9e','#16c7ff','#ffb31a'],
+    sport:['#052d1e','#0c7e4c','#40e58d','#d8ff42'],
+    news:['#17153f','#3346b6','#5fc9ff','#ff4d75'],
+    music:['#2e0f47','#7d2ab9','#ff55d8','#31dfff'],
+    kids:['#4c1b18','#ff6a28','#ffd23f','#3de4d0'],
+    general:['#07213d','#0b5fa6','#23c4ff','#79efff']
+  };
+  const p=palettes[kind];
+  const title=esc(name.length>20?name.slice(0,20)+'…':name);
+  let art='';
+  if(kind==='movie'){
+    art='<g transform="translate(18 18)"><rect x="0" y="18" width="62" height="46" rx="8" fill="url(#g2)" stroke="rgba(255,255,255,.7)"/><path d="M14 18l10-14 12 14 12-14 12 14" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M28 31l22 10-22 10z" fill="#fff"/><path d="M0 59c22-11 42-11 62 0" fill="none" stroke="'+p[3]+'" stroke-width="4"/></g>';
+  }else if(kind==='sport'){
+    art='<g transform="translate(18 17)"><circle cx="32" cy="32" r="29" fill="url(#g2)" stroke="#fff" stroke-width="3"/><path d="M32 16l11 8-4 13H25l-4-13z" fill="#fff"/><path d="M12 29l13 8M52 29l-13 8M19 53l6-16M45 53l-6-16" stroke="#fff" stroke-width="4" stroke-linecap="round"/></g>';
+  }else if(kind==='news'){
+    art='<g transform="translate(18 18)"><circle cx="31" cy="31" r="29" fill="url(#g2)" stroke="#fff" stroke-width="3"/><path d="M4 31h54M31 3c-9 10-12 19-12 28s3 18 12 28M31 3c9 10 12 19 12 28s-3 18-12 28" fill="none" stroke="#fff" stroke-width="3"/><path d="M7 43h48" stroke="'+p[3]+'" stroke-width="5" stroke-linecap="round"/></g>';
+  }else if(kind==='music'){
+    art='<g transform="translate(18 13)"><path d="M24 12v39c0 8-8 13-16 10-7-3-7-12-1-16 4-3 9-3 13-1V21l36-8v31c0 8-8 13-16 10-7-3-7-12-1-16 4-3 9-3 13-1V5z" fill="url(#g2)" stroke="#fff" stroke-width="3"/><circle cx="9" cy="51" r="6" fill="'+p[3]+'"/><circle cx="41" cy="44" r="6" fill="'+p[3]+'"/></g>';
+  }else if(kind==='kids'){
+    art='<g transform="translate(17 14)"><path d="M32 3l8 19 21 2-16 14 5 21-18-11-18 11 5-21L3 24l21-2z" fill="url(#g2)" stroke="#fff" stroke-width="3"/><circle cx="22" cy="30" r="4" fill="#fff"/><circle cx="42" cy="30" r="4" fill="#fff"/><path d="M21 41c7 7 15 7 22 0" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/></g>';
+  }else{
+    art='<g transform="translate(17 17)"><rect x="3" y="7" width="58" height="45" rx="9" fill="url(#g2)" stroke="#fff" stroke-width="3"/><path d="M26 20l19 10-19 10z" fill="#fff"/><path d="M20 0l12 7L44 0" fill="none" stroke="'+p[3]+'" stroke-width="4" stroke-linecap="round"/><path d="M19 58h26" stroke="#fff" stroke-width="4" stroke-linecap="round"/></g>';
+  }
+  return '<div class="logoFallback logoFallbackAuto logoFallbackPicture" data-kind="'+kind+'">'+
+    '<svg class="logoFallbackSvg" viewBox="0 0 260 110" role="img" aria-label="'+title+'">'+
+      '<defs>'+
+        '<linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+p[0]+'"/><stop offset=".58" stop-color="'+p[1]+'"/><stop offset="1" stop-color="'+p[0]+'"/></linearGradient>'+
+        '<linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+p[2]+'"/><stop offset="1" stop-color="'+p[1]+'"/></linearGradient>'+
+        '<filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'+
+      '</defs>'+
+      '<rect x="1" y="1" width="258" height="108" rx="18" fill="url(#g1)" stroke="'+p[2]+'" stroke-opacity=".8" stroke-width="2"/>'+
+      '<ellipse cx="203" cy="18" rx="44" ry="12" fill="'+p[2]+'" opacity=".17"/>'+
+      '<path d="M0 88C52 70 93 73 130 89s72 20 130 3v18H0z" fill="'+p[2]+'" opacity=".12"/>'+
+      art+
+      '<g transform="translate(92 20)">'+
+        '<text x="0" y="34" fill="#fff" font-size="22" font-weight="900" font-family="Arial,sans-serif" filter="url(#glow)">'+title+'</text>'+
+        '<text x="0" y="58" fill="'+p[3]+'" font-size="12" font-weight="800" font-family="Arial,sans-serif" letter-spacing="1.8">ABAJ TV</text>'+
+      '</g>'+
+    '</svg>'+
+  '</div>';
 }
 function channelFallbackLogoText(ch){
-  const name=String((ch&&ch.name)||'TV').trim().replace(/\([^)]*\)/g,' ').replace(/\[[^\]]*\]/g,' ').replace(/\s+/g,' ').trim();
-  const words=name.split(' ').filter(Boolean);
-  const text=words.length>=2?((words[0][0]||'')+(words[1][0]||'')):(name.slice(0,2)||'TV');
-  return text.toUpperCase();
+  return String((ch&&ch.name)||'TV').trim().replace(/\([^)]*\)/g,' ').replace(/\[[^\]]*\]/g,' ').replace(/\s+/g,' ').trim().slice(0,18)||'TV';
 }
 
 function channelQualityLabel(ch){
@@ -12283,59 +12314,33 @@ setInterval(()=>{if(document.hidden)return;const p=document.getElementById('play
 </style>
 
 <style id="channel-auto-logo-fallback">
-.logoFallbackAuto{
-  width:88%!important;
-  height:70%!important;
+.logoFallbackPicture{
+  width:92%!important;
+  height:82%!important;
   min-width:0!important;
   display:flex;
   align-items:center;
   justify-content:center;
-  gap:8px;
-  border-radius:16px;
-  color:#eefbff!important;
-  font-size:22px!important;
-  font-weight:950!important;
-  letter-spacing:.7px;
-  background:
-    radial-gradient(circle at 28% 22%,rgba(89,229,255,.35),transparent 34%),
-    linear-gradient(145deg,#0a63bd 0%,#062b66 58%,#031b42 100%);
-  border:1px solid rgba(98,222,255,.72);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.20),
-    inset 0 -12px 26px rgba(0,0,0,.18),
-    0 5px 14px rgba(0,83,160,.22);
-  text-shadow:0 1px 2px rgba(0,0,0,.35),0 0 8px rgba(35,205,255,.26);
+  padding:0!important;
+  background:none!important;
+  border:0!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
 }
-.logoFallbackAuto .logoFallbackIcon{
-  width:34px;
-  height:34px;
-  border-radius:10px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  font-size:17px;
-  color:#fff;
-  background:linear-gradient(145deg,#18c8f4,#0a78d8);
-  border:1px solid rgba(255,255,255,.58);
-  box-shadow:0 0 12px rgba(0,206,255,.28);
-  flex:0 0 34px;
+.logoFallbackSvg{
+  width:100%;
+  height:100%;
+  display:block;
+  overflow:visible;
 }
-.nativeTv .logoFallbackAuto{
-  width:80%!important;
-  height:68%!important;
-  font-size:24px!important;
-  border-radius:18px!important;
-}
-.nativeTv .logoFallbackAuto .logoFallbackIcon{
-  width:38px;height:38px;flex-basis:38px;font-size:19px;
+.nativeTv .logoFallbackPicture{
+  width:88%!important;
+  height:78%!important;
 }
 @media(max-width:700px){
-  body:not(.nativeTv) .logoFallbackAuto{
-    width:84%!important;height:68%!important;
-    font-size:18px!important;gap:6px!important;border-radius:13px!important;
-  }
-  body:not(.nativeTv) .logoFallbackAuto .logoFallbackIcon{
-    width:30px;height:30px;flex-basis:30px;font-size:15px;border-radius:9px;
+  body:not(.nativeTv) .logoFallbackPicture{
+    width:90%!important;
+    height:78%!important;
   }
 }
 </style>
