@@ -956,8 +956,10 @@ body.cinemaMode .top{display:none!important}
 }
 .cinemaShellDrop{font-size:14px;color:#e8e8e8;margin-left:-5px;width:28px!important;min-width:28px!important}
 .cinemaShellBrandAnim{
-  flex:0 0 auto;display:flex;align-items:center;justify-content:center;margin-left:2px;
-  font-size:17px;font-weight:950;line-height:1;white-space:nowrap;letter-spacing:-.35px
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  display:flex;align-items:center;justify-content:center;margin:0;
+  font-size:17px;font-weight:950;line-height:1;white-space:nowrap;letter-spacing:-.35px;
+  pointer-events:none
 }
 .cinemaShellBrandAnim .titleWord{gap:0}
 .cinemaShellBrandAnim .titleWord+ .titleWord{margin-left:5px}
@@ -975,7 +977,7 @@ body.cinemaMode .top{display:none!important}
   #cinemaMenuBtn{width:34px;height:34px;min-width:34px;font-size:22px;border-radius:8px}
   .cinemaShellTitle{font-size:15px;max-width:118px}
   .cinemaShellDrop{width:24px!important;min-width:24px!important;font-size:13px}
-  .cinemaShellBrandAnim{font-size:15px;margin-left:0}
+  .cinemaShellBrandAnim{font-size:15px}
   .cinemaShellCategory{top:56px;left:54px;width:218px;padding:3px 0}
   .cinemaCategoryItem{min-height:38px;padding:7px 11px;font-size:14px}
 }
