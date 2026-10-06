@@ -10382,14 +10382,24 @@ function openCinemaSeasons(){
   },40);
 }
 
+const kinoPubItemDetailsCache=new Map();
 async function loadKinoPubItemDetails(item){
   if(cinemaSource!=='kinopub'||!item?.id)return item;
+  const key=String(item.id);
+  const cached=kinoPubItemDetailsCache.get(key);
+  if(cached)return {...item,...cached};
   try{
-    const r=await fetch('/api/kinopub/item?id='+encodeURIComponent(String(item.id)),{headers:authHeaders(),cache:'no-store'});
+    const r=await fetch('/api/kinopub/item?id='+encodeURIComponent(key),{headers:authHeaders(),cache:'force-cache'});
     if(!r.ok)return item;
     const d=await r.json();
     const detail=(d&&d.item&&typeof d.item==='object')?d.item:{};
-    const merged={...item,...detail,source:'KINOPUB',media_rows:Array.isArray(d.media_rows)?d.media_rows:[],related:Array.isArray(d.related)?d.related:[]};
+    const cachedDetail={...detail,source:'KINOPUB',media_rows:Array.isArray(d.media_rows)?d.media_rows:[],related:Array.isArray(d.related)?d.related:[]};
+    kinoPubItemDetailsCache.set(key,cachedDetail);
+    if(kinoPubItemDetailsCache.size>80){
+      const first=kinoPubItemDetailsCache.keys().next().value;
+      if(first)kinoPubItemDetailsCache.delete(first);
+    }
+    const merged={...item,...cachedDetail};
     const beforeTitle=cinemaDisplayTitle(item);
     if(cinemaDisplayTitle(merged)==='Фильм'&&beforeTitle!=='Фильм')merged.title=beforeTitle;
     return merged;
@@ -10883,10 +10893,43 @@ async function openCinemaMovie(item){
   cinemaSelectedKinoMedia=null;
   renderCinemaDetail(item);
   const openedId=String(item?.id||item?.intent||'');
-  let enriched=await enrichCinemaMovie(item);
-  if(cinemaSource==='kinopub'||String(item?.source||'').toUpperCase()==='KINOPUB'){
-    enriched=await loadKinoPubItemDetails(enriched);
+  const isKinoPub=cinemaSource==='kinopub'||String(item?.source||'').toUpperCase()==='KINOPUB';
+
+  let direct=item;
+  let metaPromise=null;
+
+  if(isKinoPub){
+    metaPromise=enrichCinemaMovie(item);
+    direct=await loadKinoPubItemDetails(item);
+    warmCinemaItemImages(direct,true);
+
+    const currentId=String(cinemaDetailMovie?.id||cinemaDetailMovie?.intent||'');
+    if(currentId!==openedId)return;
+
+    cinemaDetailMovie=direct;
+    if(cinemaSourcePickerMovie&&String(cinemaSourcePickerMovie?.id||cinemaSourcePickerMovie?.intent||'')===openedId){
+      cinemaSourcePickerMovie=direct;
+    }
+
+    const player=document.getElementById('playerView');
+    const playerOpen=!!(player&&player.classList.contains('open'));
+    if(cinemaDetailOpen()&&!cinemaSourcePickerOpen()&&!playerOpen){
+      renderCinemaDetail(direct);
+    }
   }
+
+  let enriched=isKinoPub?direct:await enrichCinemaMovie(item);
+
+  if(isKinoPub&&metaPromise){
+    const meta=await metaPromise;
+    enriched=cinemaMergeMetadata(direct,meta);
+    if(direct?.poster)enriched.poster=direct.poster;
+    if(direct?.backdrop)enriched.backdrop=direct.backdrop;
+    enriched.media_rows=Array.isArray(direct?.media_rows)?direct.media_rows:[];
+    enriched.related=Array.isArray(direct?.related)?direct.related:[];
+    enriched.source='KINOPUB';
+  }
+
   warmCinemaItemImages(enriched,true);
 
   const savedMedia=restoreCinemaSavedMedia(enriched);
