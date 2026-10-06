@@ -5236,7 +5236,7 @@ function armFirstFrameTimer(ch,preferBackup,token){
       startStream(ch,preferBackup,false);
       return;
     }
-    if(String(ch.id||'').startsWith('cinema:')){
+    if(!forceWebCinema&&String(ch.id||'').startsWith('cinema:')){
       const urls=tvDirectUrls(ch);
       const cinemaSrc=urls[Math.min(tvDirectAttemptIndex,Math.max(0,urls.length-1))]||'';
       if(cinemaSrc&&tryCinemaNativeFallback(ch,cinemaSrc,token))return;
@@ -5378,7 +5378,7 @@ function tvInitialAbrEstimate(ch){
   if(h>=650)return 3500000;
   return 1800000;
 }
-function startStream(ch,preferBackup=false,forceProxy=false){
+function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false){
   stopTvWatchdog();
   clearFirstFrameTimer();
   tvPlaybackStable=false;
@@ -5475,8 +5475,10 @@ function startStream(ch,preferBackup=false,forceProxy=false){
   resetQualityMenu();
 
   const kinoPubHls=String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&(/\.m3u8(?:[?#]|$)/i.test(src)||/\/hls(?:\/|[?#]|$)/i.test(src));
-  const cinemaNative=!!(nativeTv&&String(ch.id||'').startsWith('cinema:external:')&&
-    ch.cinemaProvider&&!kinoPubHls&&window.AbajNative&&typeof AbajNative.cinemaNativeStart==='function');
+  const cinemaNative=!!(nativeTv&&ch.cinemaProvider&&window.AbajNative&&typeof AbajNative.cinemaNativeStart==='function'&&(
+    (String(ch.id||'').startsWith('cinema:external:')&&!kinoPubHls)||
+    (kinoPubHls&&!forceWebCinema)
+  ));
   if(cinemaNative){
     playbackPlayerMode='native';
     clearCinemaStartupTimer();
@@ -5493,6 +5495,11 @@ function startStream(ch,preferBackup=false,forceProxy=false){
       nativeMedia3ErrorHandler=null;
       setNativeMedia3Visible(false);
       try{if(window.AbajNative&&typeof AbajNative.nativeProbeStop==='function')AbajNative.nativeProbeStop()}catch(e){}
+      if(kinoPubHls&&!forceWebCinema){
+        err.textContent='Пробую совместимый HLS-плеер…';
+        startStream(ch,preferBackup,forceProxy,true);
+        return;
+      }
       if(!retryCinemaPlayback('startup timeout')){
         err.textContent='Видео не запустилось';
       }
@@ -5530,6 +5537,11 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         playable:false,
         message:String(reason||'ошибка потока')
       });
+      if(kinoPubHls&&!forceWebCinema){
+        err.textContent='Пробую совместимый HLS-плеер…';
+        startStream(ch,preferBackup,forceProxy,true);
+        return;
+      }
       if(retryCinemaPlayback(String(reason||'native error')))return;
       err.textContent='Видео не открылось: '+String(reason||'ошибка потока');
     };
@@ -5701,7 +5713,7 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         startStream(ch,preferBackup,true);
         return;
       }
-      if(nativeTv&&String(ch.id||'').startsWith('cinema:')&&
+      if(nativeTv&&!forceWebCinema&&String(ch.id||'').startsWith('cinema:')&&
          (data.type===Hls.ErrorTypes.NETWORK_ERROR||data.type===Hls.ErrorTypes.MEDIA_ERROR)){
         clearFirstFrameTimer();
         if(tryCinemaNativeFallback(ch,src,attemptToken))return;
