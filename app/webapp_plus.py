@@ -883,12 +883,16 @@ async def api_cinema_progress(request):
     completed = bool(duration > 0 and position / duration >= 0.96)
     if completed:
         position = 0.0
+    season = body.get('season') if isinstance(body,dict) else None
+    episode = body.get('episode') if isinstance(body,dict) else None
     data = {
         'item_id':item_id,
         'media_id':media_id,
         'position':round(position,2),
         'duration':round(duration,2),
         'completed':completed,
+        'season':season,
+        'episode':episode,
         'updated_at':int(time.time()),
     }
     await set_setting(f'cinema_progress:{uid}:{item_id}:{media_id}', json.dumps(data,separators=(',',':')))
@@ -906,6 +910,10 @@ async def api_cinema_progress(request):
             row['position'] = data['position']
             row['duration'] = data['duration']
             row['media_id'] = media_id
+            if season is not None:
+                row['season'] = season
+            if episode is not None:
+                row['episode'] = episode
             row['completed_media_id'] = media_id if completed else ''
             row['updated_at'] = data['updated_at']
             changed = True
@@ -975,6 +983,9 @@ async def api_cinema_library_watch(request):
     title = str(item.get('title') or '').strip()
     if not item_id and not title:
         return web.json_response({'ok':False,'error':'bad_item'}, status=400)
+    media_id = str(body.get('media_id') or '').strip() if isinstance(body,dict) else ''
+    season = body.get('season') if isinstance(body,dict) else None
+    episode = body.get('episode') if isinstance(body,dict) else None
     key = item_id or title.casefold()
     compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
     compact['watched_at'] = int(time.time())
