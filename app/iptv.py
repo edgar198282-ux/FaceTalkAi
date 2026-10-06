@@ -2602,6 +2602,7 @@ async def api_refresh(request):
 _ad_frame_slots = asyncio.Semaphore(2)
 _ad_frame_stats = {"probes": 0, "detections": 0, "errors": 0, "last_channel_id": "", "last_text": "", "last_reason": "", "last_checked_at": 0}
 _ad_frame_seen = {}
+_ad_frame_debug = {}
 
 
 def _decode_ad_frame(encoded):
@@ -2617,6 +2618,36 @@ def _decode_ad_frame(encoded):
         if ImageStat.Stat(gray).stddev[0] < 2:
             raise ValueError("blank frame")
         return gray.tobytes(), gray.width, gray.height
+
+
+async def api_ad_debug_capture(request):
+    expected = str(os.getenv("IPTV_AD_DEBUG_TOKEN") or "")
+    supplied = request.headers.get("X-Abaj-Ad-Debug-Token", "")
+    if not expected or not supplied or not hmac.compare_digest(supplied, expected):
+        return web.json_response({"ok": False}, status=401)
+    headers = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"}
+    now = time.monotonic()
+    if request.method == "POST":
+        body = await request.json()
+        cid = str(body.get("channel_id") or "")
+        item = _state["channels"].get(cid)
+        if not item or item.get("personal") or cid.startswith("cinema:"):
+            return web.json_response({"ok": False}, status=404, headers=headers)
+        deadline = now + 30
+        _ad_frame_debug.clear()
+        _ad_frame_debug.update({"cid": cid, "until": deadline, "client": str(body.get("client") or "")[:80]})
+        def clear_debug():
+            if _ad_frame_debug.get("until") == deadline:
+                _ad_frame_debug.clear()
+        asyncio.get_running_loop().call_later(30, clear_debug)
+        return web.json_response({"ok": True}, headers=headers)
+    if float(_ad_frame_debug.get("until") or 0) < now:
+        _ad_frame_debug.clear()
+    frame = _ad_frame_debug.pop("frame", None)
+    if not frame:
+        return web.json_response({"ok": False}, status=404, headers=headers)
+    _ad_frame_debug.clear()
+    return web.Response(body=frame, content_type="image/jpeg" if frame[:2] == b"\xff\xd8" else "image/png", headers=headers)
 
 
 async def api_ad_frame(request):
@@ -2644,6 +2675,10 @@ async def api_ad_frame(request):
     async with _ad_frame_slots:
         try:
             frame, width, height = await asyncio.to_thread(_decode_ad_frame, body.get("frame"))
+            if (time.monotonic() < float(_ad_frame_debug.get("until") or 0)
+                and _ad_frame_debug.get("cid") == cid
+                and str(_ad_frame_debug.get("client") or "") in request.headers.get("User-Agent", "")):
+                _ad_frame_debug["frame"] = base64.b64decode(body["frame"], validate=True)
         except Exception:
             return web.json_response({"ok": False, "error": "invalid frame"}, status=400, headers=headers)
         try:
@@ -3175,6 +3210,8 @@ def install(app: web.Application):
     app.router.add_post("/api/iptv/client-stream-failure", api_client_stream_failure)
     app.router.add_post("/api/iptv/playback-metric", api_playback_metric)
     app.router.add_post("/api/iptv/ad-viewing", api_ad_viewing)
+    app.router.add_post("/api/iptv/ad-debug-capture", api_ad_debug_capture)
+    app.router.add_get("/api/iptv/ad-debug-capture", api_ad_debug_capture)
     app.router.add_post("/api/iptv/ad-frame", api_ad_frame)
     app.router.add_get("/api/iptv/ad-state", api_ad_state)
     app.router.add_post("/api/iptv/ad-visual-observe", api_ad_visual_observe)
