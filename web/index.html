@@ -1275,9 +1275,16 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaSimilarMeta{font-size:11px;line-height:1.2;color:#8eb7cc;margin-top:3px;min-height:13px}
 @media(max-width:760px){
   .cinemaDetailHero{min-height:45vh;background-position:center 28%}
-  .cinemaDetailActions{left:50%;right:auto;bottom:14px;gap:8px;max-width:96%}
-  .cinemaDetailAction{min-width:138px;height:39px;font-size:12px;padding:0 12px}
-  .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:126px}
+  .cinemaDetailActions{
+    left:12px;right:12px;bottom:14px;transform:none;max-width:none;width:auto;
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px
+  }
+  .cinemaDetailActions:not(.hasSeasons){grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cinemaDetailAction{
+    min-width:0;width:100%;height:39px;font-size:11px;padding:0 7px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  }
+  .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:0}
   .cinemaDetailBody{padding:18px 14px 28px;margin-top:-10px;border-top:0!important}
   .cinemaDetailTitle{font-size:28px;line-height:1.12;margin-bottom:20px}
   .cinemaDetailDescription{font-size:16px;line-height:1.46}
@@ -1293,10 +1300,13 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 }
 @media(max-width:430px){
   .cinemaDetailHero{min-height:43vh}
-  .cinemaDetailActions{left:50%;right:auto;gap:7px;max-width:96%}
-  .cinemaDetailActions.hasSeasons{display:flex}
-  .cinemaDetailAction{min-width:118px;height:38px;font-size:11px;padding:0 10px}
-  .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:106px}
+  .cinemaDetailActions{left:10px;right:10px;gap:6px}
+  .cinemaDetailActions.hasSeasons{display:grid}
+  .cinemaDetailAction{
+    min-width:0;height:38px;font-size:10px;padding:0 5px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  }
+  .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:0}
   .cinemaDetailBody{padding-left:12px;padding-right:12px}
   .cinemaDetailTitle{font-size:27px}
   .cinemaDetailFacts{grid-template-columns:88px minmax(0,1fr);font-size:15px;gap:9px 10px}
