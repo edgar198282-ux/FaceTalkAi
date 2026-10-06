@@ -2255,12 +2255,11 @@ async function connectKinoPubFromAdmin(){
 
     const code=String(d.user_code||'');
     const uri=String(d.verification_uri||'https://kino.pub/device');
-    if(meta)meta.textContent='Код: '+code+'. Откройте KinoPub и подтвердите устройство.';
-
-    try{
-      if(window.AbajNative&&typeof AbajNative.openUrl==='function')AbajNative.openUrl(uri);
-      else window.open(uri,'_blank','noopener');
-    }catch(e){}
+    if(meta){
+      meta.innerHTML='Код подключения: <b style="font-size:22px;letter-spacing:2px;color:#0b6fa4">'+
+        code.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+
+        '</b><br><span style="font-size:13px;color:#64859a">Сначала запишите код. Сайт KinoPub автоматически не откроется.</span>';
+    }
 
     const interval=Math.max(2,Number(d.interval||5))*1000;
     const deadline=Number(d.expires_at||0)*1000;
