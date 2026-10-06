@@ -1322,7 +1322,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 
   <section class="cinemaDetail" id="cinemaDetail">
     <div class="cinemaDetailHero" id="cinemaDetailHero">
-      <img class="cinemaDetailHeroPoster" id="cinemaDetailHeroPoster" alt="">
+      <img class="cinemaDetailHeroPoster" id="cinemaDetailHeroPoster" loading="eager" decoding="async" fetchpriority="high" alt="">
       <button class="cinemaDetailBack" id="cinemaDetailBack" onclick="closeCinemaDetail()" aria-label="Назад">←</button>
       <button class="cinemaDetailShare" id="cinemaDetailShare" onclick="shareCinemaDetail()" aria-label="Поделиться" title="Поделиться">⌯</button>
       <div class="cinemaDetailActions">
@@ -7040,6 +7040,24 @@ function posterUrl(item){
 }
 const cinemaPosterPreconnected=new Set();
 const cinemaPosterPreloaded=new Set();
+const cinemaImageWarmCache=new Map();
+function warmCinemaImage(url,high=false){
+  url=String(url||'').trim();
+  if(!/^https?:\/\//i.test(url)||cinemaImageWarmCache.has(url))return;
+  const img=new Image();
+  img.decoding='async';
+  try{img.fetchPriority=high?'high':'auto'}catch(e){}
+  img.src=url;
+  cinemaImageWarmCache.set(url,img);
+  if(cinemaImageWarmCache.size>96){
+    const first=cinemaImageWarmCache.keys().next().value;
+    if(first)cinemaImageWarmCache.delete(first);
+  }
+}
+function warmCinemaItemImages(item,high=false){
+  warmCinemaImage(posterUrl(item),high);
+  warmCinemaImage(cinemaDetailBackdrop(item),high);
+}
 function primeCinemaPosterNetwork(items){
   const urls=(Array.isArray(items)?items:[]).map(posterUrl).filter(Boolean);
   const origins=[];
@@ -7070,6 +7088,7 @@ function primeCinemaPosterNetwork(items){
     link.fetchPriority='high';
     document.head.appendChild(link);
   });
+  (Array.isArray(items)?items:[]).slice(0,18).forEach((item,index)=>warmCinemaItemImages(item,index<10));
 }
 function setCinemaBackgrounds(currentItems){
   const current=(Array.isArray(currentItems)?currentItems:[]);
@@ -7762,7 +7781,12 @@ function renderCinemaCatalog(items,options={}){
       '<div class="cinemaPosterSub">'+sub.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
       (progress?'<div class="cinemaPosterProgress" title="Просмотрено '+progress+'%"><span style="width:'+progress+'%"></span></div>':'')+
       '</div>';
+    const warm=()=>warmCinemaItemImages(item,true);
+    card.addEventListener('pointerenter',warm,{passive:true});
+    card.addEventListener('touchstart',warm,{passive:true,once:true});
+    card.addEventListener('focus',warm,{passive:true});
     card.onclick=()=>{
+      warm();
       document.querySelectorAll('.cinemaPosterCard').forEach(x=>{if(x.dataset)x.dataset.cinemaSelected='0'});
       card.dataset.cinemaSelected='1';
       if(String(item.source||'').toUpperCase()==='KINOPUB_COLLECTION'||String(item.kind||'')==='collection')openKinoPubCollection(item);
@@ -10154,6 +10178,7 @@ async function openCinemaMovie(item){
   if(cinemaSource==='kinopub'||String(item?.source||'').toUpperCase()==='KINOPUB'){
     enriched=await loadKinoPubItemDetails(enriched);
   }
+  warmCinemaItemImages(enriched,true);
 
   const savedMedia=restoreCinemaSavedMedia(enriched);
   if(savedMedia)cinemaSelectedKinoMedia=savedMedia;
