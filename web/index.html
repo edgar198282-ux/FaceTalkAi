@@ -1806,14 +1806,16 @@ body.nativeTv #tvSettingsModal input[type="range"]:focus{
 </style>
 
 <style id="cinema-admin-count-color-v1">
-body.uiLight .cinemaTvReturnLabel{
+body:not(.darkMode) .cinemaTvReturnLabel,
+body:not(.darkMode) .cinemaMenuItem.cinemaTvReturn:focus .cinemaTvReturnLabel,
+body:not(.darkMode) .cinemaMenuItem.cinemaTvReturn.active .cinemaTvReturnLabel{
   color:#111!important;
 }
-body.uiLight .cinemaSideMeta .cinemaAdminCount{
+body:not(.darkMode) .cinemaSideMeta .cinemaAdminCount{
   color:#159447!important;
   font-weight:800!important;
 }
-body:not(.uiLight) .cinemaSideMeta .cinemaAdminCount{
+body.darkMode .cinemaSideMeta .cinemaAdminCount{
   color:#41d17a!important;
   font-weight:800!important;
 }
