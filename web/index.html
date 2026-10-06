@@ -907,13 +907,13 @@ body.darkMode .appearanceToggle button.active{background:#087fe1;color:#fff;bord
     overscroll-behavior:contain;
   }
   body:not(.nativeTv) #adminPanel .adminHead{
-    position:sticky;
-    top:-18px;
-    z-index:8;
-    margin:-18px -18px 12px;
-    padding:18px;
-    background:#f5fbff;
-    border-bottom:1px solid #d8ebf7;
+    position:static!important;
+    top:auto!important;
+    z-index:auto!important;
+    margin:0 0 6px!important;
+    padding:0!important;
+    background:transparent!important;
+    border-bottom:0!important;
   }
 }
 .adminBack{border:0;background:#d9efff;color:#0b5f9e;border-radius:12px;padding:10px 13px;font-weight:850;white-space:nowrap}
@@ -1445,103 +1445,114 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
 
 </style>
 
-<style id="admin-mobile-compact-v2">
+
+<style id="admin-mobile-compact-v3">
 @media (max-width:700px){
   body #adminPanel .adminCard{
-    padding:10px 10px calc(14px + env(safe-area-inset-bottom,0px))!important;
+    padding:8px 8px calc(12px + env(safe-area-inset-bottom,0px))!important;
   }
   body #adminPanel .adminHead{
-    top:-10px!important;
-    margin:-10px -10px 8px!important;
-    padding:10px!important;
+    position:static!important;
+    top:auto!important;
+    z-index:auto!important;
+    margin:0 0 6px!important;
+    padding:0!important;
+    background:transparent!important;
+    border-bottom:0!important;
   }
   body #adminPanel .adminTitle{
-    font-size:17px!important;
-    line-height:1.05!important;
+    font-size:16px!important;
+    line-height:1.02!important;
   }
   body #adminPanel .adminHeadActions{
     gap:4px!important;
   }
   body #adminPanel .adminHeadActions .adminBack,
   body #adminPanel .adminHeadActions .adminClose{
-    height:32px!important;
-    min-height:32px!important;
-    padding:0 9px!important;
+    height:30px!important;
+    min-height:30px!important;
+    padding:0 8px!important;
     border-radius:8px!important;
-    font-size:13px!important;
-  }
-  body #adminPanel .adminRow{
-    border-radius:9px!important;
-    padding:7px!important;
-    gap:5px!important;
-    font-size:13px!important;
-    line-height:1.15!important;
+    font-size:12px!important;
   }
   body #adminPanel .adminRows{
-    gap:5px!important;
+    gap:4px!important;
+  }
+  body #adminPanel .adminRow{
+    border-radius:8px!important;
+    padding:5px 6px!important;
+    gap:4px!important;
+    font-size:12px!important;
+    line-height:1.08!important;
   }
   body #adminPanel .adminMeta{
-    font-size:11px!important;
-    line-height:1.15!important;
-    margin-top:2px!important;
+    font-size:10px!important;
+    line-height:1.1!important;
+    margin-top:1px!important;
   }
   body #adminPanel input,
   body #adminPanel select{
-    height:32px!important;
-    min-height:32px!important;
+    height:30px!important;
+    min-height:30px!important;
     border-radius:8px!important;
     padding:0 8px!important;
-    font-size:13px!important;
+    font-size:12px!important;
   }
   body #adminPanel button{
-    font-size:13px!important;
+    font-size:12px!important;
   }
   body #adminPanel [style*="font-size:18px"]{
     font-size:15px!important;
     margin-top:10px!important;
     margin-bottom:6px!important;
   }
-  body #adminPanel button[onclick="openSettings()"]{
-    margin:7px 0 6px!important;
-    padding:7px 8px!important;
+  body #adminPanel #accessStats{
+    gap:4px!important;
+    margin-bottom:4px!important;
+  }
+  body #adminPanel #accessStats .adminRow{
+    padding:4px!important;
+  }
+  body #adminPanel #accessRows .adminRow,
+  body #adminPanel #adminRows .adminRow{
+    padding:4px 5px!important;
+  }
+  body #adminPanel #accessRows .adminRow button,
+  body #adminPanel #adminRows .adminRow button{
+    min-height:28px!important;
+    height:28px!important;
+    padding:0 8px!important;
     border-radius:8px!important;
-    font-size:14px!important;
+    font-size:12px!important;
+  }
+  body #adminPanel .adminDiagnosticsToggle{
+    width:100%!important;
+    min-height:32px!important;
+    margin:6px 0!important;
+    border:0!important;
+    border-radius:8px!important;
+    background:#173149!important;
+    color:#dcefff!important;
+    font-weight:850!important;
+    font-size:12px!important;
+  }
+  body #adminPanel #iptvDiagBlock{
+    display:none;
+  }
+  body #adminPanel #iptvDiagBlock.open{
+    display:block;
   }
   body #adminPanel button[onclick="loadIptvDiagnostics()"],
   body #adminPanel button[onclick="forceIptvRefresh()"]{
-    min-height:36px!important;
+    min-height:34px!important;
     padding:5px 6px!important;
     border-radius:8px!important;
-    font-size:13px!important;
+    font-size:12px!important;
     line-height:1.05!important;
-  }
-  body #adminPanel #accessStats{
-    gap:4px!important;
-    margin-bottom:5px!important;
-  }
-  body #adminPanel #iptvDiagRows .adminRow{
-    padding:6px!important;
-  }
-  body #adminPanel .adminDiagnosticsToggle{
-    width:100%;
-    min-height:34px;
-    margin:6px 0 0;
-    border:0;
-    border-radius:8px;
-    background:#173149;
-    color:#dcefff;
-    font-weight:850;
-    font-size:13px;
-  }
-  body #adminPanel .adminDiagnosticsReports{
-    display:none;
-    margin-top:5px;
-  }
-  body #adminPanel .adminDiagnosticsReports.open{
-    display:block;
   }
 }
 </style>
+
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
@@ -1863,11 +1874,14 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
     </div>
 
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Диагностика IPTV</div>
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px;width:100%;box-sizing:border-box">
-      <button onclick="loadIptvDiagnostics()" style="width:100%;min-width:0;min-height:70px;box-sizing:border-box;background:#087fe1;color:#fff;border:0;border-radius:14px;padding:12px 10px;font-weight:800;font-size:16px;line-height:1.15;white-space:normal">Обновить<br>диагностику</button>
-      <button onclick="forceIptvRefresh()" style="width:100%;min-width:0;min-height:70px;box-sizing:border-box;background:#16a05d;color:#fff;border:0;border-radius:14px;padding:12px 10px;font-weight:800;font-size:16px;line-height:1.15;white-space:normal">Перепроверить<br>каналы</button>
+    <button id="iptvDiagToggleBtn" class="adminDiagnosticsToggle" type="button" onclick="toggleIptvDiagnosticsBlock()">Показать диагностику ▼</button>
+    <div id="iptvDiagBlock">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:8px;width:100%;box-sizing:border-box">
+        <button onclick="loadIptvDiagnostics()" style="width:100%;min-width:0;min-height:34px;box-sizing:border-box;background:#087fe1;color:#fff;border:0;border-radius:8px;padding:5px 6px;font-weight:800;font-size:12px;line-height:1.05;white-space:normal">Обновить<br>диагностику</button>
+        <button onclick="forceIptvRefresh()" style="width:100%;min-width:0;min-height:34px;box-sizing:border-box;background:#16a05d;color:#fff;border:0;border-radius:8px;padding:5px 6px;font-weight:800;font-size:12px;line-height:1.05;white-space:normal">Перепроверить<br>каналы</button>
+      </div>
+      <div class="adminRows" id="iptvDiagRows"><div class="adminEmpty">Нажмите «Обновить диагностику»</div></div>
     </div>
-    <div class="adminRows" id="iptvDiagRows"><div class="adminEmpty">Нажмите «Обновить диагностику»</div></div>
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Обновления Abaj TV</div>
     <div style="display:flex;gap:8px;margin-bottom:10px">
       <button onclick="loadOtaInfo()" style="background:#087fe1;color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:800">Проверить OTA</button>
@@ -3056,6 +3070,14 @@ async function rollbackApp(){
     alert('Откат выполнен: code '+d.rolled_back_to);
     loadOtaInfo();
   }catch(e){alert('Откат не выполнен: '+String(e.message||e))}
+}
+
+function toggleIptvDiagnosticsBlock(){
+  const block=document.getElementById('iptvDiagBlock');
+  const btn=document.getElementById('iptvDiagToggleBtn');
+  if(!block||!btn)return;
+  const open=block.classList.toggle('open');
+  btn.textContent=open?'Скрыть диагностику ▲':'Показать диагностику ▼';
 }
 
 async function loadIptvDiagnostics(){
