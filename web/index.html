@@ -1763,6 +1763,7 @@ let tvPlayerMode=['auto','hls','system'].includes(savedTvPlayerMode)?savedTvPlay
 let appThemeHue=Math.max(0,Math.min(359,Number(localStorage.getItem('abaj_tv_theme_hue')||204)||204));
 let appAppearanceMode=localStorage.getItem('abaj_tv_appearance')==='dark'?'dark':'light';
 let tvHeaderCollapsed=false;
+let tvHeaderOpeningTop=false;
 let mobileHeaderRaf=0;
 let tvHeaderBackAt=0;
 let networkRetryTimer=null;
@@ -4099,14 +4100,17 @@ function moveFocusDirection(direction){
   const ax=a.left+a.width/2, ay=a.top+a.height/2;
   if(nativeTv&&direction==='up'&&tvHeaderCollapsed&&focusIndex<tvGridColumns()){
     const x=ax;
+    tvHeaderOpeningTop=true;
+    try{document.activeElement?.blur()}catch(_){}
     setTvHeaderCollapsed(false,false);
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
       const rows=tvTopRows();
-      if(!rows.length)return;
+      if(!rows.length){tvHeaderOpeningTop=false;return}
       const bottomRow=rows[rows.length-1];
       focusTvTopElement(nearestTopByX(bottomRow,x)||bottomRow[0]);
       const content=document.getElementById('content');
       if(content)content.scrollTop=0;
+      setTimeout(()=>{tvHeaderOpeningTop=false},180);
     }));
     return;
   }
@@ -4131,15 +4135,18 @@ function moveFocusDirection(direction){
   }
   if(nativeTv&&direction==='up'&&tvHeaderCollapsed){
     const x=ax;
+    tvHeaderOpeningTop=true;
+    try{document.activeElement?.blur()}catch(_){}
     setTvHeaderCollapsed(false,false);
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
       const rows=tvTopRows();
-      if(!rows.length)return;
+      if(!rows.length){tvHeaderOpeningTop=false;return}
       const bottomRow=rows[rows.length-1];
       const target=nearestTopByX(bottomRow,x)||bottomRow[0];
       focusTvTopElement(target);
       const content=document.getElementById('content');
       if(content)content.scrollTop=0;
+      setTimeout(()=>{tvHeaderOpeningTop=false},180);
     }));
   }
 }
@@ -6627,7 +6634,7 @@ document.addEventListener('focusin',e=>{
     const focusedChannel=channels.find(x=>String(x.id)===String(card.dataset.id));
     if(focusedChannel)warmTvDirectConnection(focusedChannel);
     cards.forEach((x,i)=>x.classList.toggle('focused',i===idx));
-    if(!tvHeaderCollapsed)setTvHeaderCollapsed(true,false);
+    if(!tvHeaderCollapsed&&!tvHeaderOpeningTop)setTvHeaderCollapsed(true,false);
     const content=document.getElementById('content');
     if(content&&content.scrollTop<2)content.scrollTop=0;
   }
