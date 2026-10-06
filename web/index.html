@@ -1083,69 +1083,73 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 /* Cinema movie detail */
 .cinemaDetail{
   position:fixed;inset:0;z-index:610;display:none;overflow:auto;
-  background:#07243a;color:#eaf8ff
+  background:#20282d;color:#f0f2f3
 }
 .cinemaDetail.open{display:block}
 .cinemaDetailHero{
-  position:relative;min-height:58vh;background:#0a263a center 24%/cover no-repeat;
+  position:relative;min-height:56vh;background:#151b1f center 28%/cover no-repeat;
   display:flex;align-items:flex-end;overflow:hidden
 }
 .cinemaDetailHero.posterFallback::before{
-  content:"";position:absolute;inset:-6%;background:var(--cinema-detail-poster) center/cover no-repeat;
-  filter:blur(28px) brightness(.52);transform:scale(1.08)
+  content:"";position:absolute;inset:-4%;background:var(--cinema-detail-poster) center/cover no-repeat;
+  filter:blur(20px) brightness(.46);transform:scale(1.06)
 }
 .cinemaDetailHeroPoster{
-  position:absolute;z-index:1;left:7%;top:8%;height:70%;max-width:32%;object-fit:contain;
-  border-radius:7px;box-shadow:0 12px 38px rgba(0,0,0,.38);display:none
+  position:absolute;z-index:1;left:50%;top:5%;height:74%;max-width:38%;object-fit:contain;
+  transform:translateX(-50%);border-radius:6px;box-shadow:0 12px 36px rgba(0,0,0,.46);display:none
 }
 .cinemaDetailHero.posterFallback .cinemaDetailHeroPoster{display:block}
 .cinemaDetailHero::after{
   content:"";position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(2,12,22,.08) 0%,rgba(3,21,35,.18) 44%,rgba(5,36,58,.92) 84%,#07243a 100%)
+  background:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.08) 50%,rgba(22,28,32,.76) 82%,#20282d 100%)
 }
 .cinemaDetailBack{
-  position:absolute;left:20px;top:18px;z-index:3;width:46px;height:46px;border:0;border-radius:50%;
-  background:rgba(3,18,30,.58);color:#d9f4ff;font-size:27px
+  position:absolute;left:18px;top:18px;z-index:4;width:48px;height:48px;border:0;border-radius:50%;
+  background:rgba(24,31,35,.72);color:#fff;font-size:31px;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 18px rgba(0,0,0,.25)
 }
 .cinemaDetailShare{
-  position:absolute;right:20px;top:18px;z-index:3;width:46px;height:46px;border:0;border-radius:50%;
-  background:rgba(3,18,30,.42);color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center
+  position:absolute;right:18px;top:18px;z-index:4;width:48px;height:48px;border:0;border-radius:50%;
+  background:rgba(24,31,35,.62);color:#fff;font-size:25px;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 18px rgba(0,0,0,.2)
 }
-.cinemaDetailShare:focus{outline:none;box-shadow:0 0 0 3px #38b9ff}
+.cinemaDetailShare:focus{outline:none;box-shadow:0 0 0 3px #a6dfff}
 .cinemaDetailActions{
-  position:absolute;z-index:3;left:18px;right:18px;bottom:74px;transform:none;
-  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px
+  position:absolute;z-index:4;left:10%;right:10%;bottom:28px;transform:none;
+  display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,.9fr);gap:14px
 }
-.cinemaDetailActions.hasSeasons{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cinemaDetailActions.hasSeasons{grid-template-columns:minmax(0,1.25fr) minmax(0,.8fr) minmax(0,.8fr)}
 .cinemaDetailAction{
-  min-width:0;width:100%;height:54px;border:1px solid rgba(155,220,255,.22);border-radius:2px;
-  background:rgba(33,120,168,.64);color:#eaf8ff;font-size:17px;font-weight:650;padding:0 10px;
-  display:flex;align-items:center;justify-content:center;text-align:center;white-space:normal;line-height:1.12
+  min-width:0;width:100%;height:54px;border:1px solid rgba(255,255,255,.4);border-radius:3px;
+  background:rgba(77,83,87,.86);color:#fff;font-size:18px;font-weight:700;padding:0 12px;
+  display:flex;align-items:center;justify-content:center;text-align:center;white-space:normal;line-height:1.12;
+  backdrop-filter:blur(6px)
 }
-.cinemaDetailAction:focus,.cinemaDetailBack:focus{outline:none;box-shadow:0 0 0 3px #38b9ff;background:#238ec4}
+#cinemaDetailWatch{border:2px solid rgba(255,255,255,.78)}
+.cinemaDetailAction:focus,.cinemaDetailBack:focus{outline:none;box-shadow:0 0 0 3px #4bbcff;background:#2b93c8}
 .cinemaDetailAction:disabled{opacity:.65}
-.cinemaDetailBody{padding:0 26px 34px;margin-top:-34px;position:relative;z-index:2}
-.cinemaDetailTitle{font-size:34px;font-weight:700;margin:0 0 15px}
-.cinemaDetailBadges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.cinemaDetailBody{padding:16px 6.5% 38px;margin-top:0;position:relative;z-index:2}
+.cinemaDetailTitle{font-size:31px;font-weight:500;line-height:1.15;margin:0 0 20px;color:#f4f4f4}
+.cinemaDetailBadges{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .cinemaDetailBadge{
-  border:1px solid #75c6ef;border-radius:6px;padding:3px 8px;color:#d7f3ff;font-size:12px;font-weight:650
+  border:1px solid #aeb7bc;border-radius:8px;padding:4px 10px;color:#e9edef;font-size:13px;font-weight:650;background:rgba(255,255,255,.03)
 }
-.cinemaDetailDescription{font-size:17px;line-height:1.45;margin-bottom:14px;color:#e4f5ff;max-width:1180px}
-.cinemaDetailDescriptionSecondary{color:#b9d7e8;font-size:15px;margin-top:-4px}
-.cinemaDetailTools{display:flex;justify-content:flex-end;margin:-30px 8px 10px}
+.cinemaDetailDescription{font-size:18px;line-height:1.48;margin-bottom:18px;color:#f0f1f2;max-width:1180px}
+.cinemaDetailDescriptionSecondary{color:#b8c0c5;font-size:15px;margin-top:-6px}
+.cinemaDetailTools{display:flex;justify-content:flex-end;margin:-54px 0 14px}
 .cinemaDetailTools #cinemaBookmarkBtn{
-  width:42px;height:42px;border:0;border-radius:50%;padding:0;
-  background:transparent;color:#7fd7ff;font-size:30px;line-height:1;
+  width:46px;height:46px;border:0;border-radius:50%;padding:0;
+  background:transparent;color:#ff5d78;font-size:36px;line-height:1;
   display:inline-flex;align-items:center;justify-content:center;cursor:pointer
 }
 .cinemaDetailTools #cinemaBookmarkBtn.bookmarked{color:#ff5d78}
 .cinemaDetailTools #cinemaBookmarkBtn:focus{outline:none;box-shadow:0 0 0 3px #38b9ff}
-.cinemaDetailFacts{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 18px;max-width:1050px;font-size:15px;line-height:1.35}
-.cinemaDetailFacts .k{color:#7ec6e9}.cinemaDetailFacts .v{color:#e9f8ff}
-.cinemaDetailFacts a{color:#dff6ff;text-decoration:underline}
-.cinemaRatingValue{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.cinemaRatingScore{font-size:18px;font-weight:800;color:#fff;text-decoration:underline}
-.cinemaRatingLogo{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:24px;padding:0 6px;border-radius:5px;font-size:11px;font-weight:900}
+.cinemaDetailFacts{display:grid;grid-template-columns:165px minmax(0,1fr);gap:13px 22px;max-width:1050px;font-size:17px;line-height:1.28}
+.cinemaDetailFacts .k{color:#8d969b}.cinemaDetailFacts .v{color:#f2f3f4}
+.cinemaDetailFacts a{color:#f2f3f4;text-decoration:underline}
+.cinemaRatingValue{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cinemaRatingScore{font-size:20px;font-weight:700;color:#fff;text-decoration:underline}
+.cinemaRatingLogo{display:inline-flex;align-items:center;justify-content:center;min-width:40px;height:28px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:900}
 .cinemaRatingLogo.imdb{background:#f5c518;color:#000}
 .cinemaRatingLogo.kp{background:#ff6a00;color:#fff}
 .cinemaSimilar{margin-top:28px}
@@ -1156,12 +1160,25 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaSimilarName{font-size:13px;font-weight:700;line-height:1.25;margin-top:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cinemaSimilarMeta{font-size:11px;color:#8eb7cc;margin-top:3px}
 @media(max-width:760px){
-  .cinemaDetailHero{min-height:44vh}
-  .cinemaDetailActions{left:10px;right:10px;bottom:42px;gap:9px}
-  .cinemaDetailAction{min-width:0;height:46px;font-size:13px;padding:0 7px}
-  .cinemaDetailBody{padding:0 14px 24px;margin-top:-20px}
-  .cinemaDetailTitle{font-size:24px}.cinemaDetailDescription{font-size:14px}
-  .cinemaDetailFacts{grid-template-columns:86px 1fr;font-size:13px;gap:6px 10px}
+  .cinemaDetailHero{min-height:45vh;background-position:center 28%}
+  .cinemaDetailActions{left:14%;right:14%;bottom:16px;gap:10px}
+  .cinemaDetailAction{min-width:0;height:47px;font-size:14px;padding:0 8px}
+  .cinemaDetailBody{padding:18px 9% 28px;margin-top:0}
+  .cinemaDetailTitle{font-size:28px;line-height:1.12;margin-bottom:20px}
+  .cinemaDetailDescription{font-size:16px;line-height:1.46}
+  .cinemaDetailFacts{grid-template-columns:130px 1fr;font-size:16px;gap:12px 16px}
+  .cinemaDetailBadge{font-size:12px;padding:4px 9px}
+  .cinemaDetailBack,.cinemaDetailShare{width:46px;height:46px;top:14px}
+  .cinemaDetailBack{left:14px}.cinemaDetailShare{right:14px}
+}
+@media(max-width:430px){
+  .cinemaDetailHero{min-height:43vh}
+  .cinemaDetailActions{left:9%;right:9%;grid-template-columns:minmax(0,1.6fr) minmax(0,.9fr)}
+  .cinemaDetailActions.hasSeasons{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cinemaDetailAction{font-size:13px}
+  .cinemaDetailBody{padding-left:8%;padding-right:8%}
+  .cinemaDetailTitle{font-size:27px}
+  .cinemaDetailFacts{grid-template-columns:112px 1fr;font-size:15px}
 }
 </style>
 </head>
@@ -1307,6 +1324,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
     <div class="cinemaDetailHero" id="cinemaDetailHero">
       <img class="cinemaDetailHeroPoster" id="cinemaDetailHeroPoster" alt="">
       <button class="cinemaDetailBack" id="cinemaDetailBack" onclick="closeCinemaDetail()" aria-label="Назад">←</button>
+      <button class="cinemaDetailShare" id="cinemaDetailShare" onclick="shareCinemaDetail()" aria-label="Поделиться" title="Поделиться">⌯</button>
       <div class="cinemaDetailActions">
         <button class="cinemaDetailAction" id="cinemaDetailWatch" onclick="watchCinemaDetail()">СМОТРЕТЬ ФИЛЬМ</button>
         <button class="cinemaDetailAction" id="cinemaDetailSeasons" onclick="openCinemaSeasons()" style="display:none">СЕЗОНЫ</button>
@@ -9764,7 +9782,7 @@ function renderCinemaDetail(item){
   if(watchBtn&&cinemaSource==='kinopub'){
     watchBtn.textContent=isSeries
       ?('СМОТРЕТЬ '+(cinemaSelectedKinoMedia?kinoMediaLabel(cinemaSelectedKinoMedia,0):'S1E1'))
-      :(hasRows?'СМОТРЕТЬ':'СМОТРЕТЬ');
+      :(hasRows?'СМОТРЕТЬ ФИЛЬМ':'СМОТРЕТЬ ФИЛЬМ');
   }
   if(seasonsBtn)seasonsBtn.style.display=isSeries?'inline-flex':'none';
   const actions=document.querySelector('#cinemaDetail .cinemaDetailActions');
