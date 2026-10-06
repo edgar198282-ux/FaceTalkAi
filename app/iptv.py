@@ -2583,7 +2583,7 @@ async def api_refresh(request):
 # Player frames are viewer-specific: never merge their result into a channel's
 # server probe state (provider prerolls can differ between connections).
 _ad_frame_slots = asyncio.Semaphore(2)
-_ad_frame_stats = {"probes": 0, "detections": 0, "errors": 0, "last_channel_id": ""}
+_ad_frame_stats = {"probes": 0, "detections": 0, "errors": 0, "last_channel_id": "", "last_text": "", "last_reason": "", "last_checked_at": 0}
 _ad_frame_seen = {}
 
 
@@ -2638,13 +2638,16 @@ async def api_ad_frame(request):
     cin = _cinerama_text_hit(text)
     now = time.time()
     _ad_frame_seen[cid] = now
-    # Keep only recent entries without retaining any images or OCR text.
+    # Keep only recent channels; images are never retained.
     for old_cid, seen_at in list(_ad_frame_seen.items()):
         if now - seen_at > 180:
             _ad_frame_seen.pop(old_cid, None)
     _ad_frame_stats["probes"] += 1
     _ad_frame_stats["detections"] += int(ott or cin)
     _ad_frame_stats["last_channel_id"] = cid
+    _ad_frame_stats["last_text"] = re.sub(r"\s+", " ", text).strip()[:500]
+    _ad_frame_stats["last_reason"] = "ottclub" if ott else ("cinerama_placeholder" if cin else "")
+    _ad_frame_stats["last_checked_at"] = now
     return web.json_response({
         "ok": True, "active": bool(ott or cin),
         "reason": "ottclub" if ott else ("cinerama_placeholder" if cin else ""),
