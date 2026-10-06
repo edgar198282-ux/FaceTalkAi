@@ -554,7 +554,7 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   body:not(.nativeTv) .quickCats,
   body:not(.nativeTv).tvMode .modeChips,
   body:not(.nativeTv).tvMode .quickCats{
-    display:flex!important;gap:6px!important;padding-top:7px!important;overflow-x:auto!important
+    display:flex!important;gap:7px!important;padding-top:7px!important;overflow-x:auto!important;align-items:center!important
   }
   body:not(.nativeTv) .countryChips,
   body:not(.nativeTv).tvMode .countryChips{
@@ -571,54 +571,27 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
   body:not(.nativeTv) .cat,
   body:not(.nativeTv).tvMode .chip,
   body:not(.nativeTv).tvMode .cat{
-    min-height:34px!important;height:34px!important;padding:0 11px!important;font-size:13px!important;border-radius:15px!important
-  }
-  body:not(.nativeTv) .modeChips .favOnly{
-    width:44px!important;min-width:44px!important;padding:0!important
-  }
-  body:not(.nativeTv) .favText{display:none!important}
-  body:not(.nativeTv) .countriesBtn{display:inline-flex!important;min-width:auto!important;padding:0 12px!important}
-  body:not(.nativeTv) .modeChips,
-  body:not(.nativeTv) .quickCats{
-    gap:8px!important;
-    padding:8px 0 0!important;
-    align-items:stretch!important;
+    min-height:36px!important;height:36px!important;padding:0 13px!important;font-size:13px!important;border-radius:18px!important
   }
   body:not(.nativeTv) .modeChips .chip,
   body:not(.nativeTv) .quickCats .cat{
-    flex:0 0 92px!important;
-    width:92px!important;
-    min-width:92px!important;
-    height:44px!important;
-    min-height:44px!important;
-    padding:0 8px!important;
-    border-radius:16px!important;
-    font-size:14px!important;
-    font-weight:850!important;
-    justify-content:center!important;
-    box-sizing:border-box!important;
-    background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(221,240,252,.92))!important;
-    border:1px solid rgba(121,181,220,.78)!important;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 3px 10px rgba(0,63,112,.14)!important;
+    flex:0 0 auto!important;width:auto!important;min-width:auto!important;
+    background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(226,243,255,.94))!important;
+    border:1px solid rgba(126,181,216,.9)!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 2px 7px rgba(0,69,116,.10)!important;
   }
   body:not(.nativeTv) .modeChips .chip.active,
   body:not(.nativeTv) .quickCats .cat.active{
     color:#fff!important;
     background:linear-gradient(180deg,#22b9ef,#078ed7)!important;
-    border-color:#6fe4ff!important;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 0 0 1px rgba(0,176,236,.28),0 5px 14px rgba(0,87,148,.25)!important;
+    border-color:#6ee0ff!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 12px rgba(0,88,150,.22)!important;
   }
   body:not(.nativeTv) .modeChips .favOnly{
-    flex:0 0 92px!important;
-    width:92px!important;
-    min-width:92px!important;
-    height:44px!important;
-    min-height:44px!important;
-    padding:0!important;
-    border-radius:16px!important;
+    width:44px!important;min-width:44px!important;height:36px!important;min-height:36px!important;padding:0!important;border-radius:18px!important
   }
-  body:not(.nativeTv) .modeChips .favOnly::before{transform:scale(1.05)!important}
-  body:not(.nativeTv) .quickCats .cat{padding:0 8px!important}
+  body:not(.nativeTv) .favText{display:none!important}
+  body:not(.nativeTv) .countriesBtn{display:inline-flex!important;min-width:auto!important;padding:0 12px!important}
   body:not(.nativeTv) .content,
   body:not(.nativeTv).tvMode .content{padding:0!important}
 
