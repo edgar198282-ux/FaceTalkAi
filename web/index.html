@@ -1062,15 +1062,15 @@ body.cinemaMode .top{display:none!important}
 @media(max-width:430px){
   .cinemaShellBar{height:34px;padding:0 8px;gap:4px}
   #cinemaMenuBtn{width:28px;height:28px;min-width:28px;font-size:18px;border-radius:7px}
-  .cinemaShellTitle{font-size:11px;font-weight:650;max-width:104px}
+  .cinemaShellTitle{font-size:9px;font-weight:650;max-width:88px}
   .cinemaShellDrop{width:18px!important;min-width:18px!important;font-size:10px;margin-left:-3px}
   .cinemaShellBrandAnim{left:64%;font-size:13px}
   .cinemaShellActions{gap:4px}
   .cinemaShellActions .cinemaShellBtn{width:28px;height:28px;min-width:28px;font-size:18px;border-radius:7px}
-  .cinemaTvQuickBtn{display:flex!important}
+  .cinemaTvQuickBtn{display:flex!important;width:36px!important;height:30px!important;min-width:36px!important}
   .cinemaTvQuickIcon{
-    width:22px;height:16px;border:1.5px solid #79c8ff;border-radius:4px;
-    align-items:center;justify-content:center;font-size:8px;font-weight:900;line-height:1;color:#79c8ff
+    width:28px;height:19px;border:1.5px solid #79c8ff;border-radius:4px;
+    align-items:center;justify-content:center;font-size:10px;font-weight:900;line-height:1;color:#79c8ff
   }
   .cinemaShellCategory{top:34px;left:40px;width:205px;padding:2px 0}
   .cinemaCategoryItem{min-height:34px;padding:6px 10px;font-size:12px}
@@ -1835,6 +1835,30 @@ body.darkMode .cinemaSideMeta .cinemaAdminCount{
 #cinemaKinoPubDays.kpDaysExpired{
   color:#d84b5b!important;
   font-weight:800!important;
+}
+</style>
+
+<style id="cinema-tv-header-size-v1">
+body.nativeTv .cinemaShellTitle{
+  font-size:13px!important;
+  max-width:150px!important;
+  font-weight:650!important;
+}
+body.nativeTv .cinemaTvQuickBtn{
+  display:flex!important;
+  width:52px!important;
+  height:42px!important;
+  min-width:52px!important;
+  border-radius:10px!important;
+}
+body.nativeTv .cinemaTvQuickIcon{
+  width:38px!important;
+  height:26px!important;
+  border:2px solid #79c8ff!important;
+  border-radius:6px!important;
+  font-size:13px!important;
+  font-weight:900!important;
+  color:#79c8ff!important;
 }
 </style>
 </head>
