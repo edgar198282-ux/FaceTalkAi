@@ -1,4 +1,4 @@
-﻿name: Build Abaj TV Android APK
+name: Build Abaj TV Android APK
 
 on:
   workflow_dispatch:
@@ -13,6 +13,9 @@ on:
           - beta
   push:
     branches: [ "main" ]
+    paths:
+      - "android/**"
+      - ".github/workflows/build-android-apk.yml"
 
 concurrency:
   group: facetalk-android-main
