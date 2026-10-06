@@ -9971,6 +9971,28 @@ window.addEventListener('popstate',()=>{
     setTimeout(()=>{cinemaHistoryPop=false},0);
   }
 });
+function restoreCinemaSavedMedia(item){
+  const rows=cinemaSeasonRows(item);
+  if(!rows.length)return null;
+
+  const savedId=String(item?.media_id||'').trim();
+  const savedSeason=Number(item?.season||0);
+  const savedEpisode=Number(item?.episode||0);
+
+  for(const row of rows){
+    const seasonNo=Number(row?.season||0);
+    const items=Array.isArray(row?.items)?row.items:[];
+    for(let i=0;i<items.length;i++){
+      const media=items[i];
+      if(media&&media.season==null&&seasonNo)media.season=seasonNo;
+      if(media&&media.number==null)media.number=i+1;
+
+      if(savedId&&kinoMediaId(media)===savedId)return media;
+      if(savedSeason&&savedEpisode&&Number(media?.season||seasonNo)===savedSeason&&Number(media?.number||i+1)===savedEpisode)return media;
+    }
+  }
+  return null;
+}
 async function openCinemaMovie(item){
   if(!item)return;
   pushCinemaHistoryLayer('detail');
@@ -9981,6 +10003,10 @@ async function openCinemaMovie(item){
   if(cinemaSource==='kinopub'||String(item?.source||'').toUpperCase()==='KINOPUB'){
     enriched=await loadKinoPubItemDetails(enriched);
   }
+
+  const savedMedia=restoreCinemaSavedMedia(enriched);
+  if(savedMedia)cinemaSelectedKinoMedia=savedMedia;
+
   const currentId=String(cinemaDetailMovie?.id||cinemaDetailMovie?.intent||'');
   if(currentId!==openedId)return;
 
