@@ -88,6 +88,14 @@ class PlayerFrames(unittest.IsolatedAsyncioTestCase):
         response = await self.client.post('/frame', data=chunks())
         self.assertEqual(response.status, 413)
 
+    async def test_b866_black_cropped_capture_is_not_a_clean_frame(self):
+        encoded = (Path(__file__).parent / 'fixtures/b866_bad_ad_frame.b64').read_text().replace('\n', '')
+        with patch.object(iptv, '_ocr_ottclub_frame', AsyncMock()) as ocr:
+            response = await self.send(frame=encoded)
+            self.assertEqual(response.status, 400)
+            self.assertNotIn('active', await response.json())
+            ocr.assert_not_awaited()
+
     async def test_backpressure_without_queued_ocr(self):
         await iptv._ad_frame_slots.acquire()
         await iptv._ad_frame_slots.acquire()

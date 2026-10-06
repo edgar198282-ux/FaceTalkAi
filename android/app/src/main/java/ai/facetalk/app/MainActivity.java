@@ -87,6 +87,7 @@ public class MainActivity extends Activity {
     private View customView; private WebChromeClient.CustomViewCallback customViewCallback;
     private FrameLayout fullscreenContainer;
     private PlayerView nativeProbeView;
+    private boolean nativeProbeTextureSurface=false;
     private FrameLayout nativeAdCover;
     private boolean nativeAdMuted=false;
     private boolean nativeAdFrameBusy=false;
@@ -2366,6 +2367,28 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void configureNativeProbeSurface(String url){
+        if(!isTv||nativeProbeView==null||fullscreenContainer==null)return;
+        String host=Uri.parse(url==null?"":url).getHost();
+        host=host==null?"":host.toLowerCase(java.util.Locale.ROOT);
+        // B866 PixelCopy returns a black/cropped frame from the decoder SurfaceView.
+        boolean texture=String.valueOf(Build.MODEL).toUpperCase(java.util.Locale.ROOT).contains("B866")
+            &&(host.equals("stream.mcquack.net")||host.contains("ottclub")||host.contains("ott-club"));
+        if(texture==nativeProbeTextureSurface)return;
+        PlayerView replacement=texture
+            ?(PlayerView)getLayoutInflater().inflate(R.layout.ott_native_player,fullscreenContainer,false)
+            :new PlayerView(this);
+        replacement.setUseController(false);
+        replacement.setBackgroundColor(Color.BLACK);
+        int index=fullscreenContainer.indexOfChild(nativeProbeView);
+        nativeProbeView.setPlayer(null);
+        fullscreenContainer.removeView(nativeProbeView);
+        fullscreenContainer.addView(replacement,Math.max(0,index),new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+        nativeProbeView=replacement;
+        nativeProbeTextureSurface=texture;
+        if(nativeProbePlayer!=null)nativeProbeView.setPlayer(nativeProbePlayer);
+    }
+
     private void ensureNativeProbePlayer(){
         if(!isTv||nativeProbeView==null||nativeProbePlayer!=null)return;
         DefaultLoadControl loadControl=new DefaultLoadControl.Builder()
@@ -2410,6 +2433,7 @@ public class MainActivity extends Activity {
     private void startNativeProbe(String url){
         if(!isTv||nativeProbeView==null)return;
         try{
+            configureNativeProbeSurface(url);
             ensureNativeProbePlayer();
             if(nativeProbePlayer==null)return;
             nativeAdFrameEpoch++;
@@ -2426,6 +2450,7 @@ public class MainActivity extends Activity {
     private void startNativeCinema(String url,String provider,java.util.Map<String,String> extraHeaders){
         if(!isTv||nativeProbeView==null)return;
         try{
+            configureNativeProbeSurface("");
             ensureNativeProbePlayer();
             if(nativeProbePlayer==null)return;
             java.util.HashMap<String,String> headers=new java.util.HashMap<>();

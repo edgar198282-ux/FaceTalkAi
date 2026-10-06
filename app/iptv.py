@@ -2615,7 +2615,9 @@ def _decode_ad_frame(encoded):
         image.load()
         gray = image.convert("L")
         # Loading/blank frames cannot confirm that normal programming returned.
-        if ImageStat.Stat(gray).stddev[0] < 2:
+        stats = ImageStat.Stat(gray)
+        center = ImageStat.Stat(gray.crop((0, gray.height // 4, gray.width, 3 * gray.height // 4)))
+        if stats.stddev[0] < 2 or (stats.mean[0] < 3 and center.stddev[0] < 2):
             raise ValueError("blank frame")
         return gray.tobytes(), gray.width, gray.height
 
