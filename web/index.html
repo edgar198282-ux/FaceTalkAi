@@ -1079,7 +1079,7 @@ body.cinemaMode .top{display:none!important}
     width:30px;height:24px;display:block;fill:none;stroke:#79c8ff;
     stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round
   }
-  #cinemaSearchBtn{font-size:22px!important}
+  #cinemaSearchBtn{font-size:17px!important}
   .cinemaShellCategory{top:34px;left:40px;width:205px;padding:2px 0}
   .cinemaCategoryItem{min-height:34px;padding:6px 10px;font-size:12px}
 }
@@ -1865,7 +1865,7 @@ body.nativeTv .cinemaTvQuickSvg{
   stroke:#79c8ff!important;
   stroke-width:2!important;
 }
-body.nativeTv #cinemaSearchBtn{font-size:32px!important}
+body.nativeTv #cinemaSearchBtn{font-size:19px!important}
 </style>
 
 <style id="cinema-exit-cleanup-v1">
@@ -1983,7 +1983,7 @@ body:not(.cinemaMode) .cinemaShellSide{
     <path d="M11 1.5 16 4l5-2.5"></path>
   </svg>
 </button>
-        <button class="cinemaShellBtn" id="cinemaSearchBtn" onclick="openTvSearch()" aria-label="Поиск">⌕</button>
+        <button class="cinemaShellBtn" id="cinemaSearchBtn" onclick="openTvSearch()" aria-label="Поиск">🔍</button>
       </div>
     </div>
     <div class="cinemaShellCategory" id="cinemaCategoryMenu">
@@ -2465,6 +2465,7 @@ let appAppearanceMode=localStorage.getItem('abaj_tv_appearance')==='dark'?'dark'
 let tvHeaderCollapsed=false;
 let tvHeaderOpeningTop=false;
 let mobileHeaderRaf=0;
+let mobileHeaderResetUntil=0;
 let tvHeaderBackAt=0;
 let networkRetryTimer=null;
 let tvWasPlayingBeforePause=false;
@@ -4814,9 +4815,18 @@ function updateMobileHeaderCollapse(){
   const content=document.getElementById('content');
   const top=document.querySelector('.top');
   if(!content||!top)return;
+  if(Date.now()<mobileHeaderResetUntil){
+    content.scrollTop=0;
+    top.style.height='auto';
+    top.style.maxHeight='none';
+    top.style.opacity='1';
+    top.style.pointerEvents='';
+    return;
+  }
   const st=Math.max(0,content.scrollTop||0);
   if(st<1){
     top.style.height='auto';
+    top.style.maxHeight='none';
     top.style.opacity='1';
     top.style.pointerEvents='';
     return;
@@ -11767,6 +11777,7 @@ async function toggleCinemaMode(){
       ))active.blur();
     }catch(e){}
     if(!nativeTv){
+      mobileHeaderResetUntil=Date.now()+700;
       const screen=document.getElementById('cinemaScreen');
       const content=document.getElementById('content');
       const top=document.querySelector('.top');
@@ -11774,16 +11785,30 @@ async function toggleCinemaMode(){
         screen.style.display='none';
         screen.scrollTop=0;
       }
-      if(content)content.scrollTop=0;
+      if(content){
+        content.scrollTop=0;
+        try{content.scrollTo({top:0,left:0,behavior:'auto'})}catch(e){}
+      }
       if(top){
         top.style.height='auto';
+        top.style.maxHeight='none';
         top.style.opacity='1';
         top.style.pointerEvents='';
       }
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      const restore=()=>{
         if(content)content.scrollTop=0;
+        if(top){
+          top.style.height='auto';
+          top.style.maxHeight='none';
+          top.style.opacity='1';
+          top.style.pointerEvents='';
+        }
         updateMobileHeaderCollapse();
-      }));
+      };
+      requestAnimationFrame(()=>requestAnimationFrame(restore));
+      setTimeout(restore,80);
+      setTimeout(restore,220);
+      setTimeout(restore,650);
     }
     if(nativeTv){
       setTvHeaderCollapsed(true,false);
