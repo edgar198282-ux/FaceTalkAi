@@ -1762,6 +1762,48 @@ body.nativeTv #tvSettingsModal input[type="range"]:focus{
   box-shadow:0 0 0 3px #ffd400!important;
 }
 </style>
+
+<style id="cinema-mobile-menu-compact-v1">
+@media (max-width:760px){
+  body:not(.nativeTv) .cinemaShellSide{
+    width:min(88vw,360px)!important;
+  }
+  body:not(.nativeTv) .cinemaSideProfile{
+    padding:18px 18px 10px!important;
+    gap:10px!important;
+  }
+  body:not(.nativeTv) .cinemaSideAvatar{
+    width:52px!important;
+    height:52px!important;
+  }
+  body:not(.nativeTv) .cinemaSideUser{
+    font-size:16px!important;
+  }
+  body:not(.nativeTv) .cinemaSideMeta{
+    font-size:11px!important;
+    margin-top:2px!important;
+  }
+  body:not(.nativeTv) .cinemaSideItems{
+    padding:3px 0 6px!important;
+  }
+  body:not(.nativeTv) .cinemaMenuItem{
+    height:44px!important;
+    padding:0 18px!important;
+    gap:11px!important;
+    font-size:14px!important;
+  }
+  body:not(.nativeTv) .cinemaMenuItem .cinemaMenuIcon{
+    width:28px!important;
+    height:28px!important;
+    min-width:28px!important;
+    border-radius:9px!important;
+    font-size:15px!important;
+  }
+  body:not(.nativeTv) .cinemaMenuIcon.icon-4k{
+    font-size:10px!important;
+  }
+}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
