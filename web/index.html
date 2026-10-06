@@ -4894,6 +4894,7 @@ function updatePlayerChannelHud(){
   }else{
     logo.style.display='none'; fallback.style.display='flex';
   }
+  fallback.textContent=channelFallbackLogoText(current);
   const p=current.epg_now||{};
   const now=Date.now()/1000;
   if(p.start&&p.stop&&Number(p.stop)>Number(p.start)){
@@ -4996,6 +4997,35 @@ function epgProgress(p){
   const now=Date.now()/1000;
   return Math.max(0,Math.min(100,((now-p.start)/(p.stop-p.start))*100));
 }
+function channelFallbackLogo(ch){
+  const name=String((ch&&ch.name)||'TV').trim();
+  const clean=name
+    .replace(/\([^)]*\)/g,' ')
+    .replace(/\[[^\]]*\]/g,' ')
+    .replace(/\b(?:FHD|FULL\s*HD|UHD|4K|HD|1080P|720P|2160P)\b/gi,' ')
+    .replace(/[^0-9A-Za-zА-Яа-яЁёԱ-Ֆա-ֆ]+/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+  const words=clean.split(' ').filter(Boolean);
+  let initials='';
+  if(words.length>=2)initials=(words[0][0]||'')+(words[1][0]||'');
+  else initials=(clean.slice(0,2)||'TV');
+  initials=initials.toUpperCase();
+  const group=String((ch&&ch.group)||'').toLowerCase();
+  const icon=group.includes('sport')?'⚽':
+    (group.includes('news')?'▤':
+    ((group.includes('movie')||group.includes('film')||group.includes('кино'))?'▶':
+    ((group.includes('music')||group.includes('музык'))?'♪':
+    ((group.includes('kids')||group.includes('дет')||group.includes('cartoon'))?'★':'TV'))));
+  return '<div class="logoFallback logoFallbackAuto"><span class="logoFallbackIcon">'+esc(icon)+'</span><b>'+esc(initials)+'</b></div>';
+}
+function channelFallbackLogoText(ch){
+  const name=String((ch&&ch.name)||'TV').trim().replace(/\([^)]*\)/g,' ').replace(/\[[^\]]*\]/g,' ').replace(/\s+/g,' ').trim();
+  const words=name.split(' ').filter(Boolean);
+  const text=words.length>=2?((words[0][0]||'')+(words[1][0]||'')):(name.slice(0,2)||'TV');
+  return text.toUpperCase();
+}
+
 function channelQualityLabel(ch){
   const q=String((ch&&ch.quality)||'').trim().toUpperCase();
   const h=Number((ch&&ch.height)||0);
@@ -5030,9 +5060,10 @@ function render(){
   Object.keys(grouped).sort((a,b)=>a.localeCompare(b,'ru')).forEach(group=>{
     if(!tvMode&&layout!=='grid')out+='<div class="groupTitle">'+esc(localizedCategoryLabel(group))+'</div>';
     grouped[group].forEach(ch=>{
+      const fallbackLogo=channelFallbackLogo(ch);
       const logo=ch.logo
-        ?'<img class="logo" loading="lazy" decoding="async" src="'+esc(ch.logo)+'" onload="this.classList.add(\'logoReady\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"><div class="logoFallback" style="display:none">TV</div>'
-        :'<div class="logoFallback">TV</div>';
+        ?'<img class="logo" loading="lazy" decoding="async" src="'+esc(ch.logo)+'" onload="this.classList.add(\'logoReady\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'+fallbackLogo.replace('class="logoFallback logoFallbackAuto"','class="logoFallback logoFallbackAuto" style="display:none"')
+        :fallbackLogo;
       const channelNo=(channelNumberMap.get(ch.id)||1);
       const qualityLabel=channelQualityLabel(ch);
       out+='<div class="channel" tabindex="'+(tvMode?'0':'-1')+'" data-id="'+esc(ch.id)+'" data-channel-no="'+channelNo+'" onclick="openPlayer(\''+ch.id+'\')">'+
@@ -6142,12 +6173,13 @@ function openPlayer(id){
     if(ch.logo){
       metaLogo.style.display='block';
       metaLogoFallback.style.display='none';
-      metaLogo.onerror=()=>{metaLogo.style.display='none';metaLogoFallback.style.display='flex'};
+      metaLogo.onerror=()=>{metaLogo.style.display='none';metaLogoFallback.style.display='flex';metaLogoFallback.textContent=channelFallbackLogoText(ch)};
       if(metaLogo.getAttribute('src')!==ch.logo)metaLogo.setAttribute('src',ch.logo);
     }else{
       metaLogo.removeAttribute('src');
       metaLogo.style.display='none';
       metaLogoFallback.style.display='flex';
+      metaLogoFallback.textContent=channelFallbackLogoText(ch);
     }
   }
   document.getElementById('playerGroup').textContent=
@@ -12246,6 +12278,64 @@ setInterval(()=>{if(document.hidden)return;const p=document.getElementById('play
     justify-content:center!important;
     font-size:20px!important;
     line-height:1!important;
+  }
+}
+</style>
+
+<style id="channel-auto-logo-fallback">
+.logoFallbackAuto{
+  width:88%!important;
+  height:70%!important;
+  min-width:0!important;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border-radius:16px;
+  color:#eefbff!important;
+  font-size:22px!important;
+  font-weight:950!important;
+  letter-spacing:.7px;
+  background:
+    radial-gradient(circle at 28% 22%,rgba(89,229,255,.35),transparent 34%),
+    linear-gradient(145deg,#0a63bd 0%,#062b66 58%,#031b42 100%);
+  border:1px solid rgba(98,222,255,.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.20),
+    inset 0 -12px 26px rgba(0,0,0,.18),
+    0 5px 14px rgba(0,83,160,.22);
+  text-shadow:0 1px 2px rgba(0,0,0,.35),0 0 8px rgba(35,205,255,.26);
+}
+.logoFallbackAuto .logoFallbackIcon{
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:17px;
+  color:#fff;
+  background:linear-gradient(145deg,#18c8f4,#0a78d8);
+  border:1px solid rgba(255,255,255,.58);
+  box-shadow:0 0 12px rgba(0,206,255,.28);
+  flex:0 0 34px;
+}
+.nativeTv .logoFallbackAuto{
+  width:80%!important;
+  height:68%!important;
+  font-size:24px!important;
+  border-radius:18px!important;
+}
+.nativeTv .logoFallbackAuto .logoFallbackIcon{
+  width:38px;height:38px;flex-basis:38px;font-size:19px;
+}
+@media(max-width:700px){
+  body:not(.nativeTv) .logoFallbackAuto{
+    width:84%!important;height:68%!important;
+    font-size:18px!important;gap:6px!important;border-radius:13px!important;
+  }
+  body:not(.nativeTv) .logoFallbackAuto .logoFallbackIcon{
+    width:30px;height:30px;flex-basis:30px;font-size:15px;border-radius:9px;
   }
 }
 </style>
