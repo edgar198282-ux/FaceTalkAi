@@ -12185,5 +12185,33 @@ if(!navigator.onLine)handleOffline();
 setInterval(()=>{const p=document.getElementById('playerView');if(nativeTv&&p&&p.classList.contains('open'))return;load()},nativeTv?180000:60000);
 setInterval(()=>{if(document.hidden)return;const p=document.getElementById('playerView');if(nativeTv&&p&&p.classList.contains('open'))return;flushPendingFavorites();loadSyncedState(false)},nativeTv?20000:2000);
 </script>
+
+<style id="mobile-filter-contrast-fix">
+@media (max-width:700px){
+  body:not(.nativeTv) #modeChips .chip:not(.active){
+    color:#173f63!important;
+    text-shadow:none!important;
+  }
+  body:not(.nativeTv) #quickCats .cat:not(.active){
+    color:#173f63!important;
+    text-shadow:none!important;
+  }
+  body:not(.nativeTv) #quickCats .cat:not(.active) .catIcon,
+  body:not(.nativeTv) #quickCats .cat:not(.active) .catLabel{
+    color:#173f63!important;
+    opacity:1!important;
+  }
+  body:not(.nativeTv) #modeChips .chip.active,
+  body:not(.nativeTv) #quickCats .cat.active,
+  body:not(.nativeTv) #quickCats .cat.active .catIcon,
+  body:not(.nativeTv) #quickCats .cat.active .catLabel{
+    color:#fff!important;
+    opacity:1!important;
+  }
+  body:not(.nativeTv) #modeChips .favOnly{
+    color:#fff!important;
+  }
+}
+</style>
 </body>
 </html>
