@@ -993,14 +993,18 @@ body.cinemaMode .top{display:none!important}
 }
 .nativeTv .cinemaPosterCard:focus .cinemaPosterImg,
 .nativeTv .cinemaPosterCard:focus .cinemaPosterFallback{
-  border-radius:12px!important;
-  box-shadow:0 0 0 2px rgba(255,212,0,.95),0 0 12px rgba(255,212,0,.22)!important;
-  transform:none!important
+  border-radius:16px!important;
+  box-shadow:0 0 0 2px rgba(255,214,64,.95)!important;
+  transform:scale(1.01)!important
 }
 .nativeTv .cinemaPosterCard:focus{
+  border-radius:16px!important;
   background:transparent!important;
   box-shadow:none!important;
   transform:none!important
+}
+.nativeTv .cinemaPosterCard:focus .cinemaPosterMeta{
+  background:transparent!important
 }
 .cinemaPosterProgress{
   height:4px;margin:6px 3px 0;border-radius:999px;overflow:hidden;background:rgba(126,205,247,.18)
