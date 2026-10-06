@@ -1258,6 +1258,8 @@ body:not(.darkMode) .cinemaDetail,body:not(.darkMode) .cinemaDetailBody{backgrou
 body:not(.darkMode) .cinemaDetailTitle,body:not(.darkMode) .cinemaDetailDescription,body:not(.darkMode) .cinemaDetailFacts .v,body:not(.darkMode) .cinemaDetailFacts a{color:#173b52!important}
 body:not(.darkMode) .cinemaDetailDescriptionSecondary,body:not(.darkMode) .cinemaDetailFacts .k{color:#658397!important}
 body:not(.darkMode) .cinemaDetailBadge{color:#244d66!important;border-color:#9db8c9!important;background:rgba(255,255,255,.55)!important}
+body:not(.darkMode) .cinemaRatingScore{color:#173b52!important;text-decoration-color:#7fa1b5!important}
+body:not(.darkMode) .cinemaRatingValue{color:#173b52!important}
 body:not(.darkMode) .cinemaSimilarTitle,body:not(.darkMode) .cinemaSimilarName{color:#173b52!important}
 body:not(.darkMode) .cinemaSimilarMeta{color:#658397!important}
 body:not(.darkMode) .cinemaSeasons{background:#eef6fb!important;color:#173b52!important}
@@ -2216,6 +2218,7 @@ function applyAppLanguage(){
   const group=document.getElementById('group'); if(group&&group.options.length)group.options[0].textContent=t.all;
   ['hy','ru','en'].forEach(x=>document.getElementById('lang'+x[0].toUpperCase()+x.slice(1)+'Btn')?.classList.toggle('active',x===appLang));
   applyCinemaLanguage();
+  if(cinemaDetailMovie&&document.getElementById('cinemaDetail')?.classList.contains('open'))renderCinemaDetail(cinemaDetailMovie);
   if(channels.length)buildQuickCats(visibleChannelGroups());
 }
 async function loadMyDevices(){
@@ -10183,7 +10186,7 @@ function renderCinemaSeasonEpisodes(row){
       cinemaSelectedKinoMedia=media;
       closeCinemaSeasons();
       const watchBtn=document.getElementById('cinemaDetailWatch');
-      if(watchBtn)watchBtn.textContent='СМОТРЕТЬ '+kinoMediaLabel(media,index);
+      if(watchBtn)watchBtn.textContent=(appLang==='hy'?'ԴԻՏԵԼ ':(appLang==='en'?'WATCH ':'СМОТРЕТЬ '))+kinoMediaLabel(media,index);
     };
     list.appendChild(btn);
   });
@@ -10354,9 +10357,10 @@ function renderCinemaDetail(item){
   }
   if(!isSeries)cinemaSelectedKinoMedia=null;
   if(watchBtn&&cinemaSource==='kinopub'){
+    const watchPrefix=appLang==='hy'?'ԴԻՏԵԼ ':(appLang==='en'?'WATCH ':'СМОТРЕТЬ ');
     watchBtn.textContent=isSeries
-      ?('СМОТРЕТЬ '+(cinemaSelectedKinoMedia?kinoMediaLabel(cinemaSelectedKinoMedia,0):'S1E1'))
-      :(hasRows?'СМОТРЕТЬ ФИЛЬМ':'СМОТРЕТЬ ФИЛЬМ');
+      ?(watchPrefix+(cinemaSelectedKinoMedia?kinoMediaLabel(cinemaSelectedKinoMedia,0):'S1E1'))
+      :cinemaT().watchMovie;
   }
   if(seasonsBtn)seasonsBtn.style.display=isSeries?'inline-flex':'none';
   const actions=document.querySelector('#cinemaDetail .cinemaDetailActions');
