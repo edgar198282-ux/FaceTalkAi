@@ -5097,7 +5097,7 @@ function tvDirectUrls(ch){
   return urls;
 }
 function reportTvStreamFailure(ch,reason){
-  if(!nativeTv||!ch||ch.personal)return;
+  if(!nativeTv||!ch||ch.personal||String(ch.id||'').startsWith('cinema:'))return;
   const urls=tvDirectUrls(ch);
   const failedUrl=urls[Math.min(tvDirectAttemptIndex,Math.max(0,urls.length-1))]||'';
   if(!failedUrl)return;
@@ -5169,6 +5169,51 @@ function tvShouldUseHls(ch){
   if(tvSystemFallbackChannels.has(String(ch&&ch.id||'')))return false;
   return true;
 }
+let cinemaNativeFallbackToken=0;
+function tryCinemaNativeFallback(ch,src,attemptToken){
+  if(!nativeTv||!ch||!String(ch.id||'').startsWith('cinema:'))return false;
+  if(!window.AbajNative||typeof AbajNative.cinemaNativeStart!=='function')return false;
+  if(cinemaNativeFallbackToken===attemptToken)return false;
+  cinemaNativeFallbackToken=attemptToken;
+
+  const v=document.getElementById('video');
+  const err=document.getElementById('playerError');
+  nativeMedia3FirstFrameHandler=()=>{
+    if(attemptToken!==streamAttemptToken||!current||current.id!==ch.id)return;
+    nativeMedia3FirstFrameHandler=null;
+    nativeMedia3ErrorHandler=null;
+    clearFirstFrameTimer();
+    clearCinemaStartupTimer();
+    try{if(hls){hls.destroy();hls=null}}catch(e){}
+    setNativeMedia3Visible(true);
+    try{v.pause()}catch(e){}
+    try{v.removeAttribute('src');v.load()}catch(e){}
+    markFrameReady(true);
+    if(err)err.textContent='';
+    setTimeout(()=>{applyCinemaResume();updatePlayerRemaining()},80);
+  };
+  nativeMedia3ErrorHandler=()=>{
+    if(attemptToken!==streamAttemptToken)return;
+    nativeMedia3FirstFrameHandler=null;
+    nativeMedia3ErrorHandler=null;
+    setNativeMedia3Visible(false);
+    if(err)err.textContent='Видео не поддерживается этим потоком';
+  };
+  try{
+    if(err)err.textContent='Пробую совместимый TV-плеер…';
+    if(ch.cinemaHeaders&&Object.keys(ch.cinemaHeaders).length&&typeof AbajNative.cinemaNativeStartWithHeaders==='function'){
+      AbajNative.cinemaNativeStartWithHeaders(src,String(ch.cinemaProvider||'KINOPUB'),JSON.stringify(ch.cinemaHeaders));
+    }else{
+      AbajNative.cinemaNativeStart(src,String(ch.cinemaProvider||'KINOPUB'));
+    }
+    return true;
+  }catch(e){
+    nativeMedia3FirstFrameHandler=null;
+    nativeMedia3ErrorHandler=null;
+    return false;
+  }
+}
+
 function armFirstFrameTimer(ch,preferBackup,token){
   clearFirstFrameTimer();
   if(!nativeTv||!ch)return;
@@ -5190,6 +5235,11 @@ function armFirstFrameTimer(ch,preferBackup,token){
       if(err)err.textContent='Пробую совместимый плеер…';
       startStream(ch,preferBackup,false);
       return;
+    }
+    if(String(ch.id||'').startsWith('cinema:')){
+      const urls=tvDirectUrls(ch);
+      const cinemaSrc=urls[Math.min(tvDirectAttemptIndex,Math.max(0,urls.length-1))]||'';
+      if(cinemaSrc&&tryCinemaNativeFallback(ch,cinemaSrc,token))return;
     }
     reportTvStreamFailure(ch,'first_frame_timeout');
     if(!preferBackup&&Number(ch.backup_count||0)>0){
@@ -5650,6 +5700,11 @@ function startStream(ch,preferBackup=false,forceProxy=false){
         err.textContent='Проверяю совместимый поток…';
         startStream(ch,preferBackup,true);
         return;
+      }
+      if(nativeTv&&String(ch.id||'').startsWith('cinema:')&&
+         (data.type===Hls.ErrorTypes.NETWORK_ERROR||data.type===Hls.ErrorTypes.MEDIA_ERROR)){
+        clearFirstFrameTimer();
+        if(tryCinemaNativeFallback(ch,src,attemptToken))return;
       }
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR && nativeTv&&!ch.personal){
         clearFirstFrameTimer();
