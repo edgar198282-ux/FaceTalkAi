@@ -49,6 +49,23 @@ button{cursor:pointer}
   backdrop-filter:blur(18px) saturate(1.08);
   box-shadow:0 8px 24px rgba(0,48,110,.10)
 }
+
+body:not(.nativeTv) .top.mobileScrollCollapsing{
+  overflow:hidden;
+  transition:height .16s ease,max-height .16s ease,opacity .12s ease,padding .16s ease,border-width .16s ease;
+}
+body:not(.nativeTv) .top.mobileScrollCollapsing.mobileHeaderHidden{
+  height:0!important;
+  max-height:0!important;
+  min-height:0!important;
+  padding-top:0!important;
+  padding-bottom:0!important;
+  border-bottom-width:0!important;
+  box-shadow:none!important;
+  opacity:0!important;
+  overflow:hidden!important;
+  pointer-events:none!important;
+}
 .titleRow{display:flex;align-items:center;justify-content:space-between;gap:8px}.brandWrap{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 auto}.brandLogo{width:48px;height:48px;border-radius:14px;object-fit:contain;background:#083f9b;padding:3px;border:1px solid rgba(255,255,255,.62);box-shadow:0 4px 14px rgba(0,55,130,.28)}
 .titleBlock{min-width:0;flex:1 1 auto;overflow:visible;display:flex;align-items:center;justify-content:center}
 .title{
@@ -4829,27 +4846,32 @@ function updateMobileHeaderCollapse(){
   const content=document.getElementById('content');
   const top=document.querySelector('.top');
   if(!content||!top)return;
+
   if(Date.now()<mobileHeaderResetUntil){
     content.scrollTop=0;
+    top.classList.remove('mobileHeaderHidden');
     top.style.height='auto';
     top.style.maxHeight='none';
     top.style.opacity='1';
     top.style.pointerEvents='';
     return;
   }
+
   const st=Math.max(0,content.scrollTop||0);
-  if(st<1){
+  const hide=st>18;
+
+  top.classList.toggle('mobileHeaderHidden',hide);
+  if(hide){
+    top.style.height='0px';
+    top.style.maxHeight='0px';
+    top.style.opacity='0';
+    top.style.pointerEvents='none';
+  }else{
     top.style.height='auto';
     top.style.maxHeight='none';
     top.style.opacity='1';
     top.style.pointerEvents='';
-    return;
   }
-  const full=Math.max(1,Math.round(top.scrollHeight));
-  const offset=Math.min(Math.round(st),full);
-  top.style.height=Math.max(0,full-offset)+'px';
-  top.style.opacity='1';
-  top.style.pointerEvents=offset>=full-2?'none':'';
 }
 function installMobileHeaderCollapse(){
   if(nativeTv)return;
