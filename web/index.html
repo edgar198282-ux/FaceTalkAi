@@ -1446,7 +1446,15 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
 </style>
 
 
-<style id="admin-mobile-compact-v3">
+<style id="admin-mobile-tv-compact-v4">
+/* Диагностика закрыта по умолчанию на телефоне и ТВ. */
+body #adminPanel #iptvDiagBlock{
+  display:none;
+}
+body #adminPanel #iptvDiagBlock.open{
+  display:block;
+}
+
 @media (max-width:700px){
   body #adminPanel .adminCard{
     padding:8px 8px calc(12px + env(safe-area-inset-bottom,0px))!important;
@@ -1464,9 +1472,7 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
     font-size:16px!important;
     line-height:1.02!important;
   }
-  body #adminPanel .adminHeadActions{
-    gap:4px!important;
-  }
+  body #adminPanel .adminHeadActions{gap:4px!important}
   body #adminPanel .adminHeadActions .adminBack,
   body #adminPanel .adminHeadActions .adminClose{
     height:30px!important;
@@ -1475,9 +1481,7 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
     border-radius:8px!important;
     font-size:12px!important;
   }
-  body #adminPanel .adminRows{
-    gap:4px!important;
-  }
+  body #adminPanel .adminRows{gap:4px!important}
   body #adminPanel .adminRow{
     border-radius:8px!important;
     padding:5px 6px!important;
@@ -1498,9 +1502,7 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
     padding:0 8px!important;
     font-size:12px!important;
   }
-  body #adminPanel button{
-    font-size:12px!important;
-  }
+  body #adminPanel button{font-size:12px!important}
   body #adminPanel [style*="font-size:18px"]{
     font-size:15px!important;
     margin-top:10px!important;
@@ -1510,13 +1512,9 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
     gap:4px!important;
     margin-bottom:4px!important;
   }
-  body #adminPanel #accessStats .adminRow{
-    padding:4px!important;
-  }
+  body #adminPanel #accessStats .adminRow{padding:4px!important}
   body #adminPanel #accessRows .adminRow,
-  body #adminPanel #adminRows .adminRow{
-    padding:4px 5px!important;
-  }
+  body #adminPanel #adminRows .adminRow{padding:4px 5px!important}
   body #adminPanel #accessRows .adminRow button,
   body #adminPanel #adminRows .adminRow button{
     min-height:28px!important;
@@ -1536,12 +1534,6 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
     font-weight:850!important;
     font-size:12px!important;
   }
-  body #adminPanel #iptvDiagBlock{
-    display:none;
-  }
-  body #adminPanel #iptvDiagBlock.open{
-    display:block;
-  }
   body #adminPanel button[onclick="loadIptvDiagnostics()"],
   body #adminPanel button[onclick="forceIptvRefresh()"]{
     min-height:34px!important;
@@ -1550,6 +1542,108 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
     font-size:12px!important;
     line-height:1.05!important;
   }
+}
+
+/* Те же компактные настройки для Android TV / TV Box. */
+body.nativeTv #adminPanel{
+  padding:0!important;
+  align-items:stretch!important;
+  justify-content:stretch!important;
+}
+body.nativeTv #adminPanel .adminCard{
+  width:100vw!important;
+  height:100vh!important;
+  max-width:none!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:8px 10px 12px!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+}
+body.nativeTv #adminPanel .adminHead{
+  position:static!important;
+  top:auto!important;
+  z-index:auto!important;
+  margin:0 0 6px!important;
+  padding:0!important;
+  background:transparent!important;
+  border-bottom:0!important;
+}
+body.nativeTv #adminPanel .adminTitle{
+  font-size:16px!important;
+  line-height:1.02!important;
+}
+body.nativeTv #adminPanel .adminHeadActions{gap:4px!important}
+body.nativeTv #adminPanel .adminHeadActions .adminBack,
+body.nativeTv #adminPanel .adminHeadActions .adminClose{
+  height:30px!important;
+  min-height:30px!important;
+  padding:0 8px!important;
+  border-radius:8px!important;
+  font-size:12px!important;
+}
+body.nativeTv #adminPanel .adminRows{gap:4px!important}
+body.nativeTv #adminPanel .adminRow{
+  border-radius:8px!important;
+  padding:5px 6px!important;
+  gap:4px!important;
+  font-size:12px!important;
+  line-height:1.08!important;
+}
+body.nativeTv #adminPanel .adminMeta{
+  font-size:10px!important;
+  line-height:1.1!important;
+  margin-top:1px!important;
+}
+body.nativeTv #adminPanel input,
+body.nativeTv #adminPanel select{
+  height:30px!important;
+  min-height:30px!important;
+  border-radius:8px!important;
+  padding:0 8px!important;
+  font-size:12px!important;
+}
+body.nativeTv #adminPanel button{font-size:12px!important}
+body.nativeTv #adminPanel [style*="font-size:18px"]{
+  font-size:15px!important;
+  margin-top:10px!important;
+  margin-bottom:6px!important;
+}
+body.nativeTv #adminPanel #accessStats{
+  gap:4px!important;
+  margin-bottom:4px!important;
+}
+body.nativeTv #adminPanel #accessStats .adminRow{padding:4px!important}
+body.nativeTv #adminPanel #accessRows .adminRow,
+body.nativeTv #adminPanel #adminRows .adminRow{padding:4px 5px!important}
+body.nativeTv #adminPanel #accessRows .adminRow button,
+body.nativeTv #adminPanel #adminRows .adminRow button{
+  min-height:28px!important;
+  height:28px!important;
+  padding:0 8px!important;
+  border-radius:8px!important;
+  font-size:12px!important;
+}
+body.nativeTv #adminPanel .adminDiagnosticsToggle{
+  width:100%!important;
+  min-height:32px!important;
+  margin:6px 0!important;
+  border:0!important;
+  border-radius:8px!important;
+  background:#173149!important;
+  color:#dcefff!important;
+  font-weight:850!important;
+  font-size:12px!important;
+}
+body.nativeTv #adminPanel button[onclick="loadIptvDiagnostics()"],
+body.nativeTv #adminPanel button[onclick="forceIptvRefresh()"]{
+  min-height:34px!important;
+  padding:5px 6px!important;
+  border-radius:8px!important;
+  font-size:12px!important;
+  line-height:1.05!important;
 }
 </style>
 
