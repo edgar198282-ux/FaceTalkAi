@@ -1953,6 +1953,52 @@ let freeViewingTimer=null;
 let freeAdActive=false;
 let freeAdMuteBefore=false;
 let freeAdRequestBusy=false;
+let freeAdWatchGeneration=0;
+let freeAdFramePending=null;
+let freeAdFrameDisabled=false;
+let freeAdLastCheckedAt=0;
+let freeAdFrameCanvas=null;
+function usesPlayerAdFrames(ch){
+  if(!ch||ch.personal||String(ch.id||'').startsWith('cinema:')||(freeAdFrameDisabled&&!nativeMedia3Active))return false;
+  if(!isProviderAdStreamUrl(selectedFreeStreamUrl(ch)))return false;
+  try{return !!(nativeTv&&window.AbajNative&&typeof AbajNative.adFrameSupported==='function'&&AbajNative.adFrameSupported())}catch(e){return false}
+}
+window.nativeAdFrame=(requestId,frame,status)=>{
+  const pending=freeAdFramePending;
+  if(!pending||pending.id!==requestId)return;
+  freeAdFramePending=null;
+  clearTimeout(pending.timer);
+  pending.resolve(status==='ok'?frame:'');
+};
+async function captureFreeAdFrame(){
+  if(nativeMedia3Active){
+    return new Promise(resolve=>{
+      const id=String(freeAdWatchGeneration)+':'+Date.now();
+      const pending={id,resolve,timer:null};
+      pending.timer=setTimeout(()=>{
+        if(freeAdFramePending===pending)freeAdFramePending=null;
+        resolve('');
+      },1800);
+      freeAdFramePending=pending;
+      try{AbajNative.captureTvAdFrame(id)}catch(e){window.nativeAdFrame(id,'','error')}
+    });
+  }
+  const v=document.getElementById('video');
+  if(!v||v.paused||v.readyState<2||v.videoWidth<16)return '';
+  try{
+    if(!freeAdFrameCanvas){
+      freeAdFrameCanvas=document.createElement('canvas');
+      freeAdFrameCanvas.width=640;freeAdFrameCanvas.height=360;
+    }
+    freeAdFrameCanvas.getContext('2d').drawImage(v,0,0,640,360);
+    return freeAdFrameCanvas.toDataURL('image/jpeg',0.7).split(',')[1]||'';
+  }catch(e){
+    // Cross-origin WebView playback cannot be captured; retain the legacy probe.
+    freeAdFrameDisabled=true;
+    notifyFreeViewing(current);
+    return '';
+  }
+}
 let freeAdShieldChannel='';
 let freeAdShieldStartedAt=0;
 let freeAdShieldVerifiedNegative=0;
@@ -4867,6 +4913,14 @@ function stopBurnedAdObserver(){
   burnedAdFirstFrameSent=false;
 }
 function stopFreeAdWatch(){
+  freeAdWatchGeneration++;
+  freeAdFrameDisabled=false;
+  freeAdLastCheckedAt=0;
+  if(freeAdFramePending){
+    clearTimeout(freeAdFramePending.timer);
+    freeAdFramePending.resolve('');
+    freeAdFramePending=null;
+  }
   if(freeAdTimer){clearInterval(freeAdTimer);freeAdTimer=null}
   if(freeViewingTimer){clearInterval(freeViewingTimer);freeViewingTimer=null}
   stopBurnedAdObserver();
@@ -4878,21 +4932,40 @@ function stopFreeAdWatch(){
   setFreeAdOverlay(false);
 }
 async function checkFreeAdState(){
-  if(freeAdRequestBusy||!current||current.personal)return;
+  if(freeAdRequestBusy||!current||current.personal||String(current.id||'').startsWith('cinema:'))return;
   freeAdRequestBusy=true;
   const id=current.id;
+  const generation=freeAdWatchGeneration;
+  const attempt=streamAttemptToken;
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),6500);
   try{
     const actualSource=selectedFreeStreamUrl(current);
-    const r=await fetch('/api/iptv/ad-state?id='+encodeURIComponent(id)+'&source='+encodeURIComponent(actualSource)+'&t='+Date.now(),{cache:'no-store'});
+    const playerFrames=usesPlayerAdFrames(current);
+    let r;
+    if(playerFrames){
+      const frame=await captureFreeAdFrame();
+      if(!frame||generation!==freeAdWatchGeneration||attempt!==streamAttemptToken)return;
+      r=await fetch('/api/iptv/ad-frame',{
+        method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',signal:controller.signal,
+        body:JSON.stringify({channel_id:id,frame})
+      });
+    }else{
+      r=await fetch('/api/iptv/ad-state?id='+encodeURIComponent(id)+'&source='+encodeURIComponent(actualSource)+'&t='+Date.now(),{cache:'no-store',signal:controller.signal});
+    }
     if(!r.ok)return;
     const d=await r.json();
-    if(!current||current.id!==id||current.personal)return;
+    if(!d.ok||generation!==freeAdWatchGeneration||attempt!==streamAttemptToken||!current||current.id!==id||current.personal)return;
+    const freshCheckedAt=Number(d.checked_at||0);
+    if(freshCheckedAt<=freeAdLastCheckedAt)return;
+    freeAdLastCheckedAt=freshCheckedAt;
     if(d.active){
       freeAdShieldSawPositive=true;
       freeAdShieldVerifiedNegative=0;
       freeAdShieldChannel=String(id||'');
       if(!freeAdShieldStartedAt)freeAdShieldStartedAt=Date.now()/1000;
-      const remaining=Math.max(1,Number(d.remaining||d.estimated_duration||30));
+      const age=playerFrames?Math.max(0,Date.now()/1000-freeAdShieldStartedAt):0;
+      const remaining=Math.max(1,Number(d.remaining||d.estimated_duration||30)-age);
       setFreeAdOverlay(true,remaining);
       return;
     }
@@ -4915,9 +4988,9 @@ async function checkFreeAdState(){
         }
       }else{
         // Once OTTClub/Cinerama has actually been seen, keep our ad in place
-        // until 4 fresh clean probes confirm that normal programming returned.
+        // until fresh clean frames confirm that normal programming returned.
         freeAdShieldVerifiedNegative++;
-        if(freeAdShieldVerifiedNegative<4){
+        if(freeAdShieldVerifiedNegative<(playerFrames?2:4)){
           setFreeAdOverlay(true);
           return;
         }
@@ -4934,7 +5007,8 @@ async function checkFreeAdState(){
     }
     setFreeAdOverlay(false);
   }catch(e){}finally{
-    freeAdRequestBusy=false;
+    clearTimeout(timeout);
+    if(generation===freeAdWatchGeneration)freeAdRequestBusy=false;
   }
 }
 async function reportBurnedAdObserverState(ch,state,errorText=''){
@@ -5054,7 +5128,7 @@ function notifyFreeViewing(ch){
     fetch('/api/iptv/ad-viewing',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({channel_id:ch.id,source_url:selectedFreeStreamUrl(ch)}),
+      body:JSON.stringify({channel_id:ch.id,source_url:selectedFreeStreamUrl(ch),player_frames:usesPlayerAdFrames(ch)}),
       keepalive:true
     });
   }catch(e){}
@@ -5078,14 +5152,12 @@ function startFreeAdWatch(ch){
   freeViewingTimer=setInterval(()=>{
     if(current&&current.id===ch.id&&!current.personal)notifyFreeViewing(ch);
   },30000);
-  // Poll aggressively during playback: the server now performs a one-frame
-  // OCR probe for Cinerama/OTTClub, so the replacement overlay can appear
-  // almost immediately instead of waiting several seconds.
+  // New TVs sample their actual player; older APKs retain server probes.
   checkFreeAdState();
   [180,420,750,1100,1600,2300].forEach(ms=>{
     setTimeout(()=>{if(current&&current.id===ch.id)checkFreeAdState()},ms);
   });
-  freeAdTimer=setInterval(checkFreeAdState,900);
+  freeAdTimer=setInterval(checkFreeAdState,1400);
   startBurnedAdObserver(ch);
   startQrAdObserver(ch);
 }

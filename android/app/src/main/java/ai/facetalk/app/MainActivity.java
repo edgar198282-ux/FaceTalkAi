@@ -20,6 +20,7 @@ import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Color;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -41,11 +42,17 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 import android.view.View;
+import android.view.PixelCopy;
+import android.view.SurfaceView;
+import android.view.TextureView;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.core.content.FileProvider;
 import androidx.media3.common.C;
@@ -62,6 +69,7 @@ import androidx.media3.ui.PlayerView;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -79,6 +87,11 @@ public class MainActivity extends Activity {
     private View customView; private WebChromeClient.CustomViewCallback customViewCallback;
     private FrameLayout fullscreenContainer;
     private PlayerView nativeProbeView;
+    private FrameLayout nativeAdCover;
+    private boolean nativeAdMuted=false;
+    private boolean nativeAdFrameBusy=false;
+    private long nativeAdFrameEpoch=0L;
+    private final java.util.concurrent.ExecutorService adFrameExecutor=Executors.newSingleThreadExecutor();
     private ExoPlayer nativeProbePlayer;
     private volatile long nativeProbeStartedAt=0L;
     private volatile String nativeProbeUrl="";
@@ -1613,16 +1626,25 @@ public class MainActivity extends Activity {
                 return d>0L?d:0L;
             }catch(Exception e){return 0L;}
         }
+        @JavascriptInterface public boolean adFrameSupported(){
+            return isTv&&Build.VERSION.SDK_INT>=Build.VERSION_CODES.N;
+        }
+        @JavascriptInterface public void captureTvAdFrame(String requestId){
+            if(requestId==null||requestId.length()>80)return;
+            runOnUiThread(()->captureNativeAdFrame(requestId));
+        }
         @JavascriptInterface public void setNativeAdMuted(boolean muted){
             if(!isTv)return;
             runOnUiThread(()->{
                 try{
+                    nativeAdMuted=muted;
                     if(nativeProbePlayer!=null)nativeProbePlayer.setVolume(muted?0f:1f);
-                    // Media3 PlayerView normally uses a SurfaceView. Its surface can
-                    // punch through the transparent WebView even when our HTML ad
-                    // overlay is visible. Hide the native video layer completely
-                    // during provider ads so only the ABAJ banner is visible.
-                    if(nativeProbeView!=null)nativeProbeView.setVisibility(muted?View.INVISIBLE:View.VISIBLE);
+                    // Keep the SurfaceView alive so PixelCopy can observe the end
+                    // of the promo. An opaque sibling covers its video instead.
+                    if(nativeAdCover!=null){
+                        nativeAdCover.setVisibility(muted?View.VISIBLE:View.GONE);
+                        if(muted)nativeAdCover.bringToFront();
+                    }
                     if(webView!=null&&muted)webView.bringToFront();
                 }catch(Exception ignored){}
             });
@@ -2183,6 +2205,23 @@ public class MainActivity extends Activity {
             nativeProbeView.setUseController(false);
             nativeProbeView.setBackgroundColor(Color.BLACK);
             fullscreenContainer.addView(nativeProbeView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+            nativeAdCover=new FrameLayout(this);
+            nativeAdCover.setBackgroundColor(Color.rgb(2,8,23));
+            nativeAdCover.setVisibility(View.GONE);
+            ImageView logo=new ImageView(this);
+            logo.setImageResource(R.drawable.abaj_tv_logo);
+            logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            int logoWidth=(int)(getResources().getDisplayMetrics().widthPixels*0.42f);
+            nativeAdCover.addView(logo,new FrameLayout.LayoutParams(logoWidth,logoWidth/2,Gravity.CENTER));
+            TextView contact=new TextView(this);
+            contact.setText("@FaceTalkID_bot");
+            contact.setTextColor(Color.WHITE);
+            contact.setTextSize(20);
+            contact.setGravity(Gravity.CENTER);
+            FrameLayout.LayoutParams contactParams=new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT,Gravity.BOTTOM);
+            contactParams.bottomMargin=(int)(48*getResources().getDisplayMetrics().density);
+            nativeAdCover.addView(contact,contactParams);
+            fullscreenContainer.addView(nativeAdCover,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
         }
         webView=new WebView(this);
         // Keep the WebView transparent at the Android layer so the native
@@ -2263,6 +2302,70 @@ public class MainActivity extends Activity {
         return false;
     }
 
+    private void deliverNativeAdFrame(String requestId,String frame,String status){
+        if(webView==null||isFinishing()||!activityResumed)return;
+        webView.evaluateJavascript("if(typeof nativeAdFrame==='function')nativeAdFrame("
+            +JSONObject.quote(requestId)+","+JSONObject.quote(frame)+","+JSONObject.quote(status)+")",null);
+    }
+    private void captureNativeAdFrame(String requestId){
+        if(Build.VERSION.SDK_INT<Build.VERSION_CODES.N||!isTv||!activityResumed
+            ||nativeProbePlayer==null||!nativeProbePlayer.isPlaying()||nativeProbeView==null||nativeAdFrameBusy){
+            deliverNativeAdFrame(requestId,"","not_ready");
+            return;
+        }
+        final long epoch=nativeAdFrameEpoch;
+        final Bitmap bitmap=Bitmap.createBitmap(640,360,Bitmap.Config.ARGB_8888);
+        nativeAdFrameBusy=true;
+        View surface=nativeProbeView.getVideoSurfaceView();
+        if(surface instanceof SurfaceView){
+            try{
+                PixelCopy.request((SurfaceView)surface,bitmap,result->{
+                    if(result==PixelCopy.SUCCESS)encodeNativeAdFrame(requestId,bitmap,epoch);
+                    else{
+                        bitmap.recycle();nativeAdFrameBusy=false;
+                        deliverNativeAdFrame(requestId,"","copy_failed");
+                    }
+                },updateHandler);
+            }catch(Exception e){
+                bitmap.recycle();nativeAdFrameBusy=false;
+                deliverNativeAdFrame(requestId,"","copy_failed");
+            }
+        }else if(surface instanceof TextureView){
+            try{
+                if(((TextureView)surface).getBitmap(bitmap)==null)throw new IllegalStateException();
+                encodeNativeAdFrame(requestId,bitmap,epoch);
+            }catch(Exception e){
+                bitmap.recycle();nativeAdFrameBusy=false;
+                deliverNativeAdFrame(requestId,"","copy_failed");
+            }
+        }else{
+            bitmap.recycle();nativeAdFrameBusy=false;
+            deliverNativeAdFrame(requestId,"","unsupported");
+        }
+    }
+    private void encodeNativeAdFrame(String requestId,Bitmap bitmap,long epoch){
+        try{
+            adFrameExecutor.execute(()->{
+                String encoded="";
+                try{
+                    ByteArrayOutputStream out=new ByteArrayOutputStream();
+                    if(bitmap.compress(Bitmap.CompressFormat.JPEG,70,out)&&out.size()<=250000)
+                        encoded=android.util.Base64.encodeToString(out.toByteArray(),android.util.Base64.NO_WRAP);
+                }catch(Exception ignored){}
+                finally{bitmap.recycle();}
+                final String frame=encoded;
+                runOnUiThread(()->{
+                    nativeAdFrameBusy=false;
+                    if(epoch!=nativeAdFrameEpoch){deliverNativeAdFrame(requestId,"","stale");return;}
+                    deliverNativeAdFrame(requestId,frame,frame.isEmpty()?"encode_failed":"ok");
+                });
+            });
+        }catch(Exception e){
+            bitmap.recycle();nativeAdFrameBusy=false;
+            deliverNativeAdFrame(requestId,"","encode_failed");
+        }
+    }
+
     private void ensureNativeProbePlayer(){
         if(!isTv||nativeProbeView==null||nativeProbePlayer!=null)return;
         DefaultLoadControl loadControl=new DefaultLoadControl.Builder()
@@ -2271,6 +2374,7 @@ public class MainActivity extends Activity {
             .build();
         nativeProbePlayer=new ExoPlayer.Builder(this).setLoadControl(loadControl).build();
         nativeProbeView.setPlayer(nativeProbePlayer);
+        nativeProbePlayer.setVolume(nativeAdMuted?0f:1f);
         nativeProbePlayer.addListener(new Player.Listener(){
             @Override public void onRenderedFirstFrame(){
                 long started=nativeProbeStartedAt;
@@ -2308,6 +2412,7 @@ public class MainActivity extends Activity {
         try{
             ensureNativeProbePlayer();
             if(nativeProbePlayer==null)return;
+            nativeAdFrameEpoch++;
             nativeProbeUrl=url;
             nativeProbeStartedAt=System.currentTimeMillis();
             nativeProbePlayer.setMediaItem(MediaItem.fromUri(Uri.parse(url)),true);
@@ -2343,6 +2448,7 @@ public class MainActivity extends Activity {
                 .setAllowCrossProtocolRedirects(true)
                 .setDefaultRequestProperties(headers);
             DefaultMediaSourceFactory mediaFactory=new DefaultMediaSourceFactory(httpFactory);
+            nativeAdFrameEpoch++;
             nativeProbeUrl=url;
             nativeProbeStartedAt=System.currentTimeMillis();
             nativeProbePlayer.setMediaSource(
@@ -2357,6 +2463,7 @@ public class MainActivity extends Activity {
         }
     }
     private void stopNativeProbe(boolean release){
+        nativeAdFrameEpoch++;
         nativeProbeStartedAt=0L;
         nativeProbeUrl="";
         if(nativeProbePlayer!=null){
@@ -2764,7 +2871,7 @@ public class MainActivity extends Activity {
     }
 
     private void openExternal(Uri uri){if(uri==null)return;try{String s=uri.getScheme()==null?"":uri.getScheme().toLowerCase(),h=uri.getHost()==null?"":uri.getHost().toLowerCase();if("tg".equals(s)||"t.me".equals(h)||"telegram.me".equals(h)){Intent t=new Intent(Intent.ACTION_VIEW,uri);t.setPackage("org.telegram.messenger");try{startActivity(t);return;}catch(Exception ignored){}}startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}}
-    @Override protected void onDestroy(){activityResumed=false;updateHandler.removeCallbacksAndMessages(null);try{tvWatchdogExecutor.shutdownNow();}catch(Exception ignored){}if(downloadReceiver!=null){try{unregisterReceiver(downloadReceiver);}catch(Exception ignored){}}stopNativeProbe(true);if(webView!=null)webView.destroy();super.onDestroy();}
+    @Override protected void onDestroy(){activityResumed=false;updateHandler.removeCallbacksAndMessages(null);try{adFrameExecutor.shutdown();}catch(Exception ignored){}try{tvWatchdogExecutor.shutdownNow();}catch(Exception ignored){}if(downloadReceiver!=null){try{unregisterReceiver(downloadReceiver);}catch(Exception ignored){}}stopNativeProbe(true);if(webView!=null)webView.destroy();super.onDestroy();}
     @Override public void onBackPressed(){
         if(customView!=null){hideCustomView();return;}
         if(isTv&&webView!=null){

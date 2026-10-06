@@ -1,4 +1,6 @@
 import asyncio
+import base64
+import io
 import hashlib
 import hmac
 import json
@@ -13,6 +15,7 @@ from urllib.request import Request, urlopen
 
 import aiohttp
 from aiohttp import web
+from PIL import Image, ImageStat
 
 from .db import get_setting
 
@@ -678,7 +681,7 @@ async def _free_channel_ad_state(item: dict) -> dict:
     return result
 
 
-async def _ocr_ottclub_frame(frame: bytes, width: int, height: int) -> str:
+async def _ocr_ottclub_frame(frame: bytes, width: int, height: int, *, strict=False) -> str:
     if not frame:
         return ""
     pgm = f"P5\n{width} {height}\n255\n".encode("ascii") + frame
@@ -691,13 +694,18 @@ async def _ocr_ottclub_frame(frame: bytes, width: int, height: int) -> str:
             stderr=asyncio.subprocess.DEVNULL,
         )
         stdout, _ = await asyncio.wait_for(proc.communicate(input=pgm), timeout=4)
+        if proc.returncode != 0:
+            raise RuntimeError("ocr_failed")
         return stdout.decode("utf-8", "ignore")[:1200]
-    except Exception:
+    except (Exception, asyncio.CancelledError) as exc:
         if proc and proc.returncode is None:
             try:
                 proc.kill()
+                await proc.wait()
             except Exception:
                 pass
+        if strict or isinstance(exc, asyncio.CancelledError):
+            raise
         return ""
 
 
@@ -2403,6 +2411,7 @@ async def api_diagnostics(request):
                 "last_probe": int(_cinerama_stats.get("last_probe") or 0),
                 "mode": "temporary_overlay_auto_recheck",
             },
+            "player_frame_detector": dict(_ad_frame_stats),
             "ottclub_detector": {
                 "probes": int(_ottclub_stats.get("probes") or 0),
                 "errors": int(_ottclub_stats.get("errors") or 0),
@@ -2571,6 +2580,79 @@ async def api_refresh(request):
     return web.json_response({"ok": True, "running": True})
 
 
+# Player frames are viewer-specific: never merge their result into a channel's
+# server probe state (provider prerolls can differ between connections).
+_ad_frame_slots = asyncio.Semaphore(2)
+_ad_frame_stats = {"probes": 0, "detections": 0, "errors": 0, "last_channel_id": ""}
+_ad_frame_seen = {}
+
+
+def _decode_ad_frame(encoded):
+    if not isinstance(encoded, str) or not encoded or len(encoded) > 350000:
+        raise ValueError("bad frame")
+    raw = base64.b64decode(encoded, validate=True)
+    with Image.open(io.BytesIO(raw)) as image:
+        if image.format not in {"JPEG", "PNG"} or not (16 <= image.width <= 640 and 16 <= image.height <= 360):
+            raise ValueError("bad dimensions")
+        image.load()
+        gray = image.convert("L")
+        # Loading/blank frames cannot confirm that normal programming returned.
+        if ImageStat.Stat(gray).stddev[0] < 2:
+            raise ValueError("blank frame")
+        return gray.tobytes(), gray.width, gray.height
+
+
+async def api_ad_frame(request):
+    headers = {"Cache-Control": "no-store"}
+    if request.content_length and request.content_length > 360000:
+        return web.json_response({"ok": False, "error": "frame too large"}, status=413, headers=headers)
+    try:
+        raw_body = bytearray()
+        async for chunk in request.content.iter_chunked(16384):
+            raw_body.extend(chunk)
+            if len(raw_body) > 360000:
+                return web.json_response({"ok": False, "error": "frame too large"}, status=413, headers=headers)
+        body = json.loads(raw_body)
+        if not isinstance(body, dict):
+            raise ValueError("bad body")
+    except Exception:
+        return web.json_response({"ok": False, "error": "bad json"}, status=400, headers=headers)
+    cid = str(body.get("channel_id") or "")
+    item = _state["channels"].get(cid)
+    if not item or item.get("personal") or cid.startswith("cinema:"):
+        return web.json_response({"ok": False, "error": "unknown free channel"}, status=404, headers=headers)
+    # Do not queue unbounded OCR work behind slower clients.
+    if _ad_frame_slots.locked():
+        return web.json_response({"ok": False, "error": "busy"}, status=429, headers=headers)
+    async with _ad_frame_slots:
+        try:
+            frame, width, height = await asyncio.to_thread(_decode_ad_frame, body.get("frame"))
+        except Exception:
+            return web.json_response({"ok": False, "error": "invalid frame"}, status=400, headers=headers)
+        try:
+            text = await _ocr_ottclub_frame(frame, width, height, strict=True)
+        except Exception:
+            _ad_frame_stats["errors"] += 1
+            return web.json_response({"ok": False, "error": "ocr unavailable"}, status=503, headers=headers)
+    ott = _ottclub_text_hit(text)
+    cin = _cinerama_text_hit(text)
+    now = time.time()
+    _ad_frame_seen[cid] = now
+    # Keep only recent entries without retaining any images or OCR text.
+    for old_cid, seen_at in list(_ad_frame_seen.items()):
+        if now - seen_at > 180:
+            _ad_frame_seen.pop(old_cid, None)
+    _ad_frame_stats["probes"] += 1
+    _ad_frame_stats["detections"] += int(ott or cin)
+    _ad_frame_stats["last_channel_id"] = cid
+    return web.json_response({
+        "ok": True, "active": bool(ott or cin),
+        "reason": "ottclub" if ott else ("cinerama_placeholder" if cin else ""),
+        "estimated_duration": _estimated_ottclub_duration() if ott else 15,
+        "checked_at": now,
+    }, headers=headers)
+
+
 async def api_ad_viewing(request):
     try:
         body = await request.json()
@@ -2580,6 +2662,8 @@ async def api_ad_viewing(request):
     item = _state["channels"].get(cid)
     if not item or item.get("status") != "ONLINE":
         return web.json_response({"ok": False, "error": "unknown channel"}, status=404)
+    if (body or {}).get("player_frames") is True:
+        return web.json_response({"ok": True}, headers={"Cache-Control": "no-store"})
     _burned_ad_stats["last_free_play"] = int(time.time())
     _burned_ad_stats["last_free_play_channel_id"] = cid
     requested_source = str((body or {}).get("source_url") or "").strip()
@@ -3017,7 +3101,8 @@ async def start_background(app):
                 last_cid = str(_burned_ad_stats.get("last_free_play_channel_id") or "")
                 if last_cid and last_play and now - last_play <= 180:
                     item = _state["channels"].get(last_cid)
-                    if item and item.get("status") == "ONLINE":
+                    frame_seen = _ad_frame_seen.get(last_cid, 0)
+                    if item and item.get("status") == "ONLINE" and frame_seen <= last_play:
                         probe = await _server_burned_ad_probe(item)
                         _store_server_burned_probe(item, probe)
             except Exception:
@@ -3070,6 +3155,7 @@ def install(app: web.Application):
     app.router.add_post("/api/iptv/client-stream-failure", api_client_stream_failure)
     app.router.add_post("/api/iptv/playback-metric", api_playback_metric)
     app.router.add_post("/api/iptv/ad-viewing", api_ad_viewing)
+    app.router.add_post("/api/iptv/ad-frame", api_ad_frame)
     app.router.add_get("/api/iptv/ad-state", api_ad_state)
     app.router.add_post("/api/iptv/ad-visual-observe", api_ad_visual_observe)
     app.router.add_get("/api/iptv/proxy", api_proxy)
