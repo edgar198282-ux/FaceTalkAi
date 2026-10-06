@@ -1146,18 +1146,24 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 }
 .cinemaDetailShare:focus{outline:none;box-shadow:0 0 0 3px #a6dfff}
 .cinemaDetailActions{
-  position:absolute;z-index:4;left:10%;right:10%;bottom:28px;transform:none;
-  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px
+  position:absolute;z-index:4;left:50%;right:auto;bottom:20px;transform:translateX(-50%);
+  display:flex;align-items:center;justify-content:center;gap:10px;width:auto;max-width:88%
 }
-.cinemaDetailActions.hasSeasons{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cinemaDetailActions.hasSeasons{display:flex;gap:10px}
 .cinemaDetailAction{
-  min-width:0;width:100%;height:54px;border:1px solid rgba(255,255,255,.4);border-radius:3px;
-  background:rgba(77,83,87,.86);color:#fff;font-size:18px;font-weight:700;padding:0 12px;
-  display:flex;align-items:center;justify-content:center;text-align:center;white-space:normal;line-height:1.12;
-  backdrop-filter:blur(6px)
+  min-width:168px;width:auto;height:42px;border:1px solid rgba(255,255,255,.46);border-radius:7px;
+  background:rgba(49,112,151,.56);color:#fff;font-size:13px;font-weight:800;padding:0 16px;
+  display:flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap;line-height:1;
+  backdrop-filter:blur(4px);box-shadow:none
 }
-#cinemaDetailWatch{border:2px solid rgba(255,255,255,.78)}
-.cinemaDetailAction:focus,.cinemaDetailBack:focus{outline:none;box-shadow:0 0 0 3px #4bbcff;background:#2b93c8}
+.cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:148px}
+#cinemaDetailWatch{border:1px solid rgba(255,255,255,.56)}
+.cinemaDetailAction:focus,.cinemaDetailBack:focus{
+  outline:none;box-shadow:0 0 0 2px #7fe3ff,0 0 16px rgba(63,198,255,.32);background:rgba(66,152,201,.78)
+}
+.nativeTv .cinemaDetailActions{bottom:16px;gap:8px;max-width:86%}
+.nativeTv .cinemaDetailAction{min-width:154px;height:40px;font-size:12px;border-radius:7px;padding:0 14px}
+.nativeTv .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:142px}
 .cinemaDetailAction:disabled{opacity:.65}
 .cinemaDetailBody{padding:16px 6.5% 38px;margin-top:-1px;position:relative;z-index:2}
 .cinemaDetailTitle{font-size:31px;font-weight:500;line-height:1.15;margin:0 0 20px;color:#f4f4f4}
@@ -1195,8 +1201,9 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaSimilarMeta{font-size:11px;color:#8eb7cc;margin-top:3px}
 @media(max-width:760px){
   .cinemaDetailHero{min-height:45vh;background-position:center 28%}
-  .cinemaDetailActions{left:14%;right:14%;bottom:16px;gap:10px}
-  .cinemaDetailAction{min-width:0;height:47px;font-size:14px;padding:0 8px}
+  .cinemaDetailActions{left:50%;right:auto;bottom:14px;gap:8px;max-width:92%}
+  .cinemaDetailAction{min-width:138px;height:39px;font-size:12px;padding:0 12px}
+  .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:126px}
   .cinemaDetailBody{padding:18px 9% 28px;margin-top:0}
   .cinemaDetailTitle{font-size:28px;line-height:1.12;margin-bottom:20px}
   .cinemaDetailDescription{font-size:16px;line-height:1.46}
@@ -1207,9 +1214,10 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 }
 @media(max-width:430px){
   .cinemaDetailHero{min-height:43vh}
-  .cinemaDetailActions{left:9%;right:9%;grid-template-columns:minmax(0,1.6fr) minmax(0,.9fr)}
-  .cinemaDetailActions.hasSeasons{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .cinemaDetailAction{font-size:13px}
+  .cinemaDetailActions{left:50%;right:auto;gap:7px;max-width:94%}
+  .cinemaDetailActions.hasSeasons{display:flex}
+  .cinemaDetailAction{min-width:118px;height:38px;font-size:11px;padding:0 10px}
+  .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:106px}
   .cinemaDetailBody{padding-left:8%;padding-right:8%}
   .cinemaDetailTitle{font-size:27px}
   .cinemaDetailFacts{grid-template-columns:112px 1fr;font-size:15px}
