@@ -1520,6 +1520,37 @@ public class MainActivity extends Activity {
             }catch(Exception ignored){}
             runOnUiThread(()->startNativeCinema(url,provider,extra));
         }
+        @JavascriptInterface public void downloadMedia(String rawUrl,String rawName){
+            if(rawUrl==null)return;
+            final String url=rawUrl.trim();
+            if(!(url.startsWith("http://")||url.startsWith("https://")))return;
+            String name=rawName==null?"Abaj TV.mp4":rawName.trim();
+            name=name.replaceAll("[\\\\/:*?\"<>|]+"," ").replaceAll("\\s+"," ").trim();
+            if(name.isEmpty())name="Abaj TV.mp4";
+            if(!name.toLowerCase(java.util.Locale.US).endsWith(".mp4"))name=name+".mp4";
+            if(name.length()>150)name=name.substring(0,146)+".mp4";
+            final String fileName=name;
+            runOnUiThread(()->{
+                try{
+                    DownloadManager dm=(DownloadManager)getSystemService(DOWNLOAD_SERVICE);
+                    if(dm==null)throw new IllegalStateException("DownloadManager unavailable");
+                    DownloadManager.Request req=new DownloadManager.Request(Uri.parse(url));
+                    req.setTitle(fileName);
+                    req.setDescription("Abaj TV");
+                    req.setMimeType("video/mp4");
+                    req.setAllowedOverMetered(true);
+                    req.setAllowedOverRoaming(true);
+                    req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,"Abaj TV/"+fileName);
+                    dm.enqueue(req);
+                    Toast.makeText(MainActivity.this,"Скачивание началось",Toast.LENGTH_SHORT).show();
+                }catch(Exception e){
+                    Log.w("AbajCinema","download failed",e);
+                    Toast.makeText(MainActivity.this,"Не удалось начать скачивание",Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
         @JavascriptInterface public void nativeProbeStop(){
             if(!isTv)return;
             runOnUiThread(()->stopNativeProbe(false));
