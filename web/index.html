@@ -4357,14 +4357,17 @@ function installPlayerTouchGestures(){
     }else if(mode==='v'){
       playerGestureSuppressClickUntil=Date.now()+300;
     }else if(moved<14&&player&&player.classList.contains('pureFullscreen')){
-      // WebView may suppress the synthetic click in fullscreen. Handle tap
-      // directly here so controls always appear.
       e.preventDefault();
-      playerGestureSuppressClickUntil=Date.now()+300;
       const now=Date.now();
       pureTapHandledAt=now;
       playerGestureSuppressClickUntil=now+650;
       togglePureFullscreenControls();
+    }else if(moved<14&&player&&player.classList.contains('appFullscreen')&&!player.classList.contains('cinemaPlayback')){
+      e.preventDefault();
+      const now=Date.now();
+      pureTapHandledAt=now;
+      playerGestureSuppressClickUntil=now+650;
+      toggleMobileTvPlayerControls();
     }
     mode='';
   },{passive:false});
@@ -4383,9 +4386,13 @@ function handlePlayerSurfaceClick(event){
   if(Date.now()<playerGestureSuppressClickUntil)return;
   if(Date.now()-pureTapHandledAt<450)return;
   const player=document.getElementById('playerView');
-  if(event&&event.target&&event.target.closest&&event.target.closest('button,select,.channelRail'))return;
+  if(event&&event.target&&event.target.closest&&event.target.closest('button,select,input,.channelRail'))return;
   if(player&&player.classList.contains('pureFullscreen')){
     togglePureFullscreenControls();
+    return;
+  }
+  if(player&&player.classList.contains('appFullscreen')&&!player.classList.contains('cinemaPlayback')){
+    toggleMobileTvPlayerControls();
     return;
   }
   showTvPlayerUi(true);
@@ -7378,6 +7385,23 @@ function togglePureFullscreenControls(){
   if(!player||!player.classList.contains('pureFullscreen'))return;
   if(player.classList.contains('showPureControls'))hidePureFullscreenControls();
   else showPureFullscreenControls();
+}
+function toggleMobileTvPlayerControls(){
+  if(nativeTv)return;
+  const player=document.getElementById('playerView');
+  if(!player||!player.classList.contains('open')||player.classList.contains('cinemaPlayback'))return;
+  const fullscreen=player.classList.contains('appFullscreen')||document.body.classList.contains('mobileLandscapePlayer');
+  if(!fullscreen)return;
+  if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
+  if(document.body.classList.contains('playerClean')){
+    document.body.classList.remove('playerClean');
+    tvPlayerUiTimer=setTimeout(()=>{
+      const p=document.getElementById('playerView');
+      if(p&&p.classList.contains('open'))document.body.classList.add('playerClean');
+    },6000);
+  }else{
+    document.body.classList.add('playerClean');
+  }
 }
 async function enterPureFullscreen(){
   const player=document.getElementById('playerView');
