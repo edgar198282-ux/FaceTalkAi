@@ -906,6 +906,9 @@ body.cinemaMode .top{display:none!important}
   width:48px;height:48px;min-width:48px;border:0;background:transparent;color:#79c8ff;
   border-radius:12px;font-size:28px;font-weight:700;display:flex;align-items:center;justify-content:center
 }
+#cinemaMenuBtn{
+  width:38px;height:38px;min-width:38px;border-radius:9px;font-size:24px
+}
 .cinemaShellBtn:focus,.cinemaShellBtn.focused{
   outline:none;box-shadow:0 0 0 3px #31a8ff;background:#12324b
 }
@@ -920,6 +923,14 @@ body.cinemaMode .top{display:none!important}
 .cinemaKpNavBtn{height:40px;border:0;border-radius:10px;background:transparent;color:#b8d8e8;padding:0 12px;font-size:14px;font-weight:700}
 .cinemaKpNavBtn:hover,.cinemaKpNavBtn:focus,.cinemaKpNavBtn.active{outline:none;background:#16394f;color:#fff;box-shadow:0 0 0 2px rgba(65,174,241,.55)}
 @media(max-width:900px){.cinemaKpNavBtn{padding:0 8px;font-size:12px}.cinemaKpNav{gap:2px}}
+@media(max-width:430px){
+  .cinemaShellBar{height:56px;padding:0 12px;gap:7px}
+  #cinemaMenuBtn{width:34px;height:34px;min-width:34px;font-size:22px;border-radius:8px}
+  .cinemaShellTitle{font-size:19px}
+  .cinemaShellDrop{width:28px!important;min-width:28px!important;font-size:14px}
+  .cinemaShellCategory{top:56px;left:54px;width:218px;padding:3px 0}
+  .cinemaCategoryItem{min-height:38px;padding:7px 11px;font-size:14px}
+}
 .cinemaShellBody{padding:14px 18px 54px}
 .cinemaHero,.cinemaTypeGrid,.cinemaSectionTitle{display:none!important}
 .cinemaStatus{margin:0 0 10px 4px!important;font-size:13px!important;color:#6d9bb8!important}
@@ -1005,14 +1016,14 @@ body.cinemaMode .top{display:none!important}
 .cinemaMenuItem.cinemaTvReturn:focus{background:#18aee0}
 
 .cinemaShellCategory{
-  position:fixed;top:66px;left:96px;z-index:650;width:300px;padding:7px 0;
-  background:#07141f;border:1px solid rgba(112,187,230,.14);box-shadow:0 18px 40px rgba(0,0,0,.5);
+  position:fixed;top:62px;left:72px;z-index:650;width:238px;padding:4px 0;
+  background:#07141f;border:1px solid rgba(112,187,230,.14);box-shadow:0 14px 32px rgba(0,0,0,.46);
   display:none
 }
 .cinemaShellCategory.open{display:block}
 .cinemaCategoryItem{
-  width:100%;height:52px;border:0;background:transparent;color:#ccecff;text-align:left;
-  padding:0 18px;font-size:19px
+  width:100%;min-height:40px;height:auto;border:0;background:transparent;color:#ccecff;text-align:left;
+  padding:8px 12px;font-size:15px;line-height:1.15
 }
 .cinemaCategoryItem:focus,.cinemaCategoryItem.active{outline:none;background:#15364d;color:#fff}
 .cinemaKpFilterBtn{
