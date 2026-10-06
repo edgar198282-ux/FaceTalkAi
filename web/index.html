@@ -1867,6 +1867,19 @@ body.nativeTv .cinemaTvQuickSvg{
 }
 body.nativeTv #cinemaSearchBtn{font-size:32px!important}
 </style>
+
+<style id="cinema-exit-cleanup-v1">
+body:not(.cinemaMode) #cinemaScreen{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+body:not(.cinemaMode) .cinemaShellBar,
+body:not(.cinemaMode) .cinemaShellCategory,
+body:not(.cinemaMode) .cinemaShellSide{
+  display:none!important;
+}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
@@ -11753,6 +11766,25 @@ async function toggleCinemaMode(){
         active.closest('#cinemaSourceModal')
       ))active.blur();
     }catch(e){}
+    if(!nativeTv){
+      const screen=document.getElementById('cinemaScreen');
+      const content=document.getElementById('content');
+      const top=document.querySelector('.top');
+      if(screen){
+        screen.style.display='none';
+        screen.scrollTop=0;
+      }
+      if(content)content.scrollTop=0;
+      if(top){
+        top.style.height='auto';
+        top.style.opacity='1';
+        top.style.pointerEvents='';
+      }
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        if(content)content.scrollTop=0;
+        updateMobileHeaderCollapse();
+      }));
+    }
     if(nativeTv){
       setTvHeaderCollapsed(true,false);
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
