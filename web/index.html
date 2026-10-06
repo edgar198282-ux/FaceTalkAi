@@ -8179,11 +8179,11 @@ function cinemaSideAction(action){
   const supported=['movies','series','cartoons','anime','docs','docseries','tvshows','concerts','collections'];
   if(supported.includes(action)){
     cinemaShellKind=action;
-    cinemaShellCategory='all';
+    cinemaShellCategory='new';
     if(action==='movies'){cinemaType='movies';localStorage.setItem('abaj_cinema_type','movies')}
     if(action==='series'){cinemaType='series';localStorage.setItem('abaj_cinema_type','series')}
     syncCinemaCategoryLabels();
-    setCinemaShellCategory('all');
+    setCinemaShellCategory('new');
     return;
   }
 
