@@ -1582,6 +1582,7 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
     </button>
     <div class="adminRow" style="display:block;margin-bottom:10px;background:#eaf6ff">
       <div style="display:flex;justify-content:space-between;gap:12px"><b id="settingsStatusLabel">Статус</b><b id="settingsStatusValue" style="color:#16865b">—</b></div>
+      <div id="settingsFreeInfo" style="display:none;margin-top:8px;font-size:14px;line-height:1.35;font-weight:800">Доступны более 3000 каналов после активации в боте</div>
       <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px"><span id="settingsUntilLabel">Доступ до</span><b id="settingsUntilValue">—</b></div>
       <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px"><span id="settingsDevicesLabel">Устройства</span><b id="settingsDevicesValue">0 / 3</b></div>
     </div>
@@ -2423,13 +2424,27 @@ async function loadEdemStatus(){
     const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const payment=edemStatus.payment||{};
     const status=document.getElementById('settingsStatusValue');
+    const freeInfo=document.getElementById('settingsFreeInfo');
+    const activationBotLink=document.getElementById('activationBotLink');
     const until=document.getElementById('settingsUntilValue');
     const devicesLabel=document.getElementById('settingsDevicesLabel');
     const devicesValue=document.getElementById('settingsDevicesValue');
+    const isAdminUnlimited=!!edemStatus.active&&edemStatus.days_left==null;
+    const isPaid=payment.status==='paid'&&!!edemStatus.active;
+    const isFree=!isAdminUnlimited&&!isPaid;
     if(status){
-      status.textContent=payment.status==='pending'?t.pending:(edemStatus.active?t.active:t.inactive);
-      status.style.color=edemStatus.active?'#16865b':(payment.status==='pending'?'#c28a13':'#d84b5b');
+      status.textContent=payment.status==='pending'?t.pending:(isFree?(appLang==='hy'?'Free տարբերակ':(appLang==='en'?'Free version':'Free версия')):(edemStatus.active?t.active:t.inactive));
+      status.style.color=(isFree||edemStatus.active)?'#16865b':(payment.status==='pending'?'#c28a13':'#d84b5b');
     }
+    if(freeInfo){
+      freeInfo.textContent=appLang==='hy'
+        ?'Ակտիվացումից հետո բոտում հասանելի է ավելի քան 3000 ալիք'
+        :(appLang==='en'
+          ?'More than 3000 channels are available after activation in the bot'
+          :'Доступны более 3000 каналов после активации в боте');
+      freeInfo.style.display=isFree?'block':'none';
+    }
+    if(activationBotLink)activationBotLink.style.display=(isPaid||isAdminUnlimited)?'none':'flex';
     if(until){
       if(edemStatus.active&&edemStatus.days_left==null)until.textContent=t.unlimited;
       else if(edemStatus.active&&edemStatus.expires_at)until.textContent=new Date(edemStatus.expires_at*1000).toLocaleDateString(appLang==='hy'?'hy-AM':appLang==='en'?'en-US':'ru-RU');
