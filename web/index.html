@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#2f8fe8">
 <title>Abaj TV</title>
+<script>
+try{
+  const __abajBootParams=new URLSearchParams(location.search);
+  if(__abajBootParams.get('tv')==='1'||__abajBootParams.get('source')==='android_tv'){
+    document.documentElement.classList.add('abajTvBoot');
+  }
+}catch(e){}
+</script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{
@@ -23,6 +31,7 @@
   --theme-hue:204;
 }
 *{box-sizing:border-box}
+html.abajTvBoot body{visibility:hidden!important}
 html,body{
   margin:0;height:100%;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
@@ -1822,6 +1831,15 @@ let aiDubOriginalVolume=1;
 
 let filteredNow=[];
 let focusIndex=Math.max(0,Number(localStorage.getItem('abaj_tv_focus_index')||0));
+let tvFocusPersistTimer=null;
+function persistTvFocus(index,id){
+  if(!nativeTv)return;
+  if(tvFocusPersistTimer)clearTimeout(tvFocusPersistTimer);
+  tvFocusPersistTimer=setTimeout(()=>{
+    localStorage.setItem('abaj_tv_focus_index',String(index));
+    if(id)localStorage.setItem('abaj_tv_focus_channel',String(id));
+  },220);
+}
 let lastPlayerControlIndex=Math.max(0,Number(localStorage.getItem('abaj_tv_player_control_index')||0));
 let streamRetries=0;
 let reconnectTimer=null;
@@ -2221,6 +2239,7 @@ function applyUiMode(){
     listBtn.textContent=layout==='list'?'▦':'☷';
     listBtn.title=layout==='list'?'Показать плиткой':'Показать списком';
   }
+  if(nativeTv)document.documentElement.classList.remove('abajTvBoot');
 }
 
 let appLang=localStorage.getItem('abaj_tv_lang')||'ru';
@@ -4278,13 +4297,16 @@ function setTvFocus(index,scroll=true){
   const cards=[...document.querySelectorAll('.channel')];
   if(nativeTv&&!tvHeaderCollapsed)setTvHeaderCollapsed(true,false);
   if(!cards.length)return;
+  const prevIndex=focusIndex;
   focusIndex=Math.max(0,Math.min(cards.length-1,index));
   if(nativeTv){
-    localStorage.setItem('abaj_tv_focus_index',String(focusIndex));
+    if(cards[prevIndex]&&prevIndex!==focusIndex)cards[prevIndex].classList.remove('focused');
+    if(cards[focusIndex])cards[focusIndex].classList.add('focused');
     const selected=cards[focusIndex];
-    if(selected&&selected.dataset.id)localStorage.setItem('abaj_tv_focus_channel',String(selected.dataset.id));
+    persistTvFocus(focusIndex,selected&&selected.dataset.id);
+  }else{
+    cards.forEach((x,i)=>x.classList.toggle('focused',i===focusIndex));
   }
-  cards.forEach((x,i)=>x.classList.toggle('focused',i===focusIndex));
   const el=cards[focusIndex];
   try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(_){}}
   if(scroll){
@@ -4308,6 +4330,13 @@ function moveFocusDirection(direction){
   if(!cards.length)return;
   const currentEl=cards[Math.max(0,Math.min(focusIndex,cards.length-1))];
   if(!currentEl){setTvFocus(0);return}
+  if(nativeTv&&tvHeaderCollapsed){
+    const cols=tvGridColumns();
+    if(direction==='left'&&focusIndex%cols>0){setTvFocus(focusIndex-1);return}
+    if(direction==='right'&&focusIndex%cols<cols-1&&focusIndex+1<cards.length){setTvFocus(focusIndex+1);return}
+    if(direction==='down'&&focusIndex+cols<cards.length){setTvFocus(focusIndex+cols);return}
+    if(direction==='up'&&focusIndex>=cols){setTvFocus(focusIndex-cols);return}
+  }
   const a=currentEl.getBoundingClientRect();
   const ax=a.left+a.width/2, ay=a.top+a.height/2;
   if(nativeTv&&direction==='up'&&tvHeaderCollapsed&&focusIndex<tvGridColumns()){
