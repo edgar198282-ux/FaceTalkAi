@@ -1402,15 +1402,20 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   .cinemaSimilarCard{flex-basis:44vw!important;width:44vw!important;min-width:132px;max-width:162px}
 }
 
-body:not(.darkMode) .cinemaScreen{background:#f4f9fd!important;color:#153b55!important}
+body:not(.darkMode) .cinemaScreen{
+    background:
+      linear-gradient(180deg,rgba(53,174,235,.96) 0%,rgba(93,196,240,.92) 18%,rgba(141,215,247,.88) 42%,rgba(194,233,251,.92) 100%)!important;
+    color:#153b55!important
+  }
 body.nativeTv:not(.darkMode).cinemaMode,
 body.nativeTv:not(.darkMode).cinemaMode .app,
 body.nativeTv:not(.darkMode).cinemaMode .cinemaScreen{
-  background:#f4f9fd!important;
+  background:
+    linear-gradient(180deg,rgba(53,174,235,.96) 0%,rgba(93,196,240,.92) 18%,rgba(141,215,247,.88) 42%,rgba(194,233,251,.92) 100%)!important;
   color:#153b55!important;
 }
 body.nativeTv:not(.darkMode).cinemaMode .cinemaShellBody{
-  background:#f4f9fd!important;
+  background:transparent!important;
 }
 body.nativeTv:not(.darkMode).cinemaMode .cinemaPosterCard{
   background:#ffffff!important;
@@ -1421,7 +1426,7 @@ body.nativeTv:not(.darkMode).cinemaMode .cinemaPosterMeta{
   background:#ffffff!important;
 }
 
-body:not(.darkMode) .cinemaShellBar{background:#f7fbfe!important;border-bottom-color:#d5e6f1!important}
+body:not(.darkMode) .cinemaShellBar{background:rgba(232,247,255,.93)!important;border-bottom-color:rgba(83,166,210,.34)!important}
 body:not(.darkMode) .cinemaShellTitle{color:#183f5a!important}
 body:not(.darkMode) .cinemaShellBtn{color:#1678b6!important}
 body:not(.darkMode) .cinemaShellBtn:focus,body:not(.darkMode) .cinemaShellBtn.focused{background:#dceffd!important}
@@ -1430,6 +1435,8 @@ body:not(.darkMode) .cinemaCategoryItem{color:#204e69!important}
 body:not(.darkMode) .cinemaCategoryItem:focus,body:not(.darkMode) .cinemaCategoryItem.active{background:#dceffd!important;color:#0b65a0!important}
 body:not(.darkMode) .cinemaPosterTitle{color:#173d56!important}
 body:not(.darkMode) .cinemaPosterSub{color:#64859a!important}
+body:not(.darkMode) .cinemaShellBody{background:transparent!important}
+body:not(.darkMode) .cinemaPosterGrid{background:transparent!important}
 body:not(.darkMode) .cinemaShellSide{background:linear-gradient(180deg,#f9fcff,#e8f5fd 62%,#deeff9)!important;color:#163e58!important;box-shadow:18px 0 46px rgba(33,76,102,.24)!important}
 body:not(.darkMode) .cinemaSideMeta{color:#688da5!important}
 body:not(.darkMode) .cinemaMenuItem{color:#173f59!important}
