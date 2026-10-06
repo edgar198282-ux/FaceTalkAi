@@ -8459,9 +8459,12 @@ function syncCinemaTypeUi(){
     btn.classList.toggle('active',btn.dataset.cinemaType===cinemaType);
   });
   const title=document.getElementById('cinemaSectionTitle');
-  if(title)title.textContent=cinemaType==='series'?'Последние 50 · Сериалы':'Последние 50 · Фильмы';
+  const t=cinemaT();
+  if(title)title.textContent=cinemaType==='series'
+    ?(t.series+' · '+t.new)
+    :(t.movies+' · '+t.new);
   if(cinemaShellCategory==='new'){
-    setCinemaShellTitle(cinemaType==='series'?'СЕРИАЛЫ НОВИНКИ':'ФИЛЬМЫ НОВИНКИ');
+    setCinemaShellTitle((cinemaType==='series'?t.series:t.movies)+' '+t.new);
   }
 }
 let cinemaShellCategory='all';
@@ -8517,7 +8520,8 @@ function cinemaKindInfo(){
 }
 function syncCinemaCategoryLabels(){
   const info=cinemaKindInfo();
-  const labels={all:'ВСЕ',new:'НОВИНКИ',popular:'ПОПУЛЯРНЫЕ',hot:'ГОРЯЧИЕ','4k':'4K'};
+  const t=cinemaT();
+  const labels={all:t.all,new:t.new,popular:t.popular,hot:t.hot,'4k':'4K'};
   document.querySelectorAll('.cinemaCategoryItem').forEach(btn=>{
     const key=btn.dataset.cinemaCategory;
     if(labels[key])btn.textContent=info.label+' '+labels[key];
@@ -8529,8 +8533,15 @@ function setCinemaShellCategory(category){
   syncCinemaCategoryLabels();
   document.querySelectorAll('.cinemaCategoryItem').forEach(x=>x.classList.toggle('active',x.dataset.cinemaCategory===cinemaShellCategory));
   const info=cinemaKindInfo();
-  const labels={all:info.label+' ВСЕ',new:info.label+' НОВИНКИ',popular:info.label+' ПОПУЛЯРНЫЕ',hot:info.label+' ГОРЯЧИЕ','4k':info.label+' 4K'};
-  setCinemaShellTitle(labels[cinemaShellCategory]||info.label+' ВСЕ');
+  const t=cinemaT();
+  const labels={
+    all:info.label+' '+t.all,
+    new:info.label+' '+t.new,
+    popular:info.label+' '+t.popular,
+    hot:info.label+' '+t.hot,
+    '4k':info.label+' 4K'
+  };
+  setCinemaShellTitle(labels[cinemaShellCategory]||info.label+' '+t.all);
   closeCinemaShellMenus();
   const categoryBtn=document.getElementById('cinemaCategoryBtn');
   if(categoryBtn&&document.activeElement===categoryBtn)categoryBtn.blur();
