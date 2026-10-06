@@ -2803,8 +2803,7 @@ function applyCinemaLanguage(){
   const tr=document.getElementById('cinemaDetailTrailer'); if(tr)tr.textContent=t.trailer;
   const sim=document.querySelector('.cinemaSimilarTitle'); if(sim)sim.textContent=t.similar;
   const more=document.getElementById('cinemaLoadMoreBtn'); if(more)more.textContent=t.more;
-  const sideMeta=document.getElementById('cinemaSideMeta');
-  if(sideMeta&&!appIsAdmin)sideMeta.textContent=t.cinema;
+  renderAdminCinemaHeader();
 }
 function setAppLanguage(lang){
   appLang=['hy','ru','en'].includes(lang)?lang:'ru';
@@ -2919,6 +2918,29 @@ async function loadEdemStatus(){
 }
 
 let appIsAdmin=false;
+function renderAdminCinemaHeader(){
+  const meta=document.getElementById('cinemaSideMeta');
+  if(!meta)return;
+  if(!appIsAdmin){
+    meta.textContent=cinemaT().cinema;
+    return;
+  }
+  const d=kinoPubOverview;
+  if(!d){
+    meta.textContent=cinemaT().cinema;
+    return;
+  }
+  const m=Number.isFinite(Number(d.movies_total))?Number(d.movies_total):null;
+  const sr=Number.isFinite(Number(d.series_total))?Number(d.series_total):null;
+  if(m===null&&sr===null){
+    meta.textContent=cinemaT().cinema;
+    return;
+  }
+  meta.innerHTML=(m!==null?'<span class="cinemaAdminCount">'+m+'</span> фильмов':'')+
+    (m!==null&&sr!==null?' · ':'')+
+    (sr!==null?'<span class="cinemaAdminCount">'+sr+'</span> сериалов':'');
+}
+
 async function checkAdmin(){
   try{
     const r=await fetch('/api/me',{headers:authHeaders(),cache:'no-store'});
@@ -2930,19 +2952,7 @@ async function checkAdmin(){
     const kpDays=document.getElementById('cinemaKinoPubDays');
     if(kpDays&&!appIsAdmin){kpDays.style.display='none';kpDays.textContent=''}
     if(appIsAdmin)refreshCinemaKinoPubDays();
-    const meta=document.getElementById('cinemaSideMeta');
-    if(meta&&!appIsAdmin)meta.textContent=cinemaT().cinema;
-    else if(meta&&appIsAdmin&&kinoPubOverview){
-      const m=Number.isFinite(Number(kinoPubOverview.movies_total))?Number(kinoPubOverview.movies_total):null;
-      const sr=Number.isFinite(Number(kinoPubOverview.series_total))?Number(kinoPubOverview.series_total):null;
-      if(m!==null||sr!==null){
-        meta.innerHTML=(m!==null?'<span class="cinemaAdminCount">'+m+'</span> фильмов':'')+
-          (m!==null&&sr!==null?' · ':'')+
-          (sr!==null?'<span class="cinemaAdminCount">'+sr+'</span> сериалов':'');
-      }else{
-        meta.textContent=cinemaT().cinema;
-      }
-    }
+    renderAdminCinemaHeader();
   }catch(e){}
 }
 let returnToAdminAfterEdemSettings=false;
@@ -8468,7 +8478,11 @@ function toggleCinemaSideMenu(){
   if(side){
     side.classList.toggle('open');
     if(side.classList.contains('open')){
-      if(appIsAdmin)refreshCinemaKinoPubDays();
+      if(appIsAdmin){
+        renderAdminCinemaHeader();
+        refreshCinemaKinoPubDays();
+        if(!kinoPubOverview)loadKinoPubOverview();
+      }
       setTimeout(()=>side.querySelector('.cinemaMenuItem.active,.cinemaMenuItem')?.focus(),30);
     }
   }
@@ -8733,18 +8747,7 @@ async function loadKinoPubOverview(){
     if(!r.ok)return;
     const d=await r.json();
     kinoPubOverview=d;
-    const meta=document.getElementById('cinemaSideMeta');
-    const m=Number.isFinite(Number(d.movies_total))?Number(d.movies_total):null;
-    const sr=Number.isFinite(Number(d.series_total))?Number(d.series_total):null;
-    if(meta){
-      if(appIsAdmin&&(m!==null||sr!==null)){
-        meta.innerHTML=(m!==null?'<span class="cinemaAdminCount">'+m+'</span> фильмов':'')+
-          (m!==null&&sr!==null?' · ':'')+
-          (sr!==null?'<span class="cinemaAdminCount">'+sr+'</span> сериалов':'');
-      }else{
-        meta.textContent=cinemaT().cinema;
-      }
-    }
+    renderAdminCinemaHeader();
   }catch(e){}
 }
 async function refreshCinemaLibraryCounts(){
