@@ -1365,12 +1365,36 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaDetailDescriptionSecondary{color:#b8c0c5;font-size:15px;margin-top:-6px}
 .cinemaDetailTools{display:flex;justify-content:flex-end;margin:-54px 0 14px}
 .cinemaDetailTools #cinemaBookmarkBtn{
-  width:46px;height:46px;border:0;border-radius:50%;padding:0;
-  background:transparent;color:#ff5d78;font-size:36px;line-height:1;
-  display:inline-flex;align-items:center;justify-content:center;cursor:pointer
+  width:54px;height:54px;border:0;border-radius:18px;padding:0;
+  background:rgba(255,255,255,.025);
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .16s ease,background .16s ease,box-shadow .16s ease
 }
-.cinemaDetailTools #cinemaBookmarkBtn.bookmarked{color:#ff5d78}
-.cinemaDetailTools #cinemaBookmarkBtn:focus{outline:none;box-shadow:0 0 0 3px #38b9ff}
+.cinemaDetailTools #cinemaBookmarkBtn .cinemaBookmarkHeart{
+  width:43px;height:39px;overflow:visible;
+  fill:rgba(255,72,142,.04);
+  stroke:url(#cinemaHeartGradient);
+  stroke-width:3.4;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  filter:drop-shadow(0 0 4px rgba(255,66,145,.38)) drop-shadow(0 0 10px rgba(255,40,125,.18));
+  transition:transform .16s ease,fill .16s ease,filter .16s ease
+}
+.cinemaDetailTools #cinemaBookmarkBtn.bookmarked .cinemaBookmarkHeart{
+  fill:url(#cinemaHeartGradient);
+  stroke:url(#cinemaHeartGradient);
+  filter:drop-shadow(0 0 5px rgba(255,85,165,.68)) drop-shadow(0 0 13px rgba(255,40,125,.38))
+}
+.cinemaDetailTools #cinemaBookmarkBtn:active .cinemaBookmarkHeart{transform:scale(.9)}
+.cinemaDetailTools #cinemaBookmarkBtn:hover{background:rgba(255,75,145,.07)}
+.cinemaDetailTools #cinemaBookmarkBtn:focus{
+  outline:none;
+  box-shadow:0 0 0 2px rgba(82,201,255,.85),0 0 16px rgba(64,193,255,.22)
+}
+.nativeTv .cinemaDetailTools #cinemaBookmarkBtn:focus{
+  box-shadow:0 0 0 3px #ffd400,0 0 18px rgba(255,212,0,.28)
+}
 .cinemaDetailFacts{display:grid;grid-template-columns:165px minmax(0,1fr);gap:13px 22px;max-width:1050px;font-size:17px;line-height:1.28}
 .cinemaDetailFacts .k{color:#8d969b}.cinemaDetailFacts .v{color:#f2f3f4}
 .cinemaDetailFacts a{color:#f2f3f4;text-decoration:underline}
@@ -2124,7 +2148,18 @@ body:not(.cinemaMode) .cinemaShellSide{
       <h1 class="cinemaDetailTitle" id="cinemaDetailTitle">Фильм</h1>
       <div class="cinemaDetailBadges" id="cinemaDetailBadges"></div>
       <div class="cinemaDetailTools">
-        <button id="cinemaBookmarkBtn" onclick="toggleCinemaBookmark()" aria-label="Закладка" title="Закладка">♡</button>
+        <button id="cinemaBookmarkBtn" onclick="toggleCinemaBookmark()" aria-label="Избранное" title="Избранное">
+  <svg class="cinemaBookmarkHeart" viewBox="0 0 64 58" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="cinemaHeartGradient" x1="8" y1="6" x2="56" y2="54" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#ff9bd1"/>
+        <stop offset=".48" stop-color="#ff4f9a"/>
+        <stop offset="1" stop-color="#ff2f70"/>
+      </linearGradient>
+    </defs>
+    <path d="M32 53.2 9.1 31.1C2.8 25 2.4 14.8 8.2 8.7c5.8-6.2 15.7-6.3 21.7-.2L32 10.7l2.1-2.2c6-6.1 15.9-6 21.7.2 5.8 6.1 5.4 16.3-.9 22.4L32 53.2Z"/>
+  </svg>
+</button>
       </div>
       <div class="cinemaDetailDescription" id="cinemaDetailDescription"></div>
       <div class="cinemaDetailDescription cinemaDetailDescriptionSecondary" id="cinemaDetailDescriptionSecondary" style="display:none"></div>
@@ -9005,9 +9040,13 @@ function cinemaBookmarkKey(item){
 function setCinemaBookmarkButtonState(added){
   const btn=document.getElementById('cinemaBookmarkBtn');
   if(!btn)return;
-  btn.textContent=added?'♥':'♡';
   btn.classList.toggle('bookmarked',!!added);
-  btn.title=added?'Убрать из закладок':'Добавить в закладки';
+  const labels={
+    ru:added?'Убрать из избранного':'Добавить в избранное',
+    hy:added?'Հեռացնել ընտրյալներից':'Ավելացնել ընտրյալներին',
+    en:added?'Remove from favorites':'Add to favorites'
+  };
+  btn.title=labels[appLang]||labels.ru;
   btn.setAttribute('aria-label',btn.title);
 }
 async function syncCinemaBookmarkState(item){
