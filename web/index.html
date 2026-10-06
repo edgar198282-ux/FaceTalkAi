@@ -1238,6 +1238,38 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   .cinemaDetailTitle{font-size:27px}
   .cinemaDetailFacts{grid-template-columns:112px 1fr;font-size:15px}
 }
+
+body:not(.darkMode) .cinemaScreen{background:#f4f9fd!important;color:#153b55!important}
+body:not(.darkMode) .cinemaShellBar{background:#f7fbfe!important;border-bottom-color:#d5e6f1!important}
+body:not(.darkMode) .cinemaShellTitle{color:#183f5a!important}
+body:not(.darkMode) .cinemaShellBtn{color:#1678b6!important}
+body:not(.darkMode) .cinemaShellBtn:focus,body:not(.darkMode) .cinemaShellBtn.focused{background:#dceffd!important}
+body:not(.darkMode) .cinemaShellCategory{background:#fff!important;border-color:#c9deeb!important;box-shadow:0 14px 32px rgba(34,83,112,.2)!important}
+body:not(.darkMode) .cinemaCategoryItem{color:#204e69!important}
+body:not(.darkMode) .cinemaCategoryItem:focus,body:not(.darkMode) .cinemaCategoryItem.active{background:#dceffd!important;color:#0b65a0!important}
+body:not(.darkMode) .cinemaPosterTitle{color:#173d56!important}
+body:not(.darkMode) .cinemaPosterSub{color:#64859a!important}
+body:not(.darkMode) .cinemaShellSide{background:linear-gradient(180deg,#f9fcff,#e8f5fd 62%,#deeff9)!important;color:#163e58!important;box-shadow:18px 0 46px rgba(33,76,102,.24)!important}
+body:not(.darkMode) .cinemaSideMeta{color:#688da5!important}
+body:not(.darkMode) .cinemaMenuItem{color:#173f59!important}
+body:not(.darkMode) .cinemaMenuItem.active,body:not(.darkMode) .cinemaMenuItem:focus{background:#18aee0!important;color:#fff!important}
+body:not(.darkMode) .cinemaMenuItem.cinemaTvReturn{background:#e5f3fb!important;border-top-color:#bfdceb!important}
+body:not(.darkMode) .cinemaDetail,body:not(.darkMode) .cinemaDetailBody{background:#eef6fb!important;color:#173b52!important}
+body:not(.darkMode) .cinemaDetailTitle,body:not(.darkMode) .cinemaDetailDescription,body:not(.darkMode) .cinemaDetailFacts .v,body:not(.darkMode) .cinemaDetailFacts a{color:#173b52!important}
+body:not(.darkMode) .cinemaDetailDescriptionSecondary,body:not(.darkMode) .cinemaDetailFacts .k{color:#658397!important}
+body:not(.darkMode) .cinemaDetailBadge{color:#244d66!important;border-color:#9db8c9!important;background:rgba(255,255,255,.55)!important}
+body:not(.darkMode) .cinemaSimilarTitle,body:not(.darkMode) .cinemaSimilarName{color:#173b52!important}
+body:not(.darkMode) .cinemaSimilarMeta{color:#658397!important}
+body:not(.darkMode) .cinemaSeasons{background:#eef6fb!important;color:#173b52!important}
+body:not(.darkMode) .cinemaSeasonsBar{background:#f8fcff!important;border-bottom-color:#d0e2ed!important}
+body:not(.darkMode) .cinemaSeasonsTitle{color:#173b52!important}
+body:not(.darkMode) .cinemaSeasonsBack{color:#1678b6!important}
+body:not(.darkMode) .cinemaSeasonRow,body:not(.darkMode) .cinemaEpisodeRow{background:#f8fcff!important;color:#173b52!important;border-bottom-color:#d8e8f1!important}
+body:not(.darkMode) .cinemaEpisodeRow small{color:#6b8799!important}
+body:not(.darkMode) .cinemaKpSeasonTitle{color:#173b52!important}
+body:not(.darkMode) .cinemaKpEpisodeBtn{background:#e2f2fb!important;color:#194560!important;border-color:#b4d3e5!important}
+body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
+
 </style>
 </head>
 <body>
@@ -2118,6 +2150,43 @@ const UI_TEXT={
   hy:{settings:'⚙ Կարգավորումներ',status:'Կարգավիճակ',active:'Ակտիվ է',inactive:'Ակտիվ չէ',pending:'Սպասում է հաստատման',until:'Մուտքը մինչև',unlimited:'Անժամկետ',language:'Լեզու',auto:'Վերջին ալիքի ավտոմեկնարկ',hide:'Թաքցնել անկայուն ալիքները',quality:'Լռելյայն որակ',admin:'🛠 Ադմին վահանակ',close:'Փակել',sub:'Հայաստան + Ռուսաստան',search:'Ալիքի որոնում',all:'ԲՈԼՈՐԸ',free:'ԱՆՎՃԱՐ',edem:'EDEM',armenia:'🇦🇲 ՀԱՅԱՍՏԱՆ',russia:'🇷🇺 ՌՈՒՍԱՍՏԱՆ',favorites:'♡ ՍԻՐԵԼԻՆԵՐ',recent:'↺ ՎԵՐՋԻՆՆԵՐ',allCategories:'Բոլոր կատեգորիաները',general:'Ընդհանուր',news:'Նորություններ',sports:'Սպորտ',movies:'Ֆիլմեր',kids:'Մանկական',music:'Երաժշտություն',offline:'Offline ստուգման մեջ',last:'Վերջինը',updating:'թարմացվում է…',loading:'Ալիքները բեռնվում են…',refreshing:'Ալիքները թարմացվում են…',loadError:'Չհաջողվեց բեռնել ալիքները',next:'Հաջորդը',noChannels:'Ալիքներ չեն գտնվել'},
   en:{settings:'⚙ Settings',status:'Status',active:'Active',inactive:'Inactive',pending:'Pending approval',until:'Access until',unlimited:'Unlimited',language:'Language',auto:'Autostart last channel',hide:'Hide unstable channels',quality:'Default quality',admin:'🛠 Admin panel',close:'Close',sub:'Armenia + Russia',search:'Search channel',all:'ALL',free:'FREE',edem:'EDEM',armenia:'🇦🇲 ARMENIA',russia:'🇷🇺 RUSSIA',favorites:'♡ FAVORITES',recent:'↺ RECENT',allCategories:'All categories',general:'General',news:'News',sports:'Sports',movies:'Movies',kids:'Kids',music:'Music',offline:'Offline under check',last:'Last',updating:'updating…',loading:'Loading channels…',refreshing:'Refreshing channels…',loadError:'Failed to load channels',next:'Next',noChannels:'No channels found'}
 };
+const CINEMA_TEXT={
+  ru:{movies:'ФИЛЬМЫ',series:'СЕРИАЛЫ',cartoons:'МУЛЬТФИЛЬМЫ',anime:'АНИМЕ',docs:'ДОК.ФИЛЬМЫ',docseries:'ДОК.СЕРИАЛЫ',tvshows:'ТВ ШОУ',concerts:'КОНЦЕРТЫ',collections:'ПОДБОРКИ',tv:'ТВ',watching:'Я СМОТРЮ',bookmarks:'ЗАКЛАДКИ',history:'ИСТОРИЯ',all:'ВСЕ',new:'НОВИНКИ',popular:'ПОПУЛЯРНЫЕ',hot:'ГОРЯЧИЕ',watchMovie:'СМОТРЕТЬ ФИЛЬМ',seasons:'СЕЗОНЫ',trailer:'ТРЕЙЛЕР',similar:'ПОХОЖИЕ',more:'ЕЩЁ',cinema:'КИНО',search:'ПОИСК',catalog:'КАТАЛОГ',home:'ГЛАВНАЯ',settings:'НАСТРОЙКИ',season:'СЕЗОН',watched:'Просмотрено',minute:'мин.',loading:'Загрузка…',unavailable:'Раздел временно недоступен.',title:'Название',year:'Год',country:'Страна',genre:'Жанр',translation:'Перевод',director:'Режиссер',cast:'В ролях'},
+  hy:{movies:'ՖԻԼՄԵՐ',series:'ՍԵՐԻԱԼՆԵՐ',cartoons:'ՄՈՒԼՏՖԻԼՄԵՐ',anime:'ԱՆԻՄԵ',docs:'ՎԱՎ. ՖԻԼՄԵՐ',docseries:'ՎԱՎ. ՍԵՐԻԱԼՆԵՐ',tvshows:'ՀԵՌՈՒՍՏԱՇՈՈՒ',concerts:'ՀԱՄԵՐԳՆԵՐ',collections:'ՀԱՎԱՔԱԾՈՒՆԵՐ',tv:'ՀԵՌՈՒՍՏԱՏԵՍՈՒԹՅՈՒՆ',watching:'ԴԻՏՈՒՄ ԵՄ',bookmarks:'ԷՋԱՆԻՇԵՐ',history:'ՊԱՏՄՈՒԹՅՈՒՆ',all:'ԲՈԼՈՐԸ',new:'ՆՈՐՈՒՅԹՆԵՐ',popular:'ՀԱՆՐԱՀԱՅՏ',hot:'ԹՈՓ',watchMovie:'ԴԻՏԵԼ ՖԻԼՄԸ',seasons:'ԵԹԵՐԱՇՐՋԱՆՆԵՐ',trailer:'ԹՐԵՅԼԵՐ',similar:'ՆՄԱՆԱՏԻՊ',more:'ԱՎԵԼԻՆ',cinema:'ԿԻՆՈ',search:'ՈՐՈՆՈՒՄ',catalog:'ԿԱՏԱԼՈԳ',home:'ԳԼԽԱՎՈՐ',settings:'ԿԱՐԳԱՎՈՐՈՒՄՆԵՐ',season:'ԵԹԵՐԱՇՐՋԱՆ',watched:'Դիտված է',minute:'ր.',loading:'Բեռնվում է…',unavailable:'Բաժինը ժամանակավորապես անհասանելի է։',title:'Անվանում',year:'Տարի',country:'Երկիր',genre:'Ժանր',translation:'Թարգմանություն',director:'Ռեժիսոր',cast:'Դերերում'},
+  en:{movies:'MOVIES',series:'SERIES',cartoons:'CARTOONS',anime:'ANIME',docs:'DOCUMENTARIES',docseries:'DOC. SERIES',tvshows:'TV SHOWS',concerts:'CONCERTS',collections:'COLLECTIONS',tv:'TV',watching:'WATCHING',bookmarks:'BOOKMARKS',history:'HISTORY',all:'ALL',new:'NEW',popular:'POPULAR',hot:'HOT',watchMovie:'WATCH MOVIE',seasons:'SEASONS',trailer:'TRAILER',similar:'SIMILAR',more:'MORE',cinema:'CINEMA',search:'SEARCH',catalog:'CATALOG',home:'HOME',settings:'SETTINGS',season:'SEASON',watched:'Watched',minute:'min.',loading:'Loading…',unavailable:'Section temporarily unavailable.',title:'Title',year:'Year',country:'Country',genre:'Genre',translation:'Translation',director:'Director',cast:'Cast'}
+};
+function cinemaT(){return CINEMA_TEXT[appLang]||CINEMA_TEXT.ru}
+function applyCinemaLanguage(){
+  const t=cinemaT();
+  const sideMap={watching:t.watching,bookmarks:t.bookmarks,history:t.history,movies:t.movies,series:t.series,cartoons:t.cartoons,anime:t.anime,'4k':'4K',docs:t.docs,docseries:t.docseries,tvshows:t.tvshows,concerts:t.concerts,collections:t.collections};
+  const tvReturn=document.getElementById('cinemaTvReturnBtn');
+  if(tvReturn){const s=tvReturn.querySelector('span:last-child');if(s)s.textContent=t.tv}
+  document.querySelectorAll('#cinemaSideMenu .cinemaMenuItem').forEach(btn=>{
+    const oc=String(btn.getAttribute('onclick')||'');
+    const m=oc.match(/cinemaSideAction\('([^']+)'\)/);
+    if(!m||!sideMap[m[1]])return;
+    const s=btn.querySelector('span:last-child');
+    if(!s)return;
+    const count=s.querySelector('b');
+    const countHtml=count?(' '+count.outerHTML):'';
+    s.innerHTML=sideMap[m[1]]+countHtml;
+  });
+  const kind=cinemaShellKind||'movies';
+  const kindLabel=sideMap[kind]||t.movies;
+  const catLabels={all:t.all,new:t.new,popular:t.popular,hot:t.hot,'4k':'4K'};
+  document.querySelectorAll('#cinemaCategoryMenu .cinemaCategoryItem').forEach(btn=>{
+    const key=btn.dataset.cinemaCategory||'all';
+    btn.textContent=kindLabel+' '+(catLabels[key]||t.all);
+  });
+  const nav={home:t.home,search:t.search,browse:t.catalog,history:t.history,settings:t.settings};
+  document.querySelectorAll('#cinemaKpNav [data-kp-nav]').forEach(btn=>{if(nav[btn.dataset.kpNav])btn.textContent=nav[btn.dataset.kpNav]});
+  const w=document.getElementById('cinemaDetailWatch'); if(w&&!/S\d+E\d+/i.test(w.textContent||''))w.textContent=t.watchMovie;
+  const s=document.getElementById('cinemaDetailSeasons'); if(s)s.textContent=t.seasons;
+  const tr=document.getElementById('cinemaDetailTrailer'); if(tr)tr.textContent=t.trailer;
+  const sim=document.querySelector('.cinemaSimilarTitle'); if(sim)sim.textContent=t.similar;
+  const more=document.getElementById('cinemaLoadMoreBtn'); if(more)more.textContent=t.more;
+  const sideMeta=document.getElementById('cinemaSideMeta'); if(sideMeta)sideMeta.textContent=t.cinema;
+}
 function setAppLanguage(lang){
   appLang=['hy','ru','en'].includes(lang)?lang:'ru';
   localStorage.setItem('abaj_tv_lang',appLang);
@@ -2146,6 +2215,7 @@ function applyAppLanguage(){
   if(adultChip)adultChip.classList.toggle('visible',adultEnabled);
   const group=document.getElementById('group'); if(group&&group.options.length)group.options[0].textContent=t.all;
   ['hy','ru','en'].forEach(x=>document.getElementById('lang'+x[0].toUpperCase()+x.slice(1)+'Btn')?.classList.toggle('active',x===appLang));
+  applyCinemaLanguage();
   if(channels.length)buildQuickCats(visibleChannelGroups());
 }
 async function loadMyDevices(){
@@ -2827,6 +2897,7 @@ function paintTvSettings(){
 }
 function applyAppearanceMode(){
   document.body.classList.toggle('darkMode',appAppearanceMode==='dark');
+  document.documentElement.style.colorScheme=appAppearanceMode==='dark'?'dark':'light';
 }
 function setAppearanceMode(value){
   appAppearanceMode=String(value)==='dark'?'dark':'light';
@@ -7598,16 +7669,17 @@ function setCinemaShellTitle(text){
   if(el)el.textContent=String(text||'КИНО').toUpperCase();
 }
 function cinemaKindInfo(){
+  const t=cinemaT();
   const map={
-    movies:{label:'ФИЛЬМЫ',section:'movies',query:'фильмы'},
-    series:{label:'СЕРИАЛЫ',section:'series',query:'сериалы'},
-    cartoons:{label:'МУЛЬТФИЛЬМЫ',section:'cartoons',query:'мультфильмы'},
-    anime:{label:'АНИМЕ',section:'anime',query:'аниме'},
-    docs:{label:'ДОК.ФИЛЬМЫ',section:'docmovies',query:'документальные фильмы'},
-    docseries:{label:'ДОК.СЕРИАЛЫ',section:'docseries',query:'документальные сериалы'},
-    tvshows:{label:'ТВ ШОУ',section:'tvshows',query:'тв шоу'},
-    concerts:{label:'КОНЦЕРТЫ',section:'concerts',query:'концерты'},
-    collections:{label:'ПОДБОРКИ',section:'collections',query:'подборки фильмов'}
+    movies:{label:t.movies,section:'movies',query:'фильмы'},
+    series:{label:t.series,section:'series',query:'сериалы'},
+    cartoons:{label:t.cartoons,section:'cartoons',query:'мультфильмы'},
+    anime:{label:t.anime,section:'anime',query:'аниме'},
+    docs:{label:t.docs,section:'docmovies',query:'документальные фильмы'},
+    docseries:{label:t.docseries,section:'docseries',query:'документальные сериалы'},
+    tvshows:{label:t.tvshows,section:'tvshows',query:'тв шоу'},
+    concerts:{label:t.concerts,section:'concerts',query:'концерты'},
+    collections:{label:t.collections,section:'collections',query:'подборки фильмов'}
   };
   return map[cinemaShellKind]||map.movies;
 }
@@ -7687,15 +7759,16 @@ async function loadKinoPubSection(section,options={}){
   kinopubCurrentSectionOptions={...options};
   const status=document.getElementById('cinemaStatus');
   const sectionTitle=document.getElementById('cinemaSectionTitle');
+  const ct=cinemaT();
   const labels={
-    movies:'Фильмы',series:'Сериалы',cartoons:'Мультфильмы',anime:'Аниме',
-    docmovies:'Док. фильмы',docseries:'Док. сериалы',tvshows:'ТВ шоу',
-    concerts:'Концерты','4k':'4K',collections:'Подборки',
-    fresh:'Новинки',popular:'Популярные',hot:'Горячие'
+    movies:ct.movies,series:ct.series,cartoons:ct.cartoons,anime:ct.anime,
+    docmovies:ct.docs,docseries:ct.docseries,tvshows:ct.tvshows,
+    concerts:ct.concerts,'4k':'4K',collections:ct.collections,
+    fresh:ct.new,popular:ct.popular,hot:ct.hot
   };
   setCinemaShellTitle(labels[section]||'КИНО');
   if(sectionTitle)sectionTitle.textContent=labels[section]||'КИНО';
-  if(status)status.textContent='Загрузка…';
+  if(status)status.textContent=cinemaT().loading;
   kinopubCatalogPage=1;
   kinopubCatalogItems=[];
   kinopubCatalogTotal=null;
@@ -7731,7 +7804,7 @@ async function loadKinoPubSection(section,options={}){
       }catch(_){}
     }
     renderCinemaCatalog([]);
-    if(status)status.textContent='Раздел временно недоступен.';
+    if(status)status.textContent=cinemaT().unavailable;
   }
 }
 async function openKinoPubCollection(item){
@@ -10089,11 +10162,11 @@ function renderCinemaSeasonEpisodes(row){
   const list=document.getElementById('cinemaSeasonsList');
   const title=document.getElementById('cinemaSeasonsTitle');
   if(!list||!row)return;
-  if(title)title.textContent='СЕЗОН '+String(row.season||'');
+  if(title)title.textContent=cinemaT().season+' '+String(row.season||'');
   list.innerHTML='';
   const back=document.createElement('button');
   back.className='cinemaSeasonRow';
-  back.innerHTML='<span>← СЕЗОНЫ</span>';
+  back.innerHTML='<span>← '+cinemaT().seasons+'</span>';
   back.onclick=()=>openCinemaSeasons();
   list.appendChild(back);
   row.items.forEach((media,index)=>{
@@ -10105,7 +10178,7 @@ function renderCinemaSeasonEpisodes(row){
     const duration=Number(media?.duration||0);
     const min=duration>60?Math.round(duration/60):0;
     btn.innerHTML='<span>'+String(label).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</span>'+
-      '<small>'+(cinemaEpisodeWatched(media)?'Просмотрено':(min?min+' мин.':''))+'</small>';
+      '<small>'+(cinemaEpisodeWatched(media)?cinemaT().watched:(min?min+' '+cinemaT().minute:''))+'</small>';
     btn.onclick=()=>{
       cinemaSelectedKinoMedia=media;
       closeCinemaSeasons();
@@ -10134,13 +10207,13 @@ function openCinemaSeasons(){
   if(!screen||!list)return;
   document.getElementById('cinemaDetail')?.classList.remove('open');
   screen.classList.add('open');
-  if(title)title.textContent='СЕЗОНЫ · '+cinemaDisplayTitle(item);
+  if(title)title.textContent=cinemaT().seasons+' · '+cinemaDisplayTitle(item);
   list.innerHTML='';
   rows.forEach((row,index)=>{
     const watched=row.items.filter(cinemaEpisodeWatched).length;
     const btn=document.createElement('button');
     btn.className='cinemaSeasonRow';
-    btn.innerHTML='<span>'+(index+1)+'. СЕЗОН</span><span class="cinemaSeasonCount">'+watched+'/'+row.items.length+'</span>';
+    btn.innerHTML='<span>'+(index+1)+'. '+cinemaT().season+'</span><span class="cinemaSeasonCount">'+watched+'/'+row.items.length+'</span>';
     btn.onclick=()=>renderCinemaSeasonEpisodes(row);
     list.appendChild(btn);
   });
@@ -10256,15 +10329,15 @@ function renderCinemaDetail(item){
   const seriesInfo=cinemaItemLooksSeries(item)?cinemaSeriesInfo(item):'';
   facts.innerHTML=
     cinemaRatingFact(rating,kpRating)+
-    cinemaDetailFact('Название',original)+
-    cinemaDetailFact('Год',year)+
+    cinemaDetailFact(cinemaT().title,original)+
+    cinemaDetailFact(cinemaT().year,year)+
     cinemaDetailFact('',duration)+
     cinemaDetailFact('',seriesInfo)+
-    cinemaDetailFact('Страна',country)+
-    cinemaDetailFact('Жанр',genre)+
-    cinemaDetailFact('Перевод',translation)+
-    cinemaDetailFact('Режиссер',director)+
-    cinemaDetailFact('В ролях',cast);
+    cinemaDetailFact(cinemaT().country,country)+
+    cinemaDetailFact(cinemaT().genre,genre)+
+    cinemaDetailFact(cinemaT().translation,translation)+
+    cinemaDetailFact(cinemaT().director,director)+
+    cinemaDetailFact(cinemaT().cast,cast);
 
   renderKinoPubMediaRows(item);
   const watchBtn=document.getElementById('cinemaDetailWatch');
