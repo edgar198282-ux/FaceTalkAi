@@ -97,6 +97,8 @@ async def _kinopub_save_tokens(uid, data):
         'updated_at': int(time.time()),
     }
     await set_setting(f'kinopub_tokens:{uid}', json.dumps(payload, separators=(',', ':')))
+    if ADMIN_ID and int(uid) == int(ADMIN_ID):
+        await set_setting('kinopub_owner_uid', str(int(uid)))
     return payload
 
 async def _kinopub_access_token(uid):
@@ -125,9 +127,17 @@ async def _kinopub_access_token(uid):
     if token:
         return token
 
-    if ADMIN_ID and int(uid) != int(ADMIN_ID):
-        admin_tokens = await _kinopub_tokens(int(ADMIN_ID))
-        token = await resolve(int(ADMIN_ID), admin_tokens)
+    owner_uid = 0
+    try:
+        owner_uid = int(str(await get_setting('kinopub_owner_uid', '') or '').strip() or 0)
+    except Exception:
+        owner_uid = 0
+    if not owner_uid and ADMIN_ID:
+        owner_uid = int(ADMIN_ID)
+
+    if owner_uid and int(uid) != owner_uid:
+        owner_tokens = await _kinopub_tokens(owner_uid)
+        token = await resolve(owner_uid, owner_tokens)
         if token:
             return token
 
@@ -267,8 +277,16 @@ async def api_kinopub_status(request):
     if not await _cinema_access_allowed(uid):
         return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
     tokens = await _kinopub_tokens(uid)
-    if not (tokens.get('access_token') or tokens.get('refresh_token')) and ADMIN_ID and uid != int(ADMIN_ID):
-        tokens = await _kinopub_tokens(int(ADMIN_ID))
+    if not (tokens.get('access_token') or tokens.get('refresh_token')):
+        owner_uid = 0
+        try:
+            owner_uid = int(str(await get_setting('kinopub_owner_uid', '') or '').strip() or 0)
+        except Exception:
+            owner_uid = 0
+        if not owner_uid and ADMIN_ID:
+            owner_uid = int(ADMIN_ID)
+        if owner_uid and uid != owner_uid:
+            tokens = await _kinopub_tokens(owner_uid)
     raw = await get_setting(f'kinopub_auth:{uid}', '')
     auth = {}
     try:
