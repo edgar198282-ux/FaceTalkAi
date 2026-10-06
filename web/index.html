@@ -1324,7 +1324,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
     <div class="cinemaDetailHero" id="cinemaDetailHero">
       <img class="cinemaDetailHeroPoster" id="cinemaDetailHeroPoster" loading="eager" decoding="async" fetchpriority="high" alt="">
       <button class="cinemaDetailBack" id="cinemaDetailBack" onclick="closeCinemaDetail()" aria-label="Назад">←</button>
-      <button class="cinemaDetailShare" id="cinemaDetailShare" onclick="shareCinemaDetail()" aria-label="Поделиться" title="Поделиться">⌯</button>
+      <button class="cinemaDetailShare" id="cinemaDetailShare" onclick="downloadCinemaDetail()" aria-label="Скачать" title="Скачать">⇩</button>
       <div class="cinemaDetailActions">
         <button class="cinemaDetailAction" id="cinemaDetailWatch" onclick="watchCinemaDetail()">СМОТРЕТЬ ФИЛЬМ</button>
         <button class="cinemaDetailAction" id="cinemaDetailSeasons" onclick="openCinemaSeasons()" style="display:none">СЕЗОНЫ</button>
@@ -9503,6 +9503,59 @@ function cinemaRatingFact(imdb,kp){
   if(!parts.length)return '';
   return '<div class="k">Рейтинг</div><div class="v cinemaRatingValue">'+parts.join('')+'</div>';
 }
+async function downloadCinemaDetail(){
+  const item=cinemaDetailMovie;
+  if(!item)return;
+  if(!cinemaPlaybackAllowed){
+    alert(appLang==='hy'
+      ?'Ներբեռնումը հասանելի է վճարովի տարբերակում։'
+      :(appLang==='en'?'Downloads are available in the paid version.':'Скачивание доступно в платной версии.'));
+    return;
+  }
+  if(!(cinemaSource==='kinopub'||String(item.source||'').toUpperCase()==='KINOPUB')){
+    alert(appLang==='hy'
+      ?'Այս աղբյուրի համար ներբեռնումը դեռ հասանելի չէ։'
+      :(appLang==='en'?'Download is not available for this source yet.':'Для этого источника скачивание пока недоступно.'));
+    return;
+  }
+  const btn=document.getElementById('cinemaDetailShare');
+  const old=btn?btn.textContent:'⇩';
+  if(btn){btn.disabled=true;btn.textContent='…'}
+  try{
+    const params=new URLSearchParams();
+    const id=String(item.id||'').trim();
+    const mid=kinoMediaId(cinemaSelectedKinoMedia);
+    if(id)params.set('id',id);
+    if(mid)params.set('mid',mid);
+    const r=await fetch('/api/kinopub/download?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok||!/^https?:\/\//i.test(String(d.url||'')))throw new Error(String(d.error||'download_unavailable'));
+    const mediaLabel=cinemaSelectedKinoMedia?kinoMediaLabel(cinemaSelectedKinoMedia,0):'';
+    const rawName=(cinemaDisplayTitle(item)+(mediaLabel?' '+mediaLabel:'')).trim();
+    const filename=(rawName||'Abaj TV').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim()+'.mp4';
+
+    if(window.AbajNative&&typeof window.AbajNative.downloadMedia==='function'){
+      window.AbajNative.downloadMedia(String(d.url),filename);
+      showTvShortcut(appLang==='hy'?'Ներբեռնումը սկսվել է':(appLang==='en'?'Download started':'Загрузка началась'));
+      return;
+    }
+
+    const a=document.createElement('a');
+    a.href=String(d.url);
+    a.download=filename;
+    a.rel='noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }catch(e){
+    alert(appLang==='hy'
+      ?'Չհաջողվեց ստանալ ներբեռնման հղումը։'
+      :(appLang==='en'?'Could not get the download link.':'Не удалось получить ссылку для скачивания.'));
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=old}
+  }
+}
+
 function shareCinemaDetail(){
   const item=cinemaDetailMovie;
   if(!item)return;
