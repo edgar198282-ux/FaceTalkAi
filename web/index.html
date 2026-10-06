@@ -1804,6 +1804,20 @@ body.nativeTv #tvSettingsModal input[type="range"]:focus{
   }
 }
 </style>
+
+<style id="cinema-admin-count-color-v1">
+body.uiLight .cinemaTvReturnLabel{
+  color:#111!important;
+}
+body.uiLight .cinemaSideMeta .cinemaAdminCount{
+  color:#159447!important;
+  font-weight:800!important;
+}
+body:not(.uiLight) .cinemaSideMeta .cinemaAdminCount{
+  color:#41d17a!important;
+  font-weight:800!important;
+}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
@@ -1915,7 +1929,7 @@ body.nativeTv #tvSettingsModal input[type="range"]:focus{
         <div><div class="cinemaSideUser">Abaj TV</div><div class="cinemaSideMeta" id="cinemaSideMeta">Кино</div><div class="cinemaSideMeta" id="cinemaKinoPubDays" style="display:none;color:#ffd66b"></div></div>
       </div>
       <div class="cinemaSideItems">
-        <button class="cinemaMenuItem cinemaTvReturn" id="cinemaTvReturnBtn" onclick="toggleCinemaMode()"><span class="cinemaMenuIcon icon-tv">📺</span><span>ТВ</span></button>
+        <button class="cinemaMenuItem cinemaTvReturn" id="cinemaTvReturnBtn" onclick="toggleCinemaMode()"><span class="cinemaMenuIcon icon-tv">📺</span><span class="cinemaTvReturnLabel">ТВ</span></button>
         <button class="cinemaMenuItem" onclick="cinemaSideAction('watching')"><span class="cinemaMenuIcon icon-watching">▶</span><span>Я СМОТРЮ <b id="cinemaWatchingCount"></b></span></button>
         <button class="cinemaMenuItem" onclick="cinemaSideAction('bookmarks')"><span class="cinemaMenuIcon icon-bookmarks">🔖</span><span>ЗАКЛАДКИ <b id="cinemaBookmarksCount"></b></span></button>
         <button class="cinemaMenuItem" onclick="cinemaSideAction('history')"><span class="cinemaMenuIcon icon-history">↶</span><span>ИСТОРИЯ <b id="cinemaHistoryCount"></b></span></button>
@@ -2911,7 +2925,13 @@ async function checkAdmin(){
     else if(meta&&appIsAdmin&&kinoPubOverview){
       const m=Number.isFinite(Number(kinoPubOverview.movies_total))?Number(kinoPubOverview.movies_total):null;
       const sr=Number.isFinite(Number(kinoPubOverview.series_total))?Number(kinoPubOverview.series_total):null;
-      meta.textContent=(m!==null||sr!==null)?((m!==null?m+' фильмов':'')+(m!==null&&sr!==null?' · ':'')+(sr!==null?sr+' сериалов':'')):cinemaT().cinema;
+      if(m!==null||sr!==null){
+        meta.innerHTML=(m!==null?'<span class="cinemaAdminCount">'+m+'</span> фильмов':'')+
+          (m!==null&&sr!==null?' · ':'')+
+          (sr!==null?'<span class="cinemaAdminCount">'+sr+'</span> сериалов':'');
+      }else{
+        meta.textContent=cinemaT().cinema;
+      }
     }
   }catch(e){}
 }
