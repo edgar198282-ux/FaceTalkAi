@@ -4599,17 +4599,28 @@ function handleTvBack(){
   tvHeaderBackAt=0;
   return false;
 }
+function commitTvTuneDigit(){
+  if(tvDigitTimer){clearTimeout(tvDigitTimer);tvDigitTimer=null}
+  const rows=filteredNow.length?filteredNow:channels;
+  const n=parseInt(tvDigitBuffer,10);
+  tvDigitBuffer='';
+  if(Number.isFinite(n)&&n>=1&&n<=rows.length)openPlayer(rows[n-1].id);
+}
 function tvTuneDigit(d){
   if(!nativeTv)return;
-  tvDigitBuffer=(tvDigitBuffer+String(d)).slice(-3);
+  const digit=String(d||'').replace(/\D/g,'').slice(-1);
+  if(!digit)return;
+  tvDigitBuffer=(tvDigitBuffer+digit).slice(-3);
   showTvShortcut('Канал '+tvDigitBuffer);
   if(tvDigitTimer)clearTimeout(tvDigitTimer);
-  tvDigitTimer=setTimeout(()=>{
-    const rows=filteredNow.length?filteredNow:channels;
-    const n=parseInt(tvDigitBuffer,10);
-    tvDigitBuffer='';
-    if(Number.isFinite(n)&&n>=1&&n<=rows.length)openPlayer(rows[n-1].id);
-  },850);
+  const rows=filteredNow.length?filteredNow:channels;
+  const n=parseInt(tvDigitBuffer,10);
+  const hasLonger=rows.length>=n*10;
+  if(tvDigitBuffer.length>=3||(!hasLonger&&Number.isFinite(n)&&n>=1)){
+    tvDigitTimer=setTimeout(commitTvTuneDigit,180);
+  }else{
+    tvDigitTimer=setTimeout(commitTvTuneDigit,550);
+  }
 }
 function playPreviousChannel(){
   if(!previousChannelId)return;
@@ -6975,6 +6986,14 @@ function tvNativeRemote(action){
   }
   const player=document.getElementById('playerView');
   if(player&&player.classList.contains('open')){
+    if(!isCinemaPlaybackOpen()&&(action==='up'||action==='down')&&!tvRailOpen()){
+      toggleTvRail(true);
+      return;
+    }
+    if(/^digit[0-9]$/.test(String(action||''))){
+      tvTuneDigit(String(action).slice(-1));
+      return;
+    }
     if(tvRailOpen()){
       if(action==='up'){moveTvRail(-1);return}
       if(action==='down'){moveTvRail(1);return}
@@ -7263,7 +7282,23 @@ document.addEventListener('keydown',e=>{
     return;
   }
   const playerOpen=document.getElementById('playerView').classList.contains('open');
+  if(nativeTv&&/^[0-9]$/.test(String(e.key||''))){
+    e.preventDefault();
+    tvTuneDigit(e.key);
+    return;
+  }
+  if(nativeTv&&/^Numpad[0-9]$/.test(String(e.code||''))){
+    e.preventDefault();
+    tvTuneDigit(String(e.code).slice(-1));
+    return;
+  }
   if(playerOpen){
+    if(nativeTv&&!isCinemaPlaybackOpen()&&(e.key==='ArrowUp'||e.key==='ArrowDown')){
+      e.preventDefault();
+      if(!tvRailOpen())toggleTvRail(true);
+      else moveTvRail(e.key==='ArrowUp'?-1:1);
+      return;
+    }
     if(nativeTv&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
       e.preventDefault();
       const controlsHidden=document.body.classList.contains('playerClean');
