@@ -1147,9 +1147,9 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaDetailShare:focus{outline:none;box-shadow:0 0 0 3px #a6dfff}
 .cinemaDetailActions{
   position:absolute;z-index:4;left:10%;right:10%;bottom:28px;transform:none;
-  display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,.9fr);gap:14px
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px
 }
-.cinemaDetailActions.hasSeasons{grid-template-columns:minmax(0,1.25fr) minmax(0,.8fr) minmax(0,.8fr)}
+.cinemaDetailActions.hasSeasons{grid-template-columns:repeat(3,minmax(0,1fr))}
 .cinemaDetailAction{
   min-width:0;width:100%;height:54px;border:1px solid rgba(255,255,255,.4);border-radius:3px;
   background:rgba(77,83,87,.86);color:#fff;font-size:18px;font-weight:700;padding:0 12px;
