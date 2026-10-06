@@ -2088,6 +2088,78 @@ public class MainActivity extends Activity {
         }
     };
 
+    private long storageSize(File file){
+        if(file==null||!file.exists())return 0L;
+        if(file.isFile())return Math.max(0L,file.length());
+        long total=0L;
+        File[] children=file.listFiles();
+        if(children!=null)for(File child:children)total+=storageSize(child);
+        return total;
+    }
+
+    private void collectCacheFiles(File file,java.util.ArrayList<File> out){
+        if(file==null||!file.exists())return;
+        if(file.isFile()){out.add(file);return;}
+        File[] children=file.listFiles();
+        if(children!=null)for(File child:children)collectCacheFiles(child,out);
+    }
+
+    private void deleteEmptyDirs(File dir){
+        if(dir==null||!dir.isDirectory())return;
+        File[] children=dir.listFiles();
+        if(children!=null)for(File child:children)if(child.isDirectory())deleteEmptyDirs(child);
+        children=dir.listFiles();
+        if(children!=null&&children.length==0)try{dir.delete();}catch(Exception ignored){}
+    }
+
+    private void trimAppCache(long targetBytes){
+        try{
+            File cache=getCacheDir();
+            long size=storageSize(cache);
+            if(size<=targetBytes)return;
+            java.util.ArrayList<File> files=new java.util.ArrayList<>();
+            collectCacheFiles(cache,files);
+            java.util.Collections.sort(files,(a,b)->Long.compare(a.lastModified(),b.lastModified()));
+            for(File file:files){
+                if(size<=targetBytes)break;
+                long len=Math.max(0L,file.length());
+                try{if(file.delete())size=Math.max(0L,size-len);}catch(Exception ignored){}
+            }
+            deleteEmptyDirs(cache);
+        }catch(Exception e){Log.w("AbajStorage","cache trim failed",e);}
+    }
+
+    private void deleteOldUpdateApks(){
+        try{
+            File dir=getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+            if(dir==null||!dir.exists())return;
+            File[] files=dir.listFiles();
+            if(files==null)return;
+            for(File file:files){
+                String name=file.getName();
+                if(file.isFile()&&name.startsWith("AbajTV-update-")&&name.endsWith(".apk")){
+                    try{file.delete();}catch(Exception ignored){}
+                }
+            }
+        }catch(Exception e){Log.w("AbajStorage","old update cleanup failed",e);}
+    }
+
+    private void maintainStorage(){
+        deleteOldUpdateApks();
+        trimAppCache(isTv?64L*1024L*1024L:96L*1024L*1024L);
+        try{
+            File webViewDir=new File(getApplicationInfo().dataDir,"app_webview");
+            long webViewBytes=storageSize(webViewDir);
+            long cacheBytes=storageSize(getCacheDir());
+            long threshold=isTv?160L*1024L*1024L:220L*1024L*1024L;
+            if(webView!=null&&webViewBytes+cacheBytes>threshold){
+                webView.clearCache(false);
+                trimAppCache(isTv?48L*1024L*1024L:80L*1024L*1024L);
+                Log.i("AbajStorage","WebView cache cleared; cached bytes="+(webViewBytes+cacheBytes));
+            }
+        }catch(Exception e){Log.w("AbajStorage","WebView cache maintenance failed",e);}
+    }
+
     @Override protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState); setTheme(R.style.AppTheme);
         UiModeManager uiModeManager=(UiModeManager)getSystemService(Context.UI_MODE_SERVICE);
@@ -2102,6 +2174,8 @@ public class MainActivity extends Activity {
             enterTvImmersive();
         }
         prefs=getSharedPreferences("facetalk_auth",MODE_PRIVATE); consumeAuthIntent(getIntent());
+        deleteOldUpdateApks();
+        trimAppCache(isTv?64L*1024L*1024L:96L*1024L*1024L);
         fullscreenContainer=new FrameLayout(this);
         fullscreenContainer.setBackgroundColor(Color.BLACK);
         if(isTv){
@@ -2120,6 +2194,7 @@ public class MainActivity extends Activity {
         fullscreenContainer.addView(webView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(fullscreenContainer);
         webView.addJavascriptInterface(new AbajNativeBridge(),"AbajNative");
+        maintainStorage();
         WebSettings s=webView.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setMediaPlaybackRequiresUserGesture(false); s.setCacheMode(WebSettings.LOAD_DEFAULT); s.setAllowFileAccess(true); s.setAllowContentAccess(true); if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP)s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW); s.setUserAgentString(s.getUserAgentString()+" AbajTV-Android/"+BuildConfig.VERSION_NAME);
         if(isTv){
             s.setTextZoom(115);
