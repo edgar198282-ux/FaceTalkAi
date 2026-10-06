@@ -553,17 +553,6 @@ async def api_kinopub_item(request):
             pass
 
     normalized_item=_kinopub_normalize(item) or {'id':item_id,'title':str(item.get('title') or '')}
-    if rows:
-        declared_kind = str(normalized_item.get('kind') or '').lower()
-        looks_series = declared_kind in ('series','serial') or len(rows)>1 or any(
-            (row.get('season') is not None) or
-            ('season' in str(row.get('title') or '').lower()) or
-            ('сезон' in str(row.get('title') or '').lower()) or
-            any((m.get('season') is not None) for m in row.get('items',[]) if isinstance(m,dict))
-            for row in rows
-        )
-        if looks_series:
-            normalized_item['kind']='series'
 
     return web.json_response({
         'ok':True,
