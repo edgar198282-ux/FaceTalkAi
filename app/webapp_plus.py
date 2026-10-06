@@ -121,9 +121,9 @@ async def _kinopub_access_token(uid):
         'refresh_token':refresh,
     })
     if status < 400 and not data.get('error'):
-        fresh = await _kinopub_save_tokens(uid, data)
+        fresh = await _kinopub_save_tokens(token_owner, data)
         return str(fresh.get('access_token') or '')
-    await set_setting(f'kinopub_tokens:{uid}', '')
+    await set_setting(f'kinopub_tokens:{token_owner}', '')
     return ''
 
 def _kinopub_total_from_data(data):
