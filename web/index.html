@@ -1904,6 +1904,53 @@ body:not(.cinemaMode) .cinemaShellSide{
   display:none!important;
 }
 </style>
+
+<style id="mobile-tv-player-controls-align-v1">
+@media (orientation:landscape) and (max-height:700px){
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.appFullscreen:not(.cinemaPlayback) .playerPrimaryControls{
+    display:grid!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    align-items:start!important;
+    justify-items:center!important;
+    gap:8px!important;
+    width:min(620px,82vw)!important;
+    margin:6px auto 0!important;
+  }
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.appFullscreen:not(.cinemaPlayback) .playerCircleCtrl{
+    width:100%!important;
+    min-height:78px!important;
+    padding:0!important;
+    margin:0!important;
+    gap:5px!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+  }
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.appFullscreen:not(.cinemaPlayback) .playerCircleCtrl .playerCtrlIcon{
+    width:48px!important;
+    height:48px!important;
+    min-width:48px!important;
+    min-height:48px!important;
+    margin:0!important;
+    flex:0 0 48px!important;
+  }
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.appFullscreen:not(.cinemaPlayback) .playerPlayCtrl .playerCtrlIcon{
+    width:54px!important;
+    height:54px!important;
+    min-width:54px!important;
+    min-height:54px!important;
+    flex-basis:54px!important;
+    margin:-3px 0 -3px!important;
+  }
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.appFullscreen:not(.cinemaPlayback) .playerCircleCtrl small{
+    display:block!important;
+    min-height:22px!important;
+    margin:0!important;
+    line-height:1.05!important;
+    text-align:center!important;
+    white-space:nowrap!important;
+  }
+}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
