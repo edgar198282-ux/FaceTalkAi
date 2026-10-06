@@ -10827,12 +10827,20 @@ async function toggleCinemaMode(){
   if(!cinemaAccessEnabled)return;
   cinemaMode=!cinemaMode;
   localStorage.setItem('abaj_cinema_mode',cinemaMode?'1':'0');
+  if(cinemaMode){
+    cinemaType='movies';
+    cinemaShellKind='movies';
+    cinemaShellCategory='new';
+    localStorage.setItem('abaj_cinema_type','movies');
+  }
   syncCinemaUi();
   syncCinemaTypeUi();
   if(cinemaMode){
     try{closeTvSearch(false)}catch(e){}
     try{closeTvSettings()}catch(e){}
     closeCinemaShellMenus();
+    document.querySelectorAll('.cinemaCategoryItem').forEach(x=>x.classList.toggle('active',x.dataset.cinemaCategory==='new'));
+    setCinemaShellTitle('ФИЛЬМЫ НОВИНКИ');
     if(nativeTv){
       try{
         const key='abaj_cinema_update_check_v2';
@@ -10842,7 +10850,8 @@ async function toggleCinemaMode(){
         }
       }catch(e){}
     }
-    loadCinemaCatalog();
+    if(cinemaSource==='none')loadCinemaCatalog();
+    else setCinemaShellCategory('new');
     setTimeout(()=>{
       if(nativeTv){
         focusCinemaElement(document.querySelector('.cinemaPosterCard[data-cinema-selected="1"]')||document.querySelector('.cinemaPosterCard')||document.getElementById('cinemaMenuBtn'));
@@ -10855,9 +10864,20 @@ async function toggleCinemaMode(){
     },60);
   }
 }
+if(cinemaMode){
+  cinemaType='movies';
+  cinemaShellKind='movies';
+  cinemaShellCategory='new';
+  localStorage.setItem('abaj_cinema_type','movies');
+}
 syncCinemaUi();
 syncCinemaTypeUi();
-if(cinemaMode)loadCinemaCatalog();
+if(cinemaMode){
+  document.querySelectorAll('.cinemaCategoryItem').forEach(x=>x.classList.toggle('active',x.dataset.cinemaCategory==='new'));
+  setCinemaShellTitle('ФИЛЬМЫ НОВИНКИ');
+  if(cinemaSource==='none')loadCinemaCatalog();
+  else setCinemaShellCategory('new');
+}
 
 document.getElementById('app').classList.toggle('tvMode',tvMode);
 applyThemeHue();
