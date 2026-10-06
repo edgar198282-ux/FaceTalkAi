@@ -1819,6 +1819,14 @@ body.darkMode .cinemaSideMeta .cinemaAdminCount{
   color:#41d17a!important;
   font-weight:800!important;
 }
+#cinemaKinoPubDays.kpDaysActive{
+  color:#159447!important;
+  font-weight:800!important;
+}
+#cinemaKinoPubDays.kpDaysExpired{
+  color:#d84b5b!important;
+  font-weight:800!important;
+}
 </style>
 </head>
 <body>
@@ -3048,16 +3056,15 @@ async function refreshCinemaKinoPubDays(){
       return;
     }
     const days=Number(d.subscription_days);
+    el.classList.remove('kpDaysActive','kpDaysExpired');
     if(Number.isFinite(days)){
       const shown=days<1?days.toFixed(1):String(Math.ceil(days));
       el.textContent='KinoPub: осталось '+shown+' дн.';
-      el.style.color=days<=0?'#d84b5b':'#159447';
-      el.style.fontWeight='800';
+      el.classList.add(days<=0?'kpDaysExpired':'kpDaysActive');
       el.style.display='block';
     }else{
       el.textContent=d.subscription_active===false?'KinoPub: подписка неактивна':'';
-      el.style.color=d.subscription_active===false?'#d84b5b':'#159447';
-      el.style.fontWeight='800';
+      if(el.textContent)el.classList.add('kpDaysExpired');
       el.style.display=el.textContent?'block':'none';
     }
   }catch(e){
@@ -8729,9 +8736,15 @@ async function loadKinoPubOverview(){
     const meta=document.getElementById('cinemaSideMeta');
     const m=Number.isFinite(Number(d.movies_total))?Number(d.movies_total):null;
     const sr=Number.isFinite(Number(d.series_total))?Number(d.series_total):null;
-    if(meta)meta.textContent=appIsAdmin
-      ?((m!==null||sr!==null)?((m!==null?m+' фильмов':'')+(m!==null&&sr!==null?' · ':'')+(sr!==null?sr+' сериалов':'')):cinemaT().cinema)
-      :cinemaT().cinema;
+    if(meta){
+      if(appIsAdmin&&(m!==null||sr!==null)){
+        meta.innerHTML=(m!==null?'<span class="cinemaAdminCount">'+m+'</span> фильмов':'')+
+          (m!==null&&sr!==null?' · ':'')+
+          (sr!==null?'<span class="cinemaAdminCount">'+sr+'</span> сериалов':'');
+      }else{
+        meta.textContent=cinemaT().cinema;
+      }
+    }
   }catch(e){}
 }
 async function refreshCinemaLibraryCounts(){
