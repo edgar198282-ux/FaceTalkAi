@@ -12339,5 +12339,142 @@ setInterval(()=>{if(document.hidden)return;const p=document.getElementById('play
   }
 }
 </style>
+
+<style id="mobile-top-rows-equal-color-v1">
+@media (max-width:700px){
+  body:not(.nativeTv) #modeChips,
+  body:not(.nativeTv) #quickCats{
+    display:flex!important;
+    align-items:center!important;
+    gap:8px!important;
+    padding:8px!important;
+    margin-top:8px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    border-radius:22px!important;
+    background:linear-gradient(180deg,#0d2f63 0%,#09244d 100%)!important;
+    border:1px solid rgba(81,201,255,.34)!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.08),
+      0 6px 18px rgba(0,0,0,.16)!important;
+  }
+
+  body:not(.nativeTv) #modeChips .chip,
+  body:not(.nativeTv) #quickCats .cat{
+    flex:0 0 auto!important;
+    width:auto!important;
+    min-width:86px!important;
+    height:44px!important;
+    min-height:44px!important;
+    padding:0 15px!important;
+    border-radius:18px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:7px!important;
+    box-sizing:border-box!important;
+    font-size:14px!important;
+    font-weight:850!important;
+    line-height:1!important;
+    color:#173f63!important;
+    background:linear-gradient(180deg,#ffffff 0%,#ddecf8 100%)!important;
+    border:1px solid rgba(123,183,221,.96)!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.96),
+      0 3px 9px rgba(0,67,115,.12)!important;
+    text-shadow:none!important;
+  }
+
+  body:not(.nativeTv) #modeChips .chip.active,
+  body:not(.nativeTv) #quickCats .cat.active{
+    color:#fff!important;
+    background:linear-gradient(180deg,#24c7f7 0%,#078bd7 100%)!important;
+    border-color:#7cecff!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.35),
+      0 0 14px rgba(0,192,255,.30),
+      0 4px 12px rgba(0,82,145,.22)!important;
+  }
+
+  body:not(.nativeTv) #modeChips .favOnly{
+    width:56px!important;
+    min-width:56px!important;
+    padding:0!important;
+    color:#fff!important;
+    background:linear-gradient(180deg,#ff5b8b 0%,#e51e5d 100%)!important;
+    border-color:#ff9fba!important;
+  }
+
+  body:not(.nativeTv) #modeChips [data-filter="HD"]{
+    background:linear-gradient(180deg,#eaf8ff 0%,#cfeeff 100%)!important;
+    color:#0a5b8e!important;
+  }
+  body:not(.nativeTv) #modeChips [data-filter="FHD"]{
+    background:linear-gradient(180deg,#eef7ff 0%,#d6e9ff 100%)!important;
+    color:#1b4d8b!important;
+  }
+  body:not(.nativeTv) #modeChips [data-filter="4K"]{
+    background:linear-gradient(180deg,#fff7da 0%,#ffe69b 100%)!important;
+    color:#6f4f00!important;
+  }
+
+  body:not(.nativeTv) #quickCats .cat{
+    flex-direction:row!important;
+  }
+  body:not(.nativeTv) #quickCats .catIcon{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:22px!important;
+    min-width:22px!important;
+    height:22px!important;
+    font-size:18px!important;
+    line-height:1!important;
+    color:inherit!important;
+  }
+  body:not(.nativeTv) #quickCats .catLabel{
+    display:inline-block!important;
+    max-width:none!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    font-size:14px!important;
+    line-height:1!important;
+    font-weight:850!important;
+    color:inherit!important;
+  }
+
+  body:not(.nativeTv) #quickCats [data-cat="General"]{
+    background:linear-gradient(180deg,#eef9ff 0%,#d8efff 100%)!important;
+    color:#17527b!important;
+  }
+  body:not(.nativeTv) #quickCats [data-cat="News"]{
+    background:linear-gradient(180deg,#f0f5ff 0%,#dce6ff 100%)!important;
+    color:#304e88!important;
+  }
+  body:not(.nativeTv) #quickCats [data-cat="Sports"]{
+    background:linear-gradient(180deg,#effff2 0%,#d7f7df 100%)!important;
+    color:#18723c!important;
+  }
+  body:not(.nativeTv) #quickCats [data-cat="Movies"]{
+    background:linear-gradient(180deg,#fff1f5 0%,#ffdbe5 100%)!important;
+    color:#8a3154!important;
+  }
+  body:not(.nativeTv) #quickCats [data-cat="Kids"]{
+    background:linear-gradient(180deg,#fff7e7 0%,#ffe8b8 100%)!important;
+    color:#875d09!important;
+  }
+  body:not(.nativeTv) #quickCats [data-cat="Music"]{
+    background:linear-gradient(180deg,#f7efff 0%,#ead8ff 100%)!important;
+    color:#65408e!important;
+  }
+
+  body:not(.nativeTv) #quickCats .cat.active,
+  body:not(.nativeTv) #modeChips .chip.active{
+    color:#fff!important;
+    background:linear-gradient(180deg,#24c7f7 0%,#078bd7 100%)!important;
+  }
+}
+</style>
 </body>
 </html>
