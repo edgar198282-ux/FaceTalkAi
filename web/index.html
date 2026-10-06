@@ -4473,7 +4473,7 @@ function installPlayerTouchGestures(){
       pureTapHandledAt=now;
       playerGestureSuppressClickUntil=now+650;
       togglePureFullscreenControls();
-    }else if(moved<14&&player&&player.classList.contains('appFullscreen')&&!player.classList.contains('cinemaPlayback')){
+    }else if(moved<14&&player&&player.classList.contains('open')&&!player.classList.contains('cinemaPlayback')){
       e.preventDefault();
       const now=Date.now();
       pureTapHandledAt=now;
@@ -4502,7 +4502,7 @@ function handlePlayerSurfaceClick(event){
     togglePureFullscreenControls();
     return;
   }
-  if(player&&player.classList.contains('appFullscreen')&&!player.classList.contains('cinemaPlayback')){
+  if(player&&player.classList.contains('open')&&!player.classList.contains('cinemaPlayback')){
     toggleMobileTvPlayerControls();
     return;
   }
@@ -7506,14 +7506,14 @@ function toggleMobileTvPlayerControls(){
   if(nativeTv)return;
   const player=document.getElementById('playerView');
   if(!player||!player.classList.contains('open')||player.classList.contains('cinemaPlayback'))return;
-  const fullscreen=player.classList.contains('appFullscreen')||document.body.classList.contains('mobileLandscapePlayer');
-  if(!fullscreen)return;
   if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
   if(document.body.classList.contains('playerClean')){
     document.body.classList.remove('playerClean');
     tvPlayerUiTimer=setTimeout(()=>{
       const p=document.getElementById('playerView');
-      if(p&&p.classList.contains('open'))document.body.classList.add('playerClean');
+      if(p&&p.classList.contains('open')&&!p.classList.contains('cinemaPlayback')){
+        document.body.classList.add('playerClean');
+      }
     },6000);
   }else{
     document.body.classList.add('playerClean');
