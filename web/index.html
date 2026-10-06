@@ -3049,9 +3049,13 @@ async function refreshCinemaKinoPubDays(){
     if(Number.isFinite(days)){
       const shown=days<1?days.toFixed(1):String(Math.ceil(days));
       el.textContent='KinoPub: осталось '+shown+' дн.';
+      el.style.color=days<=0?'#d84b5b':'#159447';
+      el.style.fontWeight='800';
       el.style.display='block';
     }else{
       el.textContent=d.subscription_active===false?'KinoPub: подписка неактивна':'';
+      el.style.color=d.subscription_active===false?'#d84b5b':'#159447';
+      el.style.fontWeight='800';
       el.style.display=el.textContent?'block':'none';
     }
   }catch(e){
