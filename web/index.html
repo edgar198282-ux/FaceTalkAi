@@ -1444,6 +1444,104 @@ body:not(.darkMode) .cinemaKpEpisodeBtn{background:#e2f2fb!important;color:#1945
 body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
 
 </style>
+
+<style id="admin-mobile-compact-v2">
+@media (max-width:700px){
+  body #adminPanel .adminCard{
+    padding:10px 10px calc(14px + env(safe-area-inset-bottom,0px))!important;
+  }
+  body #adminPanel .adminHead{
+    top:-10px!important;
+    margin:-10px -10px 8px!important;
+    padding:10px!important;
+  }
+  body #adminPanel .adminTitle{
+    font-size:17px!important;
+    line-height:1.05!important;
+  }
+  body #adminPanel .adminHeadActions{
+    gap:4px!important;
+  }
+  body #adminPanel .adminHeadActions .adminBack,
+  body #adminPanel .adminHeadActions .adminClose{
+    height:32px!important;
+    min-height:32px!important;
+    padding:0 9px!important;
+    border-radius:8px!important;
+    font-size:13px!important;
+  }
+  body #adminPanel .adminRow{
+    border-radius:9px!important;
+    padding:7px!important;
+    gap:5px!important;
+    font-size:13px!important;
+    line-height:1.15!important;
+  }
+  body #adminPanel .adminRows{
+    gap:5px!important;
+  }
+  body #adminPanel .adminMeta{
+    font-size:11px!important;
+    line-height:1.15!important;
+    margin-top:2px!important;
+  }
+  body #adminPanel input,
+  body #adminPanel select{
+    height:32px!important;
+    min-height:32px!important;
+    border-radius:8px!important;
+    padding:0 8px!important;
+    font-size:13px!important;
+  }
+  body #adminPanel button{
+    font-size:13px!important;
+  }
+  body #adminPanel [style*="font-size:18px"]{
+    font-size:15px!important;
+    margin-top:10px!important;
+    margin-bottom:6px!important;
+  }
+  body #adminPanel button[onclick="openSettings()"]{
+    margin:7px 0 6px!important;
+    padding:7px 8px!important;
+    border-radius:8px!important;
+    font-size:14px!important;
+  }
+  body #adminPanel button[onclick="loadIptvDiagnostics()"],
+  body #adminPanel button[onclick="forceIptvRefresh()"]{
+    min-height:36px!important;
+    padding:5px 6px!important;
+    border-radius:8px!important;
+    font-size:13px!important;
+    line-height:1.05!important;
+  }
+  body #adminPanel #accessStats{
+    gap:4px!important;
+    margin-bottom:5px!important;
+  }
+  body #adminPanel #iptvDiagRows .adminRow{
+    padding:6px!important;
+  }
+  body #adminPanel .adminDiagnosticsToggle{
+    width:100%;
+    min-height:34px;
+    margin:6px 0 0;
+    border:0;
+    border-radius:8px;
+    background:#173149;
+    color:#dcefff;
+    font-weight:850;
+    font-size:13px;
+  }
+  body #adminPanel .adminDiagnosticsReports{
+    display:none;
+    margin-top:5px;
+  }
+  body #adminPanel .adminDiagnosticsReports.open{
+    display:block;
+  }
+}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
@@ -2982,15 +3080,25 @@ async function loadIptvDiagnostics(){
     const adLast=ad.last_event||{};
     const markerStatus=ad.marker_detection_supported?'HLS-метки рекламы обнаружены — автозамена доступна':'HLS-метки рекламы не обнаружены — вероятно, реклама вшита в видео';
     const adHtml='<div style="font-size:16px;font-weight:900;margin:12px 0 8px">Рекламные метки Free</div><div class="adminRow"><div><b>Проверено '+Number(adScanner.probes||0)+' · ошибок '+Number(adScanner.errors||0)+'</b><div>'+markerStatus+'</div><div>Найдено рекламных блоков '+Number(ad.starts_total||0)+' · каналов с рекламой '+Number(ad.channels_seen||0)+'</div><div style="font-size:12px;color:#789">'+(adLast.ts?('Последнее событие: '+new Date(Number(adLast.ts)*1000).toLocaleString()+' · '+esc(adLast.name||adLast.channel_id||'Канал')+' · '+esc(adLast.marker||'')):'Рекламных меток пока не обнаружено')+'</div></div></div>';
-    box.innerHTML=summary+historyHtml+adHtml+failoverHtml+(rows.length?rows.slice(0,80).map(x=>
+    const problemRowsHtml=rows.length?rows.slice(0,80).map(x=>
       '<div class="adminRow"><div><div>'+esc(x.status||'')+
       ' · '+Math.round(Number(x.latency_ms||0))+' ms · uptime '+Number(x.uptime_pct||0).toFixed(1)+'%'+
       ' · backup '+Number(x.backup_count||0)+'</div><div style="font-size:12px;color:#789">'+
       (x.consecutive_failures?('сбоев подряд '+x.consecutive_failures+' · '):'')+esc(x.error||'')+
       '</div></div></div>'
-    ).join(''):'<div class="adminEmpty">Проблемных каналов нет</div>');
+    ).join(''):'<div class="adminEmpty">Проблемных каналов нет</div>';
+    box.innerHTML=summary+
+      '<button class="adminDiagnosticsToggle" type="button" onclick="toggleIptvReports(this)">Показать отчёты ▼</button>'+
+      '<div class="adminDiagnosticsReports">'+historyHtml+adHtml+failoverHtml+problemRowsHtml+'</div>';
   }catch(e){box.innerHTML='<div class="adminEmpty">Ошибка диагностики: '+esc(String(e.message||e))+'</div>'}
 }
+function toggleIptvReports(btn){
+  const reports=btn&&btn.nextElementSibling;
+  if(!reports)return;
+  const open=reports.classList.toggle('open');
+  btn.textContent=open?'Скрыть отчёты ▲':'Показать отчёты ▼';
+}
+
 async function forceIptvRefresh(){
   try{
     const r=await fetch('/api/iptv/refresh',{method:'POST',headers:authHeaders(),cache:'no-store'});
