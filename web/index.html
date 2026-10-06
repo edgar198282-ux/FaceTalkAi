@@ -3685,6 +3685,10 @@ function installPlayerTouchGestures(){
     if(mode==='h'&&Math.abs(dx)>=60&&Math.abs(dx)>Math.abs(dy)*1.15&&Date.now()-startedAt<1400){
       e.preventDefault();
       playerGestureSuppressClickUntil=Date.now()+450;
+      if(isCinemaPlaybackOpen()){
+        mode='';
+        return;
+      }
       if(dx<0){showPlayerGestureHint('Канал ▶');playNext();}
       else{showPlayerGestureHint('◀ Канал');playPrev();}
     }else if(mode==='v'){
