@@ -1485,6 +1485,8 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
 <div class="settingsModal" id="tvSettingsModal" onclick="if(event.target===this)closeTvSettings()">
   <div class="settingsCard">
     <div class="settingsTitle" id="settingsTitle">⚙ Настройки</div>
+    <button class="settingsAction" id="appUpdateBtn" onclick="manualAppUpdate()" style="display:none;background:#123b78;margin-top:0;margin-bottom:8px">🔄 Проверить обновление</button>
+    <div id="appVersionText" class="deviceMeta" style="display:none;text-align:center;margin:-2px 0 8px"></div>
     <button id="activationBotLink" onclick="openActivationBot()" style="width:100%;border:0;border-radius:14px;background:#0d87e7;color:#fff;padding:12px 14px;margin:0 0 10px;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px">
       🤖 Для активации переходите в бот @FaceTalkID_bot
     </button>
@@ -1531,8 +1533,6 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
       <option value="2160">4K</option>
     </select>
     <button class="settingsAction" id="settingsAdminBtn" onclick="openAdminFromTvSettings()" style="display:none;background:#0b5f9e">🛠 Админ-панель</button>
-    <button class="settingsAction" id="appUpdateBtn" onclick="manualAppUpdate()" style="display:none;background:#123b78">🔄 Проверить обновление</button>
-    <div id="appVersionText" class="deviceMeta" style="display:none;text-align:center;margin-top:7px"></div>
     <button class="settingsClose" id="settingsCloseBtn" onclick="closeTvSettings()">Закрыть</button>
   </div>
 </div>
@@ -2197,7 +2197,8 @@ function applyCinemaLanguage(){
   const tr=document.getElementById('cinemaDetailTrailer'); if(tr)tr.textContent=t.trailer;
   const sim=document.querySelector('.cinemaSimilarTitle'); if(sim)sim.textContent=t.similar;
   const more=document.getElementById('cinemaLoadMoreBtn'); if(more)more.textContent=t.more;
-  const sideMeta=document.getElementById('cinemaSideMeta'); if(sideMeta)sideMeta.textContent=t.cinema;
+  const sideMeta=document.getElementById('cinemaSideMeta');
+  if(sideMeta&&!appIsAdmin)sideMeta.textContent=t.cinema;
 }
 function setAppLanguage(lang){
   appLang=['hy','ru','en'].includes(lang)?lang:'ru';
@@ -2297,13 +2298,22 @@ async function loadEdemStatus(){
   }catch(e){}
 }
 
+let appIsAdmin=false;
 async function checkAdmin(){
   try{
     const r=await fetch('/api/me',{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return;
     const d=await r.json();
+    appIsAdmin=!!d.is_admin;
     const btn=document.getElementById('settingsAdminBtn');
-    if(btn)btn.style.display=d.is_admin?'':'none';
+    if(btn)btn.style.display=appIsAdmin?'':'none';
+    const meta=document.getElementById('cinemaSideMeta');
+    if(meta&&!appIsAdmin)meta.textContent=cinemaT().cinema;
+    else if(meta&&appIsAdmin&&kinoPubOverview){
+      const m=Number.isFinite(Number(kinoPubOverview.movies_total))?Number(kinoPubOverview.movies_total):null;
+      const sr=Number.isFinite(Number(kinoPubOverview.series_total))?Number(kinoPubOverview.series_total):null;
+      meta.textContent=(m!==null||sr!==null)?((m!==null?m+' фильмов':'')+(m!==null&&sr!==null?' · ':'')+(sr!==null?sr+' сериалов':'')):cinemaT().cinema;
+    }
   }catch(e){}
 }
 function openSettings(){
@@ -7929,7 +7939,9 @@ async function loadKinoPubOverview(){
     const meta=document.getElementById('cinemaSideMeta');
     const m=Number.isFinite(Number(d.movies_total))?Number(d.movies_total):null;
     const sr=Number.isFinite(Number(d.series_total))?Number(d.series_total):null;
-    if(meta)meta.textContent=(m!==null||sr!==null)?((m!==null?m+' фильмов':'')+(m!==null&&sr!==null?' · ':'')+(sr!==null?sr+' сериалов':'')):'Кино';
+    if(meta)meta.textContent=appIsAdmin
+      ?((m!==null||sr!==null)?((m!==null?m+' фильмов':'')+(m!==null&&sr!==null?' · ':'')+(sr!==null?sr+' сериалов':'')):cinemaT().cinema)
+      :cinemaT().cinema;
   }catch(e){}
 }
 async function refreshCinemaLibraryCounts(){
