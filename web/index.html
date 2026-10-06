@@ -1873,7 +1873,7 @@ body.darkMode .cinemaSideMeta .cinemaAdminCount{
       </div>
       <div class="icons">
         <button id="cinemaToggleBtn" class="iconBtn tvTopAction cinemaSwitchBtn" onclick="toggleCinemaMode()" title="Кино" aria-label="Кино"><span id="cinemaToggleIcon">🎬</span></button>
-        <button id="listBtn" class="iconBtn active" onclick="toggleLayoutMode()" title="Список / Плитка" aria-label="Список / Плитка">☷</button>
+
         <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
         <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск" aria-label="Поиск">🔍</button>
         <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="openTvSettings()" title="Настройки" aria-label="Настройки">⚙</button>
@@ -2292,7 +2292,8 @@ setTimeout(()=>{
 const tvDeviceName=(launchParams.get('device_name')||'Android TV').slice(0,120);
 const tvAppVersion=(launchParams.get('app_version')||'').slice(0,40);
 const tvAppVersionCode=Math.max(0,Number(launchParams.get('app_version_code')||0));
-let layout=localStorage.getItem('iptv_layout')||'grid';
+let layout='grid';
+localStorage.setItem('iptv_layout','grid');
 let tvMode=nativeTv||localStorage.getItem('iptv_tv_mode')==='1';
 let hls=null;
 let current=null;
@@ -2684,9 +2685,9 @@ async function loadSyncedState(force=false){
       lastChannelId=d.last_channel;
       localStorage.setItem('iptv_last_channel',lastChannelId);
     }
-    if((d.layout==='list'||d.layout==='grid')&&!syncDirtyUi){
-      layout=nativeTv?'grid':d.layout;
-      localStorage.setItem('iptv_layout',layout);
+    if(!syncDirtyUi){
+      layout='grid';
+      localStorage.setItem('iptv_layout','grid');
     }
     if(typeof d.tv_mode==='boolean'&&!syncDirtyUi){
       tvMode=nativeTv?true:d.tv_mode;
@@ -2737,6 +2738,8 @@ function scheduleStateSync(){
 }
 
 function applyUiMode(){
+  layout='grid';
+  localStorage.setItem('iptv_layout','grid');
   if(nativeTv){
     tvMode=true;
     document.body.classList.add('nativeTv');
@@ -2752,12 +2755,6 @@ function applyUiMode(){
     const app=document.getElementById('app');
     app.classList.toggle('gridMode',layout==='grid');
     app.classList.toggle('tvMode',tvMode);
-  }
-  const listBtn=document.getElementById('listBtn');
-  if(listBtn){
-    listBtn.classList.toggle('active',layout==='list');
-    listBtn.textContent=layout==='list'?'▦':'☷';
-    listBtn.title=layout==='list'?'Показать плиткой':'Показать списком';
   }
   if(nativeTv)document.documentElement.classList.remove('abajTvBoot');
 }
@@ -3547,16 +3544,14 @@ function esc(s){
 function saveFavs(){localStorage.setItem('iptv_favorites',JSON.stringify([...favs]));syncDirtyFavorites=true;scheduleStateSync()}
 function saveRecent(deferSync=false){localStorage.setItem('iptv_recent',JSON.stringify(recent.slice(0,30)));syncDirtyRecent=true;if(!deferSync)scheduleStateSync()}
 
-function setLayout(v){
-  layout=v==='grid'?'grid':'list';
-  localStorage.setItem('iptv_layout',layout);
+function setLayout(){
+  layout='grid';
+  localStorage.setItem('iptv_layout','grid');
   applyUiMode();
-  syncDirtyUi=true;
-  scheduleStateSync();
   render();
 }
 function toggleLayoutMode(){
-  setLayout(layout==='grid'?'list':'grid');
+  setLayout();
 }
 function toggleTvMode(){
   if(nativeTv){tvMode=true;applyUiMode();return}
