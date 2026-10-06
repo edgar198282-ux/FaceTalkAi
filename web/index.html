@@ -1034,6 +1034,14 @@ body.cinemaMode .top{display:none!important}
 .cinemaShellBtn:focus,.cinemaShellBtn.focused{
   outline:none;box-shadow:0 0 0 3px #31a8ff;background:#12324b
 }
+.cinemaTvQuickBtn:focus,
+.cinemaTvQuickBtn.focused,
+.cinemaTvQuickBtn:active{
+  outline:none!important;
+  box-shadow:none!important;
+  background:transparent!important;
+}
+.cinemaTvQuickBtn{-webkit-tap-highlight-color:transparent}
 .cinemaShellTitle{
   flex:0 1 auto;min-width:0;color:#d7d7d7;font-size:17px;font-weight:650;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis
@@ -1054,7 +1062,6 @@ body.cinemaMode .top{display:none!important}
 .cinemaShellSpacer{flex:1}
 .cinemaShellActions{display:flex;align-items:center;gap:8px}
 .cinemaTvQuickBtn{display:none}
-.cinemaTvQuickIcon{display:flex}
 .cinemaKpNav{display:none!important}
 .cinemaKpNavBtn{height:40px;border:0;border-radius:10px;background:transparent;color:#b8d8e8;padding:0 12px;font-size:14px;font-weight:700}
 .cinemaKpNavBtn:hover,.cinemaKpNavBtn:focus,.cinemaKpNavBtn.active{outline:none;background:#16394f;color:#fff;box-shadow:0 0 0 2px rgba(65,174,241,.55)}
@@ -1068,18 +1075,9 @@ body.cinemaMode .top{display:none!important}
   .cinemaShellActions{gap:4px}
   .cinemaShellActions .cinemaShellBtn{width:28px;height:28px;min-width:28px;font-size:18px;border-radius:7px}
   .cinemaTvQuickBtn{display:flex!important;width:36px!important;height:30px!important;min-width:36px!important}
-  .cinemaTvQuickIcon{
-    position:relative;width:28px;height:19px;border:1.5px solid #79c8ff;border-radius:4px;
-    align-items:center;justify-content:center;line-height:1;color:#79c8ff;box-sizing:border-box
-  }
-  .cinemaTvQuickIcon::before{
-    content:"";position:absolute;left:50%;top:-6px;width:9px;height:9px;
-    border-left:1.5px solid #79c8ff;border-top:1.5px solid #79c8ff;
-    transform:translateX(-50%) rotate(45deg);transform-origin:center
-  }
-  .cinemaTvQuickIcon::after{
-    content:"";position:absolute;left:50%;bottom:3px;width:4px;height:4px;
-    border:1.5px solid #79c8ff;border-radius:50%;transform:translateX(-50%)
+  .cinemaTvQuickSvg{
+    width:30px;height:24px;display:block;fill:none;stroke:#79c8ff;
+    stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round
   }
   #cinemaSearchBtn{font-size:22px!important}
   .cinemaShellCategory{top:34px;left:40px;width:205px;padding:2px 0}
@@ -1861,19 +1859,11 @@ body.nativeTv .cinemaTvQuickBtn{
   min-width:52px!important;
   border-radius:10px!important;
 }
-body.nativeTv .cinemaTvQuickIcon{
-  width:38px!important;
-  height:26px!important;
-  border:2px solid #79c8ff!important;
-  border-radius:6px!important;
-  color:#79c8ff!important;
-}
-body.nativeTv .cinemaTvQuickIcon::before{
-  top:-8px!important;width:12px!important;height:12px!important;
-  border-left-width:2px!important;border-top-width:2px!important;
-}
-body.nativeTv .cinemaTvQuickIcon::after{
-  bottom:4px!important;width:5px!important;height:5px!important;border-width:2px!important;
+body.nativeTv .cinemaTvQuickSvg{
+  width:40px!important;
+  height:32px!important;
+  stroke:#79c8ff!important;
+  stroke-width:2!important;
 }
 body.nativeTv #cinemaSearchBtn{font-size:32px!important}
 </style>
@@ -1972,7 +1962,14 @@ body.nativeTv #cinemaSearchBtn{font-size:32px!important}
           <button class="cinemaKpNavBtn" data-kp-nav="history" onclick="cinemaKpNav('history')">История</button>
           <button class="cinemaKpNavBtn" data-kp-nav="settings" onclick="cinemaKpNav('settings')">Настройки</button>
         </div>
-        <button class="cinemaShellBtn cinemaTvQuickBtn" id="cinemaTvQuickBtn" onclick="toggleCinemaMode()" title="ТВ" aria-label="ТВ"><span class="cinemaTvQuickIcon" aria-hidden="true"></span></button>
+        <button class="cinemaShellBtn cinemaTvQuickBtn" id="cinemaTvQuickBtn" onclick="toggleCinemaMode()" title="ТВ" aria-label="ТВ">
+  <svg class="cinemaTvQuickSvg" viewBox="0 0 32 26" aria-hidden="true" focusable="false">
+    <rect x="3" y="4" width="26" height="17" rx="3"></rect>
+    <path d="M12 23h8"></path>
+    <path d="M16 21v2"></path>
+    <path d="M11 1.5 16 4l5-2.5"></path>
+  </svg>
+</button>
         <button class="cinemaShellBtn" id="cinemaSearchBtn" onclick="openTvSearch()" aria-label="Поиск">⌕</button>
       </div>
     </div>
