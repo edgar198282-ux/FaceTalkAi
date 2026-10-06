@@ -4491,7 +4491,8 @@ function dismissMobilePlayerLoading(event){
   if(brand)brand.style.display='none';
   const player=document.getElementById('playerView');
   if(player)player.classList.remove('appFullscreen');
-  document.body.classList.remove('playerFullscreenActive');
+  document.body.classList.remove('playerFullscreenActive','playerClean');
+  showTvPlayerUi(true);
 }
 function handlePlayerSurfaceClick(event){
   if(Date.now()<playerGestureSuppressClickUntil)return;
