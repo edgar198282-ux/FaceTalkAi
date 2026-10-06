@@ -226,8 +226,7 @@ body.playerFullscreenActive{overflow:hidden!important;background:#000!important}
 .playerGestureHint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5000;display:none;pointer-events:none;background:rgba(0,0,0,.76);color:#fff;border-radius:16px;padding:12px 18px;font-size:18px;font-weight:800;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .playerGestureHint.show{display:block}
 .playerView.appFullscreen .playerGestureHint,.playerView:fullscreen .playerGestureHint,.playerView:-webkit-full-screen .playerGestureHint{position:fixed!important;left:50%!important;top:50%!important;z-index:2147483647!important}
-.playerChannelHud{position:absolute;left:14px;top:14px;z-index:140;display:none;align-items:center;gap:10px;max-width:min(86vw,470px);padding:9px 12px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:linear-gradient(180deg,rgba(3,17,31,.84),rgba(0,0,0,.72));backdrop-filter:blur(12px);color:#fff;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.3)}
-.playerChannelHud.show{display:flex}
+.playerChannelHud{display:none!important}
 .playerChannelHudLogo{width:48px;height:48px;min-width:48px;border-radius:11px;object-fit:contain;background:rgba(255,255,255,.94);padding:4px;box-sizing:border-box}
 .playerChannelHudFallback{width:48px;height:48px;min-width:48px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.94);color:#60727f;font-weight:900;font-size:14px}
 .playerChannelHudText{min-width:0;flex:1}
@@ -6764,6 +6763,43 @@ function tvNativeRemote(action){
     }
     if(action==='left'||action==='right'||action==='up'||action==='down'){
       showTvPlayerUi(true);
+
+      if(isCinemaPlaybackOpen()){
+        const active=document.activeElement;
+        const primary=active&&active.closest?active.closest('.playerPrimaryControls .ctrl'):null;
+        const utility=active&&active.closest?active.closest('.playerUtilityControls .ctrl'):null;
+
+        if(action==='down'&&primary){
+          const target=document.getElementById('cinemaQualityBtn');
+          if(target){
+            try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
+            rememberPlayerControl(target);
+            return;
+          }
+        }
+
+        if(action==='up'&&utility){
+          const target=document.getElementById('playerPlayPause')||document.querySelector('.playerPrimaryControls .ctrl');
+          if(target){
+            try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
+            rememberPlayerControl(target);
+            return;
+          }
+        }
+
+        if(utility&&(action==='left'||action==='right')){
+          const ids=['cinemaQualityBtn','cinemaAudioBtn','cinemaSubtitleBtn'];
+          const i=Math.max(0,ids.indexOf(utility.id));
+          const j=action==='right'?Math.min(ids.length-1,i+1):Math.max(0,i-1);
+          const target=document.getElementById(ids[j]);
+          if(target){
+            try{target.focus({preventScroll:true})}catch(_){try{target.focus()}catch(__){}}
+            rememberPlayerControl(target);
+            return;
+          }
+        }
+      }
+
       focusPlayerControlSpatial(action);
       return;
     }
