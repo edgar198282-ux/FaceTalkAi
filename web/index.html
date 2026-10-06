@@ -493,6 +493,114 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
 
 /* Mobile layout is intentionally isolated from TV-mode sizing. */
 @media (max-width:700px){
+  body:not(.nativeTv) .top,
+  body:not(.nativeTv).tvMode .top{
+    padding:10px 10px 10px!important;
+    background:linear-gradient(180deg,#06234d 0%,#06366e 100%)!important;
+    border-bottom:1px solid rgba(40,181,255,.35)!important;
+  }
+  body:not(.nativeTv) .titleRow{
+    min-height:58px!important;
+    gap:7px!important;
+  }
+  body:not(.nativeTv) .brandWrap{gap:7px!important;min-width:0!important}
+  body:not(.nativeTv) .mobileHeaderMenuBtn{
+    display:inline-flex!important;
+    width:40px!important;height:40px!important;min-width:40px!important;
+    align-items:center!important;justify-content:center!important;
+    border-radius:12px!important;border:1px solid #20c8ff!important;
+    background:linear-gradient(180deg,#0b4a88,#082f61)!important;
+    color:#fff!important;font-size:25px!important;font-weight:900!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 0 12px rgba(0,185,255,.22)!important;
+  }
+  body:not(.nativeTv) .brandLogo{
+    width:48px!important;height:48px!important;min-width:48px!important;
+    border-radius:14px!important;border:1px solid rgba(78,211,255,.7)!important;
+    box-shadow:0 0 14px rgba(0,174,255,.35)!important;
+  }
+  body:not(.nativeTv) .title,
+  body:not(.nativeTv).tvMode .title{
+    font-size:25px!important;
+    letter-spacing:1.4px!important;
+    white-space:nowrap!important;
+  }
+  body:not(.nativeTv) .icons{gap:6px!important}
+  body:not(.nativeTv) .iconBtn,
+  body:not(.nativeTv) .tvTopAction,
+  body:not(.nativeTv) #cinemaToggleBtn{
+    width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;
+    border-radius:12px!important;
+    border:1px solid rgba(43,202,255,.55)!important;
+    background:linear-gradient(180deg,#0c4a86,#082e5a)!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 0 10px rgba(0,183,255,.18)!important;
+  }
+  body:not(.nativeTv) #refreshBtn,
+  body:not(.nativeTv) #tvSettingsBtn{display:inline-flex!important}
+  body:not(.nativeTv) .modeChips{
+    margin-top:7px!important;
+    padding:7px!important;
+    gap:7px!important;
+    border-radius:22px!important;
+    background:rgba(4,27,60,.72)!important;
+    border:1px solid rgba(27,147,224,.35)!important;
+  }
+  body:not(.nativeTv) .modeChips .chip{
+    min-height:44px!important;height:44px!important;
+    padding:0 16px!important;
+    border-radius:18px!important;
+    font-size:14px!important;font-weight:850!important;
+    color:#f3f8ff!important;
+    background:linear-gradient(180deg,#133f70,#0b2e58)!important;
+    border:1px solid rgba(130,181,225,.28)!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12)!important;
+  }
+  body:not(.nativeTv) .modeChips .chip.active{
+    color:#fff!important;
+    background:linear-gradient(180deg,#1aaef0,#087cc6)!important;
+    border-color:#65dcff!important;
+    box-shadow:0 0 14px rgba(0,188,255,.32),inset 0 1px 0 rgba(255,255,255,.32)!important;
+  }
+  body:not(.nativeTv) .modeChips .favOnly{
+    width:48px!important;min-width:48px!important;padding:0!important;
+    color:#fff!important;background:linear-gradient(180deg,#ff3e77,#de1654)!important;
+    border-color:#ff8fb0!important;
+  }
+  body:not(.nativeTv) .quickCats{
+    margin-top:7px!important;
+    padding:0!important;
+    gap:8px!important;
+    align-items:stretch!important;
+  }
+  body:not(.nativeTv) .quickCats .cat{
+    flex:0 0 82px!important;
+    width:82px!important;min-width:82px!important;
+    height:72px!important;min-height:72px!important;
+    padding:7px 5px!important;
+    border-radius:18px!important;
+    display:flex!important;flex-direction:column!important;
+    gap:5px!important;
+    color:#eef7ff!important;
+    background:linear-gradient(180deg,#154c83,#0b315d)!important;
+    border:1px solid rgba(100,190,239,.26)!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 4px 12px rgba(0,0,0,.12)!important;
+  }
+  body:not(.nativeTv) .quickCats .cat.active{
+    color:#fff!important;
+    background:linear-gradient(180deg,#21c4f4,#0a8ed6)!important;
+    border-color:#75edff!important;
+    box-shadow:0 0 15px rgba(0,195,255,.35),inset 0 1px 0 rgba(255,255,255,.36)!important;
+  }
+  body:not(.nativeTv) .quickCats .catIcon{
+    display:block!important;
+    font-size:23px!important;line-height:1!important;font-weight:900!important;
+  }
+  body:not(.nativeTv) .quickCats .catLabel{
+    display:block!important;
+    max-width:100%!important;
+    white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+    font-size:11px!important;line-height:1.1!important;font-weight:850!important;
+  }
+
   body:not(.nativeTv) .app{max-width:none!important}
   body:not(.nativeTv) .top,
   body:not(.nativeTv).tvMode .top{
@@ -2038,6 +2146,7 @@ body:not(.cinemaMode) .cinemaShellSide{
   <header class="top">
     <div class="titleRow">
       <div class="brandWrap">
+        <button id="mobileHeaderMenuBtn" class="mobileHeaderMenuBtn" onclick="toggleCountryFilters()" title="Меню" aria-label="Меню">☰</button>
         <img class="brandLogo" src="/static/abaj_tv_logo.jpg" alt="Abaj TV">
         <div class="titleBlock">
           <div class="title" aria-label="ABAJ TV"><span class="titleWord"><span>A</span><span>B</span><span>A</span><span>J</span></span><span class="titleWord"><span>T</span><span>V</span></span></div>
@@ -4687,11 +4796,12 @@ function buildQuickCats(groups){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
   const preferred=['General','News','Sports','Movies','Kids','Music'];
   const labels={General:t.general,News:t.news,Sports:t.sports,Movies:t.movies,Kids:t.kids,Music:t.music};
+  const icons={General:'⌂',News:'▤',Sports:'⚽',Movies:'🎬',Kids:'★',Music:'♫'};
   const normalized=new Set(groups.map(normalizeCat));
   const cats=preferred.filter(x=>normalized.has(x));
   document.getElementById('quickCats').innerHTML=
-    '<button class="cat active" data-cat="" onclick="setCategory(\'\')">'+esc(t.allCategories)+'</button>'+
-    cats.map(x=>'<button class="cat" data-cat="'+esc(x)+'" onclick="setCategory(\''+x+'\')">'+esc(labels[x]||x)+'</button>').join('');
+    '<button class="cat active" data-cat="" onclick="setCategory(\'\')"><span class="catIcon">▦</span><span class="catLabel">'+esc(t.allCategories)+'</span></button>'+
+    cats.map(x=>'<button class="cat" data-cat="'+esc(x)+'" onclick="setCategory(\''+x+'\')"><span class="catIcon">'+esc(icons[x]||'•')+'</span><span class="catLabel">'+esc(labels[x]||x)+'</span></button>').join('');
   document.querySelectorAll('#quickCats .cat').forEach(b=>b.classList.toggle('active',(b.dataset.cat||'')===activeCategory));
 }
 async function refreshChannels(){
