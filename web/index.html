@@ -1912,7 +1912,7 @@ body.nativeTv #tvSettingsModal input[type="range"]:focus{
     <aside class="cinemaShellSide" id="cinemaSideMenu">
       <div class="cinemaSideProfile">
         <div class="cinemaSideAvatar"><img src="/static/abaj_tv_logo.jpg" alt="Abaj TV"></div>
-        <div><div class="cinemaSideUser">Abaj TV</div><div class="cinemaSideMeta" id="cinemaSideMeta">Кино</div></div>
+        <div><div class="cinemaSideUser">Abaj TV</div><div class="cinemaSideMeta" id="cinemaSideMeta">Кино</div><div class="cinemaSideMeta" id="cinemaKinoPubDays" style="display:none;color:#ffd66b"></div></div>
       </div>
       <div class="cinemaSideItems">
         <button class="cinemaMenuItem cinemaTvReturn" id="cinemaTvReturnBtn" onclick="toggleCinemaMode()"><span class="cinemaMenuIcon icon-tv">📺</span><span>ТВ</span></button>
@@ -2903,6 +2903,9 @@ async function checkAdmin(){
     appIsAdmin=!!d.is_admin;
     const btn=document.getElementById('settingsAdminBtn');
     if(btn)btn.style.display=appIsAdmin?'':'none';
+    const kpDays=document.getElementById('cinemaKinoPubDays');
+    if(kpDays&&!appIsAdmin){kpDays.style.display='none';kpDays.textContent=''}
+    if(appIsAdmin)refreshCinemaKinoPubDays();
     const meta=document.getElementById('cinemaSideMeta');
     if(meta&&!appIsAdmin)meta.textContent=cinemaT().cinema;
     else if(meta&&appIsAdmin&&kinoPubOverview){
@@ -3011,6 +3014,32 @@ function autoConnectInstalledKinoPub(){
   }
   return cinemaSource==='kinopub';
 }
+async function refreshCinemaKinoPubDays(){
+  const el=document.getElementById('cinemaKinoPubDays');
+  if(!el||!appIsAdmin)return;
+  try{
+    const r=await fetch('/api/kinopub/status',{headers:authHeaders(),cache:'no-store'});
+    const d=r.ok?await r.json():null;
+    if(!d||!d.authenticated){
+      el.style.display='none';
+      el.textContent='';
+      return;
+    }
+    const days=Number(d.subscription_days);
+    if(Number.isFinite(days)){
+      const shown=days<1?days.toFixed(1):String(Math.ceil(days));
+      el.textContent='KinoPub: осталось '+shown+' дн.';
+      el.style.display='block';
+    }else{
+      el.textContent=d.subscription_active===false?'KinoPub: подписка неактивна':'';
+      el.style.display=el.textContent?'block':'none';
+    }
+  }catch(e){
+    el.style.display='none';
+    el.textContent='';
+  }
+}
+
 async function refreshKinoPubAdminStatus(){
   const st=document.getElementById('kinoPubAdminStatus');
   const meta=document.getElementById('kinoPubAdminMeta');
@@ -8405,7 +8434,10 @@ function toggleCinemaSideMenu(){
   if(cat)cat.classList.remove('open');
   if(side){
     side.classList.toggle('open');
-    if(side.classList.contains('open'))setTimeout(()=>side.querySelector('.cinemaMenuItem.active,.cinemaMenuItem')?.focus(),30);
+    if(side.classList.contains('open')){
+      if(appIsAdmin)refreshCinemaKinoPubDays();
+      setTimeout(()=>side.querySelector('.cinemaMenuItem.active,.cinemaMenuItem')?.focus(),30);
+    }
   }
 }
 function toggleCinemaCategoryMenu(){
