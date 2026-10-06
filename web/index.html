@@ -3547,9 +3547,9 @@ async function load(){
       return x.status==='ONLINE'&&(!tvHideUnreliable||!x.unreliable);
     });
     if(!edemStatus.active){
-      const am=base.filter(x=>String(x&&x.country||'').toUpperCase()==='AM').slice(0,5);
-      const ru=base.filter(x=>String(x&&x.country||'').toUpperCase()==='RU').slice(0,5);
-      base=[...am,...ru];
+      const am=base.filter(x=>String(x&&x.country||'').toUpperCase()==='AM').slice(0,3);
+      const ru=base.filter(x=>String(x&&x.country||'').toUpperCase()==='RU').slice(0,2);
+      base=[...am,...ru].slice(0,5);
     }
     if(Array.isArray(ed.channels)&&ed.channels.length){
       base=base.concat(ed.channels.map(x=>({...x,personal:true,provider:'Edem'})));
