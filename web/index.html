@@ -7592,7 +7592,16 @@ function commitCinemaSeek(value){
   if(!isCinemaPlaybackOpen())return false;
   const {pos,dur}=getCinemaPlaybackPosition();
   if(!(dur>0))return false;
-  const target=Math.max(0,Math.min(dur,(Number(value||0)/1000)*dur));
+  const target=Math.max(0,Math.min(Math.max(0,dur-.25),(Number(value||0)/1000)*dur));
+  if(nativeMedia3Active&&window.AbajNative&&typeof AbajNative.nativeSeekToMs==='function'){
+    try{
+      AbajNative.nativeSeekToMs(Math.round(target*1000));
+      showTvShortcut('→ '+fmtPlaybackClock(target));
+      setTimeout(updatePlayerRemaining,120);
+      showTvPlayerUi(true);
+      return true;
+    }catch(e){}
+  }
   const delta=target-pos;
   return seekPlayerBy(delta);
 }
