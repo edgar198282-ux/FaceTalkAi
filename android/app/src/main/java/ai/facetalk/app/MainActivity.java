@@ -1475,6 +1475,14 @@ public class MainActivity extends Activity {
             int max=Math.max(1,am.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
             return Math.round(am.getStreamVolume(AudioManager.STREAM_MUSIC)*100f/max);
         }
+        @JavascriptInterface public void enterPlayerFullscreen(){
+            if(isTv)return;
+            runOnUiThread(()->enterMobilePlayerImmersive());
+        }
+        @JavascriptInterface public void exitPlayerFullscreen(){
+            if(isTv)return;
+            runOnUiThread(()->exitMobilePlayerImmersive());
+        }
         @JavascriptInterface public void showKeyboard(){
             runOnUiThread(()->{
                 try{
@@ -2561,6 +2569,42 @@ public class MainActivity extends Activity {
             View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         );
+    }
+
+    private void enterMobilePlayerImmersive(){
+        if(isTv)return;
+        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.R){
+            try{
+                getWindow().setDecorFitsSystemWindows(false);
+                android.view.WindowInsetsController c=getWindow().getInsetsController();
+                if(c!=null){
+                    c.hide(android.view.WindowInsets.Type.statusBars()|android.view.WindowInsets.Type.navigationBars());
+                    c.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                }
+            }catch(Exception ignored){}
+        }else{
+            getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_FULLSCREEN|
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            );
+        }
+    }
+
+    private void exitMobilePlayerImmersive(){
+        if(isTv)return;
+        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.R){
+            try{
+                getWindow().setDecorFitsSystemWindows(true);
+                android.view.WindowInsetsController c=getWindow().getInsetsController();
+                if(c!=null)c.show(android.view.WindowInsets.Type.statusBars()|android.view.WindowInsets.Type.navigationBars());
+            }catch(Exception ignored){}
+        }else{
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+        }
     }
 
     private String baseUrl(){String b=BuildConfig.WEB_APP_URL==null?"":BuildConfig.WEB_APP_URL.trim(); if(!b.startsWith("http://")&&!b.startsWith("https://")&&!b.isEmpty())b="https://"+b; while(b.endsWith("/"))b=b.substring(0,b.length()-1); return b;}
