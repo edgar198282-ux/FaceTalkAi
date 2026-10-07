@@ -5,7 +5,8 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - "android/**"`r`n      - "web/**"
+      - "android/**"
+      - "web/**"
       - ".github/workflows/build-standard-fixed.yml"
 
 concurrency:
