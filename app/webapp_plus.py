@@ -595,6 +595,38 @@ def _kinopub_proxy_url(request, uid: int, url: str) -> str:
     return f'{request.scheme}://{request.host}/api/kinopub/proxy?t={quote(token, safe="")}'
 
 
+def _kinopub_url_diag(url):
+    try:
+        p = urlparse(str(url or ''))
+        q = parse_qs(p.query or '', keep_blank_values=True)
+        now = int(time.time())
+        expiry = None
+        expiry_key = ''
+        for key in ('exp','expires','expire','e','token_exp','hdnts_exp'):
+            vals = q.get(key)
+            if not vals:
+                continue
+            raw = str(vals[0] or '').strip()
+            try:
+                val = int(float(raw))
+                if val > 1000000000000:
+                    val //= 1000
+                if val > 1000000000:
+                    expiry = val
+                    expiry_key = key
+                    break
+            except Exception:
+                continue
+        return {
+            'host': str(p.hostname or ''),
+            'path': str(p.path or '')[-120:],
+            'query_keys': sorted(list(q.keys()))[:24],
+            'expiry_key': expiry_key,
+            'expiry_in': (expiry-now) if expiry else None,
+        }
+    except Exception:
+        return {'host':'','path':'','query_keys':[],'expiry_key':'','expiry_in':None}
+
 def _kinopub_direct_stream_response(request, uid, url):
     direct = str(url or '').strip()
     try:
@@ -607,6 +639,12 @@ def _kinopub_direct_stream_response(request, uid, url):
     stream_host = str(parsed.hostname or '').lower()
     if own_host and stream_host == own_host:
         return None
+    diag = _kinopub_url_diag(direct)
+    logging.info(
+        'KINOPUB_STREAM_URL host=%s expiry_key=%s expiry_in=%s query_keys=%s path=%s',
+        diag.get('host'), diag.get('expiry_key'), diag.get('expiry_in'),
+        ','.join(diag.get('query_keys') or []), diag.get('path')
+    )
     return web.json_response({
         'ok': True,
         'url': _kinopub_proxy_url(request, uid, direct),
