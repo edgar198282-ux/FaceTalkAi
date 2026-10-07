@@ -5645,6 +5645,7 @@ function showTvZap(ch){
   tvZapTimer=setTimeout(()=>z.classList.remove('show'),4200);
 }
 function handleAppBack(){
+  if(Date.now()<cinemaBackGuardUntil)return true;
   if(cinemaTrackMenuOpen()){closeCinemaTrackMenu();return true}
   const player=document.getElementById('playerView');
   if(player&&player.classList.contains('open')){closePlayer();return true}
@@ -5671,6 +5672,7 @@ function handleAppBack(){
   return false;
 }
 function handleTvBack(){
+  if(Date.now()<cinemaBackGuardUntil)return true;
   if(!nativeTv)return handleAppBack();
 
   // Back must unwind one UI layer at a time.
@@ -11867,6 +11869,7 @@ function cinemaActorCards(item){
   return raw.split(/[,;]+/).map(name=>String(name||'').trim()).filter(Boolean).slice(0,20).map(name=>({name,image:''}));
 }
 let cinemaActorBrowseOrigin=null;
+let cinemaBackGuardUntil=0;
 async function openCinemaActor(name,fallbackName='',actorId=''){
   let actor=String(name||fallbackName||'').trim();
   const fallback=String(fallbackName||'').trim();
@@ -11878,11 +11881,12 @@ async function openCinemaActor(name,fallbackName='',actorId=''){
   const status=document.getElementById('cinemaStatus');
   if(status)status.textContent=(appLang==='en'?'Films with ':(appLang==='hy'?'Ֆիլմեր՝ ':'Фильмы с '))+actor+'…';
   try{
+    let englishName='';
     try{
       const pd=await fetch('/api/cinema/person?name='+encodeURIComponent(actor),{headers:authHeaders(),cache:'force-cache'}).then(r=>r.ok?r.json():null);
-      if(pd?.name)actor=String(pd.name).trim()||actor;
+      englishName=String(pd?.name||'').trim();
     }catch(e){}
-    const queries=[actor,fallback].map(x=>String(x||'').trim()).filter((x,i,a)=>x&&a.indexOf(x)===i);
+    const queries=[fallback,actor,englishName].map(x=>String(x||'').trim()).filter((x,i,a)=>x&&a.indexOf(x)===i);
     const make=q=>fetch('/api/kinopub/catalog?'+new URLSearchParams({actor:q,page:'1',perpage:'60'}).toString(),{headers:authHeaders(),cache:'no-store'})
       .then(r=>r.ok?r.json():null).then(d=>Array.isArray(d?.items)?d.items:[]).catch(()=>[]);
     const batches=await Promise.all(queries.map(make));
@@ -11908,6 +11912,7 @@ function restoreCinemaActorOrigin(){
   const origin=cinemaActorBrowseOrigin;
   if(!origin||!origin.item)return false;
   cinemaActorBrowseOrigin=null;
+  cinemaBackGuardUntil=Date.now()+700;
   renderCinemaDetail(origin.item);
   setTimeout(()=>{const d=document.getElementById('cinemaDetail');if(d)d.scrollTop=Number(origin.scrollTop||0)},40);
   return true;
