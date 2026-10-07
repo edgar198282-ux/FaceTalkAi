@@ -11882,12 +11882,10 @@ async function openCinemaActor(name,fallbackName='',actorId=''){
       const pd=await fetch('/api/cinema/person?name='+encodeURIComponent(actor),{headers:authHeaders(),cache:'force-cache'}).then(r=>r.ok?r.json():null);
       if(pd?.name)actor=String(pd.name).trim()||actor;
     }catch(e){}
-    const queries=[personId,actor,fallback].map(x=>String(x||'').trim()).filter((x,i,a)=>x&&a.indexOf(x)===i);
-    const make=(type,q)=>fetch('/api/kinopub/catalog?'+new URLSearchParams({type,actor:q,page:'1',perpage:'60'}).toString(),{headers:authHeaders(),cache:'no-store'})
+    const queries=[actor,fallback].map(x=>String(x||'').trim()).filter((x,i,a)=>x&&a.indexOf(x)===i);
+    const make=q=>fetch('/api/kinopub/catalog?'+new URLSearchParams({actor:q,page:'1',perpage:'60'}).toString(),{headers:authHeaders(),cache:'no-store'})
       .then(r=>r.ok?r.json():null).then(d=>Array.isArray(d?.items)?d.items:[]).catch(()=>[]);
-    const req=[];
-    for(const q of queries){req.push(make('movies',q),make('series',q))}
-    const batches=await Promise.all(req);
+    const batches=await Promise.all(queries.map(make));
     const merged=[],seen=new Set();
     for(const rows of batches)for(const x of rows){
       const key=String(x?.id||x?.title||'');
@@ -11932,7 +11930,7 @@ function renderCinemaCast(item){
     const image=String(actor.image||'').trim();
     const actorId=String(actor.id||'').trim();
     const initial=(name[0]||'?').toUpperCase();
-    const photoSrc=image||('/api/cinema/person-photo?name='+encodeURIComponent(searchName||name));
+    const photoSrc='/api/cinema/person-photo?name='+encodeURIComponent(searchName||name);
     btn.innerHTML='<img loading="lazy" src="'+photoSrc.replace(/"/g,'&quot;')+'" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'+
       '<div class="cinemaCastAvatarFallback" style="display:none">'+initial.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
       '<div class="cinemaCastName">'+name.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>';
@@ -12025,10 +12023,11 @@ function updateCinemaDetailHeroShade(){
   const hero=document.getElementById('cinemaDetailHero');
   const poster=document.getElementById('cinemaDetailHeroPoster');
   if(!detail||!hero)return;
-  const progress=Math.max(0,Math.min(1,(Number(detail.scrollTop||0)-18)/340));
-  const shade=0.72*progress;
+  const progress=Math.max(0,Math.min(1,(Number(detail.scrollTop||0)-8)/190));
+  const shade=0.92*progress;
   hero.style.backgroundColor='rgba(0,0,0,'+shade.toFixed(3)+')';
-  if(poster)poster.style.filter='brightness('+(1-0.62*progress).toFixed(3)+')';
+  hero.style.boxShadow='inset 0 0 0 100vmax rgba(0,0,0,'+(0.66*progress).toFixed(3)+')';
+  if(poster)poster.style.filter='brightness('+(1-0.88*progress).toFixed(3)+')';
 }
 function installCinemaDetailHeroShade(){
   const detail=document.getElementById('cinemaDetail');
