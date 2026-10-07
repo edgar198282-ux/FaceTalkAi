@@ -2604,7 +2604,7 @@ public class MainActivity extends Activity {
     private void ensureNativeProbePlayer(){
         if(!isTv||nativeProbeView==null||nativeProbePlayer!=null)return;
         DefaultLoadControl loadControl=new DefaultLoadControl.Builder()
-            .setBufferDurationsMs(12000,60000,1200,3000)
+            .setBufferDurationsMs(1500,12000,250,750)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build();
         nativeProbePlayer=new ExoPlayer.Builder(this).setLoadControl(loadControl).build();
@@ -2660,7 +2660,7 @@ public class MainActivity extends Activity {
                         if(webView!=null){
                             try{webView.evaluateJavascript("window.nativeCinemaStalled&&window.nativeCinemaStalled('buffering_stall',"+pos+")",null);}catch(Exception ignored){}
                         }
-                    },18000L);
+                    },6500L);
                 }
             }
             @Override public void onPlayerError(PlaybackException error){
