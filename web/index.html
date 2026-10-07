@@ -5672,7 +5672,12 @@ function handleTvBack(){
     return true;
   }
   if(cinemaMode){
-    toggleCinemaMode();
+    const firstPoster=document.querySelector('#cinemaPosterGrid .cinemaPosterCard');
+    if(firstPoster){
+      const screen=document.getElementById('cinemaScreen');
+      if(screen)screen.scrollTop=0;
+      requestAnimationFrame(()=>focusCinemaElement(firstPoster));
+    }
     return true;
   }
   const pair=document.getElementById('tvPair');
