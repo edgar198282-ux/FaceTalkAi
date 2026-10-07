@@ -6550,20 +6550,20 @@ async function recoverKinoPubNativePlayback(reason='native_stall',positionMs=0){
   const mediaId=String(current.cinemaMediaId||'').trim();
   if(!itemId&&!mediaId)return false;
   const pos=Math.max(0,Number(positionMs||0)/1000);
-  cinemaDiag('playback_recover',{title:current.name,provider:'KINOPUB',playable:false,player:'native',format:'http',code:String(reason||'native_stall'),message:'refresh stream at '+Math.round(pos)+'s'});
+  cinemaDiag('playback_recover',{title:current.name,provider:'KINOPUB',playable:false,player:'native',format:'hls',code:String(reason||'native_stall'),message:'refresh stream at '+Math.round(pos)+'s'});
   const err=document.getElementById('playerError');
   if(err)err.textContent='Восстанавливаю видеопоток…';
   try{
     const params=new URLSearchParams();
     if(itemId)params.set('id',itemId);
     if(mediaId)params.set('mid',mediaId);
-    params.set('format','http');
+    params.set('format','hls');
     const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
     const d=r.ok?await r.json():null;
     const fresh=String(d?.url||'').trim();
     if(!fresh||!current)return false;
     current.url=fresh;
-    current.cinemaForceHttp=true;
+    current.cinemaForceHttp=false;
     current.cinemaHeaders=(d?.headers&&typeof d.headers==='object')?d.headers:{};
     if(pos>3){
       current.cinemaResume=pos;
@@ -6995,13 +6995,13 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
           const params=new URLSearchParams();
           if(ch.cinemaItemId)params.set('id',String(ch.cinemaItemId));
           if(ch.cinemaMediaId)params.set('mid',String(ch.cinemaMediaId));
-          params.set('format','http');
+          params.set('format','hls');
           const rr=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
           const dd=rr.ok?await rr.json():null;
           const fallbackUrl=String(dd?.url||'').trim();
           if(fallbackUrl&&attemptToken===streamAttemptToken&&current&&current.id===ch.id){
             ch.url=fallbackUrl;
-            ch.cinemaForceHttp=true;
+            ch.cinemaForceHttp=false;
             ch.cinemaHeaders=(dd?.headers&&typeof dd.headers==='object')?dd.headers:{};
             startStream(ch,preferBackup,forceProxy,false);
             return;
@@ -7186,13 +7186,13 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
           const params=new URLSearchParams();
           if(ch.cinemaItemId)params.set('id',String(ch.cinemaItemId));
           if(ch.cinemaMediaId)params.set('mid',String(ch.cinemaMediaId));
-          params.set('format','http');
+          params.set('format','hls');
           const rr=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
           const dd=rr.ok?await rr.json():null;
           const fallbackUrl=String(dd?.url||'').trim();
           if(fallbackUrl&&attemptToken===streamAttemptToken&&current&&current.id===ch.id){
             ch.url=fallbackUrl;
-            ch.cinemaForceHttp=true;
+            ch.cinemaForceHttp=false;
             ch.cinemaHeaders=(dd?.headers&&typeof dd.headers==='object')?dd.headers:{};
             try{if(hls){hls.stopLoad();hls.destroy();hls=null}}catch(e){}
             startStream(ch,preferBackup,forceProxy,false);
@@ -12259,7 +12259,7 @@ async function resolveKinoPubInternalStream(item,media=null){
     const params=new URLSearchParams();
     if(id)params.set('id',id);
     if(mid)params.set('mid',mid);
-    if(nativeTv&&!tvForceWebCinema)params.set('format','http');
+    if(nativeTv&&!tvForceWebCinema)params.set('format','hls');
     const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return null;
     const d=await r.json();
