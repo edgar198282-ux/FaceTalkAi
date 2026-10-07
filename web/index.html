@@ -436,8 +436,8 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
 }
 .nativeTv #listBtn{font-size:25px!important}
 .nativeTv .tvTopAction span{display:none!important}
-.tvClock{display:none}
-.nativeTv .tvClock{display:flex;align-items:center;justify-content:center;min-width:74px;color:#fff;font-size:23px;font-weight:850}
+.tvClock{display:none!important}
+.nativeTv .tvClock{display:none!important}
 .nativeTv .toolbar{display:none!important}
 .nativeTv .modeChips{order:1;gap:10px!important;padding-top:10px!important}
 .nativeTv .modeChips .chip{height:42px!important;min-height:42px!important;padding:0 18px!important;font-size:16px!important;border-radius:13px!important;transition:none!important}
@@ -2154,11 +2154,9 @@ body:not(.cinemaMode) .cinemaShellSide{
       </div>
       <div class="icons">
         <button id="cinemaToggleBtn" class="iconBtn tvTopAction cinemaSwitchBtn" onclick="toggleCinemaMode()" title="Кино" aria-label="Кино"><span id="cinemaToggleIcon">🎬</span></button>
-
-        <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
-        <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск" aria-label="Поиск">🔍</button>
         <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="openTvSettings()" title="Настройки" aria-label="Настройки">⚙</button>
-        <div id="tvClock" class="tvClock"></div>
+        <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск" aria-label="Поиск">🔍</button>
+        <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
       </div>
     </div>
     <div class="toolbar">
@@ -5166,7 +5164,7 @@ function tvTopRows(){
   const visible=sel=>[...document.querySelectorAll(sel)].filter(el=>{
     const r=el.getBoundingClientRect();
     return r.width>0&&r.height>0;
-  });
+  }).sort((a,b)=>a.getBoundingClientRect().left-b.getBoundingClientRect().left);
   // TV D-pad vertical order must match the rows visible on screen.
   return [
     visible('.titleRow .icons .iconBtn'),
@@ -12583,8 +12581,15 @@ body.nativeTv #tvTopSearchBtn{
   justify-content:center!important;
   font-size:22px!important;
 }
-body.nativeTv #tvSettingsBtn{
-  order:98!important;
+body.nativeTv #cinemaToggleBtn{order:97!important}
+body.nativeTv #tvSettingsBtn{order:98!important}
+body.nativeTv #tvTopSearchBtn{order:99!important}
+body.nativeTv .titleRow .icons{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:8px!important;
+  flex-wrap:nowrap!important;
 }
 body.nativeTv #tvTopSearchBtn:focus,
 body.nativeTv #cinemaSearchBtn:focus{
@@ -12634,6 +12639,26 @@ body.nativeTv .channel.focused{
   outline-offset:2px!important;
   box-shadow:0 0 0 2px rgba(0,0,0,.5),0 0 26px rgba(255,212,0,.65)!important;
 }
+</style>
+
+<style id="tv-header-three-actions-v1">
+body.nativeTv #cinemaToggleBtn,
+body.nativeTv #tvSettingsBtn,
+body.nativeTv #tvTopSearchBtn{
+  width:48px!important;
+  height:48px!important;
+  min-width:48px!important;
+  min-height:48px!important;
+  margin:0!important;
+}
+body.nativeTv #tvSettingsBtn:focus,
+body.nativeTv #tvSettingsBtn.focused{
+  outline:none!important;
+  background:#0b79c8!important;
+  box-shadow:0 0 0 4px #ffd400,0 0 22px rgba(255,212,0,.55)!important;
+  transform:scale(1.08)!important;
+}
+body.nativeTv #tvClock{display:none!important}
 </style>
 </body>
 </html>
