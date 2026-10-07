@@ -716,12 +716,6 @@ async def api_kinopub_play(request):
     if media_id:
         status, media = await _kinopub_api('GET','/v1/items/media-links',params={'access_token':token,'mid':media_id})
         if status < 400:
-            for obj in _kinopub_walk(media):
-                direct = _kinopub_stream_from_obj(obj)
-                if direct:
-                    response = _kinopub_direct_stream_response(request,direct)
-                    if response is not None:
-                        return response
             resolved_file = _kinopub_first_file_token(media)
             if resolved_file:
                 for stream_type in stream_types:
@@ -734,6 +728,13 @@ async def api_kinopub_play(request):
                             response = _kinopub_direct_stream_response(request,direct)
                             if response is not None:
                                 return response
+            if requested_format != 'http':
+                for obj in _kinopub_walk(media):
+                    direct = _kinopub_stream_from_obj(obj)
+                    if direct:
+                        response = _kinopub_direct_stream_response(request,direct)
+                        if response is not None:
+                            return response
     if not item_id:
         return web.json_response({'ok':False,'error':'missing_item_id'}, status=400)
 
@@ -751,12 +752,13 @@ async def api_kinopub_play(request):
             resolved_file = _kinopub_first_file_token(media)
             if resolved_file:
                 file_token = resolved_file
-            for obj in _kinopub_walk(media):
-                direct = _kinopub_stream_from_obj(obj)
-                if direct:
-                    response = _kinopub_direct_stream_response(request, direct)
-                    if response is not None:
-                        return response
+            if requested_format != 'http':
+                for obj in _kinopub_walk(media):
+                    direct = _kinopub_stream_from_obj(obj)
+                    if direct:
+                        response = _kinopub_direct_stream_response(request, direct)
+                        if response is not None:
+                            return response
 
     if file_token:
         for stream_type in stream_types:
