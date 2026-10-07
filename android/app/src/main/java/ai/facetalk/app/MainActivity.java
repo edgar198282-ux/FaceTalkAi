@@ -2191,6 +2191,7 @@ public class MainActivity extends Activity {
         if(isTv){
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            setVolumeControlStream(AudioManager.STREAM_MUSIC);
             enterTvImmersive();
         }
         prefs=getSharedPreferences("facetalk_auth",MODE_PRIVATE); consumeAuthIntent(getIntent());
@@ -2369,12 +2370,8 @@ public class MainActivity extends Activity {
         String host=Uri.parse(url==null?"":url).getHost();
         host=host==null?"":host.toLowerCase(java.util.Locale.ROOT);
         // B866 PixelCopy returns a black/cropped frame from the decoder SurfaceView.
-        boolean forceCinemaTexture="cinema".equalsIgnoreCase(Uri.parse(url==null?"":url).getScheme())
-            &&"texture".equalsIgnoreCase(Uri.parse(url==null?"":url).getHost());
-        boolean texture=forceCinemaTexture||(
-            String.valueOf(Build.MODEL).toUpperCase(java.util.Locale.ROOT).contains("B866")
-            &&(host.equals("stream.mcquack.net")||host.contains("ottclub")||host.contains("ott-club"))
-        );
+        boolean texture=String.valueOf(Build.MODEL).toUpperCase(java.util.Locale.ROOT).contains("B866")
+            &&(host.equals("stream.mcquack.net")||host.contains("ottclub")||host.contains("ott-club"));
         if(texture==nativeProbeTextureSurface)return;
         PlayerView replacement=texture
             ?(PlayerView)getLayoutInflater().inflate(R.layout.ott_native_player,fullscreenContainer,false)
@@ -2451,7 +2448,7 @@ public class MainActivity extends Activity {
     private void startNativeCinema(String url,String provider,java.util.Map<String,String> extraHeaders){
         if(!isTv||nativeProbeView==null)return;
         try{
-            configureNativeProbeSurface("cinema://texture");
+            configureNativeProbeSurface(url);
             ensureNativeProbePlayer();
             if(nativeProbePlayer==null)return;
             java.util.HashMap<String,String> headers=new java.util.HashMap<>();
@@ -2792,11 +2789,27 @@ public class MainActivity extends Activity {
     @Override public boolean dispatchKeyEvent(KeyEvent event){
         if(isTv&&webView!=null){
             int code=event.getKeyCode();
+            if((code==KeyEvent.KEYCODE_VOLUME_UP||code==KeyEvent.KEYCODE_VOLUME_DOWN||code==KeyEvent.KEYCODE_VOLUME_MUTE)
+                &&event.getAction()==KeyEvent.ACTION_DOWN){
+                AudioManager am=(AudioManager)getSystemService(Context.AUDIO_SERVICE);
+                if(am!=null){
+                    if(code==KeyEvent.KEYCODE_VOLUME_UP){
+                        am.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_RAISE,AudioManager.FLAG_SHOW_UI);
+                    }else if(code==KeyEvent.KEYCODE_VOLUME_DOWN){
+                        am.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_LOWER,AudioManager.FLAG_SHOW_UI);
+                    }else{
+                        am.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_TOGGLE_MUTE,AudioManager.FLAG_SHOW_UI);
+                    }
+                }
+                return true;
+            }
             if(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER){
                 if(event.getAction()==KeyEvent.ACTION_DOWN){
                     if(event.getRepeatCount()==0){
                         webView.evaluateJavascript(
-                            "if(typeof tvNativeOkDown==='function')tvNativeOkDown();else if(typeof tvNativeRemote==='function')tvNativeRemote('ok')",
+                            "(function(){var p=document.getElementById('playerView');"+
+                            "if(p&&p.classList.contains('open')&&typeof tvNativeRemote==='function'){tvNativeRemote('ok');return;}"+
+                            "if(typeof tvNativeOkDown==='function')tvNativeOkDown();else if(typeof tvNativeRemote==='function')tvNativeRemote('ok');})()",
                             null
                         );
                     }
