@@ -1584,24 +1584,30 @@ public class MainActivity extends Activity {
                 if(nativeProbePlayer.isPlaying())nativeProbePlayer.pause();else nativeProbePlayer.play();
             });
         }
-        @JavascriptInterface public void nativeSeekBy(int seconds){
+        @JavascriptInterface public void nativeSeekToMs(long positionMs){
             if(!isTv)return;
             runOnUiThread(()->{
                 try{
                     if(nativeProbePlayer==null)return;
-                    boolean seekable=nativeProbePlayer.isCurrentMediaItemSeekable();
-                    long current=Math.max(0L,nativeProbePlayer.getCurrentPosition());
                     long duration=nativeProbePlayer.getDuration();
-                    long target=current+(long)seconds*1000L;
-                    if(duration>0L)target=Math.min(Math.max(0L,duration-250L),Math.max(0L,target));
-                    else target=Math.max(0L,target);
+                    long target=Math.max(0L,positionMs);
+                    if(duration>0L)target=Math.min(Math.max(0L,duration-250L),target);
                     nativeProbePlayer.seekTo(target);
                     if(!nativeProbePlayer.getPlayWhenReady())nativeProbePlayer.play();
-                    Log.i("AbajCinema","seek "+seconds+"s from="+current+" to="+target+" dur="+duration+" seekable="+seekable);
+                    Log.i("AbajCinema","seek absolute to="+target+" dur="+duration+" seekable="+nativeProbePlayer.isCurrentMediaItemSeekable());
                 }catch(Exception e){
-                    Log.w("AbajCinema","seek failed "+e.getClass().getSimpleName());
+                    Log.w("AbajCinema","absolute seek failed "+e.getClass().getSimpleName());
                 }
             });
+        }
+        @JavascriptInterface public void nativeSeekBy(int seconds){
+            if(!isTv)return;
+            try{
+                long current=nativeProbePlayer==null?0L:Math.max(0L,nativeProbePlayer.getCurrentPosition());
+                nativeSeekToMs(current+(long)seconds*1000L);
+            }catch(Exception e){
+                Log.w("AbajCinema","seek failed "+e.getClass().getSimpleName());
+            }
         }
         @JavascriptInterface public boolean nativeIsSeekable(){
             try{return nativeProbePlayer!=null&&nativeProbePlayer.isCurrentMediaItemSeekable();}
