@@ -6917,6 +6917,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
   if(cinemaNative){
     playbackPlayerMode='native';
     clearCinemaStartupTimer();
+    const kinoPubNativeWait=String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'?22000:8000;
     cinemaStartupTimer=setTimeout(()=>{
       cinemaStartupTimer=null;
       if(attemptToken!==streamAttemptToken||!current||current.id!==ch.id)return;
@@ -6928,8 +6929,14 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
         format:kinoPubHls?'hls':'http',
         source:cinemaStreamLabel(src),
         code:'startup_timeout',
-        message:'no first frame within 8000ms'
+        message:'no first frame within '+kinoPubNativeWait+'ms'
       });
+      if(String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'){
+        let pos=0;
+        try{if(window.AbajNative&&typeof AbajNative.nativePositionMs==='function')pos=Number(AbajNative.nativePositionMs()||0)}catch(e){}
+        recoverKinoPubNativePlayback('startup_timeout',pos);
+        return;
+      }
       nativeMedia3FirstFrameHandler=null;
       nativeMedia3ErrorHandler=null;
       setNativeMedia3Visible(false);
@@ -6942,11 +6949,18 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
       if(!retryCinemaPlayback('startup timeout')){
         err.textContent='Видео не запустилось';
       }
-    },8000);
+    },kinoPubNativeWait);
     nativeMedia3FirstFrameHandler=()=>{
       if(attemptToken!==streamAttemptToken||!current||current.id!==ch.id)return;
       nativeMedia3FirstFrameHandler=null;
-      nativeMedia3ErrorHandler=null;
+      nativeMedia3ErrorHandler=(reason)=>{
+        if(!current||current.id!==ch.id)return;
+        let pos=0;
+        try{if(window.AbajNative&&typeof AbajNative.nativePositionMs==='function')pos=Number(AbajNative.nativePositionMs()||0)}catch(e){}
+        if(String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'){
+          recoverKinoPubNativePlayback(reason||'native_error',pos);
+        }
+      };
       clearCinemaStartupTimer();
       // Cinema is already playing in the native Media3 PlayerView.
       // Mark it active so play/pause, seek and progress controls target Media3
