@@ -641,6 +641,8 @@ async def _kinopub_probe_proxy_ranges(url):
         ('head64k','bytes=0-65535'),
         ('mid64k','bytes=4194304-4259839'),
         ('head4m','bytes=0-4194303'),
+        ('mid1m','bytes=67108864-68157439'),
+        ('mid2m','bytes=67108864-69206015'),
         ('mid4m','bytes=67108864-71303167'),
     )
     async with aiohttp.ClientSession(timeout=timeout) as session:
