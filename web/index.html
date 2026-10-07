@@ -9334,6 +9334,8 @@ let kinoPubOverview=null;
 let kinopubCatalogTotal=null;
 let kinopubCatalogPage=1;
 let kinopubCatalogHasMore=false;
+let kinopubCatalogLoadingMore=false;
+let kinopubAutoLoadObserver=null;
 let cinemaLibraryMode=false;
 let kinopubCatalogItems=[];
 let kinopubGenre='';
@@ -9362,6 +9364,7 @@ async function loadKinoPubSection(section,options={}){
   kinopubCatalogItems=[];
   kinopubCatalogTotal=null;
   kinopubCatalogHasMore=false;
+  kinopubCatalogLoadingMore=false;
   try{
     const params=new URLSearchParams({section:String(section),page:'1',perpage:'40'});
     if(options.type)params.set('type',String(options.type));
@@ -9456,16 +9459,29 @@ async function loadKinoPubFilters(force=false){
     host.innerHTML='';
   }
 }
+function ensureKinoPubAutoLoad(){
+  const btn=document.getElementById('cinemaLoadMoreBtn');
+  if(!btn||kinopubAutoLoadObserver)return;
+  kinopubAutoLoadObserver=new IntersectionObserver(entries=>{
+    if(!entries.some(entry=>entry.isIntersecting))return;
+    if(cinemaLibraryMode||cinemaSource!=='kinopub'||!kinopubCatalogHasMore||kinopubCatalogLoadingMore)return;
+    loadMoreKinoPubCatalog();
+  },{root:null,rootMargin:'900px 0px',threshold:0.01});
+  kinopubAutoLoadObserver.observe(btn);
+}
 function updateKinoPubLoadMore(){
   const btn=document.getElementById('cinemaLoadMoreBtn');
   if(!btn)return;
-  btn.style.display=(!cinemaLibraryMode&&cinemaSource==='kinopub'&&kinopubCatalogHasMore)?'block':'none';
-  btn.disabled=false;
-  btn.textContent='ЕЩЁ';
+  const active=!cinemaLibraryMode&&cinemaSource==='kinopub'&&kinopubCatalogHasMore;
+  btn.style.display=active?'block':'none';
+  btn.disabled=kinopubCatalogLoadingMore;
+  btn.textContent=kinopubCatalogLoadingMore?'ЗАГРУЗКА…':'ЕЩЁ';
+  ensureKinoPubAutoLoad();
 }
 async function loadMoreKinoPubCatalog(){
   if(cinemaLibraryMode)return;
-  if(cinemaSource!=='kinopub'||!kinopubCatalogHasMore)return;
+  if(cinemaSource!=='kinopub'||!kinopubCatalogHasMore||kinopubCatalogLoadingMore)return;
+  kinopubCatalogLoadingMore=true;
   const btn=document.getElementById('cinemaLoadMoreBtn');
   if(btn){btn.disabled=true;btn.textContent='ЗАГРУЗКА…'}
   const next=kinopubCatalogPage+1;
@@ -9495,7 +9511,15 @@ async function loadMoreKinoPubCatalog(){
     if(Number.isFinite(Number(data?.total)))kinopubCatalogTotal=Number(data.total);
     renderCinemaCatalog(kinopubCatalogItems);
   }else kinopubCatalogHasMore=false;
+  kinopubCatalogLoadingMore=false;
   updateKinoPubLoadMore();
+  if(kinopubCatalogHasMore){
+    setTimeout(()=>{
+      const more=document.getElementById('cinemaLoadMoreBtn');
+      if(!more||kinopubCatalogLoadingMore||cinemaLibraryMode||cinemaSource!=='kinopub')return;
+      if(more.getBoundingClientRect().top<=window.innerHeight+900)loadMoreKinoPubCatalog();
+    },80);
+  }
 }
 async function loadKinoPubOverview(){
   if(cinemaSource!=='kinopub'||!cinemaAccessEnabled)return;
