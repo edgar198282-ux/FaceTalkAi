@@ -6910,6 +6910,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
           const fallbackUrl=String(dd?.url||'').trim();
           if(fallbackUrl&&attemptToken===streamAttemptToken&&current&&current.id===ch.id){
             ch.url=fallbackUrl;
+            ch.cinemaForceHttp=true;
             ch.cinemaHeaders=(dd?.headers&&typeof dd.headers==='object')?dd.headers:{};
             startStream(ch,preferBackup,forceProxy,false);
             return;
@@ -6976,7 +6977,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
     try{AbajNative.nativeProbeStart(src)}catch(e){nativeMedia3FirstFrameHandler=null;nativeMedia3ErrorHandler=null}
   }
 
-  const useHlsJs=(kinoPubHls||tvShouldUseHls(ch))&&window.Hls&&Hls.isSupported();
+  const useHlsJs=!ch.cinemaForceHttp&&(kinoPubHls||tvShouldUseHls(ch))&&window.Hls&&Hls.isSupported();
   const mobileFast=!nativeTv&&!ch.personal;
   const fastStart=teamTvFast||mobileFast;
   if(nativeTv)playbackPlayerMode=useHlsJs?'hls':'system';
@@ -7100,6 +7101,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
           const fallbackUrl=String(dd?.url||'').trim();
           if(fallbackUrl&&attemptToken===streamAttemptToken&&current&&current.id===ch.id){
             ch.url=fallbackUrl;
+            ch.cinemaForceHttp=true;
             ch.cinemaHeaders=(dd?.headers&&typeof dd.headers==='object')?dd.headers:{};
             try{if(hls){hls.stopLoad();hls.destroy();hls=null}}catch(e){}
             startStream(ch,preferBackup,forceProxy,false);
