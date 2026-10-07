@@ -636,22 +636,42 @@ async def _kinopub_probe_proxy_ranges(url):
     if now - _kinopub_proxy_probe_last < 25:
         return
     _kinopub_proxy_probe_last = now
-    timeout = aiohttp.ClientTimeout(total=12, connect=5, sock_read=6)
+    timeout = aiohttp.ClientTimeout(total=25, connect=5, sock_read=10)
+    probes = (
+        ('head64k','bytes=0-65535'),
+        ('mid64k','bytes=4194304-4259839'),
+        ('head4m','bytes=0-4194303'),
+        ('mid4m','bytes=67108864-71303167'),
+    )
     async with aiohttp.ClientSession(timeout=timeout) as session:
-        for label, rng in (('head','bytes=0-65535'),('mid','bytes=4194304-4259839')):
+        for label, rng in probes:
+            started = time.perf_counter()
+            total = 0
+            first_byte = None
             try:
                 async with session.get(url, headers={'Range':rng,'Accept':'*/*'}, allow_redirects=True) as resp:
-                    body = await resp.content.read(65536)
+                    async for chunk in resp.content.iter_chunked(65536):
+                        if first_byte is None:
+                            first_byte = round((time.perf_counter()-started)*1000)
+                        total += len(chunk)
+                    elapsed = max(0.001,time.perf_counter()-started)
                     logging.info(
-                        'KINOPUB_PROXY_RANGE label=%s status=%s requested=%s content_range=%s content_length=%s accept_ranges=%s bytes=%s type=%s',
+                        'KINOPUB_PROXY_RANGE label=%s status=%s requested=%s content_range=%s content_length=%s accept_ranges=%s bytes=%s first_byte_ms=%s elapsed_ms=%s mbps=%.2f type=%s',
                         label, resp.status, rng,
                         str(resp.headers.get('Content-Range') or ''),
                         str(resp.headers.get('Content-Length') or ''),
                         str(resp.headers.get('Accept-Ranges') or ''),
-                        len(body), str(resp.headers.get('Content-Type') or '')
+                        total, first_byte, round(elapsed*1000),
+                        (total*8/1000000)/elapsed,
+                        str(resp.headers.get('Content-Type') or '')
                     )
             except Exception as exc:
-                logging.warning('KINOPUB_PROXY_RANGE label=%s requested=%s error=%s', label, rng, type(exc).__name__+': '+str(exc)[:120])
+                logging.warning(
+                    'KINOPUB_PROXY_RANGE label=%s requested=%s bytes=%s elapsed_ms=%s error=%s',
+                    label, rng, total, round((time.perf_counter()-started)*1000),
+                    type(exc).__name__+': '+str(exc)[:160]
+                )
+
 
 def _kinopub_direct_stream_response(request, uid, url):
     direct = str(url or '').strip()
