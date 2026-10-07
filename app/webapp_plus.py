@@ -905,6 +905,94 @@ async def api_kinopub_play(request):
 
     return web.json_response({'ok':False,'error':'kinopub_stream_not_found'}, status=404)
 
+async def api_kinopub_benchmark(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    if not await _cinema_playback_allowed(uid):
+        return web.json_response({'ok':False,'error':'subscription_required'}, status=403)
+    token = await _kinopub_access_token(uid)
+    if not token:
+        return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
+    media_id = str(request.query.get('mid') or '').strip()
+    if not media_id:
+        return web.json_response({'ok':False,'error':'missing_media_id'}, status=400)
+
+    status, media = await _kinopub_api('GET','/v1/items/media-links',params={'access_token':token,'mid':media_id})
+    if status >= 400:
+        return web.json_response({'ok':False,'error':'media_links_failed','status':status}, status=502)
+    file_token = _kinopub_first_file_token(media)
+    if not file_token:
+        return web.json_response({'ok':False,'error':'file_token_not_found'}, status=404)
+
+    direct = ''
+    chosen_type = ''
+    for stream_type in ('http','hls4','hls2','hls'):
+        st, video = await _kinopub_api('GET','/v1/items/media-video-link',params={
+            'access_token':token,'file':file_token,'type':stream_type
+        })
+        if st < 400:
+            direct = _kinopub_stream_from_obj(video)
+            if direct:
+                chosen_type = stream_type
+                break
+    if not direct:
+        return web.json_response({'ok':False,'error':'stream_not_found'}, status=404)
+
+    proxied = _kinopub_proxy_url(request, uid, direct)
+
+    async def sample(url):
+        started = time.perf_counter()
+        first_byte_ms = None
+        total = 0
+        status_code = 0
+        ctype = ''
+        timeout = aiohttp.ClientTimeout(total=20, connect=8, sock_read=12)
+        headers = {'Range':'bytes=0-2097151','Accept':'*/*'}
+        try:
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url, headers=headers, allow_redirects=True) as resp:
+                    status_code = int(resp.status)
+                    ctype = str(resp.headers.get('Content-Type') or '')[:80]
+                    async for chunk in resp.content.iter_chunked(65536):
+                        if first_byte_ms is None:
+                            first_byte_ms = round((time.perf_counter()-started)*1000)
+                        total += len(chunk)
+                        if total >= 2097152:
+                            break
+            elapsed = max(0.001, time.perf_counter()-started)
+            return {
+                'ok': 200 <= status_code < 400,
+                'status': status_code,
+                'first_byte_ms': first_byte_ms,
+                'elapsed_ms': round(elapsed*1000),
+                'bytes': total,
+                'mbps': round((total*8/1000000)/elapsed, 2),
+                'content_type': ctype,
+            }
+        except Exception as exc:
+            return {
+                'ok': False,
+                'status': status_code,
+                'first_byte_ms': first_byte_ms,
+                'elapsed_ms': round((time.perf_counter()-started)*1000),
+                'bytes': total,
+                'mbps': 0,
+                'error': type(exc).__name__+': '+str(exc)[:120],
+            }
+
+    direct_result, proxy_result = await asyncio.gather(sample(direct), sample(proxied))
+    return web.json_response({
+        'ok': True,
+        'mid': media_id,
+        'stream_type': chosen_type,
+        'direct_host': urlparse(direct).hostname or '',
+        'proxy_host': urlparse(proxied).hostname or '',
+        'direct': direct_result,
+        'proxy': proxy_result,
+    }, headers={'Cache-Control':'no-store'})
+
 async def api_kinopub_download(request):
     user = await _user_from_request(request)
     if not user:
