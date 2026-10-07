@@ -2998,7 +2998,7 @@ async function loadSyncedState(force=false){
     const visualChanged=beforeFav!==[...favs].sort().join('|')||
       (modeFilter==='recent'&&beforeRecent!==recent.join('|'))||
       beforeLayout!==layout||beforeTvMode!==tvMode;
-    if(!nativeTv||force||visualChanged)render();
+    if(!nativeTv||((force||visualChanged)&&!cinemaMode&&!tvSettingsOpen()&&!adminPanelOpen()&&!tvGuideOpen()&&!tvSearchOpen()))render();
     if(nativeTv&&lastChannelId&&!current&&document.visibilityState==='visible'){
       const last=channels.find(x=>x.id===lastChannelId);
       if(last&&!document.getElementById('tvPair').classList.contains('open')){
@@ -4308,7 +4308,7 @@ function cancelLastChannelAutoStart(showMessage=false){
   tvLastAutoCancelled=true;
 }
 function scheduleLastChannelAutoStart(ch){
-  if(!nativeTv||!tvAutoStartLast||!ch||tvAutoResumeDone||tvLastAutoCancelled||current)return;
+  if(!nativeTv||!tvAutoStartLast||!ch||tvAutoResumeDone||tvLastAutoCancelled||current||cinemaMode||tvSettingsOpen()||adminPanelOpen()||tvGuideOpen()||tvSearchOpen())return;
   tvAutoResumeDone=true;
   let left=3;
   const paint=()=>showTvShortcut('Последний канал: '+ch.name+' · '+left+'с · любая кнопка отменит');
@@ -4358,7 +4358,7 @@ function persistTvBrowseState(){
   }
 }
 function restoreTvBrowseFocus(){
-  if(!nativeTv||current)return;
+  if(!nativeTv||current||cinemaMode||tvSettingsOpen()||adminPanelOpen()||tvGuideOpen()||tvSearchOpen())return;
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     const cards=[...document.querySelectorAll('.channel')];
     if(!cards.length)return;
@@ -5274,7 +5274,7 @@ function moveTvTopFocus(delta){
   moveTvTopSpatial(delta>0?'right':'left');
 }
 function bindTvFocus(){
-  if(!tvMode)return;
+  if(!tvMode||cinemaMode||tvSettingsOpen()||adminPanelOpen()||tvGuideOpen()||tvSearchOpen())return;
   const list=document.getElementById('list');
   if(nativeTv&&list){
     list.querySelectorAll('button,a,input,select,[tabindex]').forEach(el=>{
@@ -8027,6 +8027,7 @@ function moveTvSettingsFocusSpatial(direction){
 
 function tvNativeRemote(action){
   if(!nativeTv)return;
+  cancelLastChannelAutoStart(false);
   const player=document.getElementById('playerView');
   if(player&&player.classList.contains('open')){
     if(cinemaTrackMenuOpen()){
@@ -12307,7 +12308,11 @@ window.addEventListener('offline',handleOffline);
 window.addEventListener('online',()=>{handleOnline();flushPendingFavorites();loadSyncedState(true)});
 document.addEventListener('visibilitychange',handleVisibilityChange);
 if(!navigator.onLine)handleOffline();
-setInterval(()=>{const p=document.getElementById('playerView');if(nativeTv&&p&&p.classList.contains('open'))return;load()},nativeTv?180000:60000);
+setInterval(()=>{
+  const p=document.getElementById('playerView');
+  if(nativeTv&&(cinemaMode||tvSettingsOpen()||adminPanelOpen()||tvGuideOpen()||tvSearchOpen()||(p&&p.classList.contains('open'))))return;
+  load();
+},nativeTv?180000:60000);
 setInterval(()=>{if(document.hidden)return;const p=document.getElementById('playerView');if(nativeTv&&p&&p.classList.contains('open'))return;flushPendingFavorites();loadSyncedState(false)},nativeTv?20000:2000);
 </script>
 
