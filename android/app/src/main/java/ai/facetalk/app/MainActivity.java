@@ -64,6 +64,9 @@ import androidx.media3.common.Player;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.datasource.DataSource;
+import androidx.media3.datasource.DataSpec;
+import androidx.media3.datasource.TransferListener;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.ui.PlayerView;
 
@@ -75,14 +78,123 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends Activity {
+    private static final class ChunkedRangeDataSourceFactory implements DataSource.Factory {
+        private final DataSource.Factory upstreamFactory;
+        private final long chunkBytes;
+        ChunkedRangeDataSourceFactory(DataSource.Factory upstreamFactory,long chunkBytes){
+            this.upstreamFactory=upstreamFactory;
+            this.chunkBytes=Math.max(1024L*1024L,chunkBytes);
+        }
+        @Override public DataSource createDataSource(){
+            return new ChunkedRangeDataSource(upstreamFactory,chunkBytes);
+        }
+    }
+    private static final class ChunkedRangeDataSource implements DataSource {
+        private final DataSource.Factory factory;
+        private final long chunkBytes;
+        private final List<TransferListener> listeners=new ArrayList<>();
+        private DataSource current;
+        private DataSpec original;
+        private long nextPosition;
+        private long remaining=C.LENGTH_UNSET;
+        private long chunkRemaining=0L;
+        private boolean terminalChunk=false;
+        private Uri uri;
+        private Map<String,List<String>> responseHeaders=Collections.emptyMap();
+
+        ChunkedRangeDataSource(DataSource.Factory factory,long chunkBytes){
+            this.factory=factory;
+            this.chunkBytes=chunkBytes;
+        }
+        @Override public void addTransferListener(TransferListener listener){
+            if(listener==null)return;
+            listeners.add(listener);
+            if(current!=null)current.addTransferListener(listener);
+        }
+        @Override public long open(DataSpec dataSpec) throws IOException {
+            closeCurrent();
+            original=dataSpec;
+            nextPosition=dataSpec.position;
+            remaining=dataSpec.length;
+            terminalChunk=false;
+            openNextChunk();
+            return dataSpec.length;
+        }
+        private void openNextChunk() throws IOException {
+            long requestLength=remaining==C.LENGTH_UNSET?chunkBytes:Math.min(chunkBytes,remaining);
+            if(requestLength<=0L){
+                chunkRemaining=0L;
+                terminalChunk=true;
+                return;
+            }
+            DataSpec chunkSpec=original.buildUpon().setPosition(nextPosition).setLength(requestLength).build();
+            current=factory.createDataSource();
+            for(TransferListener listener:listeners)current.addTransferListener(listener);
+            long opened=current.open(chunkSpec);
+            uri=current.getUri();
+            responseHeaders=current.getResponseHeaders();
+            long actual=opened==C.LENGTH_UNSET?requestLength:Math.min(requestLength,Math.max(0L,opened));
+            chunkRemaining=actual;
+            terminalChunk=opened!=C.LENGTH_UNSET&&opened<requestLength;
+            Log.d("AbajCinemaRange","open range pos="+nextPosition+" len="+requestLength+" opened="+opened);
+        }
+        @Override public int read(byte[] buffer,int offset,int length) throws IOException {
+            if(length==0)return 0;
+            while(true){
+                if(current==null)return C.RESULT_END_OF_INPUT;
+                if(chunkRemaining==0L){
+                    if(terminalChunk||remaining==0L)return C.RESULT_END_OF_INPUT;
+                    closeCurrent();
+                    openNextChunk();
+                    if(current==null)return C.RESULT_END_OF_INPUT;
+                }
+                int ask=(int)Math.min((long)length,chunkRemaining);
+                int read=current.read(buffer,offset,ask);
+                if(read==C.RESULT_END_OF_INPUT){
+                    terminalChunk=true;
+                    chunkRemaining=0L;
+                    continue;
+                }
+                if(read>0){
+                    nextPosition+=read;
+                    chunkRemaining-=read;
+                    if(remaining!=C.LENGTH_UNSET)remaining=Math.max(0L,remaining-read);
+                }
+                return read;
+            }
+        }
+        @Override public Uri getUri(){return uri;}
+        @Override public Map<String,List<String>> getResponseHeaders(){return responseHeaders;}
+        @Override public void close() throws IOException {
+            closeCurrent();
+            original=null;
+            uri=null;
+            responseHeaders=Collections.emptyMap();
+            chunkRemaining=0L;
+            remaining=C.LENGTH_UNSET;
+            terminalChunk=false;
+        }
+        private void closeCurrent() throws IOException {
+            if(current!=null){
+                DataSource old=current;
+                current=null;
+                old.close();
+            }
+        }
+    }
     private static final int FILE_CHOOSER_REQUEST=4101, MEDIA_PERMISSION_REQUEST=4102;
     private WebView webView; private ValueCallback<Uri[]> fileCallback; private PermissionRequest pendingWebPermission;
     private View customView; private WebChromeClient.CustomViewCallback customViewCallback;
@@ -2621,7 +2733,11 @@ public class MainActivity extends Activity {
             DefaultHttpDataSource.Factory httpFactory=new DefaultHttpDataSource.Factory()
                 .setAllowCrossProtocolRedirects(true)
                 .setDefaultRequestProperties(headers);
-            DefaultMediaSourceFactory mediaFactory=new DefaultMediaSourceFactory(httpFactory);
+            DataSource.Factory cinemaDataSource=httpFactory;
+            if("KINOPUB".equals(provider)){
+                cinemaDataSource=new ChunkedRangeDataSourceFactory(httpFactory,4L*1024L*1024L);
+            }
+            DefaultMediaSourceFactory mediaFactory=new DefaultMediaSourceFactory(cinemaDataSource);
             nativeAdFrameEpoch++;
             nativeProbeUrl=url;
             nativeCinemaLastLocalRecoverAt=0L;
