@@ -65,9 +65,15 @@ KINOPUB_API_BASE = (os.getenv('KINOPUB_API_BASE_URL') or 'https://api.service-kp
 KINOPUB_CLIENT_ID = (os.getenv('KINOPUB_API_CLIENT_ID') or 'xbmc').strip()
 KINOPUB_CLIENT_SECRET = (os.getenv('KINOPUB_API_CLIENT_SECRET') or 'cgg3gtifu46urtfp2zp1nqtba0k2ezxh').strip()
 
-async def _kinopub_api(method, path, params=None, json_body=None, timeout=20):
+async def _kinopub_api(method, path, params=None, json_body=None, form_body=None, timeout=20):
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
-        async with session.request(method, KINOPUB_API_BASE + path, params=params, json=json_body) as resp:
+        async with session.request(
+            method,
+            KINOPUB_API_BASE + path,
+            params=params,
+            json=json_body,
+            data=form_body,
+        ) as resp:
             raw = await resp.text(errors='ignore')
             try:
                 data = json.loads(raw or '{}')
@@ -1553,15 +1559,19 @@ async def api_cinema_bookmark_folders(request):
 
     if create_title:
         create_title = create_title[:80]
-        status, data = await _kinopub_api('POST', '/v1/bookmarks/create', params={
-            'access_token': token,
-            'title': create_title,
-        })
+        status, data = await _kinopub_api(
+            'POST',
+            '/v1/bookmarks/create',
+            params={'access_token': token},
+            form_body={'title': create_title},
+        )
         if status >= 400 or (isinstance(data,dict) and data.get('error')):
-            status, data = await _kinopub_api('POST', '/v1/bookmarks/create', params={
-                'access_token': token,
-                'name': create_title,
-            })
+            status, data = await _kinopub_api(
+                'POST',
+                '/v1/bookmarks/create',
+                params={'access_token': token},
+                form_body={'name': create_title},
+            )
         if status >= 400 or (isinstance(data,dict) and data.get('error')):
             return web.json_response({'ok':False,'error':'kinopub_folder_create_failed'}, status=502)
         _, fresh_folders = await _kinopub_bookmark_folders(uid)
@@ -1571,11 +1581,12 @@ async def api_cinema_bookmark_folders(request):
         folder_id = str(created.get('id') or '').strip()
         if not folder_id.isdigit():
             return web.json_response({'ok':False,'error':'kinopub_folder_bad_id'}, status=502)
-        add_status, add_data = await _kinopub_api('POST', '/v1/bookmarks/add', params={
-            'access_token': token,
-            'item': int(item_id),
-            'folder': int(folder_id),
-        })
+        add_status, add_data = await _kinopub_api(
+            'POST',
+            '/v1/bookmarks/add',
+            params={'access_token': token},
+            form_body={'item': int(item_id), 'folder': int(folder_id)},
+        )
         if add_status >= 400 or (isinstance(add_data,dict) and add_data.get('error')):
             return web.json_response({'ok':False,'error':'kinopub_bookmark_update_failed'}, status=502)
         rows = await _cinema_library_read(uid, 'bookmarks')
@@ -1614,11 +1625,12 @@ async def api_cinema_bookmark_folders(request):
         if current == wanted:
             continue
         endpoint = '/v1/bookmarks/add' if wanted else '/v1/bookmarks/remove-item'
-        status, data = await _kinopub_api('POST', endpoint, params={
-            'access_token': token,
-            'item': int(item_id),
-            'folder': int(folder_id),
-        })
+        status, data = await _kinopub_api(
+            'POST',
+            endpoint,
+            params={'access_token': token},
+            form_body={'item': int(item_id), 'folder': int(folder_id)},
+        )
         if status >= 400 or (isinstance(data,dict) and data.get('error')):
             errors.append(folder_id)
         else:
