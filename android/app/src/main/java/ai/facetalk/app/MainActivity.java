@@ -88,6 +88,7 @@ public class MainActivity extends Activity {
     private FrameLayout fullscreenContainer;
     private PlayerView nativeProbeView;
     private boolean nativeProbeTextureSurface=false;
+    private boolean nativeCinemaPlayback=false;
     private FrameLayout nativeAdCover;
     private boolean nativeAdMuted=false;
     private boolean nativeAdFrameBusy=false;
@@ -2370,8 +2371,9 @@ public class MainActivity extends Activity {
         String host=Uri.parse(url==null?"":url).getHost();
         host=host==null?"":host.toLowerCase(java.util.Locale.ROOT);
         // B866 PixelCopy returns a black/cropped frame from the decoder SurfaceView.
-        boolean texture=String.valueOf(Build.MODEL).toUpperCase(java.util.Locale.ROOT).contains("B866")
-            &&(host.equals("stream.mcquack.net")||host.contains("ottclub")||host.contains("ott-club"));
+        boolean b866=String.valueOf(Build.MODEL).toUpperCase(java.util.Locale.ROOT).contains("B866");
+        boolean texture=(nativeCinemaPlayback&&b866)||
+            (b866&&(host.equals("stream.mcquack.net")||host.contains("ottclub")||host.contains("ott-club")));
         if(texture==nativeProbeTextureSurface)return;
         PlayerView replacement=texture
             ?(PlayerView)getLayoutInflater().inflate(R.layout.ott_native_player,fullscreenContainer,false)
@@ -2431,6 +2433,7 @@ public class MainActivity extends Activity {
     private void startNativeProbe(String url){
         if(!isTv||nativeProbeView==null)return;
         try{
+            nativeCinemaPlayback=false;
             configureNativeProbeSurface(url);
             ensureNativeProbePlayer();
             if(nativeProbePlayer==null)return;
@@ -2448,9 +2451,17 @@ public class MainActivity extends Activity {
     private void startNativeCinema(String url,String provider,java.util.Map<String,String> extraHeaders){
         if(!isTv||nativeProbeView==null)return;
         try{
+            nativeCinemaPlayback=true;
+            nativeAdMuted=false;
+            if(nativeAdCover!=null)nativeAdCover.setVisibility(View.GONE);
             configureNativeProbeSurface(url);
             ensureNativeProbePlayer();
             if(nativeProbePlayer==null)return;
+            nativeProbePlayer.setVolume(1f);
+            AudioManager audio=(AudioManager)getSystemService(Context.AUDIO_SERVICE);
+            if(audio!=null){
+                try{audio.requestAudioFocus(null,AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN);}catch(Exception ignored){}
+            }
             java.util.HashMap<String,String> headers=new java.util.HashMap<>();
             headers.put("User-Agent","Mozilla/5.0 (Android) AbajTV/"+BuildConfig.VERSION_NAME);
             if("FILMIX".equals(provider)){
@@ -2486,6 +2497,7 @@ public class MainActivity extends Activity {
         }
     }
     private void stopNativeProbe(boolean release){
+        nativeCinemaPlayback=false;
         nativeAdFrameEpoch++;
         nativeProbeStartedAt=0L;
         nativeProbeUrl="";
@@ -2792,6 +2804,11 @@ public class MainActivity extends Activity {
             if((code==KeyEvent.KEYCODE_VOLUME_UP||code==KeyEvent.KEYCODE_VOLUME_DOWN||code==KeyEvent.KEYCODE_VOLUME_MUTE)
                 &&event.getAction()==KeyEvent.ACTION_DOWN){
                 AudioManager am=(AudioManager)getSystemService(Context.AUDIO_SERVICE);
+                nativeAdMuted=false;
+                try{
+                    if(nativeAdCover!=null)nativeAdCover.setVisibility(View.GONE);
+                    if(nativeProbePlayer!=null)nativeProbePlayer.setVolume(1f);
+                }catch(Exception ignored){}
                 if(am!=null){
                     if(code==KeyEvent.KEYCODE_VOLUME_UP){
                         am.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_RAISE,AudioManager.FLAG_SHOW_UI);
