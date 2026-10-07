@@ -248,8 +248,36 @@ def _kinopub_backdrops(item, limit=4):
 
 
 def _kinopub_kind(item):
-    raw = ' '.join(str(item.get(k) or '') for k in ('type','subtype')).lower()
-    return 'series' if any(x in raw for x in ('serial','series','tv')) else 'movies'
+    raw_type = str(item.get('type') or '').strip().lower()
+    raw_subtype = str(item.get('subtype') or '').strip().lower()
+    raw = (raw_type + ' ' + raw_subtype).strip()
+    return 'series' if any(x in raw for x in ('serial','series')) else 'movies'
+
+def _kinopub_content_group(item):
+    raw_type = str(item.get('type') or '').strip().lower()
+    raw_subtype = str(item.get('subtype') or '').strip().lower()
+    genres = item.get('genres') or item.get('genre') or ''
+    if isinstance(genres, list):
+        genre_text = ' '.join(
+            str(x.get('title') or x.get('name') or '') if isinstance(x, dict) else str(x or '')
+            for x in genres
+        ).lower()
+    else:
+        genre_text = str(genres or '').lower()
+    text = ' '.join((raw_type, raw_subtype, genre_text))
+    if any(x in text for x in ('аниме','anime')):
+        return 'anime'
+    if any(x in text for x in ('мульт','cartoon','animation','animated')):
+        return 'cartoons'
+    if raw_type in ('documovie','documentary','docmovie'):
+        return 'docmovies'
+    if raw_type in ('docuserial','documentaryseries','docseries'):
+        return 'docseries'
+    if raw_type == 'tvshow':
+        return 'tvshows'
+    if raw_type == 'concert':
+        return 'concerts'
+    return 'series' if _kinopub_kind(item) == 'series' else 'movies'
 
 def _kinopub_actor_image(actor):
     if not isinstance(actor, dict):
@@ -324,6 +352,9 @@ def _kinopub_normalize(item):
         'rating': item.get('imdb_rating') or item.get('rating') or '',
         'kp': item.get('kinopoisk_rating') or item.get('kp_rating') or '',
         'kind': _kinopub_kind(item),
+        'group': _kinopub_content_group(item),
+        'raw_type': str(item.get('type') or ''),
+        'raw_subtype': str(item.get('subtype') or ''),
         'country': str(countries or ''),
         'genre': str(genres or ''),
         'director': str(directors or ''),
@@ -1806,6 +1837,79 @@ async def api_kinopub_filters(request):
     )
     return web.json_response({'ok':True,'types':types,'genres':genres}, headers={'Cache-Control':'private, max-age=1800'})
 
+_kinopub_genres_cache = {'ts':0, 'items':[]}
+
+async def _kinopub_genres(token):
+    now = int(time.time())
+    cached = _kinopub_genres_cache.get('items') or []
+    if cached and now - int(_kinopub_genres_cache.get('ts') or 0) < 1800:
+        return cached
+    status, data = await _kinopub_api('GET', '/v1/genres', params={'access_token':token})
+    if status >= 400:
+        return cached
+    items = _kinopub_extract_references(data)
+    clean = []
+    for row in items:
+        if not isinstance(row, dict):
+            continue
+        gid = str(row.get('id') or '').strip()
+        title = str(row.get('title') or row.get('name') or '').strip()
+        if gid and title:
+            clean.append({'id':gid, 'title':title, 'type':str(row.get('type') or '').strip()})
+    if clean:
+        _kinopub_genres_cache['ts'] = now
+        _kinopub_genres_cache['items'] = clean
+    return clean
+
+async def _kinopub_genre_ids(token, section):
+    rows = await _kinopub_genres(token)
+    ids = []
+    for row in rows:
+        title = str(row.get('title') or '').strip().lower()
+        if section == 'anime':
+            match = any(x in title for x in ('аниме','anime'))
+        elif section == 'cartoons':
+            match = any(x in title for x in ('мульт','cartoon','animation','animated')) and not any(x in title for x in ('аниме','anime'))
+        else:
+            match = False
+        if match:
+            gid = str(row.get('id') or '').strip()
+            if gid and gid not in ids:
+                ids.append(gid)
+    return ids
+
+def _kinopub_filter_section_rows(rows, section, requested_type=''):
+    out = []
+    requested_type = str(requested_type or '').strip().lower()
+    for row in rows:
+        group = str(row.get('group') or '').strip().lower()
+        raw_type = str(row.get('raw_type') or '').strip().lower()
+        kind = str(row.get('kind') or '').strip().lower()
+
+        if section == 'cartoons' and group != 'cartoons':
+            continue
+        if section == 'anime' and group != 'anime':
+            continue
+        if section == 'movies' and (kind != 'movies' or group in ('anime','cartoons')):
+            continue
+        if section == 'series' and (kind != 'series' or group in ('anime','cartoons')):
+            continue
+        if section == 'docmovies' and raw_type not in ('documovie','documentary','docmovie'):
+            continue
+        if section == 'docseries' and raw_type not in ('docuserial','documentaryseries','docseries'):
+            continue
+        if section == 'tvshows' and raw_type != 'tvshow':
+            continue
+        if section == 'concerts' and raw_type != 'concert':
+            continue
+        if section in ('fresh','popular','hot','4k'):
+            if requested_type == 'movie' and (kind != 'movies' or group in ('anime','cartoons')):
+                continue
+            if requested_type == 'serial' and (kind != 'series' or group in ('anime','cartoons')):
+                continue
+        out.append(row)
+    return out
+
 async def _kinopub_section_page(token, *, path='/v1/items', params=None):
     status, data = await _kinopub_api('GET', path, params={'access_token':token, **(params or {})})
     if status >= 400:
@@ -1829,7 +1933,12 @@ async def api_kinopub_section(request):
         return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
 
     section = str(request.query.get('section') or 'movies').strip().lower()
-    sort = str(request.query.get('sort') or '').strip()
+    sort = str(request.query.get('sort') or '').strip().lower()
+    sort = {
+        'new':'created-',
+        'popular':'views-',
+        'hot':'rating-',
+    }.get(sort, sort)
     try:
         page = max(1, int(request.query.get('page') or 1))
         perpage = max(12, min(60, int(request.query.get('perpage') or 40)))
@@ -1884,11 +1993,15 @@ async def api_kinopub_section(request):
         api_type = requested_type or 'movie'
         params={'type':api_type,'page':page,'perpage':perpage}
         path=f'/v1/items/{shortcut}'
-    elif section == 'cartoons':
-        params={'genre':23,'page':page,'perpage':perpage,'sort':sort}
-        path='/v1/items'
-    elif section == 'anime':
-        params={'genre':25,'page':page,'perpage':perpage,'sort':sort}
+    elif section in ('cartoons','anime'):
+        genre_ids = await _kinopub_genre_ids(token, section)
+        params={'page':page,'perpage':perpage}
+        if genre_ids:
+            params['genre'] = ','.join(genre_ids)
+        else:
+            params['genre'] = 'аниме' if section == 'anime' else 'мультфильм'
+        if sort and sort != '4k':
+            params['sort'] = sort
         path='/v1/items'
     else:
         params={**mapping.get(section, {'type':'movie'}),'page':page,'perpage':perpage}
@@ -1897,6 +2010,7 @@ async def api_kinopub_section(request):
         path='/v1/items'
 
     status, rows, total, data = await _kinopub_section_page(token,path=path,params=params)
+    rows = _kinopub_filter_section_rows(rows, section, requested_type)
 
     if section in ('fresh','popular','hot') and (status >= 400 or not rows):
         fallback_sort = {
@@ -1914,7 +2028,9 @@ async def api_kinopub_section(request):
             token,path='/v1/items',params=fallback_params
         )
         if fb_status < 400 and fb_rows:
-            status, rows, total, data = fb_status, fb_rows, fb_total, fb_data
+            fb_rows = _kinopub_filter_section_rows(fb_rows, section, requested_type)
+            if fb_rows:
+                status, rows, total, data = fb_status, fb_rows, fb_total, fb_data
 
     if status >= 400:
         return web.json_response({'ok':False,'error':'kinopub_section_failed','status':status}, status=502)
@@ -1928,6 +2044,8 @@ async def api_kinopub_section(request):
             more_params=dict(params); more_params['page']=next_page
             st, more, _, _ = await _kinopub_section_page(token,path=path,params=more_params)
             if st >= 400 or not more: break
+            more = _kinopub_filter_section_rows(more, section, requested_type)
+            if not more: break
             added=0
             for x in more:
                 key=str(x.get('id') or '')
