@@ -6900,7 +6900,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
   const src=useDirectClient?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
-  const kinoPubHls=String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&(/\.m3u8(?:[?#]|$)/i.test(src)||/\/hls(?:\/|[?#]|$)/i.test(src));
+  const kinoPubHls=String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&(!ch.cinemaForceHttp||/\.m3u8(?:[?#]|$)/i.test(src)||/\/hls(?:\/|[?#]|$)/i.test(src));
   const cinemaNative=!!(nativeTv&&!tvForceWebCinema&&ch.cinemaProvider&&window.AbajNative&&typeof AbajNative.cinemaNativeStart==='function'&&(
     (String(ch.id||'').startsWith('cinema:external:')&&!kinoPubHls)||
     (kinoPubHls&&!forceWebCinema)

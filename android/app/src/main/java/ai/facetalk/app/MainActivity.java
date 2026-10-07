@@ -58,6 +58,7 @@ import androidx.core.content.FileProvider;
 import androidx.media3.common.C;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.MimeTypes;
 import androidx.media3.common.Tracks;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
@@ -2740,8 +2741,11 @@ public class MainActivity extends Activity {
             nativeCinemaEverReady=false;
             nativeCinemaLastProgressMs=0L;
             nativeProbeStartedAt=System.currentTimeMillis();
+            MediaItem mediaItem="KINOPUB".equals(provider)
+                ?new MediaItem.Builder().setUri(Uri.parse(url)).setMimeType(MimeTypes.APPLICATION_M3U8).build()
+                :MediaItem.fromUri(Uri.parse(url));
             nativeProbePlayer.setMediaSource(
-                mediaFactory.createMediaSource(MediaItem.fromUri(Uri.parse(url))),true
+                mediaFactory.createMediaSource(mediaItem),true
             );
             nativeProbePlayer.prepare();
             nativeProbePlayer.play();
