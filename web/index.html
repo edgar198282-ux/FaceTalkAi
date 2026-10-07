@@ -2587,7 +2587,7 @@ setTimeout(()=>{
   }
 },0);
 const tvDeviceName=(launchParams.get('device_name')||'Android TV').slice(0,120);
-const tvForceWebCinema=false;
+const tvForceWebCinema=nativeTv&&/B866/i.test(tvDeviceName);
 const tvAppVersion=(launchParams.get('app_version')||'').slice(0,40);
 const tvAppVersionCode=Math.max(0,Number(launchParams.get('app_version_code')||0));
 let layout='grid';
