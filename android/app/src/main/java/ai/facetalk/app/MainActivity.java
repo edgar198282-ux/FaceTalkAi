@@ -2363,8 +2363,12 @@ public class MainActivity extends Activity {
         String host=Uri.parse(url==null?"":url).getHost();
         host=host==null?"":host.toLowerCase(java.util.Locale.ROOT);
         // B866 PixelCopy returns a black/cropped frame from the decoder SurfaceView.
-        boolean texture=String.valueOf(Build.MODEL).toUpperCase(java.util.Locale.ROOT).contains("B866")
-            &&(host.equals("stream.mcquack.net")||host.contains("ottclub")||host.contains("ott-club"));
+        boolean forceCinemaTexture="cinema".equalsIgnoreCase(Uri.parse(url==null?"":url).getScheme())
+            &&"texture".equalsIgnoreCase(Uri.parse(url==null?"":url).getHost());
+        boolean texture=forceCinemaTexture||(
+            String.valueOf(Build.MODEL).toUpperCase(java.util.Locale.ROOT).contains("B866")
+            &&(host.equals("stream.mcquack.net")||host.contains("ottclub")||host.contains("ott-club"))
+        );
         if(texture==nativeProbeTextureSurface)return;
         PlayerView replacement=texture
             ?(PlayerView)getLayoutInflater().inflate(R.layout.ott_native_player,fullscreenContainer,false)
@@ -2441,7 +2445,7 @@ public class MainActivity extends Activity {
     private void startNativeCinema(String url,String provider,java.util.Map<String,String> extraHeaders){
         if(!isTv||nativeProbeView==null)return;
         try{
-            configureNativeProbeSurface("");
+            configureNativeProbeSurface("cinema://texture");
             ensureNativeProbePlayer();
             if(nativeProbePlayer==null)return;
             java.util.HashMap<String,String> headers=new java.util.HashMap<>();
