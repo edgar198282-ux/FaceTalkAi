@@ -6836,7 +6836,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
       markFrameReady(true);
       setTimeout(()=>{applyCinemaResume();updatePlayerRemaining()},80);
     };
-    nativeMedia3ErrorHandler=(reason)=>{
+    nativeMedia3ErrorHandler=async(reason)=>{
       if(attemptToken!==streamAttemptToken)return;
       nativeMedia3FirstFrameHandler=null;
       nativeMedia3ErrorHandler=null;
@@ -6848,6 +6848,24 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
         playable:false,
         message:String(reason||'ошибка потока')
       });
+      if(/PARSING_CONTAINER_UNSUPPORTED/i.test(String(reason||''))&&String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'){
+        err.textContent='Переключаю на совместимый поток…';
+        try{
+          const params=new URLSearchParams();
+          if(ch.cinemaItemId)params.set('id',String(ch.cinemaItemId));
+          if(ch.cinemaMediaId)params.set('mid',String(ch.cinemaMediaId));
+          params.set('format','http');
+          const rr=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
+          const dd=rr.ok?await rr.json():null;
+          const fallbackUrl=String(dd?.url||'').trim();
+          if(fallbackUrl&&attemptToken===streamAttemptToken&&current&&current.id===ch.id){
+            ch.url=fallbackUrl;
+            ch.cinemaHeaders=(dd?.headers&&typeof dd.headers==='object')?dd.headers:{};
+            startStream(ch,preferBackup,forceProxy,false);
+            return;
+          }
+        }catch(e){}
+      }
       if(kinoPubHls&&!forceWebCinema){
         err.textContent='Пробую совместимый HLS-плеер…';
         startStream(ch,preferBackup,forceProxy,true);
@@ -11858,7 +11876,7 @@ async function resolveKinoPubInternalStream(item,media=null){
     const params=new URLSearchParams();
     if(id)params.set('id',id);
     if(mid)params.set('mid',mid);
-    if(nativeTv&&!tvForceWebCinema)params.set('format','hls2');
+    if(nativeTv&&!tvForceWebCinema)params.set('format','http');
     const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return null;
     const d=await r.json();
