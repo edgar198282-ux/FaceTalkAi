@@ -2363,6 +2363,41 @@ def _cinema_title_score(query, candidate):
     import difflib
     return int(difflib.SequenceMatcher(None, q, c).ratio() * 60)
 
+async def api_cinema_person(request):
+    name = str(request.query.get('name') or '').strip()
+    if len(name) < 2 or len(name) > 100:
+        return web.json_response({'ok':False,'error':'invalid_name'}, status=400)
+    timeout = aiohttp.ClientTimeout(total=8, connect=4, sock_read=5)
+    headers = {'Accept':'application/json,*/*','User-Agent':'Mozilla/5.0 AbajTV'}
+    try:
+        url = 'https://v2.sg.media-imdb.com/suggestion/x/' + quote(name) + '.json'
+        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+            async with session.get(url, allow_redirects=True) as resp:
+                data = await resp.json(content_type=None) if resp.status < 400 else {}
+        rows = data.get('d') if isinstance(data, dict) else []
+        best = None
+        best_score = -1
+        for pos,row in enumerate(rows if isinstance(rows,list) else []):
+            if not isinstance(row,dict):
+                continue
+            imdb_id = str(row.get('id') or '')
+            if not imdb_id.startswith('nm'):
+                continue
+            label = str(row.get('l') or row.get('name') or '').strip()
+            score = _cinema_title_score(name,label) + max(0,30-pos*3)
+            if score > best_score:
+                best_score = score
+                best = row
+        if not best:
+            return web.json_response({'ok':True,'found':False}, headers={'Cache-Control':'public, max-age=21600'})
+        image = ''
+        i = best.get('i')
+        if isinstance(i,dict):
+            image = str(i.get('imageUrl') or i.get('url') or '').strip()
+        return web.json_response({'ok':True,'found':bool(image),'name':str(best.get('l') or name),'image':_imdb_clean_image(image)}, headers={'Cache-Control':'public, max-age=86400'})
+    except Exception:
+        return web.json_response({'ok':True,'found':False}, headers={'Cache-Control':'public, max-age=1800'})
+
 async def api_cinema_meta(request):
     title = str(request.query.get("title") or "").strip()
     year_raw = str(request.query.get("year") or "").strip()
@@ -3398,7 +3433,7 @@ async def start_webapp(bot):
     app.router.add_post('/api/iptv/ai-dub/chunk', api_iptv_ai_dub_chunk)
     app.router.add_post('/api/cinema/catalog-cache', api_cinema_catalog_cache)
     app.router.add_get('/api/cinema/search', api_cinema_search)
-    app.router.add_get('/api/cinema/meta', api_cinema_meta)
+    app.router.add_get('/api/cinema/person', api_cinema_person); app.router.add_get('/api/cinema/meta', api_cinema_meta)
     app.router.add_post('/api/cinema/resolve', api_cinema_resolve)
     app.router.add_get('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider); app.router.add_post('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider)
     app.router.add_post('/api/support/message', api_support_message)

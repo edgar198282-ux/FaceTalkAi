@@ -8455,7 +8455,7 @@ function cinemaDetailOpen(){
   return !!document.getElementById('cinemaDetail')?.classList.contains('open');
 }
 function cinemaDetailFocusable(){
-  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction,#cinemaDetail #cinemaBookmarkBtn,#cinemaDetail .cinemaKpEpisodeBtn,#cinemaDetail .cinemaSimilarCard')]
+  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction,#cinemaDetail #cinemaBookmarkBtn,#cinemaDetail .cinemaKpEpisodeBtn,#cinemaDetail .cinemaCastCard,#cinemaDetail .cinemaSimilarCard')]
     .filter(el=>el.offsetParent!==null);
 }
 function moveCinemaDetailFocus(direction){
@@ -11903,6 +11903,17 @@ function renderCinemaCast(item){
       '<div class="cinemaCastName">'+name.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>';
     btn.onclick=()=>openCinemaActor(name);
     row.appendChild(btn);
+    if(!image){
+      fetch('/api/cinema/person?name='+encodeURIComponent(name),{headers:authHeaders(),cache:'force-cache'})
+        .then(r=>r.ok?r.json():null).then(d=>{
+          const src=String(d?.image||'').trim();
+          if(!src||!btn.isConnected)return;
+          const pic=new Image();
+          pic.loading='lazy';pic.alt='';
+          pic.onload=()=>{if(btn.isConnected){const old=btn.querySelector('.cinemaCastAvatarFallback');if(old)old.replaceWith(pic)}};
+          pic.src=src;
+        }).catch(()=>{});
+    }
   });
   host.style.display=row.children.length?'block':'none';
 }
