@@ -2517,6 +2517,21 @@ public class MainActivity extends Activity {
                     );
                 }
             }
+            @Override public void onPlaybackStateChanged(int state){
+                if(!nativeCinemaPlayback||nativeProbePlayer==null)return;
+                if(state==Player.STATE_BUFFERING){
+                    final long generation=nativeSeekGeneration;
+                    updateHandler.postDelayed(()->{
+                        if(!nativeCinemaPlayback||nativeProbePlayer==null||generation!=nativeSeekGeneration)return;
+                        if(nativeProbePlayer.getPlaybackState()!=Player.STATE_BUFFERING)return;
+                        long pos=Math.max(0L,nativeProbePlayer.getCurrentPosition());
+                        Log.w("AbajCinema","buffering_stall pos_ms="+pos+" url="+nativeProbeUrl);
+                        if(webView!=null){
+                            try{webView.evaluateJavascript("window.nativeCinemaStalled&&window.nativeCinemaStalled('buffering_stall',"+pos+")",null);}catch(Exception ignored){}
+                        }
+                    },12000L);
+                }
+            }
             @Override public void onPlayerError(PlaybackException error){
                 long started=nativeProbeStartedAt;
                 long elapsed=started>0L?Math.max(0L,System.currentTimeMillis()-started):0L;
