@@ -12465,60 +12465,92 @@ setInterval(()=>{if(document.hidden)return;const p=document.getElementById('play
 }
 </style>
 
-<style id="mobile-cinema-player-rotation-align-v2">
+<style id="mobile-cinema-player-rotation-align-v3">
 @media (max-width:900px){
+  body:not(.nativeTv) .playerView.cinemaPlayback .tvChannelCtrl{
+    display:none!important;
+  }
   body:not(.nativeTv) .playerView.cinemaPlayback .playerPrimaryControls{
+    display:grid!important;
     grid-template-columns:repeat(4,minmax(0,1fr))!important;
-    width:min(430px,100%)!important;
-    max-width:430px!important;
-    gap:10px!important;
-    margin:6px auto 0!important;
+    width:min(440px,100%)!important;
+    max-width:440px!important;
+    gap:8px!important;
+    margin:8px auto 0!important;
     align-items:start!important;
     justify-items:center!important;
   }
-  body:not(.nativeTv) .playerView.cinemaPlayback .playerCircleCtrl{
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerCircleCtrl:not(.tvChannelCtrl){
     width:100%!important;
-    min-height:78px!important;
-    display:grid!important;
-    grid-template-rows:58px 18px!important;
-    place-items:start center!important;
-    gap:4px!important;
+    min-height:80px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:6px!important;
     padding:0!important;
     margin:0!important;
   }
-  body:not(.nativeTv) .playerView.cinemaPlayback .playerCircleCtrl .playerCtrlIcon{
-    width:52px!important;
-    height:52px!important;
-    min-width:52px!important;
-    min-height:52px!important;
-    margin:3px 0 0!important;
-    align-self:start!important;
-    justify-self:center!important;
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerCircleCtrl:not(.tvChannelCtrl) .playerCtrlIcon{
+    width:56px!important;
+    height:56px!important;
+    min-width:56px!important;
+    min-height:56px!important;
+    flex:0 0 56px!important;
+    margin:0!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
   }
   body:not(.nativeTv) .playerView.cinemaPlayback .playerPlayCtrl .playerCtrlIcon{
-    width:58px!important;
-    height:58px!important;
-    min-width:58px!important;
-    min-height:58px!important;
+    width:56px!important;
+    height:56px!important;
+    min-width:56px!important;
+    min-height:56px!important;
+    flex-basis:56px!important;
     margin:0!important;
   }
-  body:not(.nativeTv) .playerView.cinemaPlayback .playerCircleCtrl small{
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerCircleCtrl:not(.tvChannelCtrl) small{
     min-height:18px!important;
     margin:0!important;
     line-height:18px!important;
     text-align:center!important;
-    align-self:start!important;
-    justify-self:center!important;
     white-space:nowrap!important;
   }
 }
 @media (orientation:landscape) and (max-height:700px){
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.pureFullscreen.cinemaPlayback.showPureControls .playerBottom{
+    bottom:0!important;
+    padding:8px 18px calc(10px + env(safe-area-inset-bottom,0px))!important;
+    max-height:none!important;
+    box-sizing:border-box!important;
+  }
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.pureFullscreen.cinemaPlayback.showPureControls .playerMeta{
+    min-height:30px!important;
+    padding-bottom:4px!important;
+  }
   body:not(.nativeTv).mobileLandscapePlayer .playerView.pureFullscreen.cinemaPlayback.showPureControls .playerPrimaryControls{
     grid-template-columns:repeat(4,minmax(0,1fr))!important;
-    width:min(430px,64vw)!important;
-    max-width:430px!important;
-    gap:12px!important;
+    width:min(440px,62vw)!important;
+    max-width:440px!important;
+    gap:10px!important;
     margin:4px auto 0!important;
+  }
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.pureFullscreen.cinemaPlayback.showPureControls .playerCircleCtrl:not(.tvChannelCtrl){
+    min-height:64px!important;
+    gap:3px!important;
+  }
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.pureFullscreen.cinemaPlayback.showPureControls .playerCircleCtrl:not(.tvChannelCtrl) .playerCtrlIcon{
+    width:44px!important;
+    height:44px!important;
+    min-width:44px!important;
+    min-height:44px!important;
+    flex-basis:44px!important;
+  }
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.pureFullscreen.cinemaPlayback.showPureControls .playerCircleCtrl:not(.tvChannelCtrl) small{
+    min-height:16px!important;
+    line-height:16px!important;
+    font-size:9px!important;
   }
 }
 </style>
