@@ -7072,7 +7072,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
     if(Hls.Events.AUDIO_TRACK_SWITCHED)hls.on(Hls.Events.AUDIO_TRACK_SWITCHED,()=>refreshCinemaTrackValues());
     if(Hls.Events.SUBTITLE_TRACK_SWITCH)hls.on(Hls.Events.SUBTITLE_TRACK_SWITCH,()=>refreshCinemaTrackValues());
 
-    hls.on(Hls.Events.ERROR,(event,data)=>{
+    hls.on(Hls.Events.ERROR,async(event,data)=>{
       if(!data||!data.fatal)return;
       if(isCinemaPlaybackOpen()){
         cinemaDiag('playback_error',{
@@ -7085,6 +7085,27 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
           code:String(data?.response?.code||data?.details||data?.type||'hls_error'),
           message:String((data?.details||data?.type||'HLS fatal error')+(data?.response?.text?' · '+data.response.text:''))
         });
+      }
+
+      if(String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&String(data?.details||'').includes('manifestIncompatibleCodecsError')){
+        clearFirstFrameTimer();
+        err.textContent='Переключаю на совместимый поток…';
+        try{
+          const params=new URLSearchParams();
+          if(ch.cinemaItemId)params.set('id',String(ch.cinemaItemId));
+          if(ch.cinemaMediaId)params.set('mid',String(ch.cinemaMediaId));
+          params.set('format','http');
+          const rr=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
+          const dd=rr.ok?await rr.json():null;
+          const fallbackUrl=String(dd?.url||'').trim();
+          if(fallbackUrl&&attemptToken===streamAttemptToken&&current&&current.id===ch.id){
+            ch.url=fallbackUrl;
+            ch.cinemaHeaders=(dd?.headers&&typeof dd.headers==='object')?dd.headers:{};
+            try{if(hls){hls.stopLoad();hls.destroy();hls=null}}catch(e){}
+            startStream(ch,preferBackup,forceProxy,false);
+            return;
+          }
+        }catch(e){}
       }
 
       if(nativeTv&&tvPlaybackStable){
