@@ -2587,7 +2587,7 @@ setTimeout(()=>{
   }
 },0);
 const tvDeviceName=(launchParams.get('device_name')||'Android TV').slice(0,120);
-const tvForceWebCinema=nativeTv&&/B866/i.test(tvDeviceName);
+const tvForceWebCinema=false;
 const tvAppVersion=(launchParams.get('app_version')||'').slice(0,40);
 const tvAppVersionCode=Math.max(0,Number(launchParams.get('app_version_code')||0));
 let layout='grid';
@@ -6296,6 +6296,21 @@ function setNativeMedia3Visible(on){
   nativeMedia3Active=!!on;
   document.documentElement.classList.toggle('nativeMedia3',nativeMedia3Active);
   document.body.classList.toggle('nativeMedia3',nativeMedia3Active);
+  if(nativeMedia3Active){
+    document.documentElement.style.setProperty('background','transparent','important');
+    document.body.style.setProperty('background','transparent','important');
+    const player=document.getElementById('playerView');
+    const wrap=player?.querySelector('.videoWrap');
+    if(player)player.style.setProperty('background','transparent','important');
+    if(wrap)wrap.style.setProperty('background','transparent','important');
+  }else{
+    document.documentElement.style.removeProperty('background');
+    document.body.style.removeProperty('background');
+    const player=document.getElementById('playerView');
+    const wrap=player?.querySelector('.videoWrap');
+    if(player)player.style.removeProperty('background');
+    if(wrap)wrap.style.removeProperty('background');
+  }
 }
 window.nativeProbeFirstFrame=function(elapsed,hasAudio){
   const fn=nativeMedia3FirstFrameHandler;
