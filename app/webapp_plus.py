@@ -985,19 +985,25 @@ async def api_kinopub_benchmark(request):
 
     proxied = _kinopub_proxy_url(request, uid, direct)
 
-    async def sample(url):
+    async def sample(url, range_header='bytes=0-2097151'):
         started = time.perf_counter()
         first_byte_ms = None
         total = 0
         status_code = 0
         ctype = ''
+        content_range = ''
+        content_length = ''
+        accept_ranges = ''
         timeout = aiohttp.ClientTimeout(total=20, connect=8, sock_read=12)
-        headers = {'Range':'bytes=0-2097151','Accept':'*/*'}
+        headers = {'Range':range_header,'Accept':'*/*'}
         try:
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get(url, headers=headers, allow_redirects=True) as resp:
                     status_code = int(resp.status)
                     ctype = str(resp.headers.get('Content-Type') or '')[:80]
+                    content_range = str(resp.headers.get('Content-Range') or '')[:120]
+                    content_length = str(resp.headers.get('Content-Length') or '')[:40]
+                    accept_ranges = str(resp.headers.get('Accept-Ranges') or '')[:40]
                     async for chunk in resp.content.iter_chunked(65536):
                         if first_byte_ms is None:
                             first_byte_ms = round((time.perf_counter()-started)*1000)
@@ -1013,6 +1019,10 @@ async def api_kinopub_benchmark(request):
                 'bytes': total,
                 'mbps': round((total*8/1000000)/elapsed, 2),
                 'content_type': ctype,
+                'content_range': content_range,
+                'content_length': content_length,
+                'accept_ranges': accept_ranges,
+                'requested_range': range_header,
             }
         except Exception as exc:
             return {
@@ -1022,10 +1032,19 @@ async def api_kinopub_benchmark(request):
                 'elapsed_ms': round((time.perf_counter()-started)*1000),
                 'bytes': total,
                 'mbps': 0,
+                'content_range': content_range,
+                'content_length': content_length,
+                'accept_ranges': accept_ranges,
+                'requested_range': range_header,
                 'error': type(exc).__name__+': '+str(exc)[:120],
             }
 
-    direct_result, proxy_result = await asyncio.gather(sample(direct), sample(proxied))
+    direct_result, proxy_result, direct_mid, proxy_mid = await asyncio.gather(
+        sample(direct,'bytes=0-2097151'),
+        sample(proxied,'bytes=0-2097151'),
+        sample(direct,'bytes=52428800-54525951'),
+        sample(proxied,'bytes=52428800-54525951'),
+    )
     return web.json_response({
         'ok': True,
         'mid': media_id,
@@ -1034,6 +1053,8 @@ async def api_kinopub_benchmark(request):
         'proxy_host': urlparse(proxied).hostname or '',
         'direct': direct_result,
         'proxy': proxy_result,
+        'direct_mid': direct_mid,
+        'proxy_mid': proxy_mid,
     }, headers={'Cache-Control':'no-store'})
 
 async def api_kinopub_download(request):
