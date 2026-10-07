@@ -9406,6 +9406,38 @@ function moveCinemaFocus(direction){
   });
   if(best){focusCinemaElement(best);return}
   if(direction==='up'){
+    const posters=[...document.querySelectorAll('#cinemaPosterGrid .cinemaPosterCard')].filter(el=>el.offsetParent!==null);
+    const cr=current.getBoundingClientRect();
+    const currentTop=cr.top;
+    const hasPosterAbove=posters.some(el=>{
+      if(el===current)return false;
+      const r=el.getBoundingClientRect();
+      return r.bottom<currentTop-8;
+    });
+    if(current.classList.contains('cinemaPosterCard')&&!hasPosterAbove){
+      const topActions=[
+        document.getElementById('cinemaMenuBtn'),
+        document.getElementById('cinemaCategoryBtn'),
+        document.getElementById('cinemaTvQuickBtn'),
+        document.getElementById('cinemaSearchBtn')
+      ].filter(el=>{
+        if(!el||el.offsetParent===null)return false;
+        const r=el.getBoundingClientRect();
+        return r.width>0&&r.height>0;
+      });
+      if(topActions.length){
+        const cx=cr.left+cr.width/2;
+        let target=topActions[0],score=Infinity;
+        topActions.forEach(el=>{
+          const r=el.getBoundingClientRect();
+          const ex=r.left+r.width/2;
+          const d=Math.abs(ex-cx);
+          if(d<score){score=d;target=el}
+        });
+        focusCinemaElement(target);
+        return;
+      }
+    }
     const firstRow=[...document.querySelectorAll('#cinemaTypeGrid .cinemaTypeCard')];
     if(firstRow.includes(current)){
       setTvHeaderCollapsed(false,false);
