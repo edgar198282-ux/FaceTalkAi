@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import hashlib
 import hmac
 import json
@@ -536,6 +537,17 @@ def _kinopub_store_stream(uid: int, url: str) -> str:
 
 
 def _kinopub_proxy_url(request, uid: int, url: str) -> str:
+    external_base = str(os.getenv('KINOPUB_PROXY_BASE') or '').strip().rstrip('/')
+    external_secret = str(os.getenv('KINOPUB_PROXY_SECRET') or '').strip()
+    if external_base and external_secret:
+        payload = json.dumps({
+            'u': str(url),
+            'e': int(time.time()) + 21600,
+            'i': int(uid),
+        }, separators=(',', ':')).encode()
+        packed = base64.urlsafe_b64encode(payload).decode().rstrip('=')
+        sig = hmac.new(external_secret.encode(), packed.encode(), hashlib.sha256).hexdigest()
+        return external_base + '/p?t=' + quote(packed + '.' + sig, safe='')
     token = _kinopub_store_stream(uid, url)
     return f'{request.scheme}://{request.host}/api/kinopub/proxy?t={quote(token, safe="")}'
 
