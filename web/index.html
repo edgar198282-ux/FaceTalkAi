@@ -1564,6 +1564,8 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaCastCard{flex:0 0 126px;width:126px;border:0;background:transparent;color:#fff;text-align:center;padding:0;cursor:pointer;border-radius:12px}
 .cinemaCastCard img,.cinemaCastAvatarFallback{width:126px;height:166px;object-fit:cover;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#26343e;color:#d7edf8;font-size:34px;font-weight:900}
 .cinemaCastName{font-size:13px;font-weight:700;line-height:1.25;margin-top:7px;min-height:33px;overflow:hidden}
+.nativeTv .cinemaCastCard{flex:0 0 138px;width:138px;scroll-margin:110px 28px}
+.nativeTv .cinemaCastCard img,.nativeTv .cinemaCastAvatarFallback{width:138px;height:184px;object-fit:cover;object-position:center top;border-radius:12px}
 .nativeTv .cinemaCastCard:focus{outline:none!important;transform:scale(1.04);z-index:2}
 .nativeTv .cinemaCastCard:focus img,.nativeTv .cinemaCastCard:focus .cinemaCastAvatarFallback{box-shadow:0 0 0 4px #ffd400,0 0 18px rgba(255,212,0,.28)}
 @media(max-width:760px){
@@ -8495,6 +8497,17 @@ function moveCinemaDetailFocus(direction){
   }
   const a=current.getBoundingClientRect();
   const ax=a.left+a.width/2, ay=a.top+a.height/2;
+  const more=document.getElementById('cinemaDescriptionMore');
+  if(more&&more.offsetParent!==null&&(direction==='down'||direction==='up')){
+    const mr=more.getBoundingClientRect();
+    const below=direction==='down'&&ay<mr.top-4;
+    const above=direction==='up'&&ay>mr.bottom+4;
+    if(below||above){
+      try{more.focus({preventScroll:true})}catch(_){try{more.focus()}catch(__){}}
+      try{more.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
+      return;
+    }
+  }
   let best=null,bestScore=Infinity;
   items.forEach(el=>{
     if(el===current)return;
@@ -8521,7 +8534,8 @@ function moveCinemaDetailFocus(direction){
     const farDown=direction==='down'&&br.top>window.innerHeight-90;
     const farUp=direction==='up'&&br.bottom<90;
     if((farDown||farUp)&&detail){
-      detail.scrollBy({top:farDown?step:-step,behavior:'auto'});
+      try{best.focus({preventScroll:true})}catch(_){try{best.focus()}catch(__){}}
+      try{best.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
       return;
     }
   }
