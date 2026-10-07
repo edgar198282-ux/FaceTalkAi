@@ -1612,28 +1612,56 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void nativeSeekBy(int seconds){
             if(!isTv)return;
-            try{
-                long current=nativeProbePlayer==null?0L:Math.max(0L,nativeProbePlayer.getCurrentPosition());
-                nativeSeekToMs(current+(long)seconds*1000L);
-            }catch(Exception e){
-                Log.w("AbajCinema","seek failed "+e.getClass().getSimpleName());
+            runOnUiThread(()->{
+                try{
+                    if(nativeProbePlayer==null)return;
+                    long duration=nativeProbePlayer.getDuration();
+                    long target=Math.max(0L,nativeProbePlayer.getCurrentPosition()+(long)seconds*1000L);
+                    if(duration>0L)target=Math.min(Math.max(0L,duration-250L),target);
+                    nativeProbePlayer.seekTo(target);
+                    if(!nativeProbePlayer.getPlayWhenReady())nativeProbePlayer.play();
+                }catch(Exception e){
+                    Log.w("AbajCinema","seek failed "+e.getClass().getSimpleName());
+                }
+            });
+        }
+        private long nativePlayerValue(boolean duration){
+            if(nativeProbePlayer==null)return 0L;
+            if(Looper.myLooper()==Looper.getMainLooper()){
+                try{
+                    long value=duration?nativeProbePlayer.getDuration():nativeProbePlayer.getCurrentPosition();
+                    return value>0L?value:0L;
+                }catch(Exception e){return 0L;}
             }
+            final long[] value={0L};
+            final java.util.concurrent.CountDownLatch latch=new java.util.concurrent.CountDownLatch(1);
+            runOnUiThread(()->{
+                try{
+                    if(nativeProbePlayer!=null){
+                        long v=duration?nativeProbePlayer.getDuration():nativeProbePlayer.getCurrentPosition();
+                        value[0]=v>0L?v:0L;
+                    }
+                }catch(Exception ignored){}finally{latch.countDown();}
+            });
+            try{latch.await(120,java.util.concurrent.TimeUnit.MILLISECONDS);}catch(InterruptedException e){Thread.currentThread().interrupt();}
+            return value[0];
         }
         @JavascriptInterface public boolean nativeIsSeekable(){
-            try{return nativeProbePlayer!=null&&nativeProbePlayer.isCurrentMediaItemSeekable();}
-            catch(Exception e){return false;}
+            if(nativeProbePlayer==null)return false;
+            if(Looper.myLooper()==Looper.getMainLooper()){
+                try{return nativeProbePlayer.isCurrentMediaItemSeekable();}catch(Exception e){return false;}
+            }
+            final boolean[] value={false};
+            final java.util.concurrent.CountDownLatch latch=new java.util.concurrent.CountDownLatch(1);
+            runOnUiThread(()->{
+                try{value[0]=nativeProbePlayer!=null&&nativeProbePlayer.isCurrentMediaItemSeekable();}
+                catch(Exception ignored){}finally{latch.countDown();}
+            });
+            try{latch.await(120,java.util.concurrent.TimeUnit.MILLISECONDS);}catch(InterruptedException e){Thread.currentThread().interrupt();}
+            return value[0];
         }
-        @JavascriptInterface public long nativePositionMs(){
-            try{return nativeProbePlayer==null?0L:Math.max(0L,nativeProbePlayer.getCurrentPosition());}
-            catch(Exception e){return 0L;}
-        }
-        @JavascriptInterface public long nativeDurationMs(){
-            try{
-                if(nativeProbePlayer==null)return 0L;
-                long d=nativeProbePlayer.getDuration();
-                return d>0L?d:0L;
-            }catch(Exception e){return 0L;}
-        }
+        @JavascriptInterface public long nativePositionMs(){return nativePlayerValue(false);}
+        @JavascriptInterface public long nativeDurationMs(){return nativePlayerValue(true);}
         @JavascriptInterface public boolean adFrameSupported(){
             return isTv&&Build.VERSION.SDK_INT>=Build.VERSION_CODES.N;
         }
@@ -2858,17 +2886,30 @@ public class MainActivity extends Activity {
                 &&event.getAction()==KeyEvent.ACTION_DOWN){
                 AudioManager am=(AudioManager)getSystemService(Context.AUDIO_SERVICE);
                 nativeAdMuted=false;
-                try{
-                    if(nativeAdCover!=null)nativeAdCover.setVisibility(View.GONE);
-                    if(nativeProbePlayer!=null)nativeProbePlayer.setVolume(1f);
-                }catch(Exception ignored){}
+                try{if(nativeAdCover!=null)nativeAdCover.setVisibility(View.GONE);}catch(Exception ignored){}
                 if(am!=null){
+                    int before=0,after=0;
+                    try{before=am.getStreamVolume(AudioManager.STREAM_MUSIC);}catch(Exception ignored){}
                     if(code==KeyEvent.KEYCODE_VOLUME_UP){
                         am.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_RAISE,AudioManager.FLAG_SHOW_UI);
                     }else if(code==KeyEvent.KEYCODE_VOLUME_DOWN){
                         am.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_LOWER,AudioManager.FLAG_SHOW_UI);
                     }else{
                         am.adjustStreamVolume(AudioManager.STREAM_MUSIC,AudioManager.ADJUST_TOGGLE_MUTE,AudioManager.FLAG_SHOW_UI);
+                    }
+                    try{after=am.getStreamVolume(AudioManager.STREAM_MUSIC);}catch(Exception ignored){}
+                    if(nativeProbePlayer!=null){
+                        try{
+                            if(code==KeyEvent.KEYCODE_VOLUME_MUTE){
+                                nativeProbePlayer.setVolume(nativeProbePlayer.getVolume()>0f?0f:1f);
+                            }else if(after==before){
+                                float step=0.08f;
+                                float v=nativeProbePlayer.getVolume();
+                                nativeProbePlayer.setVolume(Math.max(0f,Math.min(1f,v+(code==KeyEvent.KEYCODE_VOLUME_UP?step:-step))));
+                            }else{
+                                nativeProbePlayer.setVolume(1f);
+                            }
+                        }catch(Exception ignored){}
                     }
                 }
                 return true;
