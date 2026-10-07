@@ -1500,6 +1500,10 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   border:1px solid #aeb7bc;border-radius:8px;padding:4px 10px;color:#e9edef;font-size:13px;font-weight:650;background:rgba(255,255,255,.03)
 }
 .cinemaDetailDescription{font-size:18px;line-height:1.48;margin-bottom:18px;color:#f0f1f2;max-width:1180px}
+.cinemaDetailDescription.collapsed{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;margin-bottom:4px}
+.cinemaDescriptionMore{display:inline-flex;align-items:center;border:0;background:transparent;color:#ffd21a;font-size:17px;font-weight:800;padding:2px 0 12px;cursor:pointer;text-align:left}
+.cinemaDescriptionMore:focus{outline:none;text-decoration:underline}
+.nativeTv .cinemaDescriptionMore:focus{color:#ffd400;text-shadow:0 0 10px rgba(255,212,0,.35)}
 .cinemaDetailDescriptionSecondary{color:#b8c0c5;font-size:15px;margin-top:-6px}
 .cinemaDetailTools{display:flex;justify-content:flex-end;margin:-54px 0 14px}
 .cinemaDetailTools #cinemaBookmarkBtn{
@@ -2308,6 +2312,7 @@ body:not(.cinemaMode) .cinemaShellSide{
 </button>
       </div>
       <div class="cinemaDetailDescription" id="cinemaDetailDescription"></div>
+      <button class="cinemaDescriptionMore" id="cinemaDescriptionMore" type="button" style="display:none" onclick="toggleCinemaDescription()">Подробнее</button>
       <div class="cinemaDetailDescription cinemaDetailDescriptionSecondary" id="cinemaDetailDescriptionSecondary" style="display:none"></div>
       <div class="cinemaDetailFacts" id="cinemaDetailFacts"></div>
       <div id="cinemaKpMediaRows" class="cinemaKpMediaRows" style="display:none"></div>
@@ -8457,7 +8462,7 @@ function cinemaDetailOpen(){
   return !!document.getElementById('cinemaDetail')?.classList.contains('open');
 }
 function cinemaDetailFocusable(){
-  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction,#cinemaDetail #cinemaBookmarkBtn,#cinemaDetail .cinemaKpEpisodeBtn,#cinemaDetail .cinemaCastCard,#cinemaDetail .cinemaSimilarCard')]
+  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction,#cinemaDetail #cinemaBookmarkBtn,#cinemaDetail .cinemaDescriptionMore,#cinemaDetail .cinemaKpEpisodeBtn,#cinemaDetail .cinemaCastCard,#cinemaDetail .cinemaSimilarCard')]
     .filter(el=>el.offsetParent!==null);
 }
 function moveCinemaDetailFocus(direction){
@@ -11971,6 +11976,37 @@ function renderCinemaSimilar(item){
   host.style.display='block';
 }
 
+function cinemaDescriptionMoreLabel(expanded=false){
+  if(appLang==='en')return expanded?'Collapse':'More';
+  if(appLang==='hy')return expanded?'Փակել':'Ավելին';
+  return expanded?'Свернуть':'Подробнее';
+}
+function toggleCinemaDescription(){
+  const desc=document.getElementById('cinemaDetailDescription');
+  const btn=document.getElementById('cinemaDescriptionMore');
+  if(!desc||!btn)return;
+  const expanding=desc.classList.contains('collapsed');
+  desc.classList.toggle('collapsed',!expanding);
+  btn.textContent=cinemaDescriptionMoreLabel(expanding);
+  btn.setAttribute('aria-expanded',expanding?'true':'false');
+}
+function syncCinemaDescriptionClamp(){
+  const desc=document.getElementById('cinemaDetailDescription');
+  const btn=document.getElementById('cinemaDescriptionMore');
+  if(!desc||!btn)return;
+  desc.classList.remove('collapsed');
+  btn.style.display='none';
+  btn.textContent=cinemaDescriptionMoreLabel(false);
+  btn.setAttribute('aria-expanded','false');
+  requestAnimationFrame(()=>{
+    const line=parseFloat(getComputedStyle(desc).lineHeight)||26;
+    const needs=desc.scrollHeight>line*4+3;
+    if(needs){
+      desc.classList.add('collapsed');
+      btn.style.display='inline-flex';
+    }
+  });
+}
 function renderCinemaDetail(item){
   cinemaDetailMovie=item;
   cinemaSourcePickerMovie=item;
@@ -12016,6 +12052,7 @@ function renderCinemaDetail(item){
 
   const primaryDescription=cinemaPublicText(cinemaDetailText(item,'description','plot','overview','summary','content_description','subtitle','suggest_text_2'));
   desc.textContent=primaryDescription||'';
+  syncCinemaDescriptionClamp();
   if(descSecondary){
     descSecondary.textContent='';
     descSecondary.style.display='none';
