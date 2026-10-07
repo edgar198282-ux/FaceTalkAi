@@ -1588,6 +1588,8 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaDetailFacts a{color:#f2f3f4;text-decoration:underline}
 .cinemaRatingValue{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0}
 .cinemaRatingPair{display:inline-flex;align-items:center;gap:5px;min-width:0;white-space:nowrap}
+.cinemaRatingLink{color:inherit;text-decoration:none;border:0;background:transparent;padding:0;cursor:pointer}
+.cinemaRatingLink:focus{outline:none;border-radius:7px;box-shadow:0 0 0 3px #ffd400}
 .cinemaRatingScore{font-size:18px;font-weight:750;color:#fff;text-decoration:none!important}
 .cinemaRatingLogo{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:25px;padding:0 7px;border-radius:6px;font-size:11px;font-weight:900}
 .cinemaRatingLogo.imdb{background:#f5c518;color:#000}
@@ -12036,12 +12038,47 @@ function formatCinemaRatingNumber(value){
   if(!Number.isFinite(n)||n<=0)return '';
   return (Math.round(n*10)/10).toFixed(1);
 }
-function cinemaRatingFact(imdb,kp){
+function openCinemaExternalRating(url){
+  url=String(url||'').trim();
+  if(!/^https:\/\//i.test(url))return;
+  try{
+    if(window.AbajNative&&typeof AbajNative.openUrl==='function'){
+      AbajNative.openUrl(url);
+      return;
+    }
+  }catch(e){}
+  try{window.open(url,'_blank','noopener')}catch(e){location.href=url}
+}
+function cinemaImdbUrl(id){
+  let value=String(id||'').trim();
+  if(!value)return '';
+  if(/^tt\d+$/i.test(value))return 'https://www.imdb.com/title/'+value.toLowerCase()+'/';
+  value=value.replace(/\D/g,'');
+  if(!value)return '';
+  return 'https://www.imdb.com/title/tt'+value.padStart(7,'0')+'/';
+}
+function cinemaKpUrl(id){
+  const value=String(id||'').replace(/\D/g,'');
+  return value?'https://www.kinopoisk.ru/film/'+value+'/':'';
+}
+function cinemaRatingFact(imdb,kp,item){
   const imdbValue=formatCinemaRatingNumber(imdb);
   const kpValue=formatCinemaRatingNumber(kp);
+  const imdbUrl=cinemaImdbUrl(item?.imdb_id||item?.imdb);
+  const kpUrl=cinemaKpUrl(item?.kp_id||item?.kinopoisk||item?.kinopoisk_id);
   const parts=[];
-  if(imdbValue)parts.push('<span class="cinemaRatingPair"><span class="cinemaRatingScore">'+imdbValue+'</span><span class="cinemaRatingLogo imdb">IMDb</span></span>');
-  if(kpValue)parts.push('<span class="cinemaRatingPair"><span class="cinemaRatingScore">'+kpValue+'</span><span class="cinemaRatingLogo kp">КП</span></span>');
+  if(imdbValue){
+    const inner='<span class="cinemaRatingScore">'+imdbValue+'</span><span class="cinemaRatingLogo imdb">IMDb</span>';
+    parts.push(imdbUrl
+      ?'<button type="button" class="cinemaRatingPair cinemaRatingLink" onclick="openCinemaExternalRating(\''+imdbUrl+'\')" aria-label="Открыть IMDb">'+inner+'</button>'
+      :'<span class="cinemaRatingPair">'+inner+'</span>');
+  }
+  if(kpValue){
+    const inner='<span class="cinemaRatingScore">'+kpValue+'</span><span class="cinemaRatingLogo kp">КП</span>';
+    parts.push(kpUrl
+      ?'<button type="button" class="cinemaRatingPair cinemaRatingLink" onclick="openCinemaExternalRating(\''+kpUrl+'\')" aria-label="Открыть Кинопоиск">'+inner+'</button>'
+      :'<span class="cinemaRatingPair">'+inner+'</span>');
+  }
   parts.push('<button class="cinemaAbajRatingInline" id="cinemaAbajRating" type="button" onclick="openCinemaRating()" aria-label="Оценить в Abaj"><span class="cinemaRatingScore" id="cinemaAbajRatingScore">—</span><span class="cinemaRatingLogo abaj"><span class="cinemaAbajRatingBrand">Abaj</span></span></button>');
   return '<div class="k">Рейтинг</div><div class="v cinemaRatingValue">'+parts.join('')+'</div>';
 }
@@ -12683,7 +12720,7 @@ function renderCinemaDetail(item){
 
   const seriesInfo=cinemaItemLooksSeries(item)?cinemaSeriesInfo(item):'';
   facts.innerHTML=
-    cinemaRatingFact(rating,kpRating)+
+    cinemaRatingFact(rating,kpRating,item)+
     cinemaDetailFact(cinemaT().year,year)+
     cinemaDetailFact('',duration)+
     cinemaDetailFact('',seriesInfo)+
