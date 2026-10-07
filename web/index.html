@@ -1529,7 +1529,9 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .nativeTv .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:142px}
 .cinemaDetailAction:disabled{opacity:.65}
 .cinemaDetailBody{padding:16px 6.5% 38px;margin-top:-10px;position:relative;z-index:3;border-top:0!important}
-.cinemaDetailTitle{font-size:31px;font-weight:500;line-height:1.15;margin:0 0 20px;color:#f4f4f4}
+.cinemaDetailTitle{font-size:31px;font-weight:500;line-height:1.15;margin:0 0 6px;color:#f4f4f4}
+.cinemaDetailOriginalTitle{font-size:19px;line-height:1.25;font-weight:500;color:#aeb8bf;margin:0 0 18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nativeTv .cinemaDetailOriginalTitle{font-size:20px;color:#a9b5bd;margin-bottom:18px}
 .cinemaDetailBadges{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .cinemaDetailBadge{
   border:1px solid #aeb7bc;border-radius:8px;padding:4px 10px;color:#e9edef;font-size:13px;font-weight:650;background:rgba(255,255,255,.03)
@@ -1614,7 +1616,8 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   }
   .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:0}
   .cinemaDetailBody{padding:18px 14px 28px;margin-top:-10px;border-top:0!important}
-  .cinemaDetailTitle{font-size:28px;line-height:1.12;margin-bottom:20px}
+  .cinemaDetailTitle{font-size:28px;line-height:1.12;margin-bottom:5px}
+  .cinemaDetailOriginalTitle{font-size:17px;margin-bottom:17px;color:#7f96a4}
   .cinemaDetailDescription{font-size:16px;line-height:1.46}
   .cinemaDetailFacts{grid-template-columns:96px minmax(0,1fr);font-size:16px;gap:10px 12px}
   .cinemaDetailFacts .v{min-width:0;overflow-wrap:anywhere}
@@ -1689,6 +1692,7 @@ body:not(.darkMode) .cinemaDetailHero::after{
   background:linear-gradient(180deg,rgba(238,246,251,0) 0%,rgba(238,246,251,.10) 30%,rgba(238,246,251,.68) 76%,#eef6fb 100%)!important
 }
 body:not(.darkMode) .cinemaDetailTitle,body:not(.darkMode) .cinemaDetailDescription,body:not(.darkMode) .cinemaDetailFacts .v,body:not(.darkMode) .cinemaDetailFacts a{color:#173b52!important}
+body:not(.darkMode) .cinemaDetailOriginalTitle{color:#6f8798!important}
 body:not(.darkMode) .cinemaDetailDescriptionSecondary,body:not(.darkMode) .cinemaDetailFacts .k{color:#658397!important}
 body:not(.darkMode) .cinemaDetailBadge{color:#244d66!important;border-color:#9db8c9!important;background:rgba(255,255,255,.55)!important}
 body:not(.darkMode) .cinemaRatingScore{color:#173b52!important;text-decoration-color:#7fa1b5!important}
@@ -2334,6 +2338,7 @@ body:not(.cinemaMode) .cinemaShellSide{
     </div>
     <div class="cinemaDetailBody">
       <h1 class="cinemaDetailTitle" id="cinemaDetailTitle">Фильм</h1>
+      <div class="cinemaDetailOriginalTitle" id="cinemaDetailOriginalTitle" style="display:none"></div>
       <div class="cinemaDetailBadges" id="cinemaDetailBadges"></div>
       <div class="cinemaDetailTools">
         <button id="cinemaBookmarkBtn" onclick="toggleCinemaBookmark()" aria-label="Избранное" title="Избранное">
@@ -11811,6 +11816,22 @@ function cinemaPublicText(value){
     .replace(/\s{2,}/g,' ')
     .trim();
 }
+const CINEMA_LOCALIZED_META={
+  country:{
+    ru:{'United States':'США','USA':'США','US':'США','United Kingdom':'Великобритания','UK':'Великобритания','Germany':'Германия','Spain':'Испания','France':'Франция','Italy':'Италия','Canada':'Канада','Australia':'Австралия','Japan':'Япония','South Korea':'Южная Корея','Korea':'Корея','China':'Китай','India':'Индия','Russia':'Россия','Armenia':'Армения','Ukraine':'Украина','Ireland':'Ирландия','Mexico':'Мексика','Brazil':'Бразилия','Sweden':'Швеция','Norway':'Норвегия','Denmark':'Дания','Finland':'Финляндия','Netherlands':'Нидерланды','Belgium':'Бельгия','Switzerland':'Швейцария','Austria':'Австрия','Poland':'Польша','Turkey':'Турция'},
+    hy:{'United States':'ԱՄՆ','USA':'ԱՄՆ','US':'ԱՄՆ','United Kingdom':'Մեծ Բրիտանիա','UK':'Մեծ Բրիտանիա','Germany':'Գերմանիա','Spain':'Իսպանիա','France':'Ֆրանսիա','Italy':'Իտալիա','Canada':'Կանադա','Australia':'Ավստրալիա','Japan':'Ճապոնիա','South Korea':'Հարավային Կորեա','Korea':'Կորեա','China':'Չինաստան','India':'Հնդկաստան','Russia':'Ռուսաստան','Armenia':'Հայաստան','Ukraine':'Ուկրաինա','Ireland':'Իռլանդիա','Mexico':'Մեքսիկա','Brazil':'Բրազիլիա','Sweden':'Շվեդիա','Norway':'Նորվեգիա','Denmark':'Դանիա','Finland':'Ֆինլանդիա','Netherlands':'Նիդերլանդներ','Belgium':'Բելգիա','Switzerland':'Շվեյցարիա','Austria':'Ավստրիա','Poland':'Լեհաստան','Turkey':'Թուրքիա'}
+  },
+  genre:{
+    ru:{'Action':'Боевик','Adventure':'Приключения','Animation':'Анимация','Comedy':'Комедия','Crime':'Криминал','Documentary':'Документальный','Drama':'Драма','Family':'Семейный','Fantasy':'Фэнтези','History':'История','Horror':'Ужасы','Music':'Музыка','Mystery':'Детектив','Romance':'Мелодрама','Science Fiction':'Фантастика','Sci-Fi':'Фантастика','Thriller':'Триллер','War':'Военный','Western':'Вестерн'},
+    hy:{'Action':'Մարտաֆիլմ','Adventure':'Արկածային','Animation':'Անիմացիա','Comedy':'Կատակերգություն','Crime':'Քրեական','Documentary':'Վավերագրական','Drama':'Դրամա','Family':'Ընտանեկան','Fantasy':'Ֆենթեզի','History':'Պատմական','Horror':'Սարսափ','Music':'Երաժշտական','Mystery':'Դետեկտիվ','Romance':'Մելոդրամա','Science Fiction':'Ֆանտաստիկա','Sci-Fi':'Ֆանտաստիկա','Thriller':'Թրիլլեր','War':'Ռազմական','Western':'Վեսթերն'}
+  }
+};
+function cinemaLocalizedMeta(kind,value){
+  const raw=cinemaPublicText(value);
+  if(!raw||appLang==='en')return raw;
+  const map=CINEMA_LOCALIZED_META[kind]?.[appLang]||{};
+  return raw.split(/\s*,\s*/).map(part=>map[part]||part).join(', ');
+}
 function cinemaDisplayTitle(item){
   const candidates=[
     item?.title,item?.name,item?.title_ru,item?.name_ru,item?.ru_title,
@@ -12336,6 +12357,7 @@ function renderCinemaDetail(item){
   const detail=document.getElementById('cinemaDetail');
   const hero=document.getElementById('cinemaDetailHero');
   const title=document.getElementById('cinemaDetailTitle');
+  const originalTitle=document.getElementById('cinemaDetailOriginalTitle');
   const badges=document.getElementById('cinemaDetailBadges');
   const desc=document.getElementById('cinemaDetailDescription');
   const descSecondary=document.getElementById('cinemaDetailDescriptionSecondary');
@@ -12354,7 +12376,14 @@ function renderCinemaDetail(item){
     heroPoster.src=poster||'';
     heroPoster.style.display=(!bg&&poster)?'block':'none';
   }
-  title.textContent=cinemaDisplayTitle(item);
+  const displayTitle=cinemaDisplayTitle(item);
+  title.textContent=displayTitle;
+  const originalForTitle=cinemaPublicText(cinemaDetailText(item,'original_title','originalTitle','title_original','original','original_name'));
+  if(originalTitle){
+    const showOriginal=!!originalForTitle&&originalForTitle.toLocaleLowerCase()!==displayTitle.toLocaleLowerCase();
+    originalTitle.textContent=showOriginal?originalForTitle:'';
+    originalTitle.style.display=showOriginal?'block':'none';
+  }
   syncCinemaBookmarkState(item);
 
   const badgeList=[];
@@ -12386,8 +12415,8 @@ function renderCinemaDetail(item){
   const kpRating=cinemaDetailText(item,'kp','kinopoisk_rating','kp_rating');
   const original=cinemaDetailText(item,'original_title','originalTitle','title_original','original','original_name');
   const duration=cinemaDetailText(item,'duration','runtime','suggest_duration');
-  const country=cinemaDetailText(item,'country','countryOfOrigin','production_country');
-  const genre=cinemaDetailText(item,'genre','genres','canonical_genre','content_genre');
+  const country=cinemaLocalizedMeta('country',cinemaDetailText(item,'country','countryOfOrigin','production_country'));
+  const genre=cinemaLocalizedMeta('genre',cinemaDetailText(item,'genre','genres','canonical_genre','content_genre'));
   const translation=cinemaPublicText(cinemaDetailText(item,'translation','translator','audio','voice','dub'));
   const director=cinemaDetailText(item,'director','directors');
   const cast=cinemaDetailText(item,'actors','actor','cast','roles');
@@ -12395,7 +12424,6 @@ function renderCinemaDetail(item){
   const seriesInfo=cinemaItemLooksSeries(item)?cinemaSeriesInfo(item):'';
   facts.innerHTML=
     cinemaRatingFact(rating,kpRating)+
-    cinemaDetailFact(cinemaT().title,original)+
     cinemaDetailFact(cinemaT().year,year)+
     cinemaDetailFact('',duration)+
     cinemaDetailFact('',seriesInfo)+
