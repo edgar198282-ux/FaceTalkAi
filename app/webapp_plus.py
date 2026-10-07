@@ -740,36 +740,33 @@ async def api_kinopub_play(request):
         return web.json_response({'ok':False,'error':'kinopub_item_failed','status':status}, status=502)
     item = item_payload.get('item') if isinstance(item_payload,dict) and isinstance(item_payload.get('item'),dict) else item_payload
 
-    direct = ''
-    for obj in _kinopub_walk(item):
-        direct = _kinopub_stream_from_obj(obj)
-        if direct:
-            response = _kinopub_direct_stream_response(request, direct)
-            if response is not None:
-                return response
-
     media_id = _kinopub_first_media_id(item)
+    file_token = _kinopub_first_file_token(item)
+
     if media_id:
         status, media = await _kinopub_api('GET','/v1/items/media-links',params={'access_token':token,'mid':media_id})
         if status < 400:
+            resolved_file = _kinopub_first_file_token(media)
+            if resolved_file:
+                file_token = resolved_file
             for obj in _kinopub_walk(media):
                 direct = _kinopub_stream_from_obj(obj)
                 if direct:
                     response = _kinopub_direct_stream_response(request, direct)
                     if response is not None:
                         return response
-            file_token = _kinopub_first_file_token(media)
-            if file_token:
-                for stream_type in ('hls4','hls2','hls','http'):
-                    st, video = await _kinopub_api('GET','/v1/items/media-video-link',params={
-                        'access_token':token,'file':file_token,'type':stream_type
-                    })
-                    if st < 400:
-                        direct = _kinopub_stream_from_obj(video)
-                        if direct:
-                            response = _kinopub_direct_stream_response(request, direct)
-                            if response is not None:
-                                return response
+
+    if file_token:
+        for stream_type in ('hls4','hls2','hls','http'):
+            st, video = await _kinopub_api('GET','/v1/items/media-video-link',params={
+                'access_token':token,'file':file_token,'type':stream_type
+            })
+            if st < 400:
+                direct = _kinopub_stream_from_obj(video)
+                if direct:
+                    response = _kinopub_direct_stream_response(request, direct)
+                    if response is not None:
+                        return response
 
     return web.json_response({'ok':False,'error':'kinopub_stream_not_found'}, status=404)
 
