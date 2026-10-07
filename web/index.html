@@ -2587,6 +2587,7 @@ setTimeout(()=>{
   }
 },0);
 const tvDeviceName=(launchParams.get('device_name')||'Android TV').slice(0,120);
+const tvForceWebCinema=nativeTv&&/B866/i.test(tvDeviceName);
 const tvAppVersion=(launchParams.get('app_version')||'').slice(0,40);
 const tvAppVersionCode=Math.max(0,Number(launchParams.get('app_version_code')||0));
 let layout='grid';
@@ -6443,7 +6444,7 @@ function armFirstFrameTimer(ch,preferBackup,token){
       startStream(ch,preferBackup,false);
       return;
     }
-    if(!forceWebCinema&&String(ch.id||'').startsWith('cinema:')){
+    if(!forceWebCinema&&!tvForceWebCinema&&String(ch.id||'').startsWith('cinema:')){
       const urls=tvDirectUrls(ch);
       const cinemaSrc=urls[Math.min(tvDirectAttemptIndex,Math.max(0,urls.length-1))]||'';
       if(cinemaSrc&&tryCinemaNativeFallback(ch,cinemaSrc,token))return;
@@ -6586,6 +6587,10 @@ function tvInitialAbrEstimate(ch){
   return 1800000;
 }
 function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false){
+  if(tvForceWebCinema&&ch&&String(ch.id||'').startsWith('cinema:')){
+    setNativeMedia3Visible(false);
+    try{if(window.AbajNative&&typeof AbajNative.nativeProbeStop==='function')AbajNative.nativeProbeStop()}catch(e){}
+  }
   stopTvWatchdog();
   clearFirstFrameTimer();
   tvPlaybackStable=false;
@@ -6682,7 +6687,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
   resetQualityMenu();
 
   const kinoPubHls=String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&(/\.m3u8(?:[?#]|$)/i.test(src)||/\/hls(?:\/|[?#]|$)/i.test(src));
-  const cinemaNative=!!(nativeTv&&ch.cinemaProvider&&window.AbajNative&&typeof AbajNative.cinemaNativeStart==='function'&&(
+  const cinemaNative=!!(nativeTv&&!tvForceWebCinema&&ch.cinemaProvider&&window.AbajNative&&typeof AbajNative.cinemaNativeStart==='function'&&(
     (String(ch.id||'').startsWith('cinema:external:')&&!kinoPubHls)||
     (kinoPubHls&&!forceWebCinema)
   ));
@@ -11703,7 +11708,7 @@ async function resolveKinoPubInternalStream(item,media=null){
     const params=new URLSearchParams();
     if(id)params.set('id',id);
     if(mid)params.set('mid',mid);
-    if(nativeTv)params.set('format','http');
+    if(nativeTv&&!tvForceWebCinema)params.set('format','http');
     const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return null;
     const d=await r.json();
