@@ -1592,21 +1592,12 @@ public class MainActivity extends Activity {
                     boolean seekable=nativeProbePlayer.isCurrentMediaItemSeekable();
                     long current=Math.max(0L,nativeProbePlayer.getCurrentPosition());
                     long duration=nativeProbePlayer.getDuration();
-                    if(!seekable){
-                        Log.w("AbajCinema","seek blocked not_seekable pos="+current+" dur="+duration+" url="+nativeProbeUrl);
-                        if(webView!=null){
-                            webView.evaluateJavascript(
-                                "if(typeof cinemaDiag==='function')cinemaDiag('seek_unavailable',{message:'native media item not seekable'})",
-                                null
-                            );
-                        }
-                        return;
-                    }
                     long target=current+(long)seconds*1000L;
-                    if(duration>0L)target=Math.min(duration,Math.max(0L,target));
+                    if(duration>0L)target=Math.min(Math.max(0L,duration-250L),Math.max(0L,target));
                     else target=Math.max(0L,target);
                     nativeProbePlayer.seekTo(target);
-                    Log.i("AbajCinema","seek "+seconds+"s from="+current+" to="+target+" dur="+duration);
+                    if(!nativeProbePlayer.getPlayWhenReady())nativeProbePlayer.play();
+                    Log.i("AbajCinema","seek "+seconds+"s from="+current+" to="+target+" dur="+duration+" seekable="+seekable);
                 }catch(Exception e){
                     Log.w("AbajCinema","seek failed "+e.getClass().getSimpleName());
                 }
