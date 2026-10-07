@@ -2485,7 +2485,7 @@ public class MainActivity extends Activity {
     private void ensureNativeProbePlayer(){
         if(!isTv||nativeProbeView==null||nativeProbePlayer!=null)return;
         DefaultLoadControl loadControl=new DefaultLoadControl.Builder()
-            .setBufferDurationsMs(500,15000,180,750)
+            .setBufferDurationsMs(1500,12000,250,750)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build();
         nativeProbePlayer=new ExoPlayer.Builder(this).setLoadControl(loadControl).build();
