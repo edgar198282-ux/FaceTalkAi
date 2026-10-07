@@ -1582,41 +1582,30 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaDetailFacts{display:grid;grid-template-columns:165px minmax(0,1fr);gap:13px 22px;max-width:1050px;font-size:17px;line-height:1.28}
 .cinemaDetailFacts .k{color:#8d969b}.cinemaDetailFacts .v{color:#f2f3f4}
 .cinemaDetailFacts a{color:#f2f3f4;text-decoration:underline}
-.cinemaRatingValue{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.cinemaRatingScore{font-size:20px;font-weight:700;color:#fff;text-decoration:underline}
-.cinemaRatingLogo{display:inline-flex;align-items:center;justify-content:center;min-width:40px;height:28px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:900}
+.cinemaRatingValue{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0}
+.cinemaRatingPair{display:inline-flex;align-items:center;gap:5px;min-width:0;white-space:nowrap}
+.cinemaRatingScore{font-size:18px;font-weight:750;color:#fff;text-decoration:underline;text-underline-offset:3px}
+.cinemaRatingLogo{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:25px;padding:0 7px;border-radius:6px;font-size:11px;font-weight:900}
 .cinemaRatingLogo.imdb{background:#f5c518;color:#000}
 .cinemaRatingLogo.kp{background:#ff6a00;color:#fff}
-.cinemaAbajRatingWrap{margin:20px 0 2px;max-width:440px}
-.cinemaAbajRating{
-  width:100%;min-height:72px;border:1px solid rgba(92,202,255,.34);border-radius:18px;padding:10px 14px;
-  display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:12px;text-align:left;
-  background:linear-gradient(135deg,rgba(13,116,185,.92),rgba(8,48,92,.96));color:#fff;
-  box-shadow:0 10px 28px rgba(0,71,127,.22),inset 0 1px 0 rgba(255,255,255,.14)
-}
-.cinemaAbajRatingStar{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#ffd84a,#ffb400);color:#173b52;font-size:27px;box-shadow:0 5px 14px rgba(255,190,0,.25)}
-.cinemaAbajRatingMain{min-width:0}
-.cinemaAbajRatingScore{font-size:25px;font-weight:900;line-height:1}
-.cinemaAbajRatingBrand{font-size:13px;font-weight:850;margin-top:5px;opacity:.96}
-.cinemaAbajRatingCount{font-size:11px;color:#caeaff;margin-top:3px}
-.cinemaAbajRatingAction{font-size:13px;font-weight:900;color:#ffd640;white-space:nowrap}
-.nativeTv .cinemaAbajRating:focus{outline:none;box-shadow:0 0 0 4px #ffd400,0 12px 32px rgba(0,71,127,.28)}
-body:not(.darkMode) .cinemaAbajRating{background:linear-gradient(135deg,#eaf7ff,#d8effd);color:#173b52;border-color:#a9d5ed;box-shadow:0 8px 22px rgba(37,86,116,.13)}
-body:not(.darkMode) .cinemaAbajRatingCount{color:#60839a}
-body:not(.darkMode) .cinemaAbajRatingAction{color:#b77c00}
+.cinemaRatingLogo.abaj{min-width:25px;width:25px;padding:0;background:#f5c518;color:#111;font-size:13px}
+.cinemaAbajRatingInline{border:0;background:transparent;color:inherit;padding:0;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font:inherit}
+.cinemaAbajRatingBrand{font-size:12px;font-weight:850;opacity:.96}
+.nativeTv .cinemaAbajRatingInline:focus{outline:none;border-radius:7px;box-shadow:0 0 0 3px #ffd400}
+body:not(.darkMode) .cinemaAbajRatingInline{color:#173b52}
 .cinemaRatingModal{position:fixed;inset:0;z-index:2147483620;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.76);padding:18px}
 .cinemaRatingModal.open{display:flex}
 .cinemaRatingCard{width:min(500px,94vw);border:1px solid rgba(90,203,255,.28);border-radius:22px;padding:22px;background:linear-gradient(180deg,#102b42,#081725);color:#fff;box-shadow:0 24px 70px rgba(0,0,0,.52)}
 .cinemaRatingTitle{font-size:24px;font-weight:900;text-align:center}
 .cinemaRatingSub{margin-top:6px;text-align:center;color:#a9c9dc;font-size:13px}
-.cinemaRatingChoices{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-top:20px}
-.cinemaRatingChoice{height:58px;border:1px solid rgba(116,190,235,.28);border-radius:14px;background:#123654;color:#fff;font-size:20px;font-weight:900}
-.cinemaRatingChoice.selected{background:linear-gradient(180deg,#ffd83d,#f2ad00);color:#173b52;border-color:#ffe889}
-.cinemaRatingChoice:focus{outline:none;box-shadow:0 0 0 3px #ffd400;background:#17689f}
-.cinemaRatingChoice.selected:focus{background:linear-gradient(180deg,#ffd83d,#f2ad00)}
+.cinemaRatingChoices{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px;margin-top:20px}
+.cinemaRatingChoice{height:42px;min-width:0;padding:0;border:1px solid rgba(116,190,235,.24);border-radius:10px;background:#123654;color:#6f8ea3;font-size:24px;font-weight:900;line-height:1}
+.cinemaRatingChoice.selected,.cinemaRatingChoice.selectedBefore{color:#ffd22e;border-color:rgba(255,210,46,.48);background:#143e5f}
+.cinemaRatingChoice:focus{outline:none;box-shadow:0 0 0 2px #ffd400;background:#17689f;color:#ffd22e}
+.cinemaRatingChoice.selected:focus,.cinemaRatingChoice.selectedBefore:focus{background:#17689f;color:#ffd22e}
 .cinemaRatingCancel{display:block;margin:18px auto 0;border:0;background:transparent;color:#b8d7e8;font-size:15px;font-weight:800;padding:8px 14px}
 .cinemaRatingCancel:focus{outline:none;color:#ffd400}
-@media(max-width:760px){.cinemaAbajRatingWrap{max-width:none}.cinemaAbajRating{min-height:66px;border-radius:16px}.cinemaRatingCard{border-radius:20px;padding:20px 16px}.cinemaRatingChoices{gap:7px}.cinemaRatingChoice{height:52px}}
+@media(max-width:760px){.cinemaRatingCard{width:min(430px,96vw);border-radius:20px;padding:18px 12px}.cinemaRatingChoices{gap:3px}.cinemaRatingChoice{height:38px;border-radius:8px;font-size:21px}.cinemaRatingValue{gap:6px}.cinemaRatingScore{font-size:16px}.cinemaRatingLogo{min-width:29px;height:23px;padding:0 5px;font-size:10px}.cinemaRatingLogo.abaj{min-width:23px;width:23px}.cinemaAbajRatingBrand{font-size:11px}}
 .cinemaSimilar{margin-top:28px}
 .cinemaSimilarTitle{font-size:20px;font-weight:800;color:#eaf8ff;margin-bottom:12px}
 .cinemaSimilarRow{display:flex;align-items:flex-start;gap:12px;overflow-x:auto;padding:4px 4px 18px;scrollbar-width:none;scroll-behavior:auto}
@@ -2396,17 +2385,6 @@ body:not(.cinemaMode) .cinemaShellSide{
       <button class="cinemaDescriptionMore" id="cinemaDescriptionMore" type="button" style="display:none" onclick="toggleCinemaDescription()">Подробнее</button>
       <div class="cinemaDetailDescription cinemaDetailDescriptionSecondary" id="cinemaDetailDescriptionSecondary" style="display:none"></div>
       <div class="cinemaDetailFacts" id="cinemaDetailFacts"></div>
-      <div class="cinemaAbajRatingWrap">
-        <button class="cinemaAbajRating" id="cinemaAbajRating" type="button" onclick="openCinemaRating()" aria-label="Оценить в Abaj TV">
-          <span class="cinemaAbajRatingStar">★</span>
-          <span class="cinemaAbajRatingMain">
-            <span class="cinemaAbajRatingScore" id="cinemaAbajRatingScore">—</span>
-            <span class="cinemaAbajRatingBrand">Abaj TV</span>
-            <span class="cinemaAbajRatingCount" id="cinemaAbajRatingCount"></span>
-          </span>
-          <span class="cinemaAbajRatingAction" id="cinemaAbajRatingAction">Оценить</span>
-        </button>
-      </div>
       <div id="cinemaKpMediaRows" class="cinemaKpMediaRows" style="display:none"></div>
       <div class="cinemaCast" id="cinemaCast" style="display:none">
         <div class="cinemaCastTitle" id="cinemaCastTitle">В РОЛЯХ</div>
@@ -11988,29 +11966,33 @@ function cinemaDetailFact(label,value){
   const esc=x=>String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
   return '<div class="k">'+esc(label)+'</div><div class="v">'+esc(value)+'</div>';
 }
+function formatCinemaRatingNumber(value){
+  const n=Number(String(value??'').replace(',','.'));
+  if(!Number.isFinite(n)||n<=0)return '';
+  return (Math.round(n*10)/10).toFixed(1);
+}
 function cinemaRatingFact(imdb,kp){
+  const imdbValue=formatCinemaRatingNumber(imdb);
+  const kpValue=formatCinemaRatingNumber(kp);
   const parts=[];
-  if(imdb)parts.push('<span class="cinemaRatingScore">'+String(imdb).replace(/[&<>]/g,'')+'</span><span class="cinemaRatingLogo imdb">IMDb</span>');
-  if(kp)parts.push('<span class="cinemaRatingScore">'+String(kp).replace(/[&<>]/g,'')+'</span><span class="cinemaRatingLogo kp">КП</span>');
-  if(!parts.length)return '';
+  if(imdbValue)parts.push('<span class="cinemaRatingPair"><span class="cinemaRatingScore">'+imdbValue+'</span><span class="cinemaRatingLogo imdb">IMDb</span></span>');
+  if(kpValue)parts.push('<span class="cinemaRatingPair"><span class="cinemaRatingScore">'+kpValue+'</span><span class="cinemaRatingLogo kp">КП</span></span>');
+  parts.push('<button class="cinemaAbajRatingInline" id="cinemaAbajRating" type="button" onclick="openCinemaRating()" aria-label="Оценить в Abaj"><span class="cinemaRatingScore" id="cinemaAbajRatingScore">—</span><span class="cinemaRatingLogo abaj">A</span><span class="cinemaAbajRatingBrand">Abaj</span></button>');
   return '<div class="k">Рейтинг</div><div class="v cinemaRatingValue">'+parts.join('')+'</div>';
 }
 let cinemaAbajRatingMine=0;
 function cinemaRatingModalOpen(){return !!document.getElementById('cinemaRatingModal')?.classList.contains('open')}
 function paintCinemaAbajRating(data){
   const score=document.getElementById('cinemaAbajRatingScore');
-  const count=document.getElementById('cinemaAbajRatingCount');
-  const action=document.getElementById('cinemaAbajRatingAction');
+  const button=document.getElementById('cinemaAbajRating');
   const avg=Number(data?.average||0);
   const votes=Number(data?.count||0);
   cinemaAbajRatingMine=Number(data?.mine||0);
-  if(score)score.textContent=avg>0?avg.toFixed(1):'—';
-  if(count)count.textContent=votes>0
-    ?(appLang==='en'?votes+' votes':(appLang==='hy'?votes+' գնահատական':votes+' оценок'))
-    :(appLang==='en'?'No ratings yet':(appLang==='hy'?'Դեռ գնահատական չկա':'Пока нет оценок'));
-  if(action)action.textContent=cinemaAbajRatingMine
-    ?(appLang==='en'?'Your '+cinemaAbajRatingMine:(appLang==='hy'?'Ձեր '+cinemaAbajRatingMine:'Ваша '+cinemaAbajRatingMine))
-    :(appLang==='en'?'Rate':(appLang==='hy'?'Գնահատել':'Оценить'));
+  if(score)score.textContent=avg>0?formatCinemaRatingNumber(avg):'—';
+  if(button){
+    const own=cinemaAbajRatingMine>0?(' · '+cinemaAbajRatingMine+'/10'):'';
+    button.title=(appLang==='en'?'Abaj rating':(appLang==='hy'?'Abaj գնահատական':'Рейтинг Abaj'))+(votes?' · '+votes:'')+own;
+  }
 }
 async function loadCinemaAbajRating(item){
   const id=String(item?.id||'').trim();
@@ -12030,9 +12012,11 @@ function renderCinemaRatingChoices(){
   for(let i=1;i<=10;i++){
     const btn=document.createElement('button');
     btn.type='button';
-    btn.className='cinemaRatingChoice'+(i===cinemaAbajRatingMine?' selected':'');
-    btn.textContent=String(i);
+    btn.className='cinemaRatingChoice'+(i===cinemaAbajRatingMine?' selected':(cinemaAbajRatingMine&&i<cinemaAbajRatingMine?' selectedBefore':''));
+    btn.textContent='★';
     btn.dataset.score=String(i);
+    btn.setAttribute('aria-label',String(i)+' / 10');
+    btn.title=String(i)+'/10';
     btn.onclick=()=>submitCinemaRating(i);
     host.appendChild(btn);
   }
@@ -12043,7 +12027,7 @@ function openCinemaRating(){
   const title=document.getElementById('cinemaRatingTitle');
   const sub=document.getElementById('cinemaRatingSub');
   if(title)title.textContent=appLang==='en'?'Rate this title':(appLang==='hy'?'Գնահատեք ֆիլմը':'Оцените фильм');
-  if(sub)sub.textContent=appLang==='en'?'Choose a score from 1 to 10':(appLang==='hy'?'Ընտրեք գնահատական 1-ից 10':'Выберите оценку от 1 до 10');
+  if(sub)sub.textContent=appLang==='en'?'Choose from 1 to 10 stars':(appLang==='hy'?'Ընտրեք 1-ից 10 աստղ':'Выберите от 1 до 10 звёзд');
   renderCinemaRatingChoices();
   if(modal)modal.classList.add('open');
   setTimeout(()=>{
