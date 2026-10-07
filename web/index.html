@@ -2463,19 +2463,6 @@ body:not(.cinemaMode) .cinemaShellSide{
 
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Edem пользователи</div>
     <div class="adminRows" id="adminRows"><div class="adminEmpty">Загрузка…</div></div>
-    <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Кино · LazyMedia</div>
-    <div class="adminRow" style="display:block">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-        <b>Локальный источник фильмов</b>
-        <span id="lazyMediaAdminStatus" class="adminMeta">Проверка…</span>
-      </div>
-      <div class="adminMeta" id="lazyMediaAdminMeta" style="margin-top:6px">Подключается к установленному LazyMedia на этом ТВ-боксе. Данные авторизации не отправляются на наш сервер.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-        <button onclick="connectLazyMediaFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#16a05d;color:#fff;font-weight:900">Подключить / авторизация</button>
-        <button onclick="disconnectLazyMediaFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Отключить</button>
-      </div>
-    </div>
-
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Кино · источник</div>
     <div class="adminRow" style="display:block">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
@@ -12327,43 +12314,27 @@ async function watchCinemaDetail(){
       );
       return;
     }
-    const modal=ensureCinemaSourceModal();
-    const list=document.getElementById('cinemaSourceList');
-    const title=document.getElementById('cinemaSourceTitle');
-    const hint=document.getElementById('cinemaSourceHint');
-    if(title)title.textContent=String(item?.title||'Кино');
-    if(hint)hint.textContent='Источник кино';
-    modal.classList.add('open');
-    if(list)list.innerHTML='<div class="cinemaSourceEmpty">Поток не удалось получить для внутреннего плеера.</div>';
+    const detail=document.getElementById('cinemaDetail');
+    if(detail)detail.classList.add('open');
+    const err=document.getElementById('cinemaDetailError');
+    if(err){
+      err.textContent=appLang==='hy'?'Տեսահոսքը ժամանակավորապես հասանելի չէ։ Փորձեք կրկին։':(appLang==='en'?'Video stream is temporarily unavailable. Try again.':'Видеопоток временно недоступен. Попробуйте ещё раз.');
+      err.style.display='block';
+      setTimeout(()=>{if(err)err.style.display='none'},3500);
+    }
     return;
   }
   if(watchBtn){
-    watchBtn.disabled=true;
-    watchBtn.textContent='ИЩУ ИСТОЧНИКИ…';
-  }
-  const detail=document.getElementById('cinemaDetail');
-  if(detail)detail.classList.remove('open');
-  const modal=ensureCinemaSourceModal();
-  const list=document.getElementById('cinemaSourceList');
-  const title=document.getElementById('cinemaSourceTitle');
-  const poster=document.getElementById('cinemaSourcePoster');
-  if(title)title.textContent=String(item?.title||'Кино');
-  if(poster){
-    const p=posterUrl(item);
-    poster.src=p||'';
-    poster.style.visibility=p?'visible':'hidden';
-  }
-  modal.classList.add('open');
-  const sourceHint=document.getElementById('cinemaSourceHint');
-  if(sourceHint)sourceHint.textContent='LazyMedia';
-  if(list)list.innerHTML='<div class="cinemaSourceBusy">Проверяю реальные источники LazyMedia…</div>';
-  await loadLazyProviderIdMap();
-  const groups=await cinemaV2FindSources(item);
-  if(watchBtn){
     watchBtn.disabled=false;
-    watchBtn.textContent='СМОТРЕТЬ ФИЛЬМ';
+    watchBtn.textContent='СМОТРЕТЬ';
   }
-  cinemaV2RenderSources(item,groups);
+  const err=document.getElementById('cinemaDetailError');
+  if(err){
+    err.textContent=appLang==='hy'?'Հին կինոաղբյուրը անջատված է։':(appLang==='en'?'Legacy cinema source is disabled.':'Старый источник кино отключён.');
+    err.style.display='block';
+    setTimeout(()=>{if(err)err.style.display='none'},2500);
+  }
+  return;
 }
 function cinemaTrailerEmbedUrl(raw){
   const url=String(raw||'').trim();
