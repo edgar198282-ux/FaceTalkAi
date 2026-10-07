@@ -4044,6 +4044,12 @@ function openTvSettings(){
 function closeTvSettings(){
   const modal=document.getElementById('tvSettingsModal');
   if(modal)modal.classList.remove('open');
+  if(nativeTv){
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      const settingsBtn=document.getElementById('tvSettingsBtn');
+      if(settingsBtn)focusTvTopElement(settingsBtn);
+    }));
+  }
 }
 function toggleTvAutoStartSetting(){
   tvAutoStartLast=!tvAutoStartLast;
@@ -13024,11 +13030,11 @@ body.nativeTv #tvSettingsModal #settingsCloseBtn::before{
 }
 body.nativeTv #tvSettingsModal #settingsCloseBtn:focus,
 body.nativeTv #tvSettingsModal #settingsCloseBtn:focus-visible{
-  outline:3px solid #ffd400!important;
-  outline-offset:3px!important;
+  outline:2px solid #ffd400!important;
+  outline-offset:2px!important;
   border-color:#ffd400!important;
-  box-shadow:0 0 0 3px #ffd400,0 0 18px rgba(255,212,0,.95),0 4px 12px rgba(0,0,0,.35)!important;
-  transform:scale(1.06)!important;
+  box-shadow:0 0 0 1px #ffd400,0 0 10px rgba(255,212,0,.72),0 3px 9px rgba(0,0,0,.3)!important;
+  transform:scale(1.04)!important;
   z-index:50!important;
 }
 body.nativeTv #tvSettingsModal #appUpdateBtn{
