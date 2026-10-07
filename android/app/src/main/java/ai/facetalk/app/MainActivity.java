@@ -56,6 +56,7 @@ import android.widget.TextView;
 
 import androidx.core.content.FileProvider;
 import androidx.media3.common.C;
+import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.Tracks;
 import androidx.media3.common.PlaybackException;
@@ -2378,10 +2379,11 @@ public class MainActivity extends Activity {
         if(!isTv||nativeProbeView==null||fullscreenContainer==null)return;
         String host=Uri.parse(url==null?"":url).getHost();
         host=host==null?"":host.toLowerCase(java.util.Locale.ROOT);
-        // B866 PixelCopy returns a black/cropped frame from the decoder SurfaceView.
+        // B866 shows incorrect/cyan colors for some cinema decoders when Media3 is forced
+        // through TextureView. Keep cinema on the default SurfaceView path. TextureView is
+        // only retained for the legacy IPTV hosts where frame capture needs it.
         boolean b866=String.valueOf(Build.MODEL).toUpperCase(java.util.Locale.ROOT).contains("B866");
-        boolean texture=(nativeCinemaPlayback&&b866)||
-            (b866&&(host.equals("stream.mcquack.net")||host.contains("ottclub")||host.contains("ott-club")));
+        boolean texture=b866&&(host.equals("stream.mcquack.net")||host.contains("ottclub")||host.contains("ott-club"));
         if(texture==nativeProbeTextureSurface)return;
         PlayerView replacement=texture
             ?(PlayerView)getLayoutInflater().inflate(R.layout.ott_native_player,fullscreenContainer,false)
@@ -2404,6 +2406,13 @@ public class MainActivity extends Activity {
             .setPrioritizeTimeOverSizeThresholds(true)
             .build();
         nativeProbePlayer=new ExoPlayer.Builder(this).setLoadControl(loadControl).build();
+        nativeProbePlayer.setAudioAttributes(
+            new AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build(),
+            true
+        );
         nativeProbeView.setPlayer(nativeProbePlayer);
         nativeProbePlayer.setVolume(nativeAdMuted?0f:1f);
         nativeProbePlayer.addListener(new Player.Listener(){
