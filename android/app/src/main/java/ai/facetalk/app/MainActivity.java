@@ -2799,7 +2799,7 @@ public class MainActivity extends Activity {
     long lastAt=prefs.getLong("last_auto_update_at",0L);
     long minInterval=isTv?15L*60L*1000L:24L*60L*60L*1000L;
     if(System.currentTimeMillis()-lastAt<minInterval)return;
-} final String url=download.startsWith("http")?download:b+download; if(!showResult)prefs.edit().putInt("last_auto_update_code",latest).putLong("last_auto_update_at",System.currentTimeMillis()).apply();runOnUiThread(()->{if(!isFinishing()&&!updateDownloadRunning){Toast.makeText(this,"Найдено обновление Abaj TV. Загружаю…",Toast.LENGTH_LONG).show();downloadAndInstallApk(url);}});}catch(Exception e){if(showResult)runOnUiThread(()->Toast.makeText(this,"Сервер обновлений недоступен",Toast.LENGTH_LONG).show());}finally{updateCheckRunning=false;if(c!=null)c.disconnect();}},"abajtv-update-check").start();}
+} final String url=download.startsWith("http")?download:b+download; if(!showResult)prefs.edit().putInt("last_auto_update_code",latest).putLong("last_auto_update_at",System.currentTimeMillis()).apply();runOnUiThread(()->{if(!isFinishing()&&!updateDownloadRunning){if(activityResumed)Toast.makeText(this,"Найдено обновление Abaj TV. Загружаю…",Toast.LENGTH_LONG).show();downloadAndInstallApk(url);}});}catch(Exception e){if(showResult)runOnUiThread(()->Toast.makeText(this,"Сервер обновлений недоступен",Toast.LENGTH_LONG).show());}finally{updateCheckRunning=false;if(c!=null)c.disconnect();}},"abajtv-update-check").start();}
 
     private void finishApkDownload(long id){if(id<=0||id!=pendingApkDownloadId)return;DownloadManager dm=(DownloadManager)getSystemService(DOWNLOAD_SERVICE);if(dm==null)return;DownloadManager.Query q=new DownloadManager.Query().setFilterById(id);try(Cursor cur=dm.query(q)){if(cur==null||!cur.moveToFirst())return;int status=cur.getInt(cur.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));if(status==DownloadManager.STATUS_SUCCESSFUL){pendingApkDownloadId=-1L;updateDownloadRunning=false;pendingApkUri=dm.getUriForDownloadedFile(id);runOnUiThread(this::requestInstallOrOpen);return;}if(status==DownloadManager.STATUS_FAILED){int reason=cur.getInt(cur.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON));pendingApkDownloadId=-1L;updateDownloadRunning=false;runOnUiThread(()->Toast.makeText(MainActivity.this,"Ошибка загрузки обновления ("+reason+")",Toast.LENGTH_LONG).show());}}catch(Exception ignored){}}
     private void pollApkDownload(long id,int attempt){if(id<=0||id!=pendingApkDownloadId)return;finishApkDownload(id);if(id!=pendingApkDownloadId)return;if(attempt>=300){pendingApkDownloadId=-1L;updateDownloadRunning=false;runOnUiThread(()->Toast.makeText(MainActivity.this,"Загрузка обновления не завершилась",Toast.LENGTH_LONG).show());return;}updateHandler.postDelayed(()->pollApkDownload(id,attempt+1),1000L);}
@@ -2843,7 +2843,19 @@ public class MainActivity extends Activity {
             }finally{if(c!=null)c.disconnect();}
         },"abajtv-apk-download").start();
     }
-    private void requestInstallOrOpen(){if(pendingApkUri==null)return;if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O&&!getPackageManager().canRequestPackageInstalls()){try{startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName())));Toast.makeText(this,"Разрешите Abaj TV устанавливать обновления",Toast.LENGTH_LONG).show();}catch(Exception ignored){}return;}Uri u=pendingApkUri;pendingApkUri=null;openPackageInstaller(u);}
+    private void requestInstallOrOpen(){
+        if(pendingApkUri==null||!activityResumed||!hasWindowFocus()||isFinishing())return;
+        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.O&&!getPackageManager().canRequestPackageInstalls()){
+            try{
+                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName())));
+                Toast.makeText(this,"Разрешите Abaj TV устанавливать обновления",Toast.LENGTH_LONG).show();
+            }catch(Exception ignored){}
+            return;
+        }
+        Uri u=pendingApkUri;
+        pendingApkUri=null;
+        openPackageInstaller(u);
+    }
     private void openPackageInstaller(Uri apkUri){if(apkUri==null)return;try{
         Toast.makeText(this,"Обновление скачано. Подтвердите установку новой версии Abaj TV.",Toast.LENGTH_LONG).show();
         Intent install=new Intent(Intent.ACTION_VIEW);
@@ -2918,14 +2930,17 @@ public class MainActivity extends Activity {
         if(isTv&&webView!=null){
             webView.evaluateJavascript("if(typeof resumeTvPlayback==='function')resumeTvPlayback();if(typeof load==='function'&&!document.getElementById('playerView')?.classList.contains('open'))load();if(typeof refreshTvAuth==='function')refreshTvAuth(true)",null);
         }
-        if(!BuildConfig.PLAY_STORE_BUILD&&pendingApkUri!=null&&(Build.VERSION.SDK_INT<Build.VERSION_CODES.O||getPackageManager().canRequestPackageInstalls())){
-            Uri u=pendingApkUri;pendingApkUri=null;openPackageInstaller(u);
+        if(!BuildConfig.PLAY_STORE_BUILD&&pendingApkUri!=null){
+            requestInstallOrOpen();
         }else if(!BuildConfig.PLAY_STORE_BUILD)checkForAppUpdate(true,false);
     }
 
     @Override public void onWindowFocusChanged(boolean hasFocus){
         super.onWindowFocusChanged(hasFocus);
-        if(hasFocus)enterTvImmersive();
+        if(hasFocus){
+            enterTvImmersive();
+            if(!BuildConfig.PLAY_STORE_BUILD&&pendingApkUri!=null)requestInstallOrOpen();
+        }
     }
     private void hideCustomView(){
         if(customView==null)return;
