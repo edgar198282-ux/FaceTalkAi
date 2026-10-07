@@ -214,6 +214,39 @@ def _kinopub_backdrop(item):
                             return url.strip()
     return ''
 
+def _kinopub_backdrops(item, limit=4):
+    rows = []
+    seen = set()
+
+    def add(value):
+        if isinstance(value, str):
+            url = value.strip()
+            if url.startswith(('http://','https://')) and url not in seen:
+                seen.add(url)
+                rows.append(url)
+
+    add(_kinopub_backdrop(item))
+    for key in ('backdrop','background','fanart','poster_wide','wide_poster'):
+        add(item.get(key))
+    for key in ('backgrounds','backdrops','screenshots','stills','gallery','photos','images','posters'):
+        value = item.get(key)
+        if isinstance(value, dict):
+            for name in ('wide','backdrop','background','fanart','full','big','large','url','src','original'):
+                add(value.get(name))
+        elif isinstance(value, list):
+            for row in value:
+                if isinstance(row, str):
+                    add(row)
+                elif isinstance(row, dict):
+                    for name in ('wide','backdrop','background','fanart','full','big','large','url','src','original'):
+                        add(row.get(name))
+                if len(rows) >= limit:
+                    break
+        if len(rows) >= limit:
+            break
+    return rows[:max(1, int(limit or 4))]
+
+
 def _kinopub_kind(item):
     raw = ' '.join(str(item.get(k) or '') for k in ('type','subtype')).lower()
     return 'series' if any(x in raw for x in ('serial','series','tv')) else 'movies'
@@ -286,6 +319,7 @@ def _kinopub_normalize(item):
         'year': item.get('year') or '',
         'poster': _kinopub_poster(item),
         'backdrop': _kinopub_backdrop(item),
+        'backdrops': _kinopub_backdrops(item, 4),
         'description': str(item.get('plot') or item.get('description') or ''),
         'rating': item.get('imdb_rating') or item.get('rating') or '',
         'kp': item.get('kinopoisk_rating') or item.get('kp_rating') or '',
