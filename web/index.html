@@ -1477,6 +1477,9 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   background-blend-mode:multiply;transition:background-color .08s linear
 }
 .cinemaDetailHeroPoster{transition:filter .08s linear,opacity .08s linear}
+.cinemaDetailHeroSlides{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.cinemaDetailHeroSlide{position:absolute;inset:0;background:center 28%/cover no-repeat;opacity:0;transform:scale(1.01);transition:opacity .65s ease;will-change:opacity}
+.cinemaDetailHeroSlide.active{opacity:1}
 .cinemaDetailHero.posterFallback::before{
   content:"";position:absolute;inset:-4%;background:var(--cinema-detail-poster) center/cover no-repeat;
   filter:blur(20px) brightness(.46);transform:scale(1.06)
@@ -2358,6 +2361,7 @@ body:not(.cinemaMode) .cinemaShellSide{
 
   <section class="cinemaDetail" id="cinemaDetail">
     <div class="cinemaDetailHero" id="cinemaDetailHero">
+      <div class="cinemaDetailHeroSlides" id="cinemaDetailHeroSlides"></div>
       <img class="cinemaDetailHeroPoster" id="cinemaDetailHeroPoster" loading="eager" decoding="async" fetchpriority="high" alt="">
       <button class="cinemaDetailBack" id="cinemaDetailBack" onclick="closeCinemaDetail()" aria-label="Назад">←</button>
       <div class="cinemaDetailActions">
@@ -11938,6 +11942,71 @@ function cinemaDetailPoster(item){
   return cinemaDetailText(item,'poster','image','image_url')||posterUrl(item)||'';
 }
 let cinemaHeroLoadToken=0;
+let cinemaHeroSliderTimer=null;
+let cinemaHeroSliderIndex=0;
+function stopCinemaHeroSlider(){
+  if(cinemaHeroSliderTimer){
+    clearInterval(cinemaHeroSliderTimer);
+    cinemaHeroSliderTimer=null;
+  }
+  cinemaHeroSliderIndex=0;
+}
+function cinemaHeroGallery(item,poster,bg){
+  const out=[];
+  const seen=new Set();
+  const add=value=>{
+    const url=String(value||'').trim();
+    if(!/^https?:\/\//i.test(url)||seen.has(url))return;
+    seen.add(url);
+    out.push(url);
+  };
+  add(bg);
+  const listKeys=['backdrops','backgrounds','screenshots','stills','gallery','photos'];
+  listKeys.forEach(key=>{
+    const value=item?.[key];
+    if(Array.isArray(value)){
+      value.forEach(row=>{
+        if(typeof row==='string')add(row);
+        else if(row&&typeof row==='object'){
+          ['wide','backdrop','background','fanart','full','big','large','url','src','original'].forEach(name=>add(row[name]));
+        }
+      });
+    }else if(value&&typeof value==='object'){
+      ['wide','backdrop','background','fanart','full','big','large','url','src','original'].forEach(name=>add(value[name]));
+    }
+  });
+  ['background','fanart','poster_wide','wide_poster'].forEach(key=>add(item?.[key]));
+  if(out.length<2)add(poster);
+  return out.slice(0,4);
+}
+function renderCinemaHeroSlider(item,poster,bg){
+  stopCinemaHeroSlider();
+  const host=document.getElementById('cinemaDetailHeroSlides');
+  if(!host)return;
+  host.innerHTML='';
+  const images=cinemaHeroGallery(item,poster,bg);
+  if(images.length<2)return;
+  images.forEach((src,index)=>{
+    const slide=document.createElement('div');
+    slide.className='cinemaDetailHeroSlide'+(index===0?' active':'');
+    const safe=src.replace(/"/g,'%22');
+    slide.style.backgroundImage='url("'+safe+'")';
+    host.appendChild(slide);
+    if(index>0){
+      const img=new Image();
+      img.decoding='async';
+      img.src=src;
+    }
+  });
+  cinemaHeroSliderIndex=0;
+  cinemaHeroSliderTimer=setInterval(()=>{
+    const slides=[...host.querySelectorAll('.cinemaDetailHeroSlide')];
+    if(slides.length<2)return;
+    slides[cinemaHeroSliderIndex]?.classList.remove('active');
+    cinemaHeroSliderIndex=(cinemaHeroSliderIndex+1)%slides.length;
+    slides[cinemaHeroSliderIndex]?.classList.add('active');
+  },4000);
+}
 function applyCinemaHeroImage(hero,poster,bg){
   if(!hero)return;
   const token=++cinemaHeroLoadToken;
@@ -12547,6 +12616,7 @@ function renderCinemaDetail(item){
   const heroPoster=document.getElementById('cinemaDetailHeroPoster');
   hero.classList.toggle('posterFallback',!bg&&!!poster);
   applyCinemaHeroImage(hero,poster,bg);
+  renderCinemaHeroSlider(item,poster,bg);
   if(poster)hero.style.setProperty('--cinema-detail-poster','url("'+poster.replace(/"/g,'%22')+'")');
   else hero.style.removeProperty('--cinema-detail-poster');
   if(heroPoster){
@@ -12961,6 +13031,7 @@ function pushCinemaHistoryLayer(layer){
   }catch(e){}
 }
 function closeCinemaDetailInternal(){
+  stopCinemaHeroSlider();
   const detail=document.getElementById('cinemaDetail');
   if(detail)detail.classList.remove('open');
   const screen=document.getElementById('cinemaScreen');
