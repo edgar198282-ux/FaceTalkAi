@@ -1173,11 +1173,15 @@ body.cinemaMode .top{display:none!important}
   outline:none;box-shadow:0 0 0 3px #31a8ff;background:#12324b
 }
 .cinemaTvQuickBtn:focus,
-.cinemaTvQuickBtn.focused,
+.cinemaTvQuickBtn.focused{
+  outline:2px solid #ffd400!important;
+  outline-offset:2px!important;
+  box-shadow:0 0 0 1px #ffd400,0 0 10px rgba(255,212,0,.55)!important;
+  background:#12324b!important;
+  border-radius:8px!important;
+}
 .cinemaTvQuickBtn:active{
   outline:none!important;
-  box-shadow:none!important;
-  background:transparent!important;
 }
 .cinemaTvQuickBtn{-webkit-tap-highlight-color:transparent}
 .cinemaShellTitle{
@@ -1185,7 +1189,7 @@ body.cinemaMode .top{display:none!important}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 }
 .cinemaShellDrop{font-size:14px;color:#e8e8e8;margin-left:-5px;width:28px!important;min-width:28px!important}
-.cinemaShellDrop:focus,.cinemaShellDrop.focused{outline:none!important;box-shadow:none!important;background:transparent!important}
+.cinemaShellDrop:focus,.cinemaShellDrop.focused{outline:2px solid #ffd400!important;outline-offset:2px!important;box-shadow:0 0 0 1px #ffd400,0 0 10px rgba(255,212,0,.55)!important;background:#12324b!important;color:#fff!important;border-radius:8px!important}
 .cinemaShellBrandAnim{
   position:absolute;left:66%;top:50%;transform:translate(-50%,-50%);
   display:flex;align-items:center;justify-content:center;margin:0;
@@ -9518,6 +9522,37 @@ function moveCinemaFocus(direction){
     const selected=document.querySelector('.cinemaPosterCard[data-cinema-selected="1"]');
     const firstPoster=document.querySelector('.cinemaPosterCard');
     focusCinemaElement(selected||firstPoster||items[0]);
+    return;
+  }
+  const topBar=[
+    document.getElementById('cinemaMenuBtn'),
+    document.getElementById('cinemaCategoryBtn'),
+    document.getElementById('cinemaTvQuickBtn'),
+    document.getElementById('cinemaSearchBtn')
+  ].filter(el=>el&&el.offsetParent!==null);
+  const topIndex=topBar.indexOf(current);
+  if(topIndex>=0&&(direction==='left'||direction==='right')){
+    const next=topIndex+(direction==='right'?1:-1);
+    if(next>=0&&next<topBar.length)focusCinemaElement(topBar[next]);
+    return;
+  }
+  if(current.classList.contains('cinemaPosterCard')&&(direction==='left'||direction==='right')){
+    const posters=[...document.querySelectorAll('#cinemaPosterGrid .cinemaPosterCard')].filter(el=>el.offsetParent!==null);
+    const a=current.getBoundingClientRect();
+    const ax=a.left+a.width/2,ay=a.top+a.height/2;
+    let bestPoster=null,bestPosterScore=Infinity;
+    posters.forEach(el=>{
+      if(el===current)return;
+      const r=el.getBoundingClientRect();
+      const x=r.left+r.width/2,y=r.top+r.height/2;
+      const dx=x-ax,dy=Math.abs(y-ay);
+      if(dy>Math.max(42,a.height*.42))return;
+      if(direction==='left'&&dx>=-8)return;
+      if(direction==='right'&&dx<=8)return;
+      const score=Math.abs(dx)+dy*4;
+      if(score<bestPosterScore){bestPosterScore=score;bestPoster=el}
+    });
+    if(bestPoster)focusCinemaElement(bestPoster);
     return;
   }
   const a=current.getBoundingClientRect();
