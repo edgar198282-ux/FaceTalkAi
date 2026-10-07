@@ -11865,9 +11865,10 @@ function cinemaActorCards(item){
   return raw.split(/[,;]+/).map(name=>String(name||'').trim()).filter(Boolean).slice(0,20).map(name=>({name,image:''}));
 }
 let cinemaActorBrowseOrigin=null;
-async function openCinemaActor(name,fallbackName=''){
+async function openCinemaActor(name,fallbackName='',actorId=''){
   let actor=String(name||fallbackName||'').trim();
   const fallback=String(fallbackName||'').trim();
+  const personId=String(actorId||'').trim();
   if(!actor)return;
   const detailEl=document.getElementById('cinemaDetail');
   cinemaActorBrowseOrigin={item:cinemaDetailMovie?{...cinemaDetailMovie}:null,scrollTop:detailEl?detailEl.scrollTop:0};
@@ -11879,7 +11880,7 @@ async function openCinemaActor(name,fallbackName=''){
       const pd=await fetch('/api/cinema/person?name='+encodeURIComponent(actor),{headers:authHeaders(),cache:'force-cache'}).then(r=>r.ok?r.json():null);
       if(pd?.name)actor=String(pd.name).trim()||actor;
     }catch(e){}
-    const queries=[actor,fallback].map(x=>String(x||'').trim()).filter((x,i,a)=>x&&a.indexOf(x)===i);
+    const queries=[personId,actor,fallback].map(x=>String(x||'').trim()).filter((x,i,a)=>x&&a.indexOf(x)===i);
     const make=(type,q)=>fetch('/api/kinopub/catalog?'+new URLSearchParams({type,actor:q,page:'1',perpage:'60'}).toString(),{headers:authHeaders(),cache:'no-store'})
       .then(r=>r.ok?r.json():null).then(d=>Array.isArray(d?.items)?d.items:[]).catch(()=>[]);
     const req=[];
@@ -11927,11 +11928,15 @@ function renderCinemaCast(item){
     const btn=document.createElement('button');
     btn.className='cinemaCastCard';
     const image=String(actor.image||'').trim();
+    const actorId=String(actor.id||'').trim();
     const initial=(name[0]||'?').toUpperCase();
-    btn.innerHTML=(image?'<img loading="lazy" src="'+image.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaCastAvatarFallback">'+initial.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>')+
+    const photoSrc=image||('/api/cinema/person-photo?name='+encodeURIComponent(searchName||name));
+    btn.innerHTML='<img loading="lazy" src="'+photoSrc.replace(/"/g,'&quot;')+'" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'+
+      '<div class="cinemaCastAvatarFallback" style="display:none">'+initial.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
       '<div class="cinemaCastName">'+name.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>';
     btn.dataset.actorSearchName=searchName||name;
-    btn.onclick=()=>openCinemaActor(btn.dataset.actorSearchName||searchName||name,name);
+    btn.dataset.actorId=actorId;
+    btn.onclick=()=>openCinemaActor(btn.dataset.actorSearchName||searchName||name,name,btn.dataset.actorId||actorId);
     row.appendChild(btn);
     fetch('/api/cinema/person?name='+encodeURIComponent(searchName||name),{headers:authHeaders(),cache:'force-cache'})
       .then(r=>r.ok?r.json():null).then(d=>{
