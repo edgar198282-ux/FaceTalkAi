@@ -1658,6 +1658,8 @@ body:not(.darkMode) .cinemaRatingScore{color:#173b52!important;text-decoration-c
 body:not(.darkMode) .cinemaRatingValue{color:#173b52!important}
 body:not(.darkMode) .cinemaSimilarTitle,body:not(.darkMode) .cinemaSimilarName{color:#173b52!important}
 body:not(.darkMode) .cinemaSimilarMeta{color:#658397!important}
+body:not(.darkMode) .cinemaCastTitle,body:not(.darkMode) .cinemaCastName{color:#173b52!important}
+body:not(.darkMode) .cinemaCastAvatarFallback{background:#dcebf4!important;color:#173b52!important;border:1px solid #b7cedc}
 body:not(.darkMode) .cinemaSeasons{background:#eef6fb!important;color:#173b52!important}
 body:not(.darkMode) .cinemaSeasonsBar{background:#f8fcff!important;border-bottom-color:#d0e2ed!important}
 body:not(.darkMode) .cinemaSeasonsTitle{color:#173b52!important}
@@ -11878,7 +11880,7 @@ async function openCinemaActor(name,fallbackName=''){
       if(pd?.name)actor=String(pd.name).trim()||actor;
     }catch(e){}
     const queries=[actor,fallback].map(x=>String(x||'').trim()).filter((x,i,a)=>x&&a.indexOf(x)===i);
-    const make=(type,q)=>fetch('/api/kinopub/catalog?'+new URLSearchParams({type,q,page:'1',perpage:'60'}).toString(),{headers:authHeaders(),cache:'no-store'})
+    const make=(type,q)=>fetch('/api/kinopub/catalog?'+new URLSearchParams({type,actor:q,page:'1',perpage:'60'}).toString(),{headers:authHeaders(),cache:'no-store'})
       .then(r=>r.ok?r.json():null).then(d=>Array.isArray(d?.items)?d.items:[]).catch(()=>[]);
     const req=[];
     for(const q of queries){req.push(make('movies',q),make('series',q))}
@@ -11920,6 +11922,7 @@ function renderCinemaCast(item){
   row.innerHTML='';
   actors.forEach(actor=>{
     const name=String(actor.name||'').trim();
+    const searchName=String(actor.search_name||actor.name||'').trim();
     if(!name)return;
     const btn=document.createElement('button');
     btn.className='cinemaCastCard';
@@ -11927,24 +11930,27 @@ function renderCinemaCast(item){
     const initial=(name[0]||'?').toUpperCase();
     btn.innerHTML=(image?'<img loading="lazy" src="'+image.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaCastAvatarFallback">'+initial.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>')+
       '<div class="cinemaCastName">'+name.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>';
-    btn.dataset.actorSearchName=name;
-    btn.onclick=()=>openCinemaActor(btn.dataset.actorSearchName||name,name);
+    btn.dataset.actorSearchName=searchName||name;
+    btn.onclick=()=>openCinemaActor(btn.dataset.actorSearchName||searchName||name,name);
     row.appendChild(btn);
-    fetch('/api/cinema/person?name='+encodeURIComponent(name),{headers:authHeaders(),cache:'force-cache'})
+    fetch('/api/cinema/person?name='+encodeURIComponent(searchName||name),{headers:authHeaders(),cache:'force-cache'})
       .then(r=>r.ok?r.json():null).then(d=>{
         if(!btn.isConnected)return;
         const englishName=String(d?.name||'').trim();
         const src=String(d?.image||'').trim();
         if(englishName){
           btn.dataset.actorSearchName=englishName;
-          const label=btn.querySelector('.cinemaCastName');
-          if(label)label.textContent=englishName;
+          if(appLang==='en'){
+            const label=btn.querySelector('.cinemaCastName');
+            if(label)label.textContent=englishName;
+          }
         }
-        if(src){
+        const photoName=englishName||searchName||name;
+        if(photoName){
           const pic=new Image();
           pic.loading='lazy';pic.alt='';
           pic.onload=()=>{if(btn.isConnected){const old=btn.querySelector('img,.cinemaCastAvatarFallback');if(old)old.replaceWith(pic)}};
-          pic.src=src;
+          pic.src='/api/cinema/person-photo?name='+encodeURIComponent(photoName);
         }
       }).catch(()=>{});
   });

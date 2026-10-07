@@ -265,10 +265,11 @@ def _kinopub_normalize(item):
     if isinstance(actors_raw, list):
         for actor in actors_raw[:24]:
             if isinstance(actor, dict):
-                name = str(actor.get('original_name') or actor.get('name_en') or actor.get('english_name') or actor.get('name') or actor.get('title') or actor.get('full_name') or '').strip()
+                name = str(actor.get('name') or actor.get('title') or actor.get('full_name') or actor.get('original_name') or actor.get('name_en') or actor.get('english_name') or '').strip()
+                search_name = str(actor.get('original_name') or actor.get('name_en') or actor.get('english_name') or actor.get('name') or actor.get('title') or actor.get('full_name') or '').strip()
                 image = _kinopub_actor_image(actor)
                 if name:
-                    actor_cards.append({'id':str(actor.get('id') or actor.get('person_id') or actor.get('actor_id') or ''),'name':name,'image':image})
+                    actor_cards.append({'id':str(actor.get('id') or actor.get('person_id') or actor.get('actor_id') or ''),'name':name,'search_name':search_name,'image':image})
             elif str(actor or '').strip():
                 actor_cards.append({'id':'','name':str(actor).strip(),'image':''})
         actors = ', '.join(x['name'] for x in actor_cards)
@@ -1516,6 +1517,7 @@ async def api_kinopub_catalog(request):
     if not token:
         return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
     query = str(request.query.get('q') or '').strip()
+    actor_query = str(request.query.get('actor') or '').strip()
     requested_kind = str(request.query.get('type') or '').strip().lower()
     genre = str(request.query.get('genre') or '').strip()
     try:
@@ -1530,11 +1532,17 @@ async def api_kinopub_catalog(request):
         params['type'] = api_type
     if genre:
         params['genre'] = genre
-    if query:
+    if actor_query:
+        params['actor'] = actor_query
+    elif query:
         params['q'] = query
     else:
         params['sort'] = 'updated-'
     status, data = await _kinopub_api('GET', path, params=params)
+    if actor_query and status < 400 and not _kinopub_extract_items(data):
+        fallback_params = {'access_token':token,'q':actor_query,'field':'cast','perpage':perpage,'page':page}
+        if api_type:fallback_params['type']=api_type
+        status, data = await _kinopub_api('GET','/v1/items/search',params=fallback_params)
     if status == 401:
         await set_setting(f'kinopub_tokens:{uid}', '')
         return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
@@ -2423,6 +2431,48 @@ async def api_cinema_person(request):
         return web.json_response({'ok':True,'found':bool(image),'name':str(best.get('l') or name),'image':_imdb_clean_image(image)}, headers={'Cache-Control':'public, max-age=86400'})
     except Exception:
         return web.json_response({'ok':True,'found':False}, headers={'Cache-Control':'public, max-age=1800'})
+
+async def api_cinema_person_photo(request):
+    name = str(request.query.get('name') or '').strip()
+    if len(name) < 2 or len(name) > 100:
+        raise web.HTTPNotFound()
+    timeout = aiohttp.ClientTimeout(total=10, connect=4, sock_read=6)
+    headers = {'Accept':'application/json,image/*,*/*','User-Agent':'Mozilla/5.0 AbajTV'}
+    try:
+        suggest_url = 'https://v2.sg.media-imdb.com/suggestion/x/' + quote(name) + '.json'
+        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+            async with session.get(suggest_url, allow_redirects=True) as resp:
+                data = await resp.json(content_type=None) if resp.status < 400 else {}
+            rows = data.get('d') if isinstance(data, dict) else []
+            best = None
+            best_score = -1
+            for pos,row in enumerate(rows if isinstance(rows,list) else []):
+                if not isinstance(row,dict) or not str(row.get('id') or '').startswith('nm'):
+                    continue
+                label = str(row.get('l') or row.get('name') or '').strip()
+                score = _cinema_title_score(name,label) + max(0,30-pos*3)
+                if score > best_score:
+                    best_score = score
+                    best = row
+            if not best:
+                raise web.HTTPNotFound()
+            image = ''
+            i = best.get('i')
+            if isinstance(i,dict):
+                image = str(i.get('imageUrl') or i.get('url') or '').strip()
+            image = _imdb_clean_image(image)
+            if not image:
+                raise web.HTTPNotFound()
+            async with session.get(image, allow_redirects=True) as img:
+                if img.status >= 400:
+                    raise web.HTTPNotFound()
+                body = await img.read()
+                ctype = str(img.headers.get('Content-Type') or 'image/jpeg')
+        return web.Response(body=body, content_type=ctype.split(';')[0], headers={'Cache-Control':'public, max-age=86400'})
+    except web.HTTPException:
+        raise
+    except Exception:
+        raise web.HTTPNotFound()
 
 async def api_cinema_meta(request):
     title = str(request.query.get("title") or "").strip()
@@ -3459,7 +3509,7 @@ async def start_webapp(bot):
     app.router.add_post('/api/iptv/ai-dub/chunk', api_iptv_ai_dub_chunk)
     app.router.add_post('/api/cinema/catalog-cache', api_cinema_catalog_cache)
     app.router.add_get('/api/cinema/search', api_cinema_search)
-    app.router.add_get('/api/cinema/person', api_cinema_person); app.router.add_get('/api/cinema/meta', api_cinema_meta)
+    app.router.add_get('/api/cinema/person', api_cinema_person); app.router.add_get('/api/cinema/person-photo', api_cinema_person_photo); app.router.add_get('/api/cinema/meta', api_cinema_meta)
     app.router.add_post('/api/cinema/resolve', api_cinema_resolve)
     app.router.add_get('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider); app.router.add_post('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider)
     app.router.add_post('/api/support/message', api_support_message)
