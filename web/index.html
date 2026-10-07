@@ -7414,51 +7414,40 @@ function updatePlayerPlaybackUi(){
   if(label)label.textContent=paused?(appLang==='en'?'Play':'Включить'):(appLang==='en'?'Pause':'Пауза');
   if(btn)btn.title=paused?'Включить':'Пауза';
 }
-function syncMobileLandscapePlayerUi(){
+async function syncMobileLandscapePlayerUi(){
   if(nativeTv)return;
   const v=document.getElementById('video');
   const player=document.getElementById('playerView');
   if(!v||!player)return;
 
   const active=player.classList.contains('open');
-  const isTvPlayback=active&&!player.classList.contains('cinemaPlayback');
   const landscape=(window.matchMedia&&window.matchMedia('(orientation: landscape)').matches)||(window.innerWidth>window.innerHeight);
-  const useLandscapeUi=!!(isTvPlayback&&landscape);
-
-  if(player.classList.contains('pureFullscreen')){
-    v.controls=false;
-    try{v.removeAttribute('controls')}catch(e){}
-    return;
-  }
 
   v.controls=false;
   try{v.removeAttribute('controls')}catch(e){}
 
-  if(useLandscapeUi){
-    setAppFullscreen(true);
+  if(active&&landscape){
     document.body.classList.add('mobileLandscapePlayer');
-    try{
-      if(!document.fullscreenElement&&!document.webkitFullscreenElement){
-        if(player.requestFullscreen){
-          const p=player.requestFullscreen();
-          if(p&&typeof p.catch==='function')p.catch(()=>{});
-        }else if(player.webkitRequestFullscreen){
-          player.webkitRequestFullscreen();
-        }
-      }
-    }catch(e){}
-  }else{
-    document.body.classList.remove('mobileLandscapePlayer');
-    player.classList.remove('videoFill');
-    if(active&&player.classList.contains('appFullscreen'))setAppFullscreen(false);
-    try{
-      if(document.fullscreenElement&&document.fullscreenElement===player){
-        const p=document.exitFullscreen();
-        if(p&&typeof p.catch==='function')p.catch(()=>{});
-      }else if(document.webkitFullscreenElement===player&&document.webkitExitFullscreen){
-        document.webkitExitFullscreen();
-      }
-    }catch(e){}
+    player.dataset.orientationFullscreen='1';
+    if(!player.classList.contains('pureFullscreen')){
+      await enterPureFullscreen();
+    }else{
+      player.classList.add('appFullscreen');
+      document.body.classList.add('playerFullscreenActive');
+    }
+    return;
+  }
+
+  document.body.classList.remove('mobileLandscapePlayer');
+  player.classList.remove('videoFill');
+
+  if(player.dataset.orientationFullscreen==='1'){
+    delete player.dataset.orientationFullscreen;
+    if(player.classList.contains('pureFullscreen')){
+      await exitPureFullscreen();
+    }else if(player.classList.contains('appFullscreen')){
+      setAppFullscreen(false);
+    }
   }
 }
 window.addEventListener('resize',()=>setTimeout(syncMobileLandscapePlayerUi,60),{passive:true});
@@ -12472,6 +12461,64 @@ setInterval(()=>{if(document.hidden)return;const p=document.getElementById('play
   body:not(.nativeTv) #modeChips .chip.active{
     color:#fff!important;
     background:linear-gradient(180deg,#24c7f7 0%,#078bd7 100%)!important;
+  }
+}
+</style>
+
+<style id="mobile-cinema-player-rotation-align-v2">
+@media (max-width:900px){
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerPrimaryControls{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    width:min(430px,100%)!important;
+    max-width:430px!important;
+    gap:10px!important;
+    margin:6px auto 0!important;
+    align-items:start!important;
+    justify-items:center!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerCircleCtrl{
+    width:100%!important;
+    min-height:78px!important;
+    display:grid!important;
+    grid-template-rows:58px 18px!important;
+    place-items:start center!important;
+    gap:4px!important;
+    padding:0!important;
+    margin:0!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerCircleCtrl .playerCtrlIcon{
+    width:52px!important;
+    height:52px!important;
+    min-width:52px!important;
+    min-height:52px!important;
+    margin:3px 0 0!important;
+    align-self:start!important;
+    justify-self:center!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerPlayCtrl .playerCtrlIcon{
+    width:58px!important;
+    height:58px!important;
+    min-width:58px!important;
+    min-height:58px!important;
+    margin:0!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerCircleCtrl small{
+    min-height:18px!important;
+    margin:0!important;
+    line-height:18px!important;
+    text-align:center!important;
+    align-self:start!important;
+    justify-self:center!important;
+    white-space:nowrap!important;
+  }
+}
+@media (orientation:landscape) and (max-height:700px){
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.pureFullscreen.cinemaPlayback.showPureControls .playerPrimaryControls{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    width:min(430px,64vw)!important;
+    max-width:430px!important;
+    gap:12px!important;
+    margin:4px auto 0!important;
   }
 }
 </style>
