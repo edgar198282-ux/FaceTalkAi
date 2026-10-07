@@ -223,6 +223,11 @@ body:not(.nativeTv) .top.mobileScrollCollapsing.mobileHeaderHidden{
 .playerView.pureFullscreen .playerGestureHint.show{
   display:block!important;opacity:1!important
 }
+.playerView.pureFullscreen.showPureControls .playerTop{
+  display:flex!important;opacity:1!important;pointer-events:auto!important;
+  position:absolute!important;left:0!important;right:0!important;top:0!important;z-index:2147483601!important;
+  background:linear-gradient(180deg,rgba(0,0,0,.82),rgba(0,0,0,.28),transparent)!important
+}
 .playerView.pureFullscreen.showPureControls .playerBottom{
   display:block!important;opacity:1!important;pointer-events:auto!important;
   position:absolute!important;left:0!important;right:0!important;bottom:0!important;z-index:2147483600!important;
@@ -4634,36 +4639,13 @@ function installPlayerTouchGestures(){
     }else if(moved<14&&player&&player.classList.contains('cinemaPlayback')&&!nativeTv){
       e.preventDefault();
       const now=Date.now();
-      const rect=wrap.getBoundingClientRect();
-      const x=p.clientX-rect.left;
-      const side=x<rect.width/2?'left':'right';
-      const isDouble=cinemaDoubleTapSide===side&&(now-cinemaDoubleTapAt)<=360;
       playerGestureSuppressClickUntil=now+420;
       pureTapHandledAt=now;
-      if(isDouble){
-        if(cinemaSingleTapTimer){clearTimeout(cinemaSingleTapTimer);cinemaSingleTapTimer=null}
-        cinemaDoubleTapAt=0;
-        cinemaDoubleTapSide='';
-        const delta=side==='left'?-15:15;
-        seekPlayerBy(delta);
-        const hint=document.getElementById('playerGestureHint');
-        if(hint){
-          hint.classList.toggle('seekLeft',side==='left');
-          hint.classList.toggle('seekRight',side==='right');
-        }
-        showPlayerGestureHint(side==='left'?'↶ 15 сек':'15 сек ↷');
-      }else{
-        cinemaDoubleTapAt=now;
-        cinemaDoubleTapSide=side;
-        if(cinemaSingleTapTimer)clearTimeout(cinemaSingleTapTimer);
-        cinemaSingleTapTimer=setTimeout(()=>{
-          cinemaSingleTapTimer=null;
-          const activePlayer=document.getElementById('playerView');
-          if(!activePlayer||!activePlayer.classList.contains('open')||!activePlayer.classList.contains('cinemaPlayback'))return;
-          if(activePlayer.classList.contains('pureFullscreen'))togglePureFullscreenControls();
-          else showTvPlayerUi(true);
-        },380);
-      }
+      cinemaDoubleTapAt=0;
+      cinemaDoubleTapSide='';
+      if(cinemaSingleTapTimer){clearTimeout(cinemaSingleTapTimer);cinemaSingleTapTimer=null}
+      if(player.classList.contains('pureFullscreen'))togglePureFullscreenControls();
+      else showTvPlayerUi(true);
     }else if(moved<14&&player&&player.classList.contains('pureFullscreen')){
       e.preventDefault();
       const now=Date.now();
