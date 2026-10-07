@@ -2733,11 +2733,7 @@ public class MainActivity extends Activity {
             DefaultHttpDataSource.Factory httpFactory=new DefaultHttpDataSource.Factory()
                 .setAllowCrossProtocolRedirects(true)
                 .setDefaultRequestProperties(headers);
-            DataSource.Factory cinemaDataSource=httpFactory;
-            if("KINOPUB".equals(provider)){
-                cinemaDataSource=new ChunkedRangeDataSourceFactory(httpFactory,1L*1024L*1024L);
-            }
-            DefaultMediaSourceFactory mediaFactory=new DefaultMediaSourceFactory(cinemaDataSource);
+            DefaultMediaSourceFactory mediaFactory=new DefaultMediaSourceFactory(httpFactory);
             nativeAdFrameEpoch++;
             nativeProbeUrl=url;
             nativeCinemaLastLocalRecoverAt=0L;

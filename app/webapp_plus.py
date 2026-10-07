@@ -694,10 +694,6 @@ def _kinopub_direct_stream_response(request, uid, url):
         ','.join(diag.get('query_keys') or []), diag.get('path')
     )
     proxied = _kinopub_proxy_url(request, uid, direct)
-    try:
-        asyncio.create_task(_kinopub_probe_proxy_ranges(proxied))
-    except Exception:
-        pass
     return web.json_response({
         'ok': True,
         'url': proxied,
