@@ -12068,13 +12068,13 @@ function cinemaRatingFact(imdb,kp,item){
   const kpUrl=cinemaKpUrl(item?.kp_id||item?.kinopoisk||item?.kinopoisk_id);
   const parts=[];
   if(imdbValue){
-    const inner='<span class="cinemaRatingScore">'+imdbValue+'</span><span class="cinemaRatingLogo imdb"><img src="/assets/ratings/imdb.svg" alt="IMDb"></span>';
+    const inner='<span class="cinemaRatingScore">'+imdbValue+'</span><span class="cinemaRatingLogo imdb"><img src="/static/assets/ratings/imdb.svg" alt="IMDb"></span>';
     parts.push(imdbUrl
       ?'<button type="button" class="cinemaRatingPair cinemaRatingLink" onclick="openCinemaExternalRating(\''+imdbUrl+'\')" aria-label="Открыть IMDb">'+inner+'</button>'
       :'<span class="cinemaRatingPair">'+inner+'</span>');
   }
   if(kpValue){
-    const inner='<span class="cinemaRatingScore">'+kpValue+'</span><span class="cinemaRatingLogo kp"><img src="/assets/ratings/kinopoisk.svg" alt="Кинопоиск"></span>';
+    const inner='<span class="cinemaRatingScore">'+kpValue+'</span><span class="cinemaRatingLogo kp"><img src="/static/assets/ratings/kinopoisk.svg" alt="Кинопоиск"></span>';
     parts.push(kpUrl
       ?'<button type="button" class="cinemaRatingPair cinemaRatingLink" onclick="openCinemaExternalRating(\''+kpUrl+'\')" aria-label="Открыть Кинопоиск">'+inner+'</button>'
       :'<span class="cinemaRatingPair">'+inner+'</span>');
