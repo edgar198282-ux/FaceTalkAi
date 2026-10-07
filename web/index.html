@@ -4517,6 +4517,9 @@ function togglePlayerFavorite(){
 }
 let playerGestureSuppressClickUntil=0;
 let pureTapHandledAt=0;
+let cinemaDoubleTapAt=0;
+let cinemaDoubleTapSide='';
+let cinemaSingleTapTimer=null;
 let playerGestureHintTimer=null;
 function showPlayerGestureHint(text){
   const el=document.getElementById('playerGestureHint');
@@ -4526,7 +4529,9 @@ function showPlayerGestureHint(text){
   if(playerGestureHintTimer)clearTimeout(playerGestureHintTimer);
   const player=document.getElementById('playerView');
   const hintMs=player&&player.classList.contains('pureFullscreen')?900:650;
-  playerGestureHintTimer=setTimeout(()=>el.classList.remove('show'),hintMs);
+  playerGestureHintTimer=setTimeout(()=>{
+    el.classList.remove('show','seekLeft','seekRight');
+  },hintMs);
 }
 function adjustPlayerVolume(step){
   let pct=-1;
@@ -4588,6 +4593,39 @@ function installPlayerTouchGestures(){
       else{showPlayerGestureHint('◀ Канал');playPrev();}
     }else if(mode==='v'){
       playerGestureSuppressClickUntil=Date.now()+300;
+    }else if(moved<14&&player&&player.classList.contains('cinemaPlayback')&&!nativeTv){
+      e.preventDefault();
+      const now=Date.now();
+      const rect=wrap.getBoundingClientRect();
+      const x=p.clientX-rect.left;
+      const side=x<rect.width/2?'left':'right';
+      const isDouble=cinemaDoubleTapSide===side&&(now-cinemaDoubleTapAt)<=360;
+      playerGestureSuppressClickUntil=now+420;
+      pureTapHandledAt=now;
+      if(isDouble){
+        if(cinemaSingleTapTimer){clearTimeout(cinemaSingleTapTimer);cinemaSingleTapTimer=null}
+        cinemaDoubleTapAt=0;
+        cinemaDoubleTapSide='';
+        const delta=side==='left'?-15:15;
+        seekPlayerBy(delta);
+        const hint=document.getElementById('playerGestureHint');
+        if(hint){
+          hint.classList.toggle('seekLeft',side==='left');
+          hint.classList.toggle('seekRight',side==='right');
+        }
+        showPlayerGestureHint(side==='left'?'↶ 15 сек':'15 сек ↷');
+      }else{
+        cinemaDoubleTapAt=now;
+        cinemaDoubleTapSide=side;
+        if(cinemaSingleTapTimer)clearTimeout(cinemaSingleTapTimer);
+        cinemaSingleTapTimer=setTimeout(()=>{
+          cinemaSingleTapTimer=null;
+          const activePlayer=document.getElementById('playerView');
+          if(!activePlayer||!activePlayer.classList.contains('open')||!activePlayer.classList.contains('cinemaPlayback'))return;
+          if(activePlayer.classList.contains('pureFullscreen'))togglePureFullscreenControls();
+          else showTvPlayerUi(true);
+        },380);
+      }
     }else if(moved<14&&player&&player.classList.contains('pureFullscreen')){
       e.preventDefault();
       const now=Date.now();
@@ -12741,6 +12779,40 @@ body.nativeTv .playerView.cinemaPlayback .playerCircleCtrl:focus .playerCtrlIcon
 body.nativeTv .playerView.cinemaPlayback .playerSeekRange:focus{
   outline:none!important;
   filter:drop-shadow(0 0 6px #ffd400)!important;
+}
+</style>
+
+<style id="mobile-cinema-seek-ui-v1">
+body:not(.nativeTv) .playerView.cinemaPlayback .playerTimeline{
+  display:none!important;
+}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
+  position:relative!important;
+  height:22px!important;
+  margin:0 8px 6px!important;
+  display:flex!important;
+  align-items:center!important;
+}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerSeekRange{
+  display:block!important;
+  width:100%!important;
+  margin:0!important;
+  position:relative!important;
+  z-index:2!important;
+}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerGestureHint.seekLeft{
+  left:25%!important;
+}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerGestureHint.seekRight{
+  left:75%!important;
+}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerGestureHint.seekLeft,
+body:not(.nativeTv) .playerView.cinemaPlayback .playerGestureHint.seekRight{
+  min-width:82px!important;
+  text-align:center!important;
+  border-radius:999px!important;
+  background:rgba(0,0,0,.72)!important;
+  font-size:17px!important;
 }
 </style>
 </body>
