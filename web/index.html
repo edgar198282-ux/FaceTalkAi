@@ -1091,7 +1091,9 @@ body.nativeMedia3 .playerView.open.appFullscreen .videoWrap,
 body.nativeMedia3 .playerView.open.pureFullscreen .videoWrap{background:transparent!important}
 body.nativeMedia3 .playerView.open video{opacity:0!important;visibility:hidden!important}
 .nativeTv .videoWrap{padding-right:0!important}.nativeTv .channelRail{display:none!important;right:18px;top:76px;bottom:96px;width:320px;background:rgba(4,14,24,.94);box-shadow:0 10px 34px rgba(0,0,0,.4)}.nativeTv .channelRail.openRail{display:block!important}.nativeTv .railItem{font-size:18px;padding:13px 14px;margin:3px 0}.nativeTv .railItem.focused{background:#168de8;color:#fff;box-shadow:0 0 0 3px #ffd400 inset}.playerBottom{transition:opacity .22s ease,transform .22s ease}
-body.playerClean .playerView.open .playerBottom{opacity:0!important;pointer-events:none!important;transform:translateY(10px)!important}.nativeTv .playerView.tvFullscreen{left:0!important;right:0!important;top:0!important;bottom:0!important;transform:none!important;max-width:none!important;width:100vw!important;height:100vh!important;background:#000}.nativeTv .playerView.tvFullscreen .videoWrap{position:absolute!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:1}.nativeTv .playerView.tvFullscreen video{width:100vw!important;height:100vh!important;object-fit:contain!important}.nativeTv .playerView.tvFullscreen .playerTop{display:none!important;height:0!important}.nativeTv .playerView.tvFullscreen .playerBottom{display:block!important;position:absolute;left:0;right:0;bottom:0;z-index:12;background:linear-gradient(0deg,rgba(0,0,0,.9),rgba(0,0,0,.52),rgba(0,0,0,0));border:0;padding:24px 24px 12px;transition:opacity .2s}.nativeTv .playerView.tvFullscreen.cinemaPlayback .playerBottom{padding:14px 22px 10px}.nativeTv .playerView.tvFullscreen.cinemaPlayback .playerMeta{min-height:40px}.nativeTv .playerView.tvFullscreen.cinemaPlayback .playerMetaLogo,.nativeTv .playerView.tvFullscreen.cinemaPlayback .playerMetaLogoFallback{width:34px;height:34px;min-width:34px}.nativeTv .playerView.tvFullscreen.cinemaPlayback .playerMeta b{font-size:17px}.nativeTv .playerView.tvFullscreen.cinemaPlayback .live{font-size:13px}.nativeTv .playerView.tvFullscreen.cinemaPlayback #playerGroup,.nativeTv .playerView.tvFullscreen.cinemaPlayback #playerRemaining{font-size:12px!important}.nativeTv .playerView.tvFullscreen .channelRail{z-index:20;top:76px!important;bottom:150px!important}.nativeTv.playerClean .playerView.tvFullscreen .playerBottom{opacity:0;pointer-events:none}
+body.playerClean .playerView.open:not(.showPureControls) .playerBottom{opacity:0!important;pointer-events:none!important;transform:translateY(10px)!important}
+body:not(.nativeTv) .playerView.open.appFullscreen.cinemaPlayback.showPureControls .playerTop{display:flex!important;opacity:1!important;pointer-events:auto!important;position:absolute!important;left:0!important;right:0!important;top:0!important;z-index:2147483601!important;background:linear-gradient(180deg,rgba(0,0,0,.82),rgba(0,0,0,.28),transparent)!important}
+body:not(.nativeTv) .playerView.open.appFullscreen.cinemaPlayback.showPureControls .playerBottom{display:block!important;opacity:1!important;pointer-events:auto!important;transform:none!important;position:absolute!important;left:0!important;right:0!important;bottom:0!important;z-index:2147483600!important}.nativeTv .playerView.tvFullscreen{left:0!important;right:0!important;top:0!important;bottom:0!important;transform:none!important;max-width:none!important;width:100vw!important;height:100vh!important;background:#000}.nativeTv .playerView.tvFullscreen .videoWrap{position:absolute!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:1}.nativeTv .playerView.tvFullscreen video{width:100vw!important;height:100vh!important;object-fit:contain!important}.nativeTv .playerView.tvFullscreen .playerTop{display:none!important;height:0!important}.nativeTv .playerView.tvFullscreen .playerBottom{display:block!important;position:absolute;left:0;right:0;bottom:0;z-index:12;background:linear-gradient(0deg,rgba(0,0,0,.9),rgba(0,0,0,.52),rgba(0,0,0,0));border:0;padding:24px 24px 12px;transition:opacity .2s}.nativeTv .playerView.tvFullscreen.cinemaPlayback .playerBottom{padding:14px 22px 10px}.nativeTv .playerView.tvFullscreen.cinemaPlayback .playerMeta{min-height:40px}.nativeTv .playerView.tvFullscreen.cinemaPlayback .playerMetaLogo,.nativeTv .playerView.tvFullscreen.cinemaPlayback .playerMetaLogoFallback{width:34px;height:34px;min-width:34px}.nativeTv .playerView.tvFullscreen.cinemaPlayback .playerMeta b{font-size:17px}.nativeTv .playerView.tvFullscreen.cinemaPlayback .live{font-size:13px}.nativeTv .playerView.tvFullscreen.cinemaPlayback #playerGroup,.nativeTv .playerView.tvFullscreen.cinemaPlayback #playerRemaining{font-size:12px!important}.nativeTv .playerView.tvFullscreen .channelRail{z-index:20;top:76px!important;bottom:150px!important}.nativeTv.playerClean .playerView.tvFullscreen .playerBottom{opacity:0;pointer-events:none}
 .tvZap{position:fixed;left:34px;bottom:34px;z-index:430;display:none;min-width:420px;max-width:68vw;background:rgba(3,14,28,.9);color:white;border-radius:18px;padding:16px 20px;box-shadow:0 12px 38px rgba(0,0,0,.4)}.tvZap.show{display:block}.tvZapTop{display:flex;align-items:center;gap:14px}.tvZapNo{font-size:34px;font-weight:900;color:#ffd400}.tvZapName{font-size:25px;font-weight:900}.tvZapNow{font-size:17px;margin-top:8px;color:#fff}.tvZapNext{font-size:14px;margin-top:5px;color:#a9c8da}.tvZapFav{font-size:24px;margin-left:auto}.playerClean .tvZap{display:none!important}.nativeTv .tvZap{display:none!important}
 .netBanner{position:fixed;left:50%;top:24px;transform:translateX(-50%);z-index:500;display:none;background:rgba(137,28,28,.94);color:#fff;border-radius:14px;padding:11px 18px;font-size:16px;font-weight:800;box-shadow:0 10px 28px rgba(0,0,0,.28)}.netBanner.show{display:block}.netBanner.ok{background:rgba(18,130,76,.94)}
 .tvShortcut{position:fixed;left:34px;top:28px;z-index:440;display:none;background:rgba(3,14,28,.92);color:#fff;border-radius:14px;padding:10px 16px;font-size:17px;font-weight:800}.tvShortcut.show{display:block}
@@ -4644,8 +4646,7 @@ function installPlayerTouchGestures(){
       cinemaDoubleTapAt=0;
       cinemaDoubleTapSide='';
       if(cinemaSingleTapTimer){clearTimeout(cinemaSingleTapTimer);cinemaSingleTapTimer=null}
-      if(player.classList.contains('pureFullscreen'))togglePureFullscreenControls();
-      else showTvPlayerUi(true);
+      togglePureFullscreenControls();
     }else if(moved<14&&player&&player.classList.contains('pureFullscreen')){
       e.preventDefault();
       const now=Date.now();
@@ -7780,7 +7781,7 @@ function hidePureFullscreenControls(){
 }
 function showPureFullscreenControls(){
   const player=document.getElementById('playerView');
-  if(!player||!player.classList.contains('pureFullscreen'))return;
+  if(!player||(!player.classList.contains('pureFullscreen')&&!player.classList.contains('cinemaPlayback')))return;
   player.classList.add('showPureControls');
   if(pureFullscreenControlsTimer)clearTimeout(pureFullscreenControlsTimer);
   pureFullscreenControlsTimer=setTimeout(()=>{
@@ -7790,7 +7791,7 @@ function showPureFullscreenControls(){
 }
 function togglePureFullscreenControls(){
   const player=document.getElementById('playerView');
-  if(!player||!player.classList.contains('pureFullscreen'))return;
+  if(!player||(!player.classList.contains('pureFullscreen')&&!player.classList.contains('cinemaPlayback')))return;
   if(player.classList.contains('showPureControls'))hidePureFullscreenControls();
   else showPureFullscreenControls();
 }
