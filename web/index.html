@@ -8581,7 +8581,7 @@ function moveCinemaDetailFocus(direction){
   });
 
   if(direction==='down'||direction==='up'){
-    const step=Math.max(180,Math.round(window.innerHeight*.58));
+    const step=Math.max(70,Math.round(window.innerHeight*.14));
     if(!best){
       if(detail)detail.scrollBy({top:direction==='down'?step:-step,behavior:'auto'});
       return;
@@ -8590,8 +8590,7 @@ function moveCinemaDetailFocus(direction){
     const farDown=direction==='down'&&br.top>window.innerHeight-90;
     const farUp=direction==='up'&&br.bottom<90;
     if((farDown||farUp)&&detail){
-      try{best.focus({preventScroll:true})}catch(_){try{best.focus()}catch(__){}}
-      try{best.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'})}catch(_){}
+      detail.scrollBy({top:direction==='down'?step:-step,behavior:'auto'});
       return;
     }
   }
