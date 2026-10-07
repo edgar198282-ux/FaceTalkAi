@@ -96,6 +96,7 @@ public class MainActivity extends Activity {
     private long nativeAdFrameEpoch=0L;
     private final java.util.concurrent.ExecutorService adFrameExecutor=Executors.newSingleThreadExecutor();
     private ExoPlayer nativeProbePlayer;
+    private long nativeSeekGeneration=0L;
     private volatile long nativeProbeStartedAt=0L;
     private volatile String nativeProbeUrl="";
     private SharedPreferences prefs; private boolean telegramLaunchAttempted=false; private boolean isTv=false; private long lastTvBackAt=0L;
@@ -1602,9 +1603,36 @@ public class MainActivity extends Activity {
                     long duration=nativeProbePlayer.getDuration();
                     long target=Math.max(0L,positionMs);
                     if(duration>0L)target=Math.min(Math.max(0L,duration-250L),target);
-                    nativeProbePlayer.seekTo(target);
-                    if(!nativeProbePlayer.getPlayWhenReady())nativeProbePlayer.play();
-                    Log.i("AbajCinema","seek absolute to="+target+" dur="+duration+" seekable="+nativeProbePlayer.isCurrentMediaItemSeekable());
+                    final long seekToken=++nativeSeekGeneration;
+                    final long seekTarget=target;
+                    nativeProbePlayer.setPlayWhenReady(true);
+                    nativeProbePlayer.seekTo(seekTarget);
+                    nativeProbePlayer.play();
+                    updateHandler.postDelayed(()->{
+                        if(nativeProbePlayer==null||seekToken!=nativeSeekGeneration||!nativeCinemaPlayback)return;
+                        int state=nativeProbePlayer.getPlaybackState();
+                        if(state==Player.STATE_IDLE){
+                            try{
+                                nativeProbePlayer.prepare();
+                                nativeProbePlayer.seekTo(seekTarget);
+                                nativeProbePlayer.setPlayWhenReady(true);
+                                nativeProbePlayer.play();
+                            }catch(Exception ignored){}
+                        }
+                    },450);
+                    updateHandler.postDelayed(()->{
+                        if(nativeProbePlayer==null||seekToken!=nativeSeekGeneration||!nativeCinemaPlayback)return;
+                        int state=nativeProbePlayer.getPlaybackState();
+                        if(state!=Player.STATE_READY&&!nativeProbePlayer.isPlaying()){
+                            try{
+                                nativeProbePlayer.prepare();
+                                nativeProbePlayer.seekTo(seekTarget);
+                                nativeProbePlayer.setPlayWhenReady(true);
+                                nativeProbePlayer.play();
+                            }catch(Exception ignored){}
+                        }
+                    },2200);
+                    Log.i("AbajCinema","seek absolute to="+seekTarget+" dur="+duration+" seekable="+nativeProbePlayer.isCurrentMediaItemSeekable());
                 }catch(Exception e){
                     Log.w("AbajCinema","absolute seek failed "+e.getClass().getSimpleName());
                 }
@@ -1618,8 +1646,35 @@ public class MainActivity extends Activity {
                     long duration=nativeProbePlayer.getDuration();
                     long target=Math.max(0L,nativeProbePlayer.getCurrentPosition()+(long)seconds*1000L);
                     if(duration>0L)target=Math.min(Math.max(0L,duration-250L),target);
-                    nativeProbePlayer.seekTo(target);
-                    if(!nativeProbePlayer.getPlayWhenReady())nativeProbePlayer.play();
+                    final long seekToken=++nativeSeekGeneration;
+                    final long seekTarget=target;
+                    nativeProbePlayer.setPlayWhenReady(true);
+                    nativeProbePlayer.seekTo(seekTarget);
+                    nativeProbePlayer.play();
+                    updateHandler.postDelayed(()->{
+                        if(nativeProbePlayer==null||seekToken!=nativeSeekGeneration||!nativeCinemaPlayback)return;
+                        int state=nativeProbePlayer.getPlaybackState();
+                        if(state==Player.STATE_IDLE){
+                            try{
+                                nativeProbePlayer.prepare();
+                                nativeProbePlayer.seekTo(seekTarget);
+                                nativeProbePlayer.setPlayWhenReady(true);
+                                nativeProbePlayer.play();
+                            }catch(Exception ignored){}
+                        }
+                    },450);
+                    updateHandler.postDelayed(()->{
+                        if(nativeProbePlayer==null||seekToken!=nativeSeekGeneration||!nativeCinemaPlayback)return;
+                        int state=nativeProbePlayer.getPlaybackState();
+                        if(state!=Player.STATE_READY&&!nativeProbePlayer.isPlaying()){
+                            try{
+                                nativeProbePlayer.prepare();
+                                nativeProbePlayer.seekTo(seekTarget);
+                                nativeProbePlayer.setPlayWhenReady(true);
+                                nativeProbePlayer.play();
+                            }catch(Exception ignored){}
+                        }
+                    },2200);
                 }catch(Exception e){
                     Log.w("AbajCinema","seek failed "+e.getClass().getSimpleName());
                 }
@@ -2430,7 +2485,7 @@ public class MainActivity extends Activity {
     private void ensureNativeProbePlayer(){
         if(!isTv||nativeProbeView==null||nativeProbePlayer!=null)return;
         DefaultLoadControl loadControl=new DefaultLoadControl.Builder()
-            .setBufferDurationsMs(500,4000,120,250)
+            .setBufferDurationsMs(500,15000,180,750)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build();
         nativeProbePlayer=new ExoPlayer.Builder(this).setLoadControl(loadControl).build();
@@ -2478,6 +2533,7 @@ public class MainActivity extends Activity {
     private void startNativeProbe(String url){
         if(!isTv||nativeProbeView==null)return;
         try{
+            nativeSeekGeneration++;
             nativeCinemaPlayback=false;
             configureNativeProbeSurface(url);
             ensureNativeProbePlayer();
@@ -2496,6 +2552,7 @@ public class MainActivity extends Activity {
     private void startNativeCinema(String url,String provider,java.util.Map<String,String> extraHeaders){
         if(!isTv||nativeProbeView==null)return;
         try{
+            nativeSeekGeneration++;
             nativeCinemaPlayback=true;
             nativeAdMuted=false;
             if(nativeAdCover!=null)nativeAdCover.setVisibility(View.GONE);
@@ -2542,6 +2599,7 @@ public class MainActivity extends Activity {
         }
     }
     private void stopNativeProbe(boolean release){
+        nativeSeekGeneration++;
         nativeCinemaPlayback=false;
         nativeAdFrameEpoch++;
         nativeProbeStartedAt=0L;
