@@ -7395,6 +7395,11 @@ function closePlayer(){
   playerView.classList.remove('cinemaPlayback');
   document.body.classList.remove('playerFullscreenActive');
   document.body.classList.remove('mobileLandscapePlayer');
+  if(!nativeTv){
+    try{
+      if(window.AbajNative&&typeof AbajNative.exitPlayerFullscreen==='function')AbajNative.exitPlayerFullscreen();
+    }catch(e){}
+  }
   try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}
   const closeVideo=document.getElementById('video');
   if(closeVideo&&!nativeTv){
@@ -7742,6 +7747,9 @@ async function enterPureFullscreen(){
   }
   if(!nativeTv){
     try{
+      if(window.AbajNative&&typeof AbajNative.enterPlayerFullscreen==='function')AbajNative.enterPlayerFullscreen();
+    }catch(e){}
+    try{
       if(!document.fullscreenElement&&player.requestFullscreen){
         await player.requestFullscreen();
       }else if(!document.fullscreenElement&&player.webkitRequestFullscreen){
@@ -7757,6 +7765,9 @@ async function exitPureFullscreen(){
   if(pureFullscreenControlsTimer){clearTimeout(pureFullscreenControlsTimer);pureFullscreenControlsTimer=null}
   document.body.classList.remove('playerClean');
   if(!nativeTv){
+    try{
+      if(window.AbajNative&&typeof AbajNative.exitPlayerFullscreen==='function')AbajNative.exitPlayerFullscreen();
+    }catch(e){}
     try{
       if(document.fullscreenElement)await document.exitFullscreen();
       else if(document.webkitFullscreenElement&&document.webkitExitFullscreen)document.webkitExitFullscreen();
@@ -12813,6 +12824,55 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerGestureHint.seekRight{
   border-radius:999px!important;
   background:rgba(0,0,0,.72)!important;
   font-size:17px!important;
+}
+</style>
+
+<style id="mobile-fullscreen-system-ui-v1">
+body:not(.nativeTv) .playerView.pureFullscreen.showPureControls .playerTop{
+  display:flex!important;
+  position:absolute!important;
+  left:8px!important;
+  top:8px!important;
+  right:auto!important;
+  width:auto!important;
+  height:auto!important;
+  min-height:0!important;
+  padding:0!important;
+  margin:0!important;
+  background:transparent!important;
+  z-index:2147483646!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+body:not(.nativeTv) .playerView.pureFullscreen.showPureControls .playerTitle,
+body:not(.nativeTv) .playerView.pureFullscreen.showPureControls #playerFavBtn{
+  display:none!important;
+}
+body:not(.nativeTv) .playerView.pureFullscreen.showPureControls .back{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:30px!important;
+  height:30px!important;
+  min-width:30px!important;
+  min-height:30px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:50%!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+  background:rgba(0,0,0,.52)!important;
+  color:#fff!important;
+  font-size:22px!important;
+  line-height:1!important;
+  box-shadow:0 4px 12px rgba(0,0,0,.35)!important;
+}
+body:not(.nativeTv) .playerView.pureFullscreen:not(.showPureControls) .playerTop{
+  display:none!important;
+}
+body:not(.nativeTv) .playerView.pureFullscreen.showPureControls .playerBottom{
+  display:block!important;
+  opacity:1!important;
+  pointer-events:auto!important;
 }
 </style>
 </body>
