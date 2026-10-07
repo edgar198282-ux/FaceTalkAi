@@ -1323,55 +1323,88 @@ async def api_cinema_progress(request):
 
     return web.json_response({'ok':True,'progress':data}, headers={'Cache-Control':'no-store'})
 
-async def _kinopub_sync_bookmarks(uid: int):
+async def _kinopub_bookmark_folders(uid: int):
     token = await _kinopub_access_token(uid)
     if not token:
-        return []
+        return token, []
     status, data = await _kinopub_api('GET', '/v1/bookmarks', params={'access_token': token})
     if status >= 400 or not isinstance(data, dict):
-        return []
+        return token, []
 
-    folders = []
+    rows = []
+    candidates = []
     for key in ('bookmarks', 'folders', 'items', 'data'):
         value = data.get(key)
         if isinstance(value, dict):
             value = value.get('items') or value.get('bookmarks') or value.get('folders') or []
         if isinstance(value, list):
-            for row in value:
-                if not isinstance(row, dict):
-                    continue
-                folder_id = str(row.get('id') or row.get('bookmark_id') or '').strip()
-                if folder_id and folder_id not in folders:
-                    folders.append(folder_id)
+            candidates.extend(value)
+    seen = set()
+    for row in candidates:
+        if not isinstance(row, dict):
+            continue
+        folder_id = str(row.get('id') or row.get('bookmark_id') or row.get('folder_id') or '').strip()
+        if not folder_id or folder_id in seen:
+            continue
+        seen.add(folder_id)
+        title = str(row.get('title') or row.get('name') or row.get('label') or 'Избранное').strip()
+        count = row.get('count')
+        if count is None:
+            count = row.get('items_count')
+        if count is None:
+            count = row.get('total')
+        try:
+            count = max(0, int(count or 0))
+        except Exception:
+            count = 0
+        rows.append({'id':folder_id,'title':title,'count':count,'kind':'bookmark_folder','source':'KINOPUB'})
+    return token, rows
 
+
+async def _kinopub_bookmark_folder_items(token: str, folder_id: str):
     synced = []
     seen = set()
-    for folder_id in folders[:30]:
-        for page in range(1, 11):
-            st, payload = await _kinopub_api('GET', '/v1/bookmarks/' + folder_id, params={
-                'access_token': token, 'page': page, 'perpage': 100,
-            })
-            if st >= 400:
-                break
-            raw_items = _kinopub_extract_items(payload)
-            if not raw_items:
-                break
-            added_on_page = 0
-            for raw in raw_items:
-                item = _kinopub_normalize(raw)
-                if not item:
-                    continue
-                key = str(item.get('id') or '').strip() or str(item.get('title') or '').strip().casefold()
-                if not key or key in seen:
-                    continue
-                seen.add(key)
-                compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
-                compact['saved_at'] = int(time.time())
-                synced.append(compact)
-                added_on_page += 1
-            if len(raw_items) < 100 or added_on_page == 0:
-                break
+    for page in range(1, 11):
+        st, payload = await _kinopub_api('GET', '/v1/bookmarks/' + folder_id, params={
+            'access_token': token, 'page': page, 'perpage': 100,
+        })
+        if st >= 400:
+            break
+        raw_items = _kinopub_extract_items(payload)
+        if not raw_items:
+            break
+        added_on_page = 0
+        for raw in raw_items:
+            item = _kinopub_normalize(raw)
+            if not item:
+                continue
+            key = str(item.get('id') or '').strip() or str(item.get('title') or '').strip().casefold()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
+            compact['saved_at'] = int(time.time())
+            synced.append(compact)
+            added_on_page += 1
+        if len(raw_items) < 100 or added_on_page == 0:
+            break
     return synced[:300]
+
+
+async def _kinopub_sync_bookmarks(uid: int):
+    token, folders = await _kinopub_bookmark_folders(uid)
+    if not token:
+        return []
+    merged = []
+    seen = set()
+    for folder in folders[:30]:
+        for item in await _kinopub_bookmark_folder_items(token, str(folder.get('id') or '')):
+            key = str(item.get('id') or '').strip() or str(item.get('title') or '').strip().casefold()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            merged.append(item)
+    return merged[:300]
 
 
 async def api_cinema_library(request):
@@ -1387,6 +1420,15 @@ async def api_cinema_library(request):
     rows = await _cinema_library_read(uid, section)
     if section == 'bookmarks':
         try:
+            token, folders = await _kinopub_bookmark_folders(uid)
+            folder_id = str(request.query.get('folder') or '').strip()
+            flat = str(request.query.get('flat') or '').strip().lower() in ('1','true','yes')
+            if folder_id and token:
+                remote = await _kinopub_bookmark_folder_items(token, folder_id)
+                return web.json_response({'ok':True,'section':section,'folder':folder_id,'items':remote,'count':len(remote)}, headers={'Cache-Control':'no-store'})
+            if folders and not flat:
+                total = sum(int(x.get('count') or 0) for x in folders)
+                return web.json_response({'ok':True,'section':section,'folders':folders,'items':[],'count':total,'folder_count':len(folders)}, headers={'Cache-Control':'no-store'})
             remote = await _kinopub_sync_bookmarks(uid)
             if remote:
                 merged = []
