@@ -2603,6 +2603,34 @@ let aiDubAudio=null;
 let aiDubOriginalVolume=1;
 
 let filteredNow=[];
+let tvRenderLimit=nativeTv?120:Number.POSITIVE_INFINITY;
+const TV_RENDER_BATCH=120;
+let tvLogoObserver=null;
+function bindVisibleChannelLogos(){
+  if(!nativeTv)return;
+  if(tvLogoObserver){try{tvLogoObserver.disconnect()}catch(_){} tvLogoObserver=null}
+  const imgs=[...document.querySelectorAll('#list img.logo[data-src]')];
+  if(!imgs.length)return;
+  const reveal=img=>{
+    const src=img.dataset.src;
+    if(!src)return;
+    img.removeAttribute('data-src');
+    img.src=src;
+  };
+  if(typeof IntersectionObserver!=='function'){
+    imgs.slice(0,32).forEach(reveal);
+    return;
+  }
+  const root=document.getElementById('content');
+  tvLogoObserver=new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      if(!entry.isIntersecting)return;
+      reveal(entry.target);
+      try{tvLogoObserver.unobserve(entry.target)}catch(_){}
+    });
+  },{root:root||null,rootMargin:'320px 0px',threshold:0.01});
+  imgs.forEach(img=>tvLogoObserver.observe(img));
+}
 let focusIndex=Math.max(0,Number(localStorage.getItem('abaj_tv_focus_index')||0));
 let tvFocusPersistTimer=null;
 function persistTvFocus(index,id){
@@ -5095,7 +5123,8 @@ function render(){
   }
   const channelNumberMap=new Map(filteredNow.map((x,i)=>[x.id,i+1]));
   const grouped={};
-  filteredNow.forEach(x=>{
+  const renderRows=nativeTv?filteredNow.slice(0,tvRenderLimit):filteredNow;
+  renderRows.forEach(x=>{
     const k=x.group||'Other';
     (grouped[k]||(grouped[k]=[])).push(x);
   });
@@ -5105,7 +5134,9 @@ function render(){
     grouped[group].forEach(ch=>{
       const fallbackLogo=channelFallbackLogo(ch);
       const logo=ch.logo
-        ?'<img class="logo" loading="lazy" decoding="async" src="'+esc(ch.logo)+'" onload="this.classList.add(\'logoReady\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'+fallbackLogo.replace('class="logoFallback logoFallbackAuto"','class="logoFallback logoFallbackAuto" style="display:none"')
+        ?(nativeTv
+          ?'<img class="logo" loading="lazy" decoding="async" data-src="'+esc(ch.logo)+'" onload="this.classList.add(\'logoReady\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'+fallbackLogo.replace('class="logoFallback logoFallbackAuto"','class="logoFallback logoFallbackAuto" style="display:none"')
+          :'<img class="logo" loading="lazy" decoding="async" src="'+esc(ch.logo)+'" onload="this.classList.add(\'logoReady\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">'+fallbackLogo.replace('class="logoFallback logoFallbackAuto"','class="logoFallback logoFallbackAuto" style="display:none"'))
         :fallbackLogo;
       const channelNo=(channelNumberMap.get(ch.id)||1);
       const qualityLabel=channelQualityLabel(ch);
@@ -5131,6 +5162,7 @@ function render(){
     });
   });
   document.getElementById('list').innerHTML=out||'<div class="empty">'+esc(t.noChannels)+'</div>';
+  bindVisibleChannelLogos();
   bindTvFocus();
 }
 function updateMobileHeaderCollapse(){
@@ -5346,6 +5378,20 @@ function moveFocusDirection(direction){
     if(direction==='left'&&focusIndex%cols>0){setTvFocus(focusIndex-1);return}
     if(direction==='right'&&focusIndex%cols<cols-1&&focusIndex+1<cards.length){setTvFocus(focusIndex+1);return}
     if(direction==='down'&&focusIndex+cols<cards.length){setTvFocus(focusIndex+cols);return}
+    if(direction==='down'&&cards.length<filteredNow.length){
+      const target=Math.min(filteredNow.length-1,focusIndex+cols);
+      tvRenderLimit=Math.min(filteredNow.length,tvRenderLimit+TV_RENDER_BATCH);
+      render();
+      requestAnimationFrame(()=>setTvFocus(target,true));
+      return;
+    }
+    if(direction==='right'&&focusIndex===cards.length-1&&cards.length<filteredNow.length){
+      const target=focusIndex+1;
+      tvRenderLimit=Math.min(filteredNow.length,tvRenderLimit+TV_RENDER_BATCH);
+      render();
+      requestAnimationFrame(()=>setTvFocus(target,true));
+      return;
+    }
     if(direction==='up'&&focusIndex>=cols){setTvFocus(focusIndex-cols);return}
   }
   const a=currentEl.getBoundingClientRect();
