@@ -767,7 +767,13 @@ async def main():
         logging.info('Legacy FaceTalk DB migrated into persistent Volume')
     await init_db()
     await start_webapp(bot)
-    await dp.start_polling(bot)
+    polling_enabled = str(os.getenv('TELEGRAM_POLLING_ENABLED', '1')).strip().lower() not in {'0','false','no','off'}
+    if polling_enabled:
+        logging.info('Telegram polling enabled for this service')
+        await dp.start_polling(bot)
+    else:
+        logging.info('Telegram polling disabled for this service; web server remains active')
+        await asyncio.Event().wait()
 
 if __name__ == "__main__":
     asyncio.run(main())

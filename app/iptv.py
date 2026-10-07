@@ -2307,10 +2307,14 @@ async def api_cinema_diagnostic(request):
     provider = str(body.get("provider") or "")[:64]
     rows = int(body.get("rows") or 0)
     playable = body.get("playable")
+    player = str(body.get("player") or "")[:32]
+    stream_format = str(body.get("format") or "")[:32]
+    source = str(body.get("source") or "")[:160]
+    code = str(body.get("code") or "")[:80]
     message = str(body.get("message") or "")[:240]
     logging.info(
-        "CINEMA_DIAG stage=%s provider=%s rows=%s playable=%s title=%s message=%s",
-        stage, provider, rows, playable, title, message
+        "CINEMA_DIAG stage=%s provider=%s rows=%s playable=%s player=%s format=%s source=%s code=%s title=%s message=%s",
+        stage, provider, rows, playable, player, stream_format, source, code, title, message
     )
     return web.json_response({"ok": True})
 

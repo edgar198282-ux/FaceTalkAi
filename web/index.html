@@ -6838,6 +6838,10 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
         title:ch.name,
         provider:ch.cinemaProvider||'',
         playable:false,
+        player:'native',
+        format:kinoPubHls?'hls':'http',
+        source:cinemaStreamLabel(src),
+        code:'startup_timeout',
         message:'no first frame within 8000ms'
       });
       nativeMedia3FirstFrameHandler=null;
@@ -6866,6 +6870,10 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
         title:ch.name,
         provider:ch.cinemaProvider||'',
         playable:true,
+        player:'native',
+        format:kinoPubHls?'hls':'http',
+        source:cinemaStreamLabel(src),
+        code:'first_frame',
         message:'native Media3 first frame'
       });
       try{v.pause()}catch(e){}
@@ -6884,6 +6892,10 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
         title:ch.name,
         provider:ch.cinemaProvider||'',
         playable:false,
+        player:'native',
+        format:kinoPubHls?'hls':'http',
+        source:cinemaStreamLabel(src),
+        code:String(reason||'native_error').slice(0,80),
         message:String(reason||'ошибка потока')
       });
       if(/PARSING_CONTAINER_UNSUPPORTED/i.test(String(reason||''))&&String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'){
@@ -7062,6 +7074,18 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
 
     hls.on(Hls.Events.ERROR,(event,data)=>{
       if(!data||!data.fatal)return;
+      if(isCinemaPlaybackOpen()){
+        cinemaDiag('playback_error',{
+          title:ch.name,
+          provider:ch.cinemaProvider||'',
+          playable:false,
+          player:'hls',
+          format:'hls',
+          source:cinemaStreamLabel(src),
+          code:String(data?.response?.code||data?.details||data?.type||'hls_error'),
+          message:String((data?.details||data?.type||'HLS fatal error')+(data?.response?.text?' · '+data.response.text:''))
+        });
+      }
 
       if(nativeTv&&tvPlaybackStable){
         if(data.type===Hls.ErrorTypes.NETWORK_ERROR){
@@ -7147,7 +7171,20 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
         v.addEventListener('timeupdate',confirmPlayback);
         v.addEventListener('canplay',confirmPlayback);
         setTimeout(confirmPlayback,120);
-      }).catch(()=>{
+      }).catch((playErr)=>{
+        if(isCinemaPlaybackOpen()){
+          const mediaCode=v&&v.error?String(v.error.code||''):'';
+          cinemaDiag('playback_error',{
+            title:ch.name,
+            provider:ch.cinemaProvider||'',
+            playable:false,
+            player:'html5',
+            format:/\.m3u8(?:[?#]|$)/i.test(src)?'hls':'http',
+            source:cinemaStreamLabel(src),
+            code:mediaCode||String(playErr?.name||'play_rejected'),
+            message:String(playErr?.message||'HTML video play() rejected')
+          });
+        }
         if(nativeTv&&tvPlayerMode!=='hls'&&!tvForceSystemForChannel(ch)&&!tvUseHlsForChannel(ch)&&window.Hls&&Hls.isSupported()){
           playbackFallbackCount++;
           forgetTvSystemFallback(ch);
@@ -11134,6 +11171,14 @@ function cinemaIsDirectStreamUrl(value){
     ||u.includes('/hls/')
     ||u.includes('/dash/');
 }
+function cinemaStreamLabel(value){
+  try{
+    const u=new URL(String(value||''),location.href);
+    const p=String(u.pathname||'');
+    const ext=(p.match(/\.([a-z0-9]{2,5})$/i)||[])[1]||'';
+    return (u.host||'local')+(ext?' · '+ext.toLowerCase():'');
+  }catch(e){return 'unknown'}
+}
 function cinemaDiag(stage,data={}){
   try{
     fetch('/api/cinema/diagnostic',{
@@ -11145,6 +11190,10 @@ function cinemaDiag(stage,data={}){
         provider:String(data.provider||'').slice(0,64),
         rows:Number(data.rows||0),
         playable:data.playable===undefined?null:!!data.playable,
+        player:String(data.player||playbackPlayerMode||'').slice(0,32),
+        format:String(data.format||'').slice(0,32),
+        source:String(data.source||'').slice(0,160),
+        code:String(data.code||'').slice(0,80),
         message:String(data.message||'').slice(0,240)
       }),
       keepalive:true
