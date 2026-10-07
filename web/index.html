@@ -7855,7 +7855,8 @@ function focusPlayerControlSpatial(direction){
   return true;
 }
 function activatePlayerControl(){
-  const el=document.activeElement;
+  let el=document.activeElement;
+  if(el&&el.closest)el=el.closest('.ctrl')||el;
   if(!getPlayerControls().includes(el))return false;
   rememberPlayerControl(el);
   if(el.classList&&el.classList.contains('playerQualityCtrl')){
@@ -7863,7 +7864,9 @@ function activatePlayerControl(){
     if(select){try{select.focus();select.click()}catch(_){};return true}
   }
   if(el.tagName==='SELECT'){try{el.focus();el.click()}catch(_){};return true}
-  if(typeof el.click==='function'){el.click();return true}
+  if(typeof el.click==='function'){
+    try{el.click();return true}catch(e){}
+  }
   return false;
 }
 function tvNativeOkDown(){
@@ -12696,6 +12699,49 @@ body.nativeTv #tvSettingsBtn.focused{
   transform:scale(1.08)!important;
 }
 body.nativeTv #tvClock{display:none!important}
+</style>
+
+<style id="tv-cinema-player-focus-v1">
+body.nativeTv .playerView.cinemaPlayback .playerPrimaryControls{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  justify-items:center!important;
+  align-items:start!important;
+  gap:18px!important;
+  max-width:680px!important;
+  margin:10px auto 0!important;
+}
+body.nativeTv .playerView.cinemaPlayback .tvChannelCtrl{
+  display:none!important;
+}
+body.nativeTv .playerView.cinemaPlayback .playerCircleCtrl{
+  width:120px!important;
+  min-width:120px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+}
+body.nativeTv .playerView.cinemaPlayback .playerCircleCtrl .playerCtrlIcon{
+  width:68px!important;
+  height:68px!important;
+  min-width:68px!important;
+  min-height:68px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border-radius:50%!important;
+}
+body.nativeTv .playerView.cinemaPlayback .playerCircleCtrl:focus{
+  outline:none!important;
+}
+body.nativeTv .playerView.cinemaPlayback .playerCircleCtrl:focus .playerCtrlIcon{
+  box-shadow:0 0 0 5px #ffd400,0 0 24px rgba(255,212,0,.65)!important;
+}
+body.nativeTv .playerView.cinemaPlayback .playerSeekRange:focus{
+  outline:none!important;
+  filter:drop-shadow(0 0 6px #ffd400)!important;
+}
 </style>
 </body>
 </html>
