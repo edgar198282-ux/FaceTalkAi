@@ -6175,6 +6175,9 @@ function openPlayer(id){
   if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
   const playerView=document.getElementById('playerView');
   const cinemaPlayback=String(ch.id||'').startsWith('cinema:')||
+    !!ch.cinemaProvider||
+    !!ch.cinemaItemId||
+    !!ch.cinemaMediaId||
     !!(cinemaExternalChannel&&String(cinemaExternalChannel.id||'')===String(ch.id||''));
   playerView.classList.toggle('cinemaPlayback',cinemaPlayback);
   if(!nativeTv)playerView.classList.remove('videoFill');
@@ -12873,6 +12876,26 @@ body:not(.nativeTv) .playerView.pureFullscreen.showPureControls .playerBottom{
   display:block!important;
   opacity:1!important;
   pointer-events:auto!important;
+}
+</style>
+
+<style id="tv-cinema-controls-rollback-v1">
+body.nativeTv .playerView.cinemaPlayback .tvChannelCtrl{
+  display:none!important;
+}
+body.nativeTv .playerView.cinemaPlayback .playerPrimaryControls{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  max-width:620px!important;
+  gap:14px!important;
+  margin:8px auto 0!important;
+  align-items:start!important;
+  justify-items:center!important;
+}
+body.nativeTv .playerView.cinemaPlayback .cinemaSeekCtrl,
+body.nativeTv .playerView.cinemaPlayback #playerPlayPause,
+body.nativeTv .playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtrl[title="На весь экран"]{
+  display:flex!important;
 }
 </style>
 </body>
