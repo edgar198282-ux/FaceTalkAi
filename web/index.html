@@ -4641,12 +4641,36 @@ function installPlayerTouchGestures(){
     }else if(moved<14&&player&&player.classList.contains('cinemaPlayback')&&!nativeTv){
       e.preventDefault();
       const now=Date.now();
-      playerGestureSuppressClickUntil=now+420;
+      const rect=wrap.getBoundingClientRect();
+      const side=(p.clientX-rect.left)<rect.width/2?'left':'right';
+      const isDouble=cinemaDoubleTapSide===side&&(now-cinemaDoubleTapAt)<=320;
+      playerGestureSuppressClickUntil=now+500;
       pureTapHandledAt=now;
-      cinemaDoubleTapAt=0;
-      cinemaDoubleTapSide='';
-      if(cinemaSingleTapTimer){clearTimeout(cinemaSingleTapTimer);cinemaSingleTapTimer=null}
-      togglePureFullscreenControls();
+      if(isDouble){
+        if(cinemaSingleTapTimer){clearTimeout(cinemaSingleTapTimer);cinemaSingleTapTimer=null}
+        cinemaDoubleTapAt=0;
+        cinemaDoubleTapSide='';
+        const delta=side==='left'?-15:15;
+        seekPlayerBy(delta);
+        const hint=document.getElementById('playerGestureHint');
+        if(hint){
+          hint.classList.toggle('seekLeft',side==='left');
+          hint.classList.toggle('seekRight',side==='right');
+        }
+        showPlayerGestureHint(side==='left'?'↶ 15 сек':'15 сек ↷');
+      }else{
+        cinemaDoubleTapAt=now;
+        cinemaDoubleTapSide=side;
+        if(cinemaSingleTapTimer)clearTimeout(cinemaSingleTapTimer);
+        cinemaSingleTapTimer=setTimeout(()=>{
+          cinemaSingleTapTimer=null;
+          cinemaDoubleTapAt=0;
+          cinemaDoubleTapSide='';
+          const activePlayer=document.getElementById('playerView');
+          if(!activePlayer||!activePlayer.classList.contains('open')||!activePlayer.classList.contains('cinemaPlayback'))return;
+          togglePureFullscreenControls();
+        },330);
+      }
     }else if(moved<14&&player&&player.classList.contains('pureFullscreen')){
       e.preventDefault();
       const now=Date.now();
