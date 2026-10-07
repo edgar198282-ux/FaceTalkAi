@@ -5646,6 +5646,7 @@ function handleAppBack(){
     return true;
   }
   if(cinemaDetailOpen()){closeCinemaDetail();return true}
+  if(cinemaActorBrowseOrigin&&restoreCinemaActorOrigin())return true
   if(cinemaSideMenuOpen()){toggleCinemaSideMenu();return true}
   if(cinemaCategoryMenuOpen()){toggleCinemaCategoryMenu();return true}
   if(cinemaMode){
@@ -5694,6 +5695,7 @@ function handleTvBack(){
     closeCinemaDetail();
     return true;
   }
+  if(cinemaActorBrowseOrigin&&restoreCinemaActorOrigin())return true;
   if(cinemaSideMenuOpen()){
     toggleCinemaSideMenu();
     focusCinemaElement(document.getElementById('cinemaMenuBtn'));
@@ -11855,16 +11857,27 @@ function cinemaActorCards(item){
   if(!raw)return [];
   return raw.split(/[,;]+/).map(name=>String(name||'').trim()).filter(Boolean).slice(0,20).map(name=>({name,image:''}));
 }
-async function openCinemaActor(name){
-  const actor=String(name||'').trim();
+let cinemaActorBrowseOrigin=null;
+async function openCinemaActor(name,fallbackName=''){
+  let actor=String(name||fallbackName||'').trim();
+  const fallback=String(fallbackName||'').trim();
   if(!actor)return;
+  const detailEl=document.getElementById('cinemaDetail');
+  cinemaActorBrowseOrigin={item:cinemaDetailMovie?{...cinemaDetailMovie}:null,scrollTop:detailEl?detailEl.scrollTop:0};
   closeCinemaDetailInternal();
   const status=document.getElementById('cinemaStatus');
   if(status)status.textContent=(appLang==='en'?'Films with ':(appLang==='hy'?'Ֆիլմեր՝ ':'Фильмы с '))+actor+'…';
   try{
-    const make=type=>fetch('/api/kinopub/catalog?'+new URLSearchParams({type,q:actor,page:'1',perpage:'60'}).toString(),{headers:authHeaders(),cache:'no-store'})
+    try{
+      const pd=await fetch('/api/cinema/person?name='+encodeURIComponent(actor),{headers:authHeaders(),cache:'force-cache'}).then(r=>r.ok?r.json():null);
+      if(pd?.name)actor=String(pd.name).trim()||actor;
+    }catch(e){}
+    const queries=[actor,fallback].map(x=>String(x||'').trim()).filter((x,i,a)=>x&&a.indexOf(x)===i);
+    const make=(type,q)=>fetch('/api/kinopub/catalog?'+new URLSearchParams({type,q,page:'1',perpage:'60'}).toString(),{headers:authHeaders(),cache:'no-store'})
       .then(r=>r.ok?r.json():null).then(d=>Array.isArray(d?.items)?d.items:[]).catch(()=>[]);
-    const batches=await Promise.all([make('movies'),make('series')]);
+    const req=[];
+    for(const q of queries){req.push(make('movies',q),make('series',q))}
+    const batches=await Promise.all(req);
     const merged=[],seen=new Set();
     for(const rows of batches)for(const x of rows){
       const key=String(x?.id||x?.title||'');
@@ -11882,6 +11895,14 @@ async function openCinemaActor(name){
   }catch(e){
     if(status)status.textContent=appLang==='en'?'Search failed':(appLang==='hy'?'Որոնման սխալ':'Ошибка поиска');
   }
+}
+function restoreCinemaActorOrigin(){
+  const origin=cinemaActorBrowseOrigin;
+  if(!origin||!origin.item)return false;
+  cinemaActorBrowseOrigin=null;
+  renderCinemaDetail(origin.item);
+  setTimeout(()=>{const d=document.getElementById('cinemaDetail');if(d)d.scrollTop=Number(origin.scrollTop||0)},40);
+  return true;
 }
 function renderCinemaCast(item){
   const host=document.getElementById('cinemaCast');
@@ -11901,19 +11922,26 @@ function renderCinemaCast(item){
     const initial=(name[0]||'?').toUpperCase();
     btn.innerHTML=(image?'<img loading="lazy" src="'+image.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaCastAvatarFallback">'+initial.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>')+
       '<div class="cinemaCastName">'+name.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>';
-    btn.onclick=()=>openCinemaActor(name);
+    btn.dataset.actorSearchName=name;
+    btn.onclick=()=>openCinemaActor(btn.dataset.actorSearchName||name,name);
     row.appendChild(btn);
-    if(!image){
-      fetch('/api/cinema/person?name='+encodeURIComponent(name),{headers:authHeaders(),cache:'force-cache'})
-        .then(r=>r.ok?r.json():null).then(d=>{
-          const src=String(d?.image||'').trim();
-          if(!src||!btn.isConnected)return;
+    fetch('/api/cinema/person?name='+encodeURIComponent(name),{headers:authHeaders(),cache:'force-cache'})
+      .then(r=>r.ok?r.json():null).then(d=>{
+        if(!btn.isConnected)return;
+        const englishName=String(d?.name||'').trim();
+        const src=String(d?.image||'').trim();
+        if(englishName){
+          btn.dataset.actorSearchName=englishName;
+          const label=btn.querySelector('.cinemaCastName');
+          if(label)label.textContent=englishName;
+        }
+        if(src){
           const pic=new Image();
           pic.loading='lazy';pic.alt='';
-          pic.onload=()=>{if(btn.isConnected){const old=btn.querySelector('.cinemaCastAvatarFallback');if(old)old.replaceWith(pic)}};
+          pic.onload=()=>{if(btn.isConnected){const old=btn.querySelector('img,.cinemaCastAvatarFallback');if(old)old.replaceWith(pic)}};
           pic.src=src;
-        }).catch(()=>{});
-    }
+        }
+      }).catch(()=>{});
   });
   host.style.display=row.children.length?'block':'none';
 }

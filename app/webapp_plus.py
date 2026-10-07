@@ -217,6 +217,36 @@ def _kinopub_kind(item):
     raw = ' '.join(str(item.get(k) or '') for k in ('type','subtype')).lower()
     return 'series' if any(x in raw for x in ('serial','series','tv')) else 'movies'
 
+def _kinopub_actor_image(actor):
+    if not isinstance(actor, dict):
+        return ''
+    for key in ('photo','image','poster','avatar','picture','thumbnail'):
+        value = actor.get(key)
+        if isinstance(value, str) and value.strip().startswith(('http://','https://')):
+            return value.strip()
+        if isinstance(value, dict):
+            for sub in ('full','big','large','medium','small','url','src','imageUrl','original'):
+                url = value.get(sub)
+                if isinstance(url, str) and url.strip().startswith(('http://','https://')):
+                    return url.strip()
+    for key in ('images','posters','photos','pictures'):
+        value = actor.get(key)
+        if isinstance(value, dict):
+            for sub in ('full','big','large','medium','small','url','src','imageUrl','original'):
+                url = value.get(sub)
+                if isinstance(url, str) and url.strip().startswith(('http://','https://')):
+                    return url.strip()
+        elif isinstance(value, list):
+            for row in value:
+                if isinstance(row, str) and row.strip().startswith(('http://','https://')):
+                    return row.strip()
+                if isinstance(row, dict):
+                    for sub in ('full','big','large','medium','small','url','src','imageUrl','original'):
+                        url = row.get(sub)
+                        if isinstance(url, str) and url.strip().startswith(('http://','https://')):
+                            return url.strip()
+    return ''
+
 def _kinopub_normalize(item):
     title = str(item.get('title') or item.get('name') or '').strip()
     if not title:
@@ -235,14 +265,10 @@ def _kinopub_normalize(item):
     if isinstance(actors_raw, list):
         for actor in actors_raw[:24]:
             if isinstance(actor, dict):
-                name = str(actor.get('name') or actor.get('title') or actor.get('full_name') or '').strip()
-                image = str(actor.get('photo') or actor.get('image') or actor.get('poster') or actor.get('avatar') or '').strip()
-                if not image:
-                    pics = actor.get('images') or actor.get('posters')
-                    if isinstance(pics, dict):
-                        image = str(pics.get('full') or pics.get('big') or pics.get('medium') or pics.get('small') or '').strip()
+                name = str(actor.get('original_name') or actor.get('name_en') or actor.get('english_name') or actor.get('name') or actor.get('title') or actor.get('full_name') or '').strip()
+                image = _kinopub_actor_image(actor)
                 if name:
-                    actor_cards.append({'id':str(actor.get('id') or ''),'name':name,'image':image})
+                    actor_cards.append({'id':str(actor.get('id') or actor.get('person_id') or actor.get('actor_id') or ''),'name':name,'image':image})
             elif str(actor or '').strip():
                 actor_cards.append({'id':'','name':str(actor).strip(),'image':''})
         actors = ', '.join(x['name'] for x in actor_cards)
