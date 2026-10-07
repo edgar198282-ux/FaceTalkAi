@@ -2735,7 +2735,7 @@ public class MainActivity extends Activity {
                 .setDefaultRequestProperties(headers);
             DataSource.Factory cinemaDataSource=httpFactory;
             if("KINOPUB".equals(provider)){
-                cinemaDataSource=new ChunkedRangeDataSourceFactory(httpFactory,4L*1024L*1024L);
+                cinemaDataSource=new ChunkedRangeDataSourceFactory(httpFactory,1L*1024L*1024L);
             }
             DefaultMediaSourceFactory mediaFactory=new DefaultMediaSourceFactory(cinemaDataSource);
             nativeAdFrameEpoch++;
