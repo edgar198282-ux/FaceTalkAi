@@ -1438,8 +1438,10 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaDetail.open{display:block}
 .cinemaDetailHero{
   position:relative;min-height:56vh;background:#151b1f center 28%/cover no-repeat;
-  display:flex;align-items:flex-end;overflow:hidden
+  display:flex;align-items:flex-end;overflow:hidden;
+  background-blend-mode:multiply;transition:background-color .08s linear
 }
+.cinemaDetailHeroPoster{transition:filter .08s linear,opacity .08s linear}
 .cinemaDetailHero.posterFallback::before{
   content:"";position:absolute;inset:-4%;background:var(--cinema-detail-poster) center/cover no-repeat;
   filter:blur(20px) brightness(.46);transform:scale(1.06)
@@ -12018,6 +12020,26 @@ function syncCinemaDescriptionClamp(){
     }
   });
 }
+function updateCinemaDetailHeroShade(){
+  const detail=document.getElementById('cinemaDetail');
+  const hero=document.getElementById('cinemaDetailHero');
+  const poster=document.getElementById('cinemaDetailHeroPoster');
+  if(!detail||!hero)return;
+  const progress=Math.max(0,Math.min(1,(Number(detail.scrollTop||0)-18)/340));
+  const shade=0.72*progress;
+  hero.style.backgroundColor='rgba(0,0,0,'+shade.toFixed(3)+')';
+  if(poster)poster.style.filter='brightness('+(1-0.62*progress).toFixed(3)+')';
+}
+function installCinemaDetailHeroShade(){
+  const detail=document.getElementById('cinemaDetail');
+  if(!detail||detail.dataset.heroShadeBound==='1')return;
+  detail.dataset.heroShadeBound='1';
+  let raf=0;
+  detail.addEventListener('scroll',()=>{
+    if(raf)return;
+    raf=requestAnimationFrame(()=>{raf=0;updateCinemaDetailHeroShade()});
+  },{passive:true});
+}
 function renderCinemaDetail(item){
   cinemaDetailMovie=item;
   cinemaSourcePickerMovie=item;
@@ -12125,6 +12147,8 @@ function renderCinemaDetail(item){
   renderCinemaSimilar(item);
 
   detail.classList.add('open');
+  installCinemaDetailHeroShade();
+  updateCinemaDetailHeroShade();
   document.getElementById('cinemaScreen')?.style.setProperty('display','none');
   requestAnimationFrame(()=>{
     setTimeout(()=>{
