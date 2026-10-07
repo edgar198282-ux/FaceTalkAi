@@ -1480,8 +1480,8 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 }
 .cinemaDetailShare:focus{outline:none;box-shadow:0 0 0 3px #a6dfff}
 .cinemaDetailActions{
-  position:absolute;z-index:4;left:50%;right:auto;bottom:20px;transform:translateX(-50%);
-  display:flex;align-items:center;justify-content:center;gap:10px;width:auto;max-width:88%
+  position:absolute;z-index:4;left:6.5%;right:auto;bottom:20px;transform:none;
+  display:flex;align-items:center;justify-content:flex-start;gap:10px;width:auto;max-width:88%
 }
 .cinemaDetailActions.hasSeasons{display:flex;gap:10px}
 .cinemaDetailAction{
@@ -2301,7 +2301,6 @@ body:not(.cinemaMode) .cinemaShellSide{
       <div class="cinemaDetailActions">
         <button class="cinemaDetailAction" id="cinemaDetailWatch" onclick="watchCinemaDetail()">СМОТРЕТЬ ФИЛЬМ</button>
         <button class="cinemaDetailAction" id="cinemaDetailSeasons" onclick="openCinemaSeasons()" style="display:none">СЕЗОНЫ</button>
-        <button class="cinemaDetailAction" id="cinemaDetailTrailer" onclick="playCinemaTrailer()">ТРЕЙЛЕР</button>
       </div>
     </div>
     <div class="cinemaDetailBody">
