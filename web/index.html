@@ -1585,13 +1585,13 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaDetailFacts a{color:#f2f3f4;text-decoration:underline}
 .cinemaRatingValue{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0}
 .cinemaRatingPair{display:inline-flex;align-items:center;gap:5px;min-width:0;white-space:nowrap}
-.cinemaRatingScore{font-size:18px;font-weight:750;color:#fff;text-decoration:underline;text-underline-offset:3px}
+.cinemaRatingScore{font-size:18px;font-weight:750;color:#fff;text-decoration:none!important}
 .cinemaRatingLogo{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:25px;padding:0 7px;border-radius:6px;font-size:11px;font-weight:900}
 .cinemaRatingLogo.imdb{background:#f5c518;color:#000}
 .cinemaRatingLogo.kp{background:#ff6a00;color:#fff}
-.cinemaRatingLogo.abaj{min-width:25px;width:25px;padding:0;background:#f5c518;color:#111;font-size:13px}
+.cinemaRatingLogo.abaj{min-width:auto;width:auto;padding:0 7px;background:#f5c518;color:#111;font-size:11px;gap:3px}
 .cinemaAbajRatingInline{border:0;background:transparent;color:inherit;padding:0;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font:inherit}
-.cinemaAbajRatingBrand{font-size:12px;font-weight:850;opacity:.96}
+.cinemaAbajRatingBrand{font-size:10px;font-weight:900;opacity:1}
 .nativeTv .cinemaAbajRatingInline:focus{outline:none;border-radius:7px;box-shadow:0 0 0 3px #ffd400}
 body:not(.darkMode) .cinemaAbajRatingInline{color:#173b52}
 .cinemaRatingModal{position:fixed;inset:0;z-index:2147483620;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.76);padding:18px}
@@ -1606,7 +1606,7 @@ body:not(.darkMode) .cinemaAbajRatingInline{color:#173b52}
 .cinemaRatingChoice.selected:focus,.cinemaRatingChoice.selectedBefore:focus{background:#17689f;color:#ffd22e}
 .cinemaRatingCancel{display:block;margin:18px auto 0;border:0;background:transparent;color:#b8d7e8;font-size:15px;font-weight:800;padding:8px 14px}
 .cinemaRatingCancel:focus{outline:none;color:#ffd400}
-@media(max-width:760px){.cinemaRatingCard{width:min(430px,96vw);border-radius:20px;padding:18px 12px}.cinemaRatingChoices{gap:3px}.cinemaRatingChoice{height:38px;border-radius:8px;font-size:21px}.cinemaRatingValue{gap:6px}.cinemaRatingScore{font-size:16px}.cinemaRatingLogo{min-width:29px;height:23px;padding:0 5px;font-size:10px}.cinemaRatingLogo.abaj{min-width:23px;width:23px}.cinemaAbajRatingBrand{font-size:11px}}
+@media(max-width:760px){.cinemaRatingCard{width:min(430px,96vw);border-radius:20px;padding:18px 12px}.cinemaRatingChoices{gap:3px}.cinemaRatingChoice{height:38px;border-radius:8px;font-size:21px}.cinemaRatingValue{gap:6px}.cinemaRatingScore{font-size:16px}.cinemaRatingLogo{min-width:29px;height:23px;padding:0 5px;font-size:10px}.cinemaRatingLogo.abaj{min-width:auto;width:auto;padding:0 6px}.cinemaAbajRatingBrand{font-size:9px}}
 .cinemaSimilar{margin-top:28px}
 .cinemaSimilarTitle{font-size:20px;font-weight:800;color:#eaf8ff;margin-bottom:12px}
 .cinemaSimilarRow{display:flex;align-items:flex-start;gap:12px;overflow-x:auto;padding:4px 4px 18px;scrollbar-width:none;scroll-behavior:auto}
@@ -1724,7 +1724,7 @@ body:not(.darkMode) .cinemaDetailTitle,body:not(.darkMode) .cinemaDetailDescript
 body:not(.darkMode) .cinemaDetailOriginalTitle{color:#6f8798!important}
 body:not(.darkMode) .cinemaDetailDescriptionSecondary,body:not(.darkMode) .cinemaDetailFacts .k{color:#658397!important}
 body:not(.darkMode) .cinemaDetailBadge{color:#244d66!important;border-color:#9db8c9!important;background:rgba(255,255,255,.55)!important}
-body:not(.darkMode) .cinemaRatingScore{color:#173b52!important;text-decoration-color:#7fa1b5!important}
+body:not(.darkMode) .cinemaRatingScore{color:#173b52!important;text-decoration:none!important}
 body:not(.darkMode) .cinemaRatingValue{color:#173b52!important}
 body:not(.darkMode) .cinemaSimilarTitle,body:not(.darkMode) .cinemaSimilarName{color:#173b52!important}
 body:not(.darkMode) .cinemaSimilarMeta{color:#658397!important}
@@ -11980,7 +11980,7 @@ function cinemaRatingFact(imdb,kp){
   const parts=[];
   if(imdbValue)parts.push('<span class="cinemaRatingPair"><span class="cinemaRatingScore">'+imdbValue+'</span><span class="cinemaRatingLogo imdb">IMDb</span></span>');
   if(kpValue)parts.push('<span class="cinemaRatingPair"><span class="cinemaRatingScore">'+kpValue+'</span><span class="cinemaRatingLogo kp">КП</span></span>');
-  parts.push('<button class="cinemaAbajRatingInline" id="cinemaAbajRating" type="button" onclick="openCinemaRating()" aria-label="Оценить в Abaj"><span class="cinemaRatingScore" id="cinemaAbajRatingScore">—</span><span class="cinemaRatingLogo abaj">A</span><span class="cinemaAbajRatingBrand">Abaj</span></button>');
+  parts.push('<button class="cinemaAbajRatingInline" id="cinemaAbajRating" type="button" onclick="openCinemaRating()" aria-label="Оценить в Abaj"><span class="cinemaRatingScore" id="cinemaAbajRatingScore">—</span><span class="cinemaRatingLogo abaj"><span>A</span><span class="cinemaAbajRatingBrand">Abaj</span></span></button>');
   return '<div class="k">Рейтинг</div><div class="v cinemaRatingValue">'+parts.join('')+'</div>';
 }
 let cinemaAbajRatingMine=0;
