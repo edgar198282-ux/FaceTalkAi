@@ -8027,6 +8027,53 @@ function moveTvSettingsFocusSpatial(direction){
 
 function tvNativeRemote(action){
   if(!nativeTv)return;
+  const player=document.getElementById('playerView');
+  if(player&&player.classList.contains('open')){
+    if(cinemaTrackMenuOpen()){
+      if(action==='up'||action==='left')moveCinemaTrackChoice(-1);
+      else if(action==='down'||action==='right')moveCinemaTrackChoice(1);
+      else if(action==='ok'){const el=document.activeElement;if(el&&typeof el.click==='function')el.click()}
+      return;
+    }
+    if(!isCinemaPlaybackOpen()&&(action==='up'||action==='down')&&!tvRailOpen()){
+      toggleTvRail(true);
+      return;
+    }
+    if(/^digit[0-9]$/.test(String(action||''))){
+      tvTuneDigit(String(action).slice(-1));
+      return;
+    }
+    if(tvRailOpen()){
+      if(action==='up'){moveTvRail(-1);return}
+      if(action==='down'){moveTvRail(1);return}
+      if(action==='left'){toggleTvRail(false);focusPlayerControl();return}
+      if(action==='ok'){openTvRailFocused();return}
+      return;
+    }
+    const controlsHidden=document.body.classList.contains('playerClean');
+    if(controlsHidden){
+      if(action==='left'){
+        if(isCinemaPlaybackOpen())seekPlayerBy(-10);else queueTvChannelStep(-1);
+        return;
+      }
+      if(action==='right'){
+        if(isCinemaPlaybackOpen())seekPlayerBy(10);else queueTvChannelStep(1);
+        return;
+      }
+      if(action==='ok'||action==='up'||action==='down'){showTvPlayerUi(true);focusPlayerControl();return}
+    }
+    if(action==='left'||action==='right'||action==='up'||action==='down'){
+      showTvPlayerUi(true);
+      focusPlayerControlSpatial(action);
+      return;
+    }
+    if(action==='ok'){
+      showTvPlayerUi(true);
+      if(!activatePlayerControl())focusPlayerControl();
+      return;
+    }
+    return;
+  }
   if(adminPanelOpen()){
     if(action==='up'||action==='down'||action==='left'||action==='right'||action==='ok')moveAdminFocus(action);
     return;
@@ -8129,48 +8176,6 @@ function tvNativeRemote(action){
         return;
       }
       if(el&&typeof el.click==='function')el.click();
-      return;
-    }
-    return;
-  }
-  const player=document.getElementById('playerView');
-  if(player&&player.classList.contains('open')){
-    if(!isCinemaPlaybackOpen()&&(action==='up'||action==='down')&&!tvRailOpen()){
-      toggleTvRail(true);
-      return;
-    }
-    if(/^digit[0-9]$/.test(String(action||''))){
-      tvTuneDigit(String(action).slice(-1));
-      return;
-    }
-    if(tvRailOpen()){
-      if(action==='up'){moveTvRail(-1);return}
-      if(action==='down'){moveTvRail(1);return}
-      if(action==='left'){toggleTvRail(false);focusPlayerControl();return}
-      if(action==='ok'){openTvRailFocused();return}
-      return;
-    }
-    const controlsHidden=document.body.classList.contains('playerClean');
-    if(controlsHidden){
-      if(action==='left'){
-        if(isCinemaPlaybackOpen())seekPlayerBy(-10);else queueTvChannelStep(-1);
-        return;
-      }
-      if(action==='right'){
-        if(isCinemaPlaybackOpen())seekPlayerBy(10);else queueTvChannelStep(1);
-        return;
-      }
-      if(action==='ok'||action==='up'||action==='down'){showTvPlayerUi(true);focusPlayerControl();return}
-    }
-    if(action==='left'||action==='right'||action==='up'||action==='down'){
-      showTvPlayerUi(true);
-
-      focusPlayerControlSpatial(action);
-      return;
-    }
-    if(action==='ok'){
-      showTvPlayerUi(true);
-      if(!activatePlayerControl())focusPlayerControl();
       return;
     }
     return;
