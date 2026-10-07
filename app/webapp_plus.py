@@ -581,9 +581,10 @@ def _kinopub_store_stream(uid: int, url: str) -> str:
 
 
 def _kinopub_proxy_url(request, uid: int, url: str) -> str:
+    external_disabled = str(os.getenv('KINOPUB_PROXY_DISABLED') or '').strip().lower() in {'1','true','yes','on'}
     external_base = str(os.getenv('KINOPUB_PROXY_BASE') or '').strip().rstrip('/')
     external_secret = str(os.getenv('KINOPUB_PROXY_SECRET') or '').strip()
-    if external_base and external_secret:
+    if not external_disabled and external_base and external_secret:
         payload = json.dumps({
             'u': str(url),
             'e': int(time.time()) + 21600,
