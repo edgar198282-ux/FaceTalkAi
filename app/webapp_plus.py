@@ -8,7 +8,7 @@ import os
 import re
 import html
 import time
-from urllib.parse import quote, urlencode, urlparse
+from urllib.parse import quote, urlencode, urlparse, parse_qs
 
 import aiohttp
 from aiohttp import web
@@ -628,6 +628,31 @@ def _kinopub_url_diag(url):
     except Exception:
         return {'host':'','path':'','query_keys':[],'expiry_key':'','expiry_in':None}
 
+_kinopub_proxy_probe_last = 0.0
+
+async def _kinopub_probe_proxy_ranges(url):
+    global _kinopub_proxy_probe_last
+    now = time.time()
+    if now - _kinopub_proxy_probe_last < 25:
+        return
+    _kinopub_proxy_probe_last = now
+    timeout = aiohttp.ClientTimeout(total=12, connect=5, sock_read=6)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        for label, rng in (('head','bytes=0-65535'),('mid','bytes=4194304-4259839')):
+            try:
+                async with session.get(url, headers={'Range':rng,'Accept':'*/*'}, allow_redirects=True) as resp:
+                    body = await resp.content.read(65536)
+                    logging.info(
+                        'KINOPUB_PROXY_RANGE label=%s status=%s requested=%s content_range=%s content_length=%s accept_ranges=%s bytes=%s type=%s',
+                        label, resp.status, rng,
+                        str(resp.headers.get('Content-Range') or ''),
+                        str(resp.headers.get('Content-Length') or ''),
+                        str(resp.headers.get('Accept-Ranges') or ''),
+                        len(body), str(resp.headers.get('Content-Type') or '')
+                    )
+            except Exception as exc:
+                logging.warning('KINOPUB_PROXY_RANGE label=%s requested=%s error=%s', label, rng, type(exc).__name__+': '+str(exc)[:120])
+
 def _kinopub_direct_stream_response(request, uid, url):
     direct = str(url or '').strip()
     try:
@@ -646,9 +671,14 @@ def _kinopub_direct_stream_response(request, uid, url):
         diag.get('host'), diag.get('expiry_key'), diag.get('expiry_in'),
         ','.join(diag.get('query_keys') or []), diag.get('path')
     )
+    proxied = _kinopub_proxy_url(request, uid, direct)
+    try:
+        asyncio.create_task(_kinopub_probe_proxy_ranges(proxied))
+    except Exception:
+        pass
     return web.json_response({
         'ok': True,
-        'url': _kinopub_proxy_url(request, uid, direct),
+        'url': proxied,
         'provider': 'KINOPUB',
         'direct': False,
         'proxied': True,
