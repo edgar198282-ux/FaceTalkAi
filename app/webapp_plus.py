@@ -2395,6 +2395,33 @@ def _cinema_title_score(query, candidate):
     import difflib
     return int(difflib.SequenceMatcher(None, q, c).ratio() * 60)
 
+async def _wiki_person_lookup(name, session):
+    try:
+        host = 'ru.wikipedia.org' if re.search(r'[А-Яа-яЁё]', str(name or '')) else 'en.wikipedia.org'
+        params = {
+            'action':'query','generator':'search','gsrsearch':str(name or ''),'gsrlimit':'3',
+            'prop':'pageimages|langlinks','piprop':'thumbnail','pithumbsize':'500',
+            'lllang':'en','lllimit':'1','format':'json'
+        }
+        async with session.get('https://' + host + '/w/api.php', params=params, allow_redirects=True) as resp:
+            data = await resp.json(content_type=None) if resp.status < 400 else {}
+        pages = ((data or {}).get('query') or {}).get('pages') or {}
+        rows = list(pages.values()) if isinstance(pages, dict) else []
+        if not rows:
+            return {}
+        target = str(name or '').lower()
+        rows.sort(key=lambda row: _cinema_title_score(target, str(row.get('title') or '').lower()), reverse=True)
+        best = rows[0]
+        thumb = best.get('thumbnail') if isinstance(best, dict) else {}
+        image = str((thumb or {}).get('source') or '').strip() if isinstance(thumb, dict) else ''
+        en_name = ''
+        links = best.get('langlinks') if isinstance(best, dict) else []
+        if isinstance(links, list) and links:
+            en_name = str((links[0] or {}).get('*') or '').strip()
+        return {'name':str(best.get('title') or name),'english_name':en_name,'image':image}
+    except Exception:
+        return {}
+
 async def api_cinema_person(request):
     name = str(request.query.get('name') or '').strip()
     if len(name) < 2 or len(name) > 100:
@@ -2421,6 +2448,10 @@ async def api_cinema_person(request):
                 best_score = score
                 best = row
         if not best:
+            async with aiohttp.ClientSession(timeout=timeout, headers=headers) as wiki_session:
+                wiki = await _wiki_person_lookup(name, wiki_session)
+            if wiki:
+                return web.json_response({'ok':True,'found':bool(wiki.get('image')),'name':wiki.get('english_name') or wiki.get('name') or name,'image':wiki.get('image') or ''}, headers={'Cache-Control':'public, max-age=86400'})
             return web.json_response({'ok':True,'found':False}, headers={'Cache-Control':'public, max-age=21600'})
         image = ''
         i = best.get('i')
@@ -2452,12 +2483,16 @@ async def api_cinema_person_photo(request):
                 if score > best_score:
                     best_score = score
                     best = row
-            if not best:
-                raise web.HTTPNotFound()
             image = ''
-            i = best.get('i')
-            if isinstance(i,dict):
-                image = str(i.get('imageUrl') or i.get('url') or '').strip()
+            if not best:
+                wiki = await _wiki_person_lookup(name, session)
+                image = str(wiki.get('image') or '').strip() if isinstance(wiki, dict) else ''
+                if not image:
+                    raise web.HTTPNotFound()
+            else:
+                i = best.get('i')
+                if isinstance(i,dict):
+                    image = str(i.get('imageUrl') or i.get('url') or '').strip()
             image = _imdb_clean_image(image)
             if not image:
                 raise web.HTTPNotFound()
