@@ -1544,7 +1544,10 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaDescriptionMore:focus{outline:none;text-decoration:underline}
 .nativeTv .cinemaDescriptionMore:focus{color:#ffd400;text-shadow:0 0 10px rgba(255,212,0,.35)}
 .cinemaDetailDescriptionSecondary{color:#b8c0c5;font-size:15px;margin-top:-6px}
-.cinemaDetailTools{display:flex;justify-content:flex-end;margin:-54px 0 14px}
+.cinemaDetailTools{display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:8px;margin:-132px 0 14px;min-height:118px}
+.cinemaDetailSidePoster{width:76px;height:108px;object-fit:cover;object-position:center;border-radius:11px;background:#173247;box-shadow:0 7px 20px rgba(0,0,0,.24);display:none}
+.nativeTv .cinemaDetailSidePoster{width:86px;height:122px;border-radius:12px}
+.cinemaDetailTitle,.cinemaDetailOriginalTitle,.cinemaDetailBadges{max-width:calc(100% - 104px)}
 .cinemaDetailTools #cinemaBookmarkBtn{
   width:43px;height:43px;border:0;border-radius:14px;padding:0;
   background:rgba(255,255,255,.025);
@@ -2375,6 +2378,7 @@ body:not(.cinemaMode) .cinemaShellSide{
       <div class="cinemaDetailOriginalTitle" id="cinemaDetailOriginalTitle" style="display:none"></div>
       <div class="cinemaDetailBadges" id="cinemaDetailBadges"></div>
       <div class="cinemaDetailTools">
+        <img id="cinemaDetailSidePoster" class="cinemaDetailSidePoster" alt="" loading="eager" decoding="async">
         <button id="cinemaBookmarkBtn" onclick="toggleCinemaBookmark()" aria-label="Избранное" title="Избранное">
   <svg class="cinemaBookmarkHeart" viewBox="0 0 64 58" aria-hidden="true" focusable="false">
     <defs>
@@ -12563,13 +12567,26 @@ function renderCinemaDetail(item){
     heroPoster.src=poster||'';
     heroPoster.style.display=(!bg&&poster)?'block':'none';
   }
-  const displayTitle=cinemaDisplayTitle(item);
-  title.textContent=displayTitle;
+  const rawDisplayTitle=cinemaDisplayTitle(item);
   const originalForTitle=cinemaPublicText(cinemaDetailText(item,'original_title','originalTitle','title_original','original','original_name'));
+  let displayTitle=rawDisplayTitle;
+  if(originalForTitle){
+    const slash=' / '+originalForTitle;
+    if(displayTitle.toLocaleLowerCase().endsWith(slash.toLocaleLowerCase()))displayTitle=displayTitle.slice(0,-slash.length).trim();
+  }
+  title.textContent=displayTitle;
   if(originalTitle){
     const showOriginal=!!originalForTitle&&originalForTitle.toLocaleLowerCase()!==displayTitle.toLocaleLowerCase();
     originalTitle.textContent=showOriginal?originalForTitle:'';
     originalTitle.style.display=showOriginal?'block':'none';
+  }
+  const sidePoster=document.getElementById('cinemaDetailSidePoster');
+  if(sidePoster){
+    const posterCandidates=[item?.posters?.small,item?.posters?.medium,item?.posters?.big,item?.poster,poster]
+      .map(x=>String(x||'').trim()).filter((x,i,a)=>/^https?:\/\//i.test(x)&&a.indexOf(x)===i&&x!==bg);
+    const sideSrc=posterCandidates[0]||poster||'';
+    sidePoster.src=sideSrc;
+    sidePoster.style.display=sideSrc?'block':'none';
   }
   syncCinemaBookmarkState(item);
 
