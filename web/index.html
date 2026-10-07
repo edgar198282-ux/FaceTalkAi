@@ -11858,7 +11858,7 @@ async function resolveKinoPubInternalStream(item,media=null){
     const params=new URLSearchParams();
     if(id)params.set('id',id);
     if(mid)params.set('mid',mid);
-    if(nativeTv&&!tvForceWebCinema)params.set('format','hls4');
+    if(nativeTv&&!tvForceWebCinema)params.set('format','hls2');
     const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return null;
     const d=await r.json();
