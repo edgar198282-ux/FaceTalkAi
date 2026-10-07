@@ -321,7 +321,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerCinemaTime{display:none!im
 .playerView.cinemaPlayback #playerFavBtn,.playerView.cinemaPlayback #playerFavAction{display:none!important}
 .nativeTv .videoWrap{border:0!important;outline:0!important;box-shadow:none!important}
 .nativeTv .playerBottom{border-top:0!important;box-shadow:none!important;margin-top:-2px!important}
-.live{color:#ff5a6b;font-size:12px;font-weight:900;letter-spacing:.3px}
+.live{display:none!important}
 .controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
 .ctrl{border:1px solid rgba(255,255,255,.10);background:linear-gradient(180deg,#1d2530,#111821);color:#fff;border-radius:16px;padding:9px 10px;font-size:12px;font-weight:800;min-height:52px;line-height:1.05;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 6px 16px rgba(0,0,0,.24);transition:transform .12s ease,background .12s ease,border-color .12s ease,box-shadow .12s ease}
 .ctrl:active{background:#24303e;transform:scale(.985)}.ctrl.primary{background:linear-gradient(180deg,#168de8,#075fa6);border-color:rgba(85,202,255,.62);box-shadow:0 8px 22px rgba(0,119,214,.28),inset 0 1px 0 rgba(255,255,255,.14)}.ctrl.favoriteOn{background:linear-gradient(180deg,#3b1d27,#24151b);border-color:rgba(255,80,110,.5);color:#ff90a0}.ctrl.closeCtrl{background:linear-gradient(180deg,#252a31,#171b21)}.ctrlIcon{display:block;font-size:23px;line-height:1;margin-bottom:5px;font-weight:900}.ctrlLabel{display:block;font-size:11px;opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qualityCtrl{display:flex;align-items:center;justify-content:center;gap:8px}.qualityCtrl:before{content:'HD';display:inline-flex;align-items:center;justify-content:center;height:24px;min-width:30px;padding:0 4px;border:2px solid currentColor;border-radius:5px;font-size:11px;font-weight:900}.controls button.ctrl:before{display:block;font-size:22px;line-height:1;margin-bottom:5px;font-weight:900}
@@ -2572,7 +2572,7 @@ body:not(.cinemaMode) .cinemaShellSide{
         </div>
       </div>
       <div style="text-align:right">
-        <div class="live">● LIVE</div>
+        <div class="live"></div>
         <div id="playerRemaining" style="font-size:13px;color:#d6edff;margin-top:4px"></div>
       </div>
     </div>
@@ -4343,7 +4343,7 @@ function renderTvGuide(){
   tvGuideIndex=Math.max(0,Math.min(tvGuideIndex,Math.max(0,rows.length-1)));
   const box=document.getElementById('tvGuideList');
   box.innerHTML=rows.slice(0,160).map((ch,i)=>{
-    const nowTitle=cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'LIVE');
+    const nowTitle=cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'');
     const nextTitle=ch.epg_next?cleanTvLabel(ch.epg_next.title,''):'';
     const nowTime=ch.epg_now?(fmtClock(ch.epg_now.start)+'–'+fmtClock(ch.epg_now.stop)):'Сейчас';
     const nextTime=ch.epg_next?(fmtClock(ch.epg_next.start)+'–'+fmtClock(ch.epg_next.stop)):'';
@@ -4391,7 +4391,7 @@ function showTvShortcut(text){
   if(tvShortcutTimer)clearTimeout(tvShortcutTimer);
   tvShortcutTimer=setTimeout(()=>el.classList.remove('show'),1800);
 }
-function cleanTvLabel(v,fallback='LIVE'){
+function cleanTvLabel(v,fallback=''){
   const t=String(v||'').trim();
   return (!t||/^(undefined|null|none)$/i.test(t))?fallback:t;
 }
@@ -5031,7 +5031,7 @@ function updatePlayerChannelHud(){
   if(!hud||!logo||!fallback||!name||!program||!time||!progress)return;
   if(!current){hud.classList.remove('show');return}
   name.textContent=current.name||'Канал';
-  program.textContent=current.epg_now&&current.epg_now.title?cleanTvLabel(current.epg_now.title,'LIVE'):localizedCategoryLabel(current.group);
+  program.textContent=current.epg_now&&current.epg_now.title?cleanTvLabel(current.epg_now.title,''):localizedCategoryLabel(current.group);
   if(current.logo){
     logo.style.display='block'; fallback.style.display='none';
     logo.onerror=()=>{logo.style.display='none';fallback.style.display='flex'};
@@ -5060,7 +5060,7 @@ function updatePlayerChannelHud(){
       time.textContent=passedLabel+' '+fmtDurationCompact(elapsed)+' · '+leftLabel+' '+fmtDurationCompact(left);
       progress.style.width=Math.max(0,Math.min(100,(elapsed/v.duration)*100))+'%';
     }else{
-      time.textContent=appLang==='hy'?'LIVE · EPG չկա':(appLang==='en'?'LIVE · no EPG':'LIVE · нет EPG');
+      time.textContent=appLang==='hy'?'EPG չկա':(appLang==='en'?'No EPG':'Нет EPG');
       progress.style.width='0%';
     }
     if(!playerChannelHudTimer&&!hud.dataset.shownOnce)showPlayerChannelHudForThreeSeconds();
@@ -5670,7 +5670,7 @@ function showTvZap(ch){
   const no=Math.max(1,rows.findIndex(x=>x.id===ch.id)+1);
   document.getElementById('tvZapNo').textContent=String(no);
   document.getElementById('tvZapName').textContent=ch.name||'Канал';
-  document.getElementById('tvZapNow').textContent=cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'LIVE');
+  document.getElementById('tvZapNow').textContent=cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'');
   document.getElementById('tvZapNext').textContent=ch.epg_next?('Далее: '+ch.epg_next.title):'';
   document.getElementById('tvZapFav').textContent=favs.has(ch.id)?'★':'☆';
   const z=document.getElementById('tvZap');
@@ -6384,8 +6384,9 @@ function openPlayer(id){
       metaLogoFallback.textContent=channelFallbackLogoText(ch);
     }
   }
-  document.getElementById('playerGroup').textContent=
-    ((COUNTRY_META[ch.country]&&COUNTRY_META[ch.country].name)||ch.country||'')+' · '+cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'LIVE');
+  document.getElementById('playerGroup').textContent=cinemaPlayback
+    ?''
+    :[((COUNTRY_META[ch.country]&&COUNTRY_META[ch.country].name)||ch.country||''),cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'')].filter(Boolean).join(' · ');
   document.getElementById('playerError').textContent='';
   updatePlayerFavoriteUi();
   updatePlayerRemaining();
@@ -12529,7 +12530,8 @@ async function watchCinemaDetail(){
       await rememberCinemaWatch(item,media);
       const detail=document.getElementById('cinemaDetail');
       if(detail)detail.classList.remove('open');
-      const mediaLabel=media?kinoMediaLabel(media,0):'';
+      const isSeries=cinemaItemLooksSeries(item);
+      const mediaLabel=isSeries&&media?kinoMediaLabel(media,0):'';
       const fallbackResume=Math.max(0,Number(media?.watching?.time||media?.time||0));
       const resume=await loadCinemaResume(String(item.id||''),kinoMediaId(media),fallbackResume);
       window.__abajOpenExternalMedia(
