@@ -351,6 +351,8 @@ def _kinopub_normalize(item):
         'description': str(item.get('plot') or item.get('description') or ''),
         'rating': item.get('imdb_rating') or item.get('rating') or '',
         'kp': item.get('kinopoisk_rating') or item.get('kp_rating') or '',
+        'imdb_id': str(item.get('imdb') or item.get('imdb_id') or '').strip(),
+        'kp_id': str(item.get('kinopoisk') or item.get('kinopoisk_id') or item.get('kp_id') or '').strip(),
         'kind': _kinopub_kind(item),
         'group': _kinopub_content_group(item),
         'raw_type': str(item.get('type') or ''),
