@@ -1525,7 +1525,7 @@ async def api_kinopub_catalog(request):
         perpage = max(12, min(60, int(request.query.get('perpage') or 30)))
     except Exception:
         page, perpage = 1, 30
-    path = '/v1/items/search' if (query or actor_query) else '/v1/items'
+    path = '/v1/items/search' if query else '/v1/items'
     params = {'access_token':token, 'perpage':perpage, 'page':page}
     api_type = 'serial' if requested_kind in ('series','serial') else ('movie' if requested_kind in ('movies','movie') else '')
     if api_type:
@@ -1533,8 +1533,7 @@ async def api_kinopub_catalog(request):
     if genre:
         params['genre'] = genre
     if actor_query:
-        params['q'] = actor_query
-        params['field'] = 'cast'
+        params['actor'] = actor_query
     elif query:
         params['q'] = query
     else:
@@ -1554,6 +1553,8 @@ async def api_kinopub_catalog(request):
             continue
         rows.append(row)
     total = _kinopub_total_from_data(data)
+    if actor_query:
+        logging.info('KINOPUB_ACTOR_QUERY actor=%s count=%s total=%s status=%s', actor_query, len(rows), total, status)
     return web.json_response({
         'ok':True,'items':rows,'count':len(rows),'total':total,
         'page':page,'perpage':perpage,
