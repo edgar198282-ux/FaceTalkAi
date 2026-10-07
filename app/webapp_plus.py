@@ -2161,6 +2161,10 @@ async def index(request):
     path = os.path.join(WEB_DIR, 'index.html')
     return web.FileResponse(path, headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0','Pragma':'no-cache'})
 
+async def favicon(request):
+    path = os.path.join(WEB_DIR, 'abaj_tv_logo.svg')
+    return web.FileResponse(path, headers={'Cache-Control':'public, max-age=86400'})
+
 async def privacy_policy(request):
     path = os.path.join(WEB_DIR, 'privacy.html')
     return web.FileResponse(path, headers={'Cache-Control':'public, max-age=3600'})
@@ -4104,6 +4108,7 @@ async def api_healthz(request):
 async def start_webapp(bot):
     app = web.Application(client_max_size=100*1024*1024, middlewares=[api_error_middleware]); app['bot']=bot
     app.router.add_get('/', index)
+    app.router.add_get('/favicon.ico', favicon)
     app.router.add_get('/healthz', api_healthz)
     app.router.add_get('/privacy', privacy_policy)
     app.router.add_get('/privacy-policy', privacy_policy)
