@@ -100,6 +100,8 @@ public class MainActivity extends Activity {
     private volatile long nativeProbeStartedAt=0L;
     private volatile String nativeProbeUrl="";
     private volatile long nativeCinemaLastLocalRecoverAt=0L;
+    private volatile boolean nativeCinemaEverReady=false;
+    private volatile long nativeCinemaLastProgressMs=0L;
     private SharedPreferences prefs; private boolean telegramLaunchAttempted=false; private boolean isTv=false; private long lastTvBackAt=0L;
     private long pendingApkDownloadId=-1L; private Uri pendingApkUri; private BroadcastReceiver downloadReceiver;
     private volatile boolean updateCheckRunning=false, updateDownloadRunning=false; private long lastUpdateCheckAt=0L;
@@ -2505,6 +2507,7 @@ public class MainActivity extends Activity {
         nativeProbePlayer.setVolume(nativeAdMuted?0f:1f);
         nativeProbePlayer.addListener(new Player.Listener(){
             @Override public void onRenderedFirstFrame(){
+                nativeCinemaEverReady=true;
                 long started=nativeProbeStartedAt;
                 if(started<=0L)return;
                 long elapsed=Math.max(0L,System.currentTimeMillis()-started);
@@ -2520,34 +2523,32 @@ public class MainActivity extends Activity {
             }
             @Override public void onPlaybackStateChanged(int state){
                 if(!nativeCinemaPlayback||nativeProbePlayer==null)return;
+                if(state==Player.STATE_READY){
+                    nativeCinemaEverReady=true;
+                    nativeCinemaLastProgressMs=Math.max(nativeCinemaLastProgressMs,Math.max(0L,nativeProbePlayer.getCurrentPosition()));
+                    return;
+                }
                 if(state==Player.STATE_BUFFERING){
                     final long generation=nativeSeekGeneration;
                     updateHandler.postDelayed(()->{
                         if(!nativeCinemaPlayback||nativeProbePlayer==null||generation!=nativeSeekGeneration)return;
                         if(nativeProbePlayer.getPlaybackState()!=Player.STATE_BUFFERING)return;
-                        long now=System.currentTimeMillis();
                         long pos=Math.max(0L,nativeProbePlayer.getCurrentPosition());
-                        if(now-nativeCinemaLastLocalRecoverAt>=5000L){
-                            nativeCinemaLastLocalRecoverAt=now;
-                            Log.w("AbajCinema","local_buffer_recover pos_ms="+pos+" url="+nativeProbeUrl);
-                            try{
-                                nativeProbePlayer.stop();
-                                nativeProbePlayer.prepare();
-                                nativeProbePlayer.seekTo(pos);
-                                nativeProbePlayer.setPlayWhenReady(true);
-                                nativeProbePlayer.play();
-                            }catch(Exception ignored){}
+                        nativeCinemaLastProgressMs=Math.max(nativeCinemaLastProgressMs,pos);
+                        // Do not treat startup buffering as a playback stall.
+                        // Recovery is only allowed after the player has really reached READY/first frame.
+                        if(!nativeCinemaEverReady || nativeCinemaLastProgressMs<1500L){
+                            Log.i("AbajCinema","startup_buffering pos_ms="+pos+" url="+nativeProbeUrl);
+                            return;
                         }
-                        updateHandler.postDelayed(()->{
-                            if(!nativeCinemaPlayback||nativeProbePlayer==null||generation!=nativeSeekGeneration)return;
-                            if(nativeProbePlayer.getPlaybackState()!=Player.STATE_BUFFERING)return;
-                            long stalledPos=Math.max(0L,nativeProbePlayer.getCurrentPosition());
-                            Log.w("AbajCinema","buffering_stall pos_ms="+stalledPos+" url="+nativeProbeUrl);
-                            if(webView!=null){
-                                try{webView.evaluateJavascript("window.nativeCinemaStalled&&window.nativeCinemaStalled('buffering_stall',"+stalledPos+")",null);}catch(Exception ignored){}
-                            }
-                        },4500L);
-                    },2500L);
+                        long now=System.currentTimeMillis();
+                        if(now-nativeCinemaLastLocalRecoverAt<12000L)return;
+                        nativeCinemaLastLocalRecoverAt=now;
+                        Log.w("AbajCinema","buffering_stall pos_ms="+pos+" url="+nativeProbeUrl);
+                        if(webView!=null){
+                            try{webView.evaluateJavascript("window.nativeCinemaStalled&&window.nativeCinemaStalled('buffering_stall',"+pos+")",null);}catch(Exception ignored){}
+                        }
+                    },6500L);
                 }
             }
             @Override public void onPlayerError(PlaybackException error){
@@ -2624,6 +2625,8 @@ public class MainActivity extends Activity {
             nativeAdFrameEpoch++;
             nativeProbeUrl=url;
             nativeCinemaLastLocalRecoverAt=0L;
+            nativeCinemaEverReady=false;
+            nativeCinemaLastProgressMs=0L;
             nativeProbeStartedAt=System.currentTimeMillis();
             nativeProbePlayer.setMediaSource(
                 mediaFactory.createMediaSource(MediaItem.fromUri(Uri.parse(url))),true
@@ -2642,6 +2645,8 @@ public class MainActivity extends Activity {
         nativeAdFrameEpoch++;
         nativeProbeStartedAt=0L;
         nativeProbeUrl="";
+        nativeCinemaEverReady=false;
+        nativeCinemaLastProgressMs=0L;
         if(nativeProbePlayer!=null){
             try{nativeProbePlayer.stop();nativeProbePlayer.clearMediaItems();}catch(Exception ignored){}
             if(release){
