@@ -1525,7 +1525,7 @@ async def api_kinopub_catalog(request):
         perpage = max(12, min(60, int(request.query.get('perpage') or 30)))
     except Exception:
         page, perpage = 1, 30
-    path = '/v1/items/search' if query else '/v1/items'
+    path = '/v1/items/search' if (query or actor_query) else '/v1/items'
     params = {'access_token':token, 'perpage':perpage, 'page':page}
     api_type = 'serial' if requested_kind in ('series','serial') else ('movie' if requested_kind in ('movies','movie') else '')
     if api_type:
@@ -1533,16 +1533,13 @@ async def api_kinopub_catalog(request):
     if genre:
         params['genre'] = genre
     if actor_query:
-        params['actor'] = actor_query
+        params['q'] = actor_query
+        params['field'] = 'cast'
     elif query:
         params['q'] = query
     else:
         params['sort'] = 'updated-'
     status, data = await _kinopub_api('GET', path, params=params)
-    if actor_query and status < 400 and not _kinopub_extract_items(data):
-        fallback_params = {'access_token':token,'q':actor_query,'field':'cast','perpage':perpage,'page':page}
-        if api_type:fallback_params['type']=api_type
-        status, data = await _kinopub_api('GET','/v1/items/search',params=fallback_params)
     if status == 401:
         await set_setting(f'kinopub_tokens:{uid}', '')
         return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)

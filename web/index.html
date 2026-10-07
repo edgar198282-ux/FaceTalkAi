@@ -5656,7 +5656,10 @@ function handleAppBack(){
     return true;
   }
   if(cinemaDetailOpen()){closeCinemaDetail();return true}
-  if(cinemaActorBrowseOrigin&&restoreCinemaActorOrigin())return true
+  if(cinemaActorBrowseOrigin){
+    if(history.state&&history.state.abajCinemaLayer==='actor'){try{history.back();return true}catch(e){}}
+    if(restoreCinemaActorOrigin())return true;
+  }
   if(cinemaSideMenuOpen()){toggleCinemaSideMenu();return true}
   if(cinemaCategoryMenuOpen()){toggleCinemaCategoryMenu();return true}
   if(cinemaMode){
@@ -5706,7 +5709,10 @@ function handleTvBack(){
     closeCinemaDetail();
     return true;
   }
-  if(cinemaActorBrowseOrigin&&restoreCinemaActorOrigin())return true;
+  if(cinemaActorBrowseOrigin){
+    if(history.state&&history.state.abajCinemaLayer==='actor'){try{history.back();return true}catch(e){}}
+    if(restoreCinemaActorOrigin())return true;
+  }
   if(cinemaSideMenuOpen()){
     toggleCinemaSideMenu();
     focusCinemaElement(document.getElementById('cinemaMenuBtn'));
@@ -11878,6 +11884,7 @@ async function openCinemaActor(name,fallbackName='',actorId=''){
   const detailEl=document.getElementById('cinemaDetail');
   cinemaActorBrowseOrigin={item:cinemaDetailMovie?{...cinemaDetailMovie}:null,scrollTop:detailEl?detailEl.scrollTop:0};
   closeCinemaDetailInternal();
+  pushCinemaHistoryLayer('actor');
   const status=document.getElementById('cinemaStatus');
   if(status)status.textContent=(appLang==='en'?'Films with ':(appLang==='hy'?'Ֆիլմեր՝ ':'Фильмы с '))+actor+'…';
   try{
@@ -12477,6 +12484,10 @@ function closeCinemaDetailInternal(){
 window.addEventListener('popstate',()=>{
   cinemaHistoryPop=true;
   try{
+    if(cinemaActorBrowseOrigin){
+      restoreCinemaActorOrigin();
+      return;
+    }
     const seasons=document.getElementById('cinemaSeasons');
     if(seasons&&seasons.classList.contains('open')){
       cinemaSeasonsEpisodeMode=false;
