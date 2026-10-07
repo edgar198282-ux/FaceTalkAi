@@ -6550,14 +6550,14 @@ async function recoverKinoPubNativePlayback(reason='native_stall',positionMs=0){
   const mediaId=String(current.cinemaMediaId||'').trim();
   if(!itemId&&!mediaId)return false;
   const pos=Math.max(0,Number(positionMs||0)/1000);
-  cinemaDiag('playback_recover',{title:current.name,provider:'KINOPUB',playable:false,player:'native',format:'hls',code:String(reason||'native_stall'),message:'refresh stream at '+Math.round(pos)+'s'});
+  cinemaDiag('playback_recover',{title:current.name,provider:'KINOPUB',playable:false,player:'native',format:'hls4',code:String(reason||'native_stall'),message:'refresh stream at '+Math.round(pos)+'s'});
   const err=document.getElementById('playerError');
   if(err)err.textContent='Восстанавливаю видеопоток…';
   try{
     const params=new URLSearchParams();
     if(itemId)params.set('id',itemId);
     if(mediaId)params.set('mid',mediaId);
-    params.set('format','hls');
+    params.set('format','hls4');
     const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
     const d=r.ok?await r.json():null;
     const fresh=String(d?.url||'').trim();
@@ -6995,7 +6995,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
           const params=new URLSearchParams();
           if(ch.cinemaItemId)params.set('id',String(ch.cinemaItemId));
           if(ch.cinemaMediaId)params.set('mid',String(ch.cinemaMediaId));
-          params.set('format','hls');
+          params.set('format','hls4');
           const rr=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
           const dd=rr.ok?await rr.json():null;
           const fallbackUrl=String(dd?.url||'').trim();
@@ -7186,7 +7186,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
           const params=new URLSearchParams();
           if(ch.cinemaItemId)params.set('id',String(ch.cinemaItemId));
           if(ch.cinemaMediaId)params.set('mid',String(ch.cinemaMediaId));
-          params.set('format','hls');
+          params.set('format','hls4');
           const rr=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
           const dd=rr.ok?await rr.json():null;
           const fallbackUrl=String(dd?.url||'').trim();
@@ -12251,15 +12251,15 @@ function closeCinemaDetail(){
 }
 async function resolveKinoPubInternalStream(item,media=null){
   const direct=String(media?.url||item?.url||item?.stream||item?.stream_url||'').trim();
-  if(/^https?:\/\//i.test(direct))return {url:direct,provider:'KINOPUB'};
   const id=String(item?.id||'').trim();
   const mid=kinoMediaId(media);
+  if(/^https?:\/\//i.test(direct)&&(!nativeTv||tvForceWebCinema||(!id&&!mid)))return {url:direct,provider:'KINOPUB'};
   if(!id&&!mid)return null;
   try{
     const params=new URLSearchParams();
     if(id)params.set('id',id);
     if(mid)params.set('mid',mid);
-    if(nativeTv&&!tvForceWebCinema)params.set('format','hls');
+    if(nativeTv&&!tvForceWebCinema)params.set('format','hls4');
     const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return null;
     const d=await r.json();
