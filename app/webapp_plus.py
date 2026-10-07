@@ -700,8 +700,10 @@ async def api_kinopub_play(request):
     item_id = str(request.query.get('id') or '').strip()
     media_id = str(request.query.get('mid') or '').strip()
     file_token = str(request.query.get('file') or '').strip()
+    requested_format = str(request.query.get('format') or '').strip().lower()
+    stream_types = ('http','hls4','hls2','hls') if requested_format == 'http' else ('hls4','hls2','hls','http')
     if file_token:
-        for stream_type in ('hls4','hls2','hls','http'):
+        for stream_type in stream_types:
             st, video = await _kinopub_api('GET','/v1/items/media-video-link',params={
                 'access_token':token,'file':file_token,'type':stream_type
             })
@@ -722,7 +724,7 @@ async def api_kinopub_play(request):
                         return response
             resolved_file = _kinopub_first_file_token(media)
             if resolved_file:
-                for stream_type in ('hls4','hls2','hls','http'):
+                for stream_type in stream_types:
                     st, video = await _kinopub_api('GET','/v1/items/media-video-link',params={
                         'access_token':token,'file':resolved_file,'type':stream_type
                     })
@@ -757,7 +759,7 @@ async def api_kinopub_play(request):
                         return response
 
     if file_token:
-        for stream_type in ('hls4','hls2','hls','http'):
+        for stream_type in stream_types:
             st, video = await _kinopub_api('GET','/v1/items/media-video-link',params={
                 'access_token':token,'file':file_token,'type':stream_type
             })
