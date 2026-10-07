@@ -8541,7 +8541,7 @@ function moveCinemaDetailFocus(direction){
   const items=cinemaDetailFocusable();
   if(!items.length){
     if(detail&&(direction==='down'||direction==='up')){
-      const step=Math.max(180,Math.round(window.innerHeight*.58));
+      const step=Math.max(90,Math.round(window.innerHeight*.20));
       detail.scrollBy({top:direction==='down'?step:-step,behavior:'auto'});
     }
     return;
@@ -8561,7 +8561,7 @@ function moveCinemaDetailFocus(direction){
     const above=direction==='up'&&ay>mr.bottom+4;
     if(below||above){
       try{more.focus({preventScroll:true})}catch(_){try{more.focus()}catch(__){}}
-      try{more.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
+      try{more.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'})}catch(_){}
       return;
     }
   }
@@ -8592,14 +8592,14 @@ function moveCinemaDetailFocus(direction){
     const farUp=direction==='up'&&br.bottom<90;
     if((farDown||farUp)&&detail){
       try{best.focus({preventScroll:true})}catch(_){try{best.focus()}catch(__){}}
-      try{best.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
+      try{best.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'})}catch(_){}
       return;
     }
   }
 
   if(!best)return;
   try{best.focus({preventScroll:true})}catch(_){try{best.focus()}catch(__){}}
-  try{best.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
+  try{best.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'})}catch(_){}
 }
 document.addEventListener('keydown',e=>{
   if(nativeTv&&tvLastAutoTimer)cancelLastChannelAutoStart(true);
