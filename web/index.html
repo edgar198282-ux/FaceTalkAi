@@ -301,6 +301,10 @@ video{width:100%;height:100%;object-fit:contain;background:transparent;position:
 .playerMetaText{min-width:0}
 .playerMetaLogo{width:34px;height:34px;min-width:34px;border-radius:9px;object-fit:contain;background:rgba(255,255,255,.96);padding:3px;box-sizing:border-box}
 .playerMetaLogoFallback{width:34px;height:34px;min-width:34px;border-radius:9px;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,.96);color:#60727f;font-weight:900;font-size:11px}
+.playerCinemaTime{display:none;font-size:11px;color:#d6edff;margin-top:3px;font-weight:800;letter-spacing:.1px}
+.playerView.cinemaPlayback .playerMetaLogo{object-fit:cover;background:#111;padding:0}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerMetaLogo,body:not(.nativeTv) .playerView.cinemaPlayback .playerMetaLogoFallback{width:38px!important;height:52px!important;min-width:38px!important;border-radius:7px!important}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerCinemaTime{display:block!important}
 .playerMeta b{font-size:14px;letter-spacing:.1px}
 .nativeTv .playerMetaLogo,.nativeTv .playerMetaLogoFallback{width:44px;height:44px;min-width:44px;border-radius:11px}
 .nativeTv .videoWrap{border:0!important;outline:0!important;box-shadow:none!important}
@@ -2506,6 +2510,7 @@ body:not(.cinemaMode) .cinemaShellSide{
         <div class="playerMetaText">
           <b id="playerName"></b>
           <div id="playerGroup" style="font-size:13px;color:#aaa;margin-top:2px"></div>
+          <div id="playerCinemaTime" class="playerCinemaTime"></div>
         </div>
       </div>
       <div style="text-align:right">
@@ -5014,6 +5019,7 @@ function fmtPlaybackClock(sec){
 }
 function updatePlayerRemaining(){
   const el=document.getElementById('playerRemaining');
+  const cinemaTime=document.getElementById('playerCinemaTime');
   const timeline=document.getElementById('playerTimelineFill');
   if(!el)return;
 
@@ -5033,18 +5039,23 @@ function updatePlayerRemaining(){
       }
     }
     if(dur>0){
-      el.textContent=fmtPlaybackClock(pos)+' / '+fmtPlaybackClock(dur);
+      const timeText=fmtPlaybackClock(pos)+' / '+fmtPlaybackClock(dur);
+      el.textContent=timeText;
+      if(cinemaTime)cinemaTime.textContent=timeText;
       if(timeline)timeline.style.width=Math.max(0,Math.min(100,(pos/dur)*100))+'%';
       const seek=document.getElementById('playerSeekRange');
       if(seek&&document.activeElement!==seek)seek.value=String(Math.round(Math.max(0,Math.min(1000,(pos/dur)*1000))));
     }else{
-      el.textContent=pos>0?fmtPlaybackClock(pos):'';
+      const timeText=pos>0?fmtPlaybackClock(pos):'';
+      el.textContent=timeText;
+      if(cinemaTime)cinemaTime.textContent=timeText;
       if(timeline)timeline.style.width='0%';
     }
     updatePlayerChannelHud();
     return;
   }
 
+  if(cinemaTime)cinemaTime.textContent='';
   if(!current||!current.epg_now||!current.epg_now.stop){
     el.textContent='';
     if(timeline)timeline.style.width='0%';
@@ -11068,9 +11079,12 @@ window.__abajOpenExternalMedia=function(url,title,provider='',headers={},fallbac
       format:String(x?.format||'')
     });
   }
+  let playbackPoster='';
+  try{playbackPoster=String(cinemaMeta?.poster||cinemaMeta?.image||posterUrl(cinemaSourcePickerMovie||cinemaDetailMovie||{})||'').trim()}catch(e){}
   const ch={
     id:'cinema:external:'+Date.now(),
     name:String(title||'Кино'),
+    logo:playbackPoster,
     url:raw,
     backups:[],
     personal:false,
