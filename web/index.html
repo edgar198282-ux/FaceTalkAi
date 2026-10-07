@@ -1544,10 +1544,11 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaDescriptionMore:focus{outline:none;text-decoration:underline}
 .nativeTv .cinemaDescriptionMore:focus{color:#ffd400;text-shadow:0 0 10px rgba(255,212,0,.35)}
 .cinemaDetailDescriptionSecondary{color:#b8c0c5;font-size:15px;margin-top:-6px}
-.cinemaDetailTools{display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:8px;margin:-132px 0 14px;min-height:118px}
-.cinemaDetailSidePoster{width:76px;height:108px;object-fit:cover;object-position:center;border-radius:11px;background:#173247;box-shadow:0 7px 20px rgba(0,0,0,.24);display:none}
-.nativeTv .cinemaDetailSidePoster{width:86px;height:122px;border-radius:12px}
-.cinemaDetailTitle,.cinemaDetailOriginalTitle,.cinemaDetailBadges{max-width:calc(100% - 104px)}
+.cinemaDetailTools{position:absolute;z-index:6;right:6.5%;top:-62px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;margin:0}
+.cinemaDetailSidePoster{width:87px;height:124px;object-fit:cover;object-position:center;border-radius:12px;background:#173247;box-shadow:0 9px 24px rgba(0,0,0,.28);display:none}
+.nativeTv .cinemaDetailTools{top:-70px}
+.nativeTv .cinemaDetailSidePoster{width:99px;height:140px;border-radius:13px}
+.cinemaDetailTitle,.cinemaDetailOriginalTitle,.cinemaDetailBadges{max-width:calc(100% - 118px)}
 .cinemaDetailTools #cinemaBookmarkBtn{
   width:43px;height:43px;border:0;border-radius:14px;padding:0;
   background:rgba(255,255,255,.025);
@@ -1640,8 +1641,10 @@ body:not(.darkMode) .cinemaAbajRatingInline{color:#173b52}
   }
   .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:0}
   .cinemaDetailBody{padding:18px 14px 28px;margin-top:-10px;border-top:0!important}
+  .cinemaDetailTools{right:14px;top:-62px}
+  .cinemaDetailSidePoster{width:87px;height:124px}
   .cinemaDetailTitle{font-size:28px;line-height:1.12;margin-bottom:5px}
-  .cinemaDetailOriginalTitle{font-size:9px;margin-bottom:17px;color:#7f96a4}
+  .cinemaDetailOriginalTitle{font-size:8px;line-height:1.2;margin-bottom:17px;color:#7f96a4;max-width:calc(100% - 112px)}
   .cinemaDetailDescription{font-size:16px;line-height:1.46}
   .cinemaDetailFacts{grid-template-columns:96px minmax(0,1fr);font-size:16px;gap:10px 12px}
   .cinemaDetailFacts .v{min-width:0;overflow-wrap:anywhere}
@@ -12552,9 +12555,15 @@ function renderCinemaDetail(item){
     heroPoster.style.display=(!bg&&poster)?'block':'none';
   }
   const rawDisplayTitle=cinemaDisplayTitle(item);
-  const originalForTitle=cinemaPublicText(cinemaDetailText(item,'original_title','originalTitle','title_original','original','original_name'));
+  let originalForTitle=cinemaPublicText(cinemaDetailText(item,'original_title','originalTitle','title_original','original','original_name'));
   let displayTitle=rawDisplayTitle;
-  if(originalForTitle){
+  const slashIndex=rawDisplayTitle.indexOf(' / ');
+  if(slashIndex>0){
+    const left=rawDisplayTitle.slice(0,slashIndex).trim();
+    const right=rawDisplayTitle.slice(slashIndex+3).trim();
+    if(left)displayTitle=left;
+    if(!originalForTitle&&right)originalForTitle=right;
+  }else if(originalForTitle){
     const slash=' / '+originalForTitle;
     if(displayTitle.toLocaleLowerCase().endsWith(slash.toLocaleLowerCase()))displayTitle=displayTitle.slice(0,-slash.length).trim();
   }
