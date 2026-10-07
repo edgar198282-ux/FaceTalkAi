@@ -230,9 +230,24 @@ def _kinopub_normalize(item):
     directors = item.get('directors') or item.get('director') or ''
     if isinstance(directors, list):
         directors = ', '.join(str(x.get('name') if isinstance(x,dict) else x) for x in directors if x)
-    actors = item.get('actors') or item.get('cast') or ''
-    if isinstance(actors, list):
-        actors = ', '.join(str(x.get('name') if isinstance(x,dict) else x) for x in actors if x)
+    actors_raw = item.get('actors') or item.get('cast') or []
+    actor_cards = []
+    if isinstance(actors_raw, list):
+        for actor in actors_raw[:24]:
+            if isinstance(actor, dict):
+                name = str(actor.get('name') or actor.get('title') or actor.get('full_name') or '').strip()
+                image = str(actor.get('photo') or actor.get('image') or actor.get('poster') or actor.get('avatar') or '').strip()
+                if not image:
+                    pics = actor.get('images') or actor.get('posters')
+                    if isinstance(pics, dict):
+                        image = str(pics.get('full') or pics.get('big') or pics.get('medium') or pics.get('small') or '').strip()
+                if name:
+                    actor_cards.append({'id':str(actor.get('id') or ''),'name':name,'image':image})
+            elif str(actor or '').strip():
+                actor_cards.append({'id':'','name':str(actor).strip(),'image':''})
+        actors = ', '.join(x['name'] for x in actor_cards)
+    else:
+        actors = str(actors_raw or '')
     translation = item.get('translation') or item.get('translations') or item.get('voice') or ''
     if isinstance(translation, list):
         translation = ', '.join(str(x.get('title') if isinstance(x,dict) else x) for x in translation if x)
@@ -251,6 +266,7 @@ def _kinopub_normalize(item):
         'genre': str(genres or ''),
         'director': str(directors or ''),
         'actors': str(actors or ''),
+        'actor_cards': actor_cards,
         'translation': str(translation or ''),
         'quality': str(item.get('quality') or item.get('video_quality') or ''),
         'audio': str(item.get('audio') or item.get('audio_codec') or ''),

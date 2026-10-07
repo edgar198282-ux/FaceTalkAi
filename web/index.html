@@ -1551,6 +1551,15 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaSimilarCard img{width:150px;height:220px;object-fit:cover;border-radius:10px;display:block;background:#102537;flex:0 0 220px}
 .cinemaSimilarName{font-size:13px;font-weight:700;line-height:1.25;margin-top:7px;min-height:32.5px;max-height:32.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cinemaSimilarMeta{font-size:11px;line-height:1.2;color:#8eb7cc;margin-top:3px;min-height:13px}
+.cinemaCast{margin:28px 0 6px;max-width:1100px}
+.cinemaCastTitle{font-size:20px;font-weight:800;color:#eaf8ff;margin-bottom:12px}
+.cinemaCastRow{display:flex;align-items:flex-start;gap:14px;overflow-x:auto;padding:4px 4px 18px;scrollbar-width:none}
+.cinemaCastRow::-webkit-scrollbar{display:none}
+.cinemaCastCard{flex:0 0 126px;width:126px;border:0;background:transparent;color:#fff;text-align:center;padding:0;cursor:pointer;border-radius:12px}
+.cinemaCastCard img,.cinemaCastAvatarFallback{width:126px;height:166px;object-fit:cover;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#26343e;color:#d7edf8;font-size:34px;font-weight:900}
+.cinemaCastName{font-size:13px;font-weight:700;line-height:1.25;margin-top:7px;min-height:33px;overflow:hidden}
+.nativeTv .cinemaCastCard:focus{outline:none!important;transform:scale(1.04);z-index:2}
+.nativeTv .cinemaCastCard:focus img,.nativeTv .cinemaCastCard:focus .cinemaCastAvatarFallback{box-shadow:0 0 0 4px #ffd400,0 0 18px rgba(255,212,0,.28)}
 @media(max-width:760px){
   .cinemaDetailHero{min-height:45vh;background-position:center 28%}
   .cinemaDetailActions{
@@ -2302,6 +2311,10 @@ body:not(.cinemaMode) .cinemaShellSide{
       <div class="cinemaDetailDescription cinemaDetailDescriptionSecondary" id="cinemaDetailDescriptionSecondary" style="display:none"></div>
       <div class="cinemaDetailFacts" id="cinemaDetailFacts"></div>
       <div id="cinemaKpMediaRows" class="cinemaKpMediaRows" style="display:none"></div>
+      <div class="cinemaCast" id="cinemaCast" style="display:none">
+        <div class="cinemaCastTitle" id="cinemaCastTitle">В РОЛЯХ</div>
+        <div class="cinemaCastRow" id="cinemaCastRow"></div>
+      </div>
       <div class="cinemaSimilar" id="cinemaSimilar" style="display:none">
         <div class="cinemaSimilarTitle">ПОХОЖИЕ</div>
         <div class="cinemaSimilarRow" id="cinemaSimilarRow"></div>
@@ -11835,6 +11848,64 @@ async function loadKinoPubItemDetails(item){
   }catch(e){return item}
 }
 
+function cinemaActorCards(item){
+  const structured=Array.isArray(item?.actor_cards)?item.actor_cards.filter(x=>x&&String(x.name||'').trim()):[];
+  if(structured.length)return structured.slice(0,20);
+  const raw=String(cinemaDetailText(item,'actors','actor','cast','roles')||'').trim();
+  if(!raw)return [];
+  return raw.split(/[,;]+/).map(name=>String(name||'').trim()).filter(Boolean).slice(0,20).map(name=>({name,image:''}));
+}
+async function openCinemaActor(name){
+  const actor=String(name||'').trim();
+  if(!actor)return;
+  closeCinemaDetailInternal();
+  const status=document.getElementById('cinemaStatus');
+  if(status)status.textContent=(appLang==='en'?'Films with ':(appLang==='hy'?'Ֆիլմեր՝ ':'Фильмы с '))+actor+'…';
+  try{
+    const make=type=>fetch('/api/kinopub/catalog?'+new URLSearchParams({type,q:actor,page:'1',perpage:'60'}).toString(),{headers:authHeaders(),cache:'no-store'})
+      .then(r=>r.ok?r.json():null).then(d=>Array.isArray(d?.items)?d.items:[]).catch(()=>[]);
+    const batches=await Promise.all([make('movies'),make('series')]);
+    const merged=[],seen=new Set();
+    for(const rows of batches)for(const x of rows){
+      const key=String(x?.id||x?.title||'');
+      if(!key||seen.has(key))continue;
+      seen.add(key);merged.push(x);
+    }
+    merged.sort((a,b)=>cinemaYear(b)-cinemaYear(a));
+    renderCinemaCatalog(merged,{search:true});
+    const heading=document.getElementById('cinemaSectionTitle');
+    if(heading)heading.textContent=(appLang==='en'?'FILMS · ':(appLang==='hy'?'ՖԻԼՄԵՐ · ':'ФИЛЬМЫ · '))+actor;
+    if(status)status.textContent=merged.length?((appLang==='en'?'Found ':(appLang==='hy'?'Գտնվել է ':'Найдено '))+merged.length):(appLang==='en'?'Nothing found':(appLang==='hy'?'Ոչինչ չի գտնվել':'Ничего не найдено'));
+    const screen=document.getElementById('cinemaScreen');
+    if(screen)screen.style.display='block';
+    setTimeout(()=>document.querySelector('.cinemaPosterCard')?.focus(),30);
+  }catch(e){
+    if(status)status.textContent=appLang==='en'?'Search failed':(appLang==='hy'?'Որոնման սխալ':'Ошибка поиска');
+  }
+}
+function renderCinemaCast(item){
+  const host=document.getElementById('cinemaCast');
+  const row=document.getElementById('cinemaCastRow');
+  const title=document.getElementById('cinemaCastTitle');
+  if(!host||!row)return;
+  const actors=cinemaActorCards(item);
+  if(title)title.textContent=appLang==='en'?'CAST':(appLang==='hy'?'ԴԵՐԱՍԱՆՆԵՐ':'В РОЛЯХ');
+  if(!actors.length){host.style.display='none';row.innerHTML='';return}
+  row.innerHTML='';
+  actors.forEach(actor=>{
+    const name=String(actor.name||'').trim();
+    if(!name)return;
+    const btn=document.createElement('button');
+    btn.className='cinemaCastCard';
+    const image=String(actor.image||'').trim();
+    const initial=(name[0]||'?').toUpperCase();
+    btn.innerHTML=(image?'<img loading="lazy" src="'+image.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaCastAvatarFallback">'+initial.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>')+
+      '<div class="cinemaCastName">'+name.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>';
+    btn.onclick=()=>openCinemaActor(name);
+    row.appendChild(btn);
+  });
+  host.style.display=row.children.length?'block':'none';
+}
 function renderCinemaSimilar(item){
   const host=document.getElementById('cinemaSimilar');
   const row=document.getElementById('cinemaSimilarRow');
@@ -11933,9 +12004,10 @@ function renderCinemaDetail(item){
     cinemaDetailFact(cinemaT().genre,genre)+
     cinemaDetailFact(cinemaT().translation,translation)+
     cinemaDetailFact(cinemaT().director,director)+
-    cinemaDetailFact(cinemaT().cast,cast);
+    (cinemaActorCards(item).length?'':cinemaDetailFact(cinemaT().cast,cast));
 
   renderKinoPubMediaRows(item);
+  renderCinemaCast(item);
   const watchBtn=document.getElementById('cinemaDetailWatch');
   const seasonsBtn=document.getElementById('cinemaDetailSeasons');
   const rows=cinemaSeasonRows(item);
