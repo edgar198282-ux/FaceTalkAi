@@ -1602,6 +1602,89 @@ async def api_cinema_library_bookmark(request):
     await _cinema_library_write(uid, 'bookmarks', rows)
     return web.json_response({'ok':True,'added':added,'count':len(rows)}, headers={'Cache-Control':'no-store'})
 
+_cinema_rating_locks = {}
+
+async def api_cinema_rating(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+
+    if request.method == 'GET':
+        item_id = str(request.query.get('item_id') or '').strip()
+        if not item_id or len(item_id) > 80:
+            return web.json_response({'ok':False,'error':'bad_item'}, status=400)
+        raw = await get_setting('cinema_rating:' + item_id, '')
+        try:
+            votes = json.loads(raw or '{}')
+        except Exception:
+            votes = {}
+        if not isinstance(votes, dict):
+            votes = {}
+        clean = []
+        mine = 0
+        for key, value in votes.items():
+            try:
+                score = int(value)
+            except Exception:
+                continue
+            if 1 <= score <= 10:
+                clean.append(score)
+                if str(key) == str(uid):
+                    mine = score
+        average = round(sum(clean) / len(clean), 1) if clean else 0
+        return web.json_response({
+            'ok':True,
+            'item_id':item_id,
+            'average':average,
+            'count':len(clean),
+            'mine':mine,
+        }, headers={'Cache-Control':'no-store'})
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    item_id = str(body.get('item_id') or '').strip()
+    try:
+        score = int(body.get('score') or 0)
+    except Exception:
+        score = 0
+    if not item_id or len(item_id) > 80 or score < 1 or score > 10:
+        return web.json_response({'ok':False,'error':'bad_request'}, status=400)
+
+    lock = _cinema_rating_locks.setdefault(item_id, asyncio.Lock())
+    async with lock:
+        raw = await get_setting('cinema_rating:' + item_id, '')
+        try:
+            votes = json.loads(raw or '{}')
+        except Exception:
+            votes = {}
+        if not isinstance(votes, dict):
+            votes = {}
+        votes[str(uid)] = score
+        clean_votes = {}
+        clean_scores = []
+        for key, value in votes.items():
+            try:
+                current = int(value)
+            except Exception:
+                continue
+            if 1 <= current <= 10:
+                clean_votes[str(key)] = current
+                clean_scores.append(current)
+        await set_setting('cinema_rating:' + item_id, json.dumps(clean_votes, separators=(',', ':')))
+        average = round(sum(clean_scores) / len(clean_scores), 1) if clean_scores else 0
+
+    return web.json_response({
+        'ok':True,
+        'item_id':item_id,
+        'average':average,
+        'count':len(clean_scores),
+        'mine':score,
+    }, headers={'Cache-Control':'no-store'})
+
+
 async def api_cinema_library_watch(request):
     user = await _user_from_request(request)
     if not user:
@@ -3878,7 +3961,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
     app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play); app.router.add_get('/api/kinopub/benchmark', api_kinopub_benchmark); app.router.add_get('/api/kinopub/proxy', api_kinopub_proxy); app.router.add_get('/api/kinopub/download', api_kinopub_download); app.router.add_get('/api/kinopub/item', api_kinopub_item)
-    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_get('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_post('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items); app.router.add_get('/api/cinema/progress', api_cinema_progress); app.router.add_post('/api/cinema/progress', api_cinema_progress)
+    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/rating', api_cinema_rating); app.router.add_post('/api/cinema/rating', api_cinema_rating); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_get('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_post('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items); app.router.add_get('/api/cinema/progress', api_cinema_progress); app.router.add_post('/api/cinema/progress', api_cinema_progress)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
