@@ -6549,6 +6549,47 @@ function tvShouldUseHls(ch){
   return true;
 }
 let cinemaNativeFallbackToken=0;
+let cinemaNativeRecoveryAt=0;
+async function recoverKinoPubNativePlayback(reason='native_stall',positionMs=0){
+  if(!current||String(current.cinemaProvider||'').toUpperCase()!=='KINOPUB')return false;
+  const now=Date.now();
+  if(now-cinemaNativeRecoveryAt<8000)return false;
+  cinemaNativeRecoveryAt=now;
+  const itemId=String(current.cinemaItemId||'').trim();
+  const mediaId=String(current.cinemaMediaId||'').trim();
+  if(!itemId&&!mediaId)return false;
+  const pos=Math.max(0,Number(positionMs||0)/1000);
+  cinemaDiag('playback_recover',{title:current.name,provider:'KINOPUB',playable:false,player:'native',format:'http',code:String(reason||'native_stall'),message:'refresh stream at '+Math.round(pos)+'s'});
+  const err=document.getElementById('playerError');
+  if(err)err.textContent='Восстанавливаю видеопоток…';
+  try{
+    const params=new URLSearchParams();
+    if(itemId)params.set('id',itemId);
+    if(mediaId)params.set('mid',mediaId);
+    params.set('format','http');
+    const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
+    const d=r.ok?await r.json():null;
+    const fresh=String(d?.url||'').trim();
+    if(!fresh||!current)return false;
+    current.url=fresh;
+    current.cinemaForceHttp=true;
+    current.cinemaHeaders=(d?.headers&&typeof d.headers==='object')?d.headers:{};
+    if(pos>3){
+      current.cinemaResume=pos;
+      current.cinemaResumeApplied=false;
+    }
+    setNativeMedia3Visible(false);
+    try{if(window.AbajNative&&typeof AbajNative.nativeProbeStop==='function')AbajNative.nativeProbeStop()}catch(e){}
+    setTimeout(()=>{if(current&&String(current.url||'')===fresh)startStream(current)},120);
+    return true;
+  }catch(e){
+    if(err)err.textContent='Не удалось восстановить поток';
+    return false;
+  }
+}
+window.nativeCinemaStalled=function(reason,positionMs){
+  recoverKinoPubNativePlayback(String(reason||'native_stall'),Number(positionMs||0));
+};
 function tryCinemaNativeFallback(ch,src,attemptToken){
   if(!nativeTv||!ch||!String(ch.id||'').startsWith('cinema:'))return false;
   if(!window.AbajNative||typeof AbajNative.cinemaNativeStart!=='function')return false;
@@ -6560,7 +6601,12 @@ function tryCinemaNativeFallback(ch,src,attemptToken){
   nativeMedia3FirstFrameHandler=()=>{
     if(attemptToken!==streamAttemptToken||!current||current.id!==ch.id)return;
     nativeMedia3FirstFrameHandler=null;
-    nativeMedia3ErrorHandler=null;
+    nativeMedia3ErrorHandler=(reason)=>{
+      if(!current||current.id!==ch.id)return;
+      let pos=0;
+      try{if(window.AbajNative&&typeof AbajNative.nativePositionMs==='function')pos=Number(AbajNative.nativePositionMs()||0)}catch(e){}
+      recoverKinoPubNativePlayback(reason||'native_error',pos);
+    };
     clearFirstFrameTimer();
     clearCinemaStartupTimer();
     try{if(hls){hls.destroy();hls=null}}catch(e){}
@@ -6571,9 +6617,15 @@ function tryCinemaNativeFallback(ch,src,attemptToken){
     if(err)err.textContent='';
     setTimeout(()=>{applyCinemaResume();updatePlayerRemaining()},80);
   };
-  nativeMedia3ErrorHandler=()=>{
+  nativeMedia3ErrorHandler=(reason)=>{
     if(attemptToken!==streamAttemptToken)return;
     nativeMedia3FirstFrameHandler=null;
+    let pos=0;
+    try{if(window.AbajNative&&typeof AbajNative.nativePositionMs==='function')pos=Number(AbajNative.nativePositionMs()||0)}catch(e){}
+    if(String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'){
+      recoverKinoPubNativePlayback(reason||'native_error',pos);
+      return;
+    }
     nativeMedia3ErrorHandler=null;
     setNativeMedia3Visible(false);
     if(err)err.textContent='Видео не поддерживается этим потоком';
