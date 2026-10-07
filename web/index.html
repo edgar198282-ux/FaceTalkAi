@@ -7530,16 +7530,19 @@ function queueTvChannelStep(delta){
     }
   },220);
 }
-function updatePlayerPlaybackUi(){
+function updatePlayerPlaybackUi(nativePlaying=null){
   const v=document.getElementById('video');
   const icon=document.getElementById('playerPlayPauseIcon');
   const label=document.getElementById('playerPlayPauseLabel');
   const btn=document.getElementById('playerPlayPause');
-  const paused=!v||v.paused;
+  const paused=nativePlaying===null?(!v||v.paused):!nativePlaying;
   if(icon)icon.textContent=paused?'▶':'Ⅱ';
   if(label)label.textContent=paused?(appLang==='en'?'Play':'Включить'):(appLang==='en'?'Pause':'Пауза');
   if(btn)btn.title=paused?'Включить':'Пауза';
 }
+window.__abajNativePlaybackState=function(isPlaying){
+  updatePlayerPlaybackUi(!!isPlaying);
+};
 async function syncMobileLandscapePlayerUi(){
   if(nativeTv)return;
   const v=document.getElementById('video');

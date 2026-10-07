@@ -1593,6 +1593,10 @@ public class MainActivity extends Activity {
             runOnUiThread(()->{
                 if(nativeProbePlayer==null)return;
                 if(nativeProbePlayer.isPlaying())nativeProbePlayer.pause();else nativeProbePlayer.play();
+                boolean playing=nativeProbePlayer.isPlaying()||nativeProbePlayer.getPlayWhenReady();
+                if(webView!=null){
+                    try{webView.evaluateJavascript("window.__abajNativePlaybackState&&window.__abajNativePlaybackState("+(playing?"true":"false")+")",null);}catch(Exception ignored){}
+                }
             });
         }
         @JavascriptInterface public void nativeSeekToMs(long positionMs){
