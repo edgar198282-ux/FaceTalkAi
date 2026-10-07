@@ -11624,14 +11624,13 @@ function renderCinemaDetail(item){
   const rows=cinemaSeasonRows(item);
   const hasRows=rows.length>0;
   const isSeries=hasRows&&cinemaItemLooksSeries({...item,media_rows:rows});
-  if(isSeries&&!cinemaSelectedKinoMedia){
+  if(hasRows&&!cinemaSelectedKinoMedia){
     const firstRow=rows[0]||{};
     const first=firstRow?.items?.[0]||null;
-    if(first&&first.season==null)first.season=firstRow.season??1;
-    if(first&&first.number==null)first.number=1;
+    if(first&&isSeries&&first.season==null)first.season=firstRow.season??1;
+    if(first&&isSeries&&first.number==null)first.number=1;
     cinemaSelectedKinoMedia=first;
   }
-  if(!isSeries)cinemaSelectedKinoMedia=null;
   if(watchBtn&&cinemaSource==='kinopub'){
     const watchPrefix=appLang==='hy'?'ԴԻՏԵԼ ':(appLang==='en'?'WATCH ':'СМОТРЕТЬ ');
     watchBtn.textContent=isSeries
