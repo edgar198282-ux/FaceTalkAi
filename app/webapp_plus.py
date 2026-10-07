@@ -57,6 +57,7 @@ os.makedirs(APK_HISTORY_DIR, exist_ok=True)
 _edem_cache = {}
 _edem_sessions = {}
 _edem_stream_tokens = {}
+_kinopub_stream_tokens = {}
 
 KINOPUB_API_BASE = (os.getenv('KINOPUB_API_BASE_URL') or 'https://api.service-kp.com').rstrip('/')
 KINOPUB_CLIENT_ID = (os.getenv('KINOPUB_API_CLIENT_ID') or 'xbmc').strip()
@@ -522,7 +523,24 @@ def _kinopub_first_file_token(data):
             return value.strip()
     return ''
 
-def _kinopub_direct_stream_response(request, url):
+def _kinopub_stream_token(uid: int, url: str) -> str:
+    secret = (TELEGRAM_BOT_TOKEN or os.getenv('FACETALK_BOT_TOKEN') or 'abaj-tv').encode()
+    payload = f'kinopub|{int(uid)}|{url}'.encode()
+    return hmac.new(secret, payload, hashlib.sha256).hexdigest()
+
+
+def _kinopub_store_stream(uid: int, url: str) -> str:
+    token = _kinopub_stream_token(uid, url)
+    _kinopub_stream_tokens[token] = {'uid': int(uid), 'url': str(url), 'ts': int(time.time())}
+    return token
+
+
+def _kinopub_proxy_url(request, uid: int, url: str) -> str:
+    token = _kinopub_store_stream(uid, url)
+    return f'{request.scheme}://{request.host}/api/kinopub/proxy?t={quote(token, safe="")}'
+
+
+def _kinopub_direct_stream_response(request, uid, url):
     direct = str(url or '').strip()
     try:
         parsed = urlparse(direct)
@@ -535,12 +553,113 @@ def _kinopub_direct_stream_response(request, url):
     if own_host and stream_host == own_host:
         return None
     return web.json_response({
-        'ok':True,
-        'url':direct,
-        'provider':'KINOPUB',
-        'direct':True,
-        'proxied':False,
+        'ok': True,
+        'url': _kinopub_proxy_url(request, uid, direct),
+        'provider': 'KINOPUB',
+        'direct': False,
+        'proxied': True,
     }, headers={'Cache-Control':'no-store'})
+
+
+def _rewrite_kinopub_hls(text: str, base: str, request, uid: int) -> str:
+    from urllib.parse import urljoin
+    out = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            out.append('')
+            continue
+        if line.startswith('#'):
+            def repl(match):
+                target = urljoin(base, match.group(1))
+                return 'URI="' + _kinopub_proxy_url(request, uid, target) + '"'
+            out.append(re.sub(r'URI="([^"]+)"', repl, raw))
+        else:
+            out.append(_kinopub_proxy_url(request, uid, urljoin(base, line)))
+    return '\n'.join(out) + '\n'
+
+
+async def api_kinopub_proxy(request):
+    token = str(request.query.get('t') or '').strip()
+    entry = _kinopub_stream_tokens.get(token)
+    if not entry:
+        raise web.HTTPForbidden(text='Invalid KinoPub stream token')
+
+    uid = int(entry.get('uid') or 0)
+    if not uid or not await _cinema_playback_allowed(uid):
+        raise web.HTTPForbidden(text='Cinema access required')
+
+    now = int(time.time())
+    if now - int(entry.get('ts') or 0) > 24 * 60 * 60:
+        _kinopub_stream_tokens.pop(token, None)
+        raise web.HTTPForbidden(text='Expired KinoPub stream token')
+    entry['ts'] = now
+
+    url = str(entry.get('url') or '').strip()
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http','https') or not parsed.netloc:
+        raise web.HTTPBadRequest(text='Invalid upstream URL')
+
+    upstream_headers = {'User-Agent':'AbajTV/1.0','Accept':request.headers.get('Accept','*/*')}
+    for name in ('Range','If-Range','If-Modified-Since','If-None-Match'):
+        value = request.headers.get(name)
+        if value:
+            upstream_headers[name] = value
+
+    timeout = aiohttp.ClientTimeout(total=None, connect=10, sock_connect=10, sock_read=45)
+    session = aiohttp.ClientSession(timeout=timeout, headers=upstream_headers)
+    upstream = None
+    try:
+        upstream = await session.get(url, allow_redirects=True)
+        ctype = str(upstream.headers.get('Content-Type') or '').lower()
+        final_url = str(upstream.url)
+        is_hls = 'mpegurl' in ctype or final_url.lower().split('?',1)[0].endswith('.m3u8')
+
+        if is_hls:
+            body = await upstream.read()
+            text = body.decode('utf-8','ignore')
+            if '#EXTM3U' in text[:4096]:
+                rewritten = _rewrite_kinopub_hls(text, final_url, request, uid)
+                return web.Response(
+                    text=rewritten,
+                    status=upstream.status,
+                    content_type='application/vnd.apple.mpegurl',
+                    headers={'Cache-Control':'no-store'}
+                )
+            return web.Response(
+                body=body,
+                status=upstream.status,
+                headers={
+                    'Content-Type': upstream.headers.get('Content-Type','application/octet-stream'),
+                    'Cache-Control':'private, max-age=10',
+                }
+            )
+
+        response_headers = {'Cache-Control':'private, max-age=30'}
+        for name in ('Content-Type','Content-Length','Content-Range','Accept-Ranges','ETag','Last-Modified','Content-Disposition'):
+            value = upstream.headers.get(name)
+            if value:
+                response_headers[name] = value
+
+        resp = web.StreamResponse(status=upstream.status, headers=response_headers)
+        await resp.prepare(request)
+        try:
+            async for chunk in upstream.content.iter_chunked(128 * 1024):
+                await resp.write(chunk)
+        except (ConnectionResetError, asyncio.CancelledError):
+            pass
+        try:
+            await resp.write_eof()
+        except Exception:
+            pass
+        return resp
+    except aiohttp.ClientError as exc:
+        raise web.HTTPBadGateway(text='KinoPub upstream failed') from exc
+    finally:
+        if upstream is not None:
+            upstream.close()
+        await session.close()
+
 
 def _kinopub_media_array(value):
     if isinstance(value, list):
@@ -710,7 +829,7 @@ async def api_kinopub_play(request):
             if st < 400:
                 direct = _kinopub_stream_from_obj(video)
                 if direct:
-                    response = _kinopub_direct_stream_response(request,direct)
+                    response = _kinopub_direct_stream_response(request, uid, direct)
                     if response is not None:
                         return response
     if media_id:
@@ -725,14 +844,14 @@ async def api_kinopub_play(request):
                     if st < 400:
                         direct = _kinopub_stream_from_obj(video)
                         if direct:
-                            response = _kinopub_direct_stream_response(request,direct)
+                            response = _kinopub_direct_stream_response(request, uid, direct)
                             if response is not None:
                                 return response
             if requested_format != 'http':
                 for obj in _kinopub_walk(media):
                     direct = _kinopub_stream_from_obj(obj)
                     if direct:
-                        response = _kinopub_direct_stream_response(request,direct)
+                        response = _kinopub_direct_stream_response(request, uid, direct)
                         if response is not None:
                             return response
     if not item_id:
@@ -756,7 +875,7 @@ async def api_kinopub_play(request):
                 for obj in _kinopub_walk(media):
                     direct = _kinopub_stream_from_obj(obj)
                     if direct:
-                        response = _kinopub_direct_stream_response(request, direct)
+                        response = _kinopub_direct_stream_response(request, uid, direct)
                         if response is not None:
                             return response
 
@@ -768,7 +887,7 @@ async def api_kinopub_play(request):
             if st < 400:
                 direct = _kinopub_stream_from_obj(video)
                 if direct:
-                    response = _kinopub_direct_stream_response(request, direct)
+                    response = _kinopub_direct_stream_response(request, uid, direct)
                     if response is not None:
                         return response
 
@@ -3155,7 +3274,7 @@ async def start_webapp(bot):
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/open', api_tv_pair_open); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
-    app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play); app.router.add_get('/api/kinopub/download', api_kinopub_download); app.router.add_get('/api/kinopub/item', api_kinopub_item)
+    app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play); app.router.add_get('/api/kinopub/proxy', api_kinopub_proxy); app.router.add_get('/api/kinopub/download', api_kinopub_download); app.router.add_get('/api/kinopub/item', api_kinopub_item)
     app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items); app.router.add_get('/api/cinema/progress', api_cinema_progress); app.router.add_post('/api/cinema/progress', api_cinema_progress)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
