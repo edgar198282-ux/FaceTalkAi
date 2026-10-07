@@ -1445,6 +1445,91 @@ async def api_cinema_library(request):
             logging.warning('KINOPUB_BOOKMARK_SYNC failed uid=%s error=%s', uid, type(exc).__name__)
     return web.json_response({'ok':True,'section':section,'items':rows,'count':len(rows)}, headers={'Cache-Control':'no-store'})
 
+async def api_cinema_bookmark_folders(request):
+    user = await _user_from_request(request)
+    if not user:
+        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
+    uid = int(user['id'])
+    if not await _cinema_access_allowed(uid):
+        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
+    token, folders = await _kinopub_bookmark_folders(uid)
+    if not token:
+        return web.json_response({'ok':False,'error':'kinopub_not_connected'}, status=409)
+
+    if request.method == 'GET':
+        item_id = str(request.query.get('item_id') or '').strip()
+        visible = folders[:30]
+        results = []
+        if item_id and visible:
+            results = await asyncio.gather(*[
+                _kinopub_bookmark_folder_items(token, str(folder.get('id') or '')) for folder in visible
+            ], return_exceptions=True)
+        out = []
+        for index, folder in enumerate(visible):
+            row = dict(folder)
+            row['selected'] = False
+            if item_id and index < len(results) and isinstance(results[index], list):
+                row['selected'] = any(str(x.get('id') or '').strip() == item_id for x in results[index])
+            out.append(row)
+        return web.json_response({'ok':True,'folders':out}, headers={'Cache-Control':'no-store'})
+
+    body = await request.json()
+    item = body.get('item') if isinstance(body,dict) else None
+    selected = body.get('folders') if isinstance(body,dict) else None
+    original = body.get('original') if isinstance(body,dict) else None
+    if not isinstance(item,dict) or not isinstance(selected,list):
+        return web.json_response({'ok':False,'error':'bad_request'}, status=400)
+    item_id = str(item.get('id') or '').strip()
+    if not item_id or not item_id.isdigit():
+        return web.json_response({'ok':False,'error':'bad_item'}, status=400)
+    selected_ids = {str(x).strip() for x in selected if str(x).strip()}
+    valid_ids = {str(x.get('id') or '').strip() for x in folders}
+    selected_ids &= valid_ids
+    original_ids = {str(x).strip() for x in original if str(x).strip()} if isinstance(original,list) else None
+    if original_ids is not None:
+        original_ids &= valid_ids
+    changed = 0
+    errors = []
+    for folder in folders[:30]:
+        folder_id = str(folder.get('id') or '').strip()
+        if not folder_id or not folder_id.isdigit():
+            continue
+        if original_ids is not None:
+            current = folder_id in original_ids
+        else:
+            current = False
+            try:
+                items = await _kinopub_bookmark_folder_items(token, folder_id)
+                current = any(str(x.get('id') or '').strip() == item_id for x in items)
+            except Exception:
+                pass
+        wanted = folder_id in selected_ids
+        if current == wanted:
+            continue
+        endpoint = '/v1/bookmarks/add' if wanted else '/v1/bookmarks/remove-item'
+        status, data = await _kinopub_api('POST', endpoint, params={
+            'access_token': token,
+            'item': int(item_id),
+            'folder': int(folder_id),
+        })
+        if status >= 400 or (isinstance(data,dict) and data.get('error')):
+            errors.append(folder_id)
+        else:
+            changed += 1
+    if errors:
+        return web.json_response({'ok':False,'error':'kinopub_bookmark_update_failed','folders':errors}, status=502)
+
+    rows = await _cinema_library_read(uid, 'bookmarks')
+    key = item_id
+    rows = [x for x in rows if (str(x.get('id') or '').strip() or str(x.get('title') or '').strip().casefold()) != key]
+    if selected_ids:
+        compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
+        compact['saved_at'] = int(time.time())
+        rows.insert(0, compact)
+    await _cinema_library_write(uid, 'bookmarks', rows[:300])
+    return web.json_response({'ok':True,'added':bool(selected_ids),'selected':sorted(selected_ids),'changed':changed}, headers={'Cache-Control':'no-store'})
+
+
 async def api_cinema_library_bookmark(request):
     user = await _user_from_request(request)
     if not user:
@@ -3753,7 +3838,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
     app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play); app.router.add_get('/api/kinopub/benchmark', api_kinopub_benchmark); app.router.add_get('/api/kinopub/proxy', api_kinopub_proxy); app.router.add_get('/api/kinopub/download', api_kinopub_download); app.router.add_get('/api/kinopub/item', api_kinopub_item)
-    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items); app.router.add_get('/api/cinema/progress', api_cinema_progress); app.router.add_post('/api/cinema/progress', api_cinema_progress)
+    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_get('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_post('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items); app.router.add_get('/api/cinema/progress', api_cinema_progress); app.router.add_post('/api/cinema/progress', api_cinema_progress)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
