@@ -11664,6 +11664,7 @@ async function resolveKinoPubInternalStream(item,media=null){
     const params=new URLSearchParams();
     if(id)params.set('id',id);
     if(mid)params.set('mid',mid);
+    if(nativeTv)params.set('format','http');
     const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return null;
     const d=await r.json();
@@ -12552,6 +12553,63 @@ setInterval(()=>{if(document.hidden)return;const p=document.getElementById('play
     line-height:16px!important;
     font-size:9px!important;
   }
+}
+</style>
+
+<style id="tv-focus-search-seek-fix-v1">
+body.nativeTv #mobileHeaderMenuBtn{
+  display:none!important;
+}
+body.nativeTv #refreshBtn{
+  display:none!important;
+}
+body.nativeTv #tvTopSearchBtn{
+  display:inline-flex!important;
+  order:99!important;
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  min-height:46px!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:22px!important;
+}
+body.nativeTv #tvSettingsBtn{
+  order:98!important;
+}
+body.nativeTv #tvTopSearchBtn:focus,
+body.nativeTv #cinemaSearchBtn:focus{
+  outline:none!important;
+  background:#0b79c8!important;
+  box-shadow:0 0 0 4px #ffd400,0 0 22px rgba(255,212,0,.55)!important;
+  transform:scale(1.08)!important;
+}
+body.nativeTv .cinemaPosterCard:focus{
+  outline:4px solid #ffd400!important;
+  outline-offset:3px!important;
+  border-radius:14px!important;
+  transform:scale(1.025)!important;
+  box-shadow:0 0 0 2px rgba(0,0,0,.55),0 0 28px rgba(255,212,0,.70)!important;
+  z-index:8!important;
+  position:relative!important;
+}
+body.nativeTv .cinemaPosterCard:focus .cinemaPosterImg,
+body.nativeTv .cinemaPosterCard:focus .cinemaPosterFallback{
+  box-shadow:inset 0 0 0 4px #ffd400,0 0 24px rgba(255,212,0,.55)!important;
+  transform:none!important;
+}
+body.nativeTv .cinemaPosterCard:focus .cinemaPosterMeta{
+  background:#ffd400!important;
+}
+body.nativeTv .cinemaPosterCard:focus .cinemaPosterTitle,
+body.nativeTv .cinemaPosterCard:focus .cinemaPosterSub{
+  color:#111!important;
+}
+body.nativeTv .channel:focus,
+body.nativeTv .channel.focused{
+  outline:4px solid #ffd400!important;
+  outline-offset:2px!important;
+  box-shadow:0 0 0 2px rgba(0,0,0,.5),0 0 26px rgba(255,212,0,.65)!important;
 }
 </style>
 </body>
