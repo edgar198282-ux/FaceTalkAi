@@ -12014,7 +12014,9 @@ function renderCinemaCast(item){
       '<div class="cinemaCastName">'+name.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>';
     btn.dataset.actorSearchName=searchName||name;
     btn.dataset.actorId=actorId;
-    btn.onclick=()=>openCinemaActor(btn.dataset.actorSearchName||searchName||name,name,btn.dataset.actorId||actorId);
+    btn.onclick=()=>{};
+    btn.style.cursor='default';
+    btn.setAttribute('aria-disabled','true');
     row.appendChild(btn);
     fetch('/api/cinema/person?name='+encodeURIComponent(searchName||name),{headers:authHeaders(),cache:'force-cache'})
       .then(r=>r.ok?r.json():null).then(d=>{
