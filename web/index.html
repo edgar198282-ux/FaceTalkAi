@@ -1530,8 +1530,8 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaDetailAction:disabled{opacity:.65}
 .cinemaDetailBody{padding:16px 6.5% 38px;margin-top:-10px;position:relative;z-index:3;border-top:0!important}
 .cinemaDetailTitle{font-size:31px;font-weight:500;line-height:1.15;margin:0 0 6px;color:#f4f4f4}
-.cinemaDetailOriginalTitle{font-size:19px;line-height:1.25;font-weight:500;color:#aeb8bf;margin:0 0 18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.nativeTv .cinemaDetailOriginalTitle{font-size:20px;color:#a9b5bd;margin-bottom:18px}
+.cinemaDetailOriginalTitle{font-size:10px;line-height:1.25;font-weight:500;color:#aeb8bf;margin:0 0 18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nativeTv .cinemaDetailOriginalTitle{font-size:10px;color:#a9b5bd;margin-bottom:18px}
 .cinemaDetailBadges{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .cinemaDetailBadge{
   border:1px solid #aeb7bc;border-radius:8px;padding:4px 10px;color:#e9edef;font-size:13px;font-weight:650;background:rgba(255,255,255,.03)
@@ -1617,7 +1617,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:0}
   .cinemaDetailBody{padding:18px 14px 28px;margin-top:-10px;border-top:0!important}
   .cinemaDetailTitle{font-size:28px;line-height:1.12;margin-bottom:5px}
-  .cinemaDetailOriginalTitle{font-size:17px;margin-bottom:17px;color:#7f96a4}
+  .cinemaDetailOriginalTitle{font-size:9px;margin-bottom:17px;color:#7f96a4}
   .cinemaDetailDescription{font-size:16px;line-height:1.46}
   .cinemaDetailFacts{grid-template-columns:96px minmax(0,1fr);font-size:16px;gap:10px 12px}
   .cinemaDetailFacts .v{min-width:0;overflow-wrap:anywhere}
@@ -1664,8 +1664,10 @@ body.nativeTv:not(.darkMode).cinemaMode .cinemaPosterCard{
   color:#173d56!important;
   box-shadow:0 8px 22px rgba(37,86,116,.16)!important;
 }
-body.nativeTv:not(.darkMode).cinemaMode .cinemaPosterMeta{
+body:not(.darkMode).cinemaMode .cinemaPosterMeta{
   background:#ffffff!important;
+  border-radius:0 0 14px 14px!important;
+  overflow:hidden!important;
 }
 
 body:not(.darkMode) .cinemaShellBar{background:rgba(232,247,255,.93)!important;border-bottom-color:rgba(83,166,210,.34)!important}
