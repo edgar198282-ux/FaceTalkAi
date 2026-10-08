@@ -13201,24 +13201,7 @@ async function openCinemaMovie(item){
 
   if(isKinoPub){
     metaPromise=enrichCinemaMovie(item);
-    const cachedDetail=kinoPubItemDetailsCache.get(String(item?.id||''));
-    if(!cachedDetail){
-      loadKinoPubItemDetails(item).then(loaded=>{
-        const currentId=String(cinemaDetailMovie?.id||cinemaDetailMovie?.intent||'');
-        if(currentId!==openedId)return;
-        const player=document.getElementById('playerView');
-        const playerOpen=!!(player&&player.classList.contains('open'));
-        if(cinemaDetailOpen()&&!cinemaSourcePickerOpen()&&!playerOpen){
-          const merged={...cinemaDetailMovie,...loaded};
-          cinemaDetailMovie=merged;
-          cinemaSourcePickerMovie=merged;
-          renderCinemaDetail(merged);
-        }
-      }).catch(()=>{});
-      direct=item;
-    }else{
-      direct={...item,...cachedDetail};
-    }
+    direct=await loadKinoPubItemDetails(item);
     warmCinemaItemImages(direct,true);
 
     const currentId=String(cinemaDetailMovie?.id||cinemaDetailMovie?.intent||'');
