@@ -14567,6 +14567,31 @@ body.nativeTv :is(.cinemaPosterCard,.cinemaSimilarCard,.cinemaCastCard):is(:focu
 body:not(.darkMode).nativeTv .cinemaMenuItem:focus:not(.active){
   box-shadow:none!important;
 }
+/* tv-channel-card-neon-focus */
+body.nativeTv .channel:focus,
+body.nativeTv .channel.focused,
+body.darkMode.nativeTv .channel:focus,
+body.darkMode.nativeTv .channel.focused{
+  position:relative!important;
+  outline:none!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+body.nativeTv .channel:focus::after,
+body.nativeTv .channel.focused::after{
+  content:''!important;
+  position:absolute!important;
+  inset:-3.2px!important;
+  border:3.2px solid transparent!important;
+  border-radius:inherit!important;
+  background:conic-gradient(from var(--abaj-neon-angle),#ff4fa3,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box!important;
+  -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0)!important;
+  -webkit-mask-composite:xor!important;
+  mask-composite:exclude!important;
+  pointer-events:none!important;
+  z-index:4!important;
+  animation:abajNeonRotate 2.16s linear infinite!important;
+}
 /* Keep the outer animated neon focus ring; remove only the inner yellow poster outline. */
 .cinemaPosterCard:focus :is(.cinemaPosterImg,.cinemaPosterFallback),
 .cinemaPosterCard.focused :is(.cinemaPosterImg,.cinemaPosterFallback),
