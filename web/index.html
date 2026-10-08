@@ -12677,7 +12677,7 @@ function renderCinemaCast(item){
             const pr=await fetch('/api/cinema/person?name='+encodeURIComponent(variant),{cache:'force-cache'});
             if(!pr.ok)continue;
             const person=await pr.json();
-            const normalized=x=>String(x||'').normalize('NFKC').toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu,' ').trim();
+            const normalized=x=>String(x||'').normalize('NFKC').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
             const expected=normalized(variant),returned=normalized(person?.name);
             if(person?.image&&returned===expected){setPhoto(person.image);return;}
           }catch(e){}
