@@ -12700,6 +12700,16 @@ function renderCinemaDetail(item){
   const facts=document.getElementById('cinemaDetailFacts');
   if(!detail)return;
 
+  // Clear async state from the previously opened title before this detail can paint.
+  cinemaAbajRatingMine=0;
+  const staleAbajScore=document.getElementById('cinemaAbajRatingScore');
+  if(staleAbajScore)staleAbajScore.textContent='—';
+  const staleWatchBtn=document.getElementById('cinemaDetailWatch');
+  if(staleWatchBtn){
+    staleWatchBtn.disabled=false;
+    staleWatchBtn.textContent=cinemaT().watchMovie;
+  }
+
   const bg=cinemaDetailBackdrop(item);
   const poster=cinemaDetailPoster(item);
   const heroPoster=document.getElementById('cinemaDetailHeroPoster');
