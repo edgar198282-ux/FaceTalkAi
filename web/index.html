@@ -10278,6 +10278,10 @@ async function loadCinemaCatalog(force=false){
   }
 
   if(cinemaSource==='kinopub'){
+    if(cinemaMode&&cinemaShellKind==='movies'&&cinemaShellCategory==='new'){
+      loadKinoPubSection('fresh',{type:'movies'});
+      return;
+    }
     loadKinoPubOverview();
     refreshCinemaLibraryCounts();
     if(kinoPubExplicitlyDisabled()){
@@ -12219,6 +12223,7 @@ window.addEventListener('keydown',e=>{
   if(choice)choice.click();
   else moveCinemaRatingFocus(0);
 },true);
+let cinemaRatingFrozenScroll=0;
 function openCinemaRating(){
   if(!cinemaDetailMovie?.id)return;
   const modal=document.getElementById('cinemaRatingModal');
@@ -12228,13 +12233,18 @@ function openCinemaRating(){
   if(sub)sub.textContent=appLang==='en'?'Choose from 1 to 10 stars':(appLang==='hy'?'Ընտրեք 1-ից 10 աստղ':'Выберите от 1 до 10 звёзд');
   renderCinemaRatingChoices();
   if(modal)modal.classList.add('open');
-  document.getElementById('cinemaDetail')?.classList.add('ratingLocked');
+  const detailForRating=document.getElementById('cinemaDetail');
+  cinemaRatingFrozenScroll=detailForRating?.scrollTop||0;
+  detailForRating?.classList.add('ratingLocked');
   setTimeout(()=>{
     const selected=document.querySelector('#cinemaRatingChoices .selected');
     const first=document.querySelector('#cinemaRatingChoices .cinemaRatingChoice');
     try{(selected||first)?.focus({preventScroll:true})}catch(_){(selected||first)?.focus()}
   },30);
 }
+document.getElementById('cinemaDetail')?.addEventListener('scroll',e=>{
+  if(cinemaRatingModalOpen()&&e.target.scrollTop!==cinemaRatingFrozenScroll)e.target.scrollTop=cinemaRatingFrozenScroll;
+},{passive:true});
 function closeCinemaRating(){
   document.getElementById('cinemaRatingModal')?.classList.remove('open');
   document.getElementById('cinemaDetail')?.classList.remove('ratingLocked');
