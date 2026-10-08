@@ -1497,7 +1497,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   transform:translateX(-50%);border-radius:6px;box-shadow:0 12px 36px rgba(0,0,0,.46);display:none
 }
 .cinemaDetailHero.posterFallback .cinemaDetailHeroPoster{display:block}
-.nativeTv .cinemaDetailHero{min-height:62vh}
+.nativeTv .cinemaDetailHero{min-height:80.6vh}
 .nativeTv .cinemaDetailHeroPoster{top:3%;height:86%;max-width:48%}
 .cinemaDetailHero::after{
   content:"";position:absolute;z-index:2;left:0;right:0;bottom:-2px;height:46%;pointer-events:none;
@@ -1558,7 +1558,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaDetailTools{position:absolute;z-index:6;right:6.5%;top:-62px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;margin:0}
 .cinemaDetailSidePoster{width:87px;height:124px;object-fit:cover;object-position:center;border-radius:12px;background:#173247;box-shadow:0 9px 24px rgba(0,0,0,.28);display:none}
 .nativeTv .cinemaDetailTools{top:-70px}
-.nativeTv .cinemaDetailSidePoster{width:130px;height:184px;border-radius:13px}
+.nativeTv .cinemaDetailSidePoster{width:99px;height:140px;border-radius:13px}
 .nativeTv .cinemaDetailHero::after{-webkit-backdrop-filter:none;backdrop-filter:none}
 .nativeTv .cinemaDetail{overscroll-behavior:contain}
 .nativeTv .cinemaDetailBody{transform:translateZ(0)}
@@ -11985,7 +11985,9 @@ function cinemaDisplayTitle(item){
   return 'Фильм';
 }
 function cinemaDetailBackdrop(item){
-  return cinemaDetailText(item,'backdrop','background','fanart','poster_wide')||'';
+  const images=[item?.backdrops?.original,item?.backdrops?.full,item?.backdrops?.big,item?.backdrops?.large,item?.backdrop?.original,item?.backdrop?.full,item?.backdrop?.big,item?.background?.original,item?.background?.full,item?.background?.big];
+  const highRes=document.body.classList.contains('nativeTv')?images.find(url=>typeof url==='string'&&/^https?:\/\//i.test(url.trim())):null;
+  return highRes||cinemaDetailText(item,'backdrop','background','fanart','poster_wide')||'';
 }
 function cinemaDetailPoster(item){
   return cinemaDetailText(item,'poster','image','image_url')||posterUrl(item)||'';
