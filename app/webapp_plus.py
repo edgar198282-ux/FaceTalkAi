@@ -334,7 +334,7 @@ def _kinopub_normalize(item):
     directors = item.get('directors') or item.get('director') or ''
     if isinstance(directors, list):
         directors = ', '.join(str(x.get('name') if isinstance(x,dict) else x) for x in directors if x)
-    actors_raw = item.get('actors') or item.get('cast') or []
+    actors_raw = item.get('actors') or item.get('cast') or item.get('actor') or []
     actor_cards = []
     if isinstance(actors_raw, list):
         for actor in actors_raw[:24]:
@@ -349,6 +349,9 @@ def _kinopub_normalize(item):
         actors = ', '.join(x['name'] for x in actor_cards)
     else:
         actors = str(actors_raw or '')
+        if actors.strip():
+            actor_cards = [{'id':'','name':name.strip(),'search_name':name.strip(),'image':''}
+                           for name in re.split(r'[,;]+', actors) if name.strip()][:24]
     translation = item.get('translation') or item.get('translations') or item.get('voice') or ''
     if isinstance(translation, list):
         translation = ', '.join(str(x.get('title') if isinstance(x,dict) else x) for x in translation if x)
