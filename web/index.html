@@ -1636,7 +1636,7 @@ body:not(.darkMode) .cinemaAbajRatingInline{color:#173b52}
 .cinemaSimilarName{font-size:13px;font-weight:700;line-height:1.25;margin-top:7px;min-height:32.5px;max-height:32.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cinemaSimilarMeta{font-size:11px;line-height:1.2;color:#8eb7cc;margin-top:3px;min-height:13px}
 .cinemaCast{margin:28px 0 6px;max-width:1100px}
-#cinemaDetail .cinemaCast{display:none!important}
+.nativeTv .cinemaCastCard{pointer-events:none}
 .cinemaCastTitle{font-size:20px;font-weight:800;color:#eaf8ff;margin-bottom:12px}
 .cinemaCastRow{display:flex;align-items:flex-start;gap:14px;overflow-x:auto;padding:4px 4px 18px;scrollbar-width:none}
 .cinemaCastRow::-webkit-scrollbar{display:none}
@@ -8656,7 +8656,7 @@ function cinemaDetailOpen(){
   return !!document.getElementById('cinemaDetail')?.classList.contains('open');
 }
 function cinemaDetailFocusable(){
-  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction,#cinemaDetail #cinemaBookmarkBtn,#cinemaDetail #cinemaAbajRating,#cinemaDetail .cinemaDescriptionMore,#cinemaDetail .cinemaKpEpisodeBtn,#cinemaDetail .cinemaCastCard,#cinemaDetail .cinemaSimilarCard')]
+  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction,#cinemaDetail #cinemaBookmarkBtn,#cinemaDetail #cinemaAbajRating,#cinemaDetail .cinemaDescriptionMore,#cinemaDetail .cinemaKpEpisodeBtn,#cinemaDetail .cinemaSimilarCard')]
     .filter(el=>el.offsetParent!==null);
 }
 function moveCinemaDetailFocus(direction){
@@ -12603,6 +12603,7 @@ function renderCinemaCast(item){
     if(!name)return;
     const btn=document.createElement('button');
     btn.className='cinemaCastCard';
+    btn.tabIndex=-1;
     const image=String(actor.image||'').trim();
     const actorId=String(actor.id||'').trim();
     const initial=(name[0]||'?').toUpperCase();
