@@ -19,7 +19,15 @@ const css=`
 .abajFreePoster{height:100%;min-height:125px;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#14597b,#45277e);font-size:66px}
 #freeCinemaModal{position:fixed;inset:0;background:#010712ec;z-index:999999;display:none;align-items:center;justify-content:center;padding:20px}
 #freeCinemaModal.isOpen{display:flex}
-#freeCinemaModal .freeBox{background:#102238;border:1px solid #5bdcf8;border-radius:18px;max-width:960px;width:100%;padding:18px;max-height:94vh;overflow:auto;color:#fff}
+#freeCinemaModal .freeBox{background:#102238;border:1px solid #5bdcf8;border-radius:18px;max-width:960px;width:100%;padding:22px;max-height:94vh;overflow:auto;color:#fff}
+
+#freeCinemaModal .freeDetailHead{display:grid;grid-template-columns:minmax(120px,28%) minmax(0,1fr);gap:22px;margin:14px 0 20px}
+#freeCinemaModal .freeDetailPoster{width:100%;aspect-ratio:2/3;border-radius:12px;object-fit:cover;background:#12253f}
+#freeCinemaModal .freeDetailInfo{min-width:0}
+#freeCinemaModal .freeTitle{margin:8px 0 12px;font-size:clamp(23px,4vw,36px)}
+#freeCinemaModal .freeWatch{margin-top:22px}
+#freeCinemaModal video:not([src]){display:none}
+@media(max-width:580px){#freeCinemaModal .freeDetailHead{grid-template-columns:110px minmax(0,1fr);gap:14px}#freeCinemaModal .freeBox{padding:15px}}
 #freeCinemaModal .freeWatch{display:inline-flex;background:#23c9ec;color:#061a2a;border:0;border-radius:12px;padding:12px 25px;font-weight:900;margin:14px 0;cursor:pointer}#freeCinemaModal .freeDescription{color:#c3dbea;margin:12px 0}#freeCinemaModal video{width:100%;max-height:70vh;background:#000;border-radius:12px}
 #freeCinemaModal .freeClose{float:right;background:#264c65;color:white;border:0;border-radius:8px;padding:6px 13px;font-size:19px;cursor:pointer}
 `;
@@ -36,14 +44,14 @@ function openFilm(){
  const t=modal.querySelector('.freeTitle'),v=modal.querySelector('video'),info=modal.querySelector('.freeInfo'),description=modal.querySelector('.freeDescription');
  t.textContent='Загрузка…';
  getFilm().then(d=>{
-  t.textContent=d.film.title+' ('+d.film.year+')';if(description)description.textContent=d.film.description||'';
+  t.textContent=d.film.title+' ('+d.film.year+')';if(description)description.textContent=d.film.description||'';const cover=modal.querySelector('.freeDetailPoster');if(cover)cover.src=d.film.poster||'';
   info.textContent=d.film.genre+' · '+d.film.license+' · '+d.film.credit;
-  modal.querySelector(".freeWatch").onclick=()=>{v.src=d.film.url;v.load();v.play().catch(()=>{});modal.querySelector(".freeWatch").style.display="none";};modal.querySelector(".freeWatch").style.display="inline-flex";
+  modal.querySelector(".freeWatch").onclick=()=>{v.src=d.film.url;v.style.display='block';v.load();v.play().catch(()=>{});modal.querySelector(".freeWatch").style.display="none";};modal.querySelector(".freeWatch").style.display="inline-flex";
  }).catch(()=>{t.textContent='Фильм временно недоступен';});
 }
 function closeFilm(){
  const modal=document.getElementById('freeCinemaModal');if(!modal)return;
- const v=modal.querySelector('video');v.pause();v.removeAttribute('src');v.load();modal.classList.remove('isOpen');
+ const v=modal.querySelector('video');v.pause();v.removeAttribute('src');v.load();v.style.display='none';modal.classList.remove('isOpen');
 }
 function decorateCinema(){
  const grid=document.getElementById('cinemaPosterGrid');if(!grid)return;
@@ -71,7 +79,7 @@ function decorateCinema(){
 document.addEventListener('DOMContentLoaded',()=>{
  const old=document.getElementById('freeCinemaAccess');if(old)old.remove();
  const modal=document.createElement('div');modal.id='freeCinemaModal';
- modal.innerHTML='<div class="freeBox"><button type="button" class="freeClose" aria-label="Закрыть">✕</button><h3 class="freeTitle">Бесплатный фильм</h3><p class="freeInfo"></p><div class="freeDescription">Нажмите «Смотреть» для просмотра бесплатного фильма.</div><button type="button" class="freeWatch">▶ Смотреть</button><video controls playsinline preload="metadata"></video></div>';
+ modal.innerHTML='<div class="freeBox"><button type="button" class="freeClose" aria-label="Закрыть">✕</button><div class="freeDetailHead"><img class="freeDetailPoster" alt=""><div class="freeDetailInfo"><span class="abajFilmBadge free" style="display:inline-block!important;position:static">FREE</span><h3 class="freeTitle">Загрузка фильма…</h3><p class="freeInfo"></p><div class="freeDescription"></div><button type="button" class="freeWatch">▶ Смотреть</button></div></div><video controls playsinline preload="metadata"></video></div>';
  document.body.appendChild(modal);
  modal.querySelector('.freeClose').onclick=closeFilm;
  modal.addEventListener('click',e=>{if(e.target===modal)closeFilm();});
