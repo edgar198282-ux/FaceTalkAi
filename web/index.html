@@ -14207,6 +14207,22 @@ body.nativeTv #tvSettingsModal .deviceDisconnect{
   padding:7px 10px!important;
   font-size:14px!important;
 }
+@keyframes abajTvRainbowFocus{
+  0%,100%{box-shadow:0 0 0 2px #ff5987,0 0 11px rgba(255,89,135,.46)}
+  25%{box-shadow:0 0 0 2px #ffca46,0 0 11px rgba(255,202,70,.46)}
+  50%{box-shadow:0 0 0 2px #36e7a1,0 0 11px rgba(54,231,161,.46)}
+  75%{box-shadow:0 0 0 2px #57b8ff,0 0 11px rgba(87,184,255,.46)}
+}
+body.nativeTv :is(.channel.focused,.channel:focus,.cinemaPosterCard:focus,.cinemaSimilarCard:focus,.cinemaDetailAction:focus,.cinemaMenuItem:focus,.cinemaCategoryItem:focus,.cinemaKpNavBtn:focus,.cinemaRatingChoice:focus,.cinemaRatingCancel:focus,button:focus,[tabindex]:focus):not(.cinemaCastCard){
+  outline:none!important;
+  box-shadow:0 0 0 2px #57b8ff,0 0 11px rgba(87,184,255,.46)!important;
+  animation:abajTvRainbowFocus 2.4s ease-in-out infinite!important;
+}
+body.nativeTv .cinemaPosterCard:focus :is(.cinemaPosterImg,.cinemaPosterFallback),
+body.nativeTv .playerCircleCtrl:focus .playerCtrlIcon{
+  box-shadow:0 0 0 2px #57b8ff,0 0 11px rgba(87,184,255,.46)!important;
+  animation:abajTvRainbowFocus 2.4s ease-in-out infinite!important;
+}
 </style>
 </body>
 </html>
