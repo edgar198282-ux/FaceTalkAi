@@ -8675,8 +8675,8 @@ function moveCinemaDetailFocus(direction){
   const items=cinemaDetailFocusable();
   if(!items.length){
     if(detail&&(direction==='down'||direction==='up')){
-      const step=Math.max(90,Math.round(window.innerHeight*.20));
-      detail.scrollBy({top:direction==='down'?step:-step,behavior:'auto'});
+      const step=Math.max(56,Math.round(window.innerHeight*.10));
+      detail.scrollBy({top:direction==='down'?step:-step,behavior:'smooth'});
     }
     return;
   }
@@ -8695,7 +8695,7 @@ function moveCinemaDetailFocus(direction){
     const above=direction==='up'&&ay>mr.bottom+4;
     if(below||above){
       try{more.focus({preventScroll:true})}catch(_){try{more.focus()}catch(__){}}
-      try{more.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'})}catch(_){}
+      try{more.scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'})}catch(_){}
       return;
     }
   }
@@ -8716,23 +8716,23 @@ function moveCinemaDetailFocus(direction){
   });
 
   if(direction==='down'||direction==='up'){
-    const step=Math.max(70,Math.round(window.innerHeight*.14));
+    const step=Math.max(56,Math.round(window.innerHeight*.10));
     if(!best){
-      if(detail)detail.scrollBy({top:direction==='down'?step:-step,behavior:'auto'});
+      if(detail)detail.scrollBy({top:direction==='down'?step:-step,behavior:'smooth'});
       return;
     }
     const br=best.getBoundingClientRect();
     const farDown=direction==='down'&&br.top>window.innerHeight-90;
     const farUp=direction==='up'&&br.bottom<90;
     if((farDown||farUp)&&detail){
-      detail.scrollBy({top:direction==='down'?step:-step,behavior:'auto'});
+      detail.scrollBy({top:direction==='down'?step:-step,behavior:'smooth'});
       return;
     }
   }
 
   if(!best)return;
   try{best.focus({preventScroll:true})}catch(_){try{best.focus()}catch(__){}}
-  try{best.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'})}catch(_){}
+  try{best.scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'})}catch(_){}
 }
 document.addEventListener('keydown',e=>{
   if(nativeTv&&tvLastAutoTimer)cancelLastChannelAutoStart(true);
