@@ -12188,6 +12188,26 @@ function renderCinemaRatingChoices(){
     host.appendChild(btn);
   }
 }
+document.addEventListener('keydown',e=>{
+  if(!cinemaRatingModalOpen())return;
+  const key=e.key;
+  const code=e.keyCode||e.which;
+  const back=key==='Escape'||key==='Backspace'||key==='BrowserBack'||code===4;
+  const left=key==='ArrowLeft'||code===21||code===37;
+  const right=key==='ArrowRight'||code===22||code===39;
+  const up=key==='ArrowUp'||code===19||code===38;
+  const down=key==='ArrowDown'||code===20||code===40;
+  const ok=key==='Enter'||key==='NumpadEnter'||key===' '||code===23||code===66;
+  if(!(back||left||right||up||down||ok))return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if(back){closeCinemaRating();return}
+  if(left||right||up||down){moveCinemaRatingFocus(left?-1:right?1:up?-5:5);return}
+  const active=document.activeElement;
+  const choice=active?.closest?.('#cinemaRatingModal .cinemaRatingChoice,#cinemaRatingCancel');
+  if(choice)choice.click();
+  else moveCinemaRatingFocus(0);
+},true);
 function openCinemaRating(){
   if(!cinemaDetailMovie?.id)return;
   const modal=document.getElementById('cinemaRatingModal');
