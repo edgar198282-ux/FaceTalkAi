@@ -14538,6 +14538,35 @@ body.nativeTv .playerView .playerSeekRange:is(:focus,:focus-visible){
   outline:none!important;
   filter:drop-shadow(0 0 5px #42d7ff)!important;
 }
+/* cinema-focus-neon-controls */
+body.nativeTv :is(.cinemaOpenBtn,.cinemaTypeCard,.cinemaPosterCard,.cinemaShellBtn,.cinemaTvQuickBtn,.cinemaShellDrop,.cinemaKpNavBtn,.cinemaMenuItem,.cinemaCategoryItem,.cinemaKpFilterBtn,.cinemaBookmarkFolder,.cinemaBookmarkPickerRow,.cinemaBookmarkPickerDone,.cinemaBookmarkCreateBtn,.cinemaSeasonRow,.cinemaEpisodeRow,.cinemaSeasonsBack,.cinemaDetailAction,.cinemaDetailShare,.cinemaDescriptionMore,.cinemaDetailBack,.cinemaRatingLink,.cinemaAbajRatingInline,.cinemaRatingChoice,.cinemaRatingCancel,.cinemaSimilarCard,.cinemaCastCard,.cinemaBookmarkBtn,#cinemaBookmarkBtn,#cinemaEpisodeAlertBtn):is(:focus,:focus-visible,.focused){
+  outline:none!important;
+  box-shadow:none!important;
+  border-color:transparent!important;
+  position:relative;
+}
+body.nativeTv :is(.cinemaOpenBtn,.cinemaTypeCard,.cinemaPosterCard,.cinemaShellBtn,.cinemaTvQuickBtn,.cinemaShellDrop,.cinemaKpNavBtn,.cinemaMenuItem,.cinemaCategoryItem,.cinemaKpFilterBtn,.cinemaBookmarkFolder,.cinemaBookmarkPickerRow,.cinemaBookmarkPickerDone,.cinemaBookmarkCreateBtn,.cinemaSeasonRow,.cinemaEpisodeRow,.cinemaSeasonsBack,.cinemaDetailAction,.cinemaDetailShare,.cinemaDescriptionMore,.cinemaDetailBack,.cinemaRatingLink,.cinemaAbajRatingInline,.cinemaRatingChoice,.cinemaRatingCancel,.cinemaSimilarCard,.cinemaCastCard,.cinemaBookmarkBtn,#cinemaBookmarkBtn,#cinemaEpisodeAlertBtn):is(:focus,:focus-visible,.focused)::after{
+  content:'';
+  position:absolute;
+  inset:-3px;
+  border:3px solid transparent;
+  border-radius:inherit;
+  background:conic-gradient(from var(--abaj-neon-angle),#ff4fa3,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box;
+  -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  pointer-events:none;
+  z-index:4;
+  animation:abajNeonRotate 2.16s linear infinite;
+}
+body.nativeTv :is(.cinemaPosterCard,.cinemaSimilarCard,.cinemaCastCard):is(:focus,:focus-visible,.focused) :is(img,.cinemaPosterImg,.cinemaPosterFallback,.cinemaCastAvatarFallback){
+  box-shadow:none!important;
+  outline:none!important;
+  border-color:transparent!important;
+}
+body:not(.darkMode).nativeTv .cinemaMenuItem:focus:not(.active){
+  box-shadow:none!important;
+}
 /* Keep the outer animated neon focus ring; remove only the inner yellow poster outline. */
 .cinemaPosterCard:focus :is(.cinemaPosterImg,.cinemaPosterFallback),
 .cinemaPosterCard.focused :is(.cinemaPosterImg,.cinemaPosterFallback),
