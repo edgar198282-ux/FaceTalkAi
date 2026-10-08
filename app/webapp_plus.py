@@ -2169,9 +2169,9 @@ async def index(request):
     return web.FileResponse(path, headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0','Pragma':'no-cache'})
 
 async def api_free_film(request):
-    """One CC-BY Blender short film, rotated every 72 hours in UTC."""
+    """One openly licensed feature film in the Free section."""
     films = (
-        {"id":"the-general-1926","title":"Генерал","year":1926,"genre":"Комедия, приключения","description":"Машинист Джонни Грей отправляется вслед за похищенным поездом, чтобы спасти любимую и вернуть локомотив. Полнометражная приключенческая комедия Бастера Китона.","duration":"1 ч 7 мин","poster":"https://archive.org/services/img/TheGeneral","url":"https://archive.org/download/TheGeneral/The_General_512kb.mp4","credit":"Buster Keaton / United Artists, 1926","license":"Public domain (US)"},
+        {"id":"sita-sings-the-blues","title":"Сита поёт блюз","year":2008,"genre":"Полнометражный музыкальный фильм","description":"История Ситы из древнеиндийского эпоса переплетается с современной историей любви. Полнометражный фильм Нины Пэйли, 82 минуты.","duration":"1 ч 22 мин","poster":"https://archive.org/services/img/sita-sings-the-blues_202403","url":"https://archive.org/download/sita-sings-the-blues_202403/SSTB_1080_FINAL_2009_02.mp4","credit":"Nina Paley, Sita Sings the Blues","license":"CC BY-SA / Free Culture"},
     )
     epoch = int(time.time())
     period = 3 * 86400
