@@ -14210,17 +14210,17 @@ body.nativeTv #tvSettingsModal .deviceDisconnect{
 @property --abaj-neon-angle{syntax:'<angle>';initial-value:0deg;inherits:false}
 @keyframes abajNeonRotate{to{--abaj-neon-angle:360deg}}
 @keyframes abajNeonFallback{to{filter:hue-rotate(360deg)}}
-body :is(.channel.focused,.channel:focus,.cinemaPosterCard:focus,.cinemaPosterCard[data-cinema-selected="1"],.cinemaSimilarCard:focus,.cinemaDetailAction:focus,.cinemaMenuItem:focus,.cinemaMenuItem.active,.cinemaCategoryItem:focus,.cinemaCategoryItem.active,.cinemaKpNavBtn:focus,.cinemaKpNavBtn.active,.cinemaRatingChoice:focus,.cinemaRatingChoice.selected,.cinemaRatingCancel:focus,button:focus-visible):not(.cinemaCastCard){
+body :is(.channel:focus,.cinemaPosterCard:focus,.cinemaSimilarCard:focus,.cinemaDetailAction:focus,.cinemaMenuItem:focus,.cinemaCategoryItem:focus,.cinemaKpNavBtn:focus,.cinemaRatingChoice:focus,.cinemaRatingCancel:focus,button:focus-visible):not(.cinemaCastCard){
   position:relative;
   outline:none!important;
   box-shadow:none!important;
   isolation:isolate;
 }
-body :is(.channel.focused,.channel:focus,.cinemaPosterCard:focus,.cinemaPosterCard[data-cinema-selected="1"],.cinemaSimilarCard:focus,.cinemaDetailAction:focus,.cinemaMenuItem:focus,.cinemaMenuItem.active,.cinemaCategoryItem:focus,.cinemaCategoryItem.active,.cinemaKpNavBtn:focus,.cinemaKpNavBtn.active,.cinemaRatingChoice:focus,.cinemaRatingChoice.selected,.cinemaRatingCancel:focus,button:focus-visible):not(.cinemaCastCard)::after{
+body :is(.channel:focus,.cinemaPosterCard:focus,.cinemaSimilarCard:focus,.cinemaDetailAction:focus,.cinemaMenuItem:focus,.cinemaCategoryItem:focus,.cinemaKpNavBtn:focus,.cinemaRatingChoice:focus,.cinemaRatingCancel:focus,button:focus-visible):not(.cinemaCastCard)::after{
   content:'';
   position:absolute;
-  inset:-4px;
-  border:4px solid transparent;
+  inset:-3.2px;
+  border:3.2px solid transparent;
   border-radius:inherit;
   background:conic-gradient(from var(--abaj-neon-angle),#ff4fa3,#ffd84f,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box;
   -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);
