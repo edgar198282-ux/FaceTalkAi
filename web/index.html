@@ -13274,7 +13274,8 @@ async function openCinemaMovie(item){
   let metaPromise=null;
 
   if(isKinoPub){
-    metaPromise=enrichCinemaMovie(item);
+    // Do not issue an ambiguous title-only metadata lookup for KinoPub items.
+    metaPromise=null;
     direct=await loadKinoPubItemDetails(item);
     warmCinemaItemImages(direct,true);
 
@@ -13297,7 +13298,9 @@ async function openCinemaMovie(item){
 
   if(isKinoPub&&metaPromise){
     const meta=await metaPromise;
-    enriched=cinemaMergeMetadata(direct,meta);
+    // KinoPub has an exact item ID. A title-only IMDb match can belong to a different
+    // movie/series (e.g. Below); never replace KinoPub credits, genres or year.
+    enriched={...direct};
     // Cast must stay attached to the exact KinoPub item ID, never a title-only metadata match.
     enriched.actors=direct.actors||'';
     enriched.cast=direct.cast||'';
