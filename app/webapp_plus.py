@@ -3128,17 +3128,8 @@ async def api_cinema_cast_image(request):
                 ctype=str(response.headers.get('Content-Type') or '').split(';')[0].lower()
                 if ctype not in ('image/jpeg','image/png','image/webp','image/avif'):
                     raise web.HTTPNotFound()
-                # read(n) can return only the first network chunk, producing
-                # partially decoded portraits with a blank lower half.
-                chunks=[]
-                total_bytes=0
-                async for chunk in response.content.iter_chunked(65536):
-                    total_bytes += len(chunk)
-                    if total_bytes>5000000:
-                        raise web.HTTPNotFound()
-                    chunks.append(chunk)
-                data=b''.join(chunks)
-                if not data:
+                data=await response.content.read(5000001)
+                if not data or len(data)>5000000:
                     raise web.HTTPNotFound()
         return web.Response(body=data,content_type=ctype,headers={'Cache-Control':'public, max-age=86400'})
     except web.HTTPException:
