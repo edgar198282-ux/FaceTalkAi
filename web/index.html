@@ -12545,7 +12545,7 @@ async function loadKinoPubItemDetails(item){
   const cached=kinoPubItemDetailsCache.get(key);
   if(cached)return {...item,...cached};
   try{
-    const r=await fetch('/api/kinopub/item?id='+encodeURIComponent(key),{headers:authHeaders(),cache:'force-cache'});
+    const r=await fetch('/api/kinopub/item?id='+encodeURIComponent(key),{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return item;
     const d=await r.json();
     const detail=(d&&d.item&&typeof d.item==='object')?d.item:{};
