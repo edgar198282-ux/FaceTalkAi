@@ -12163,7 +12163,9 @@ async function loadCinemaAbajRating(item){
   try{
     const r=await fetch('/api/cinema/rating?item_id='+encodeURIComponent(id),{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return;
-    paintCinemaAbajRating(await r.json());
+    const data=await r.json();
+    if(String(cinemaDetailMovie?.id||'').trim()!==id)return;
+    paintCinemaAbajRating(data);
   }catch(e){}
 }
 function renderCinemaRatingChoices(){
@@ -13190,7 +13192,6 @@ async function openCinemaMovie(item){
   if(!item)return;
   pushCinemaHistoryLayer('detail');
   cinemaSelectedKinoMedia=null;
-  renderCinemaDetail(item);
   const openedId=String(item?.id||item?.intent||'');
   const isKinoPub=cinemaSource==='kinopub'||String(item?.source||'').toUpperCase()==='KINOPUB';
 
