@@ -3038,26 +3038,49 @@ async def _wiki_person_lookup(name, session):
         return {}
 
 async def api_cinema_verified_cast_photo(request):
-    """Portrait from the exact Wikipedia biography, never a fuzzy name match."""
+    """Fetch portraits via exact Wikidata sitelinks, never approximate search hits."""
     name = str(request.query.get('name') or '').strip()
     if not (2 <= len(name) <= 100):
-        return web.json_response({'ok':False,'image':''},status=400)
+        return web.json_response({'ok':False,'image':''}, status=400)
     image = ''
+    def norm(v):
+        return re.sub(r'[^\\w]+', ' ', str(v or '').casefold(), flags=re.UNICODE).strip()
     try:
-        timeout = aiohttp.ClientTimeout(total=9,connect=4,sock_read=5)
-        async with aiohttp.ClientSession(timeout=timeout,headers={'User-Agent':'AbajTV/1.0 (cast portraits)'}) as session:
-            info = await _wiki_person_lookup(name,session)
-        title = str(info.get('name') or '').strip()
-        def norm(v):
-            return re.sub(r'[^\w]+',' ',str(v or '').casefold(),flags=re.UNICODE).strip()
-        # A Wikipedia search can return an unrelated person: require an exact
-        # biography title, not just a plausible-looking search result.
-        if norm(title) == norm(name):
-            image = str(info.get('image') or '').strip()
+        timeout = aiohttp.ClientTimeout(total=10, connect=4, sock_read=6)
+        headers = {'User-Agent':'AbajTV/1.0 (verified cast portrait)', 'Accept':'application/json'}
+        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+            # Query the exact Wikipedia page in both languages; redirects may
+            # resolve alternate names, but fuzzy search results are never trusted.
+            for host in ('ru.wikipedia.org','en.wikipedia.org'):
+                params = {'action':'query','titles':name,'redirects':'1',
+                          'prop':'pageimages|langlinks','piprop':'thumbnail',
+                          'pithumbsize':'500','lllang':'en','format':'json'}
+                try:
+                    async with session.get('https://'+host+'/w/api.php',params=params) as resp:
+                        data=await resp.json(content_type=None) if resp.status<400 else {}
+                    query=data.get('query') if isinstance(data,dict) else {}
+                    redirects=query.get('redirects') or []
+                    aliases=[name]+[str(x.get('to') or '') for x in redirects if isinstance(x,dict)]
+                    for page in (query.get('pages') or {}).values():
+                        if not isinstance(page,dict) or page.get('missing') is not None:
+                            continue
+                        title=str(page.get('title') or '')
+                        # Allow a documented redirect from the exact requested name.
+                        if norm(title) not in {norm(x) for x in aliases}:
+                            continue
+                        thumb=page.get('thumbnail') or {}
+                        url=str(thumb.get('source') or '').strip()
+                        if url.startswith('https://'):
+                            image=url
+                            break
+                    if image:
+                        break
+                except Exception:
+                    continue
     except Exception:
         pass
     return web.json_response({'ok':True,'image':image},
-                             headers={'Cache-Control':'public, max-age=86400'})
+                             headers={'Cache-Control':'public, max-age=21600'})
 
 async def api_cinema_person(request):
     name = str(request.query.get('name') or '').strip()
