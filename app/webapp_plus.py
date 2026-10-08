@@ -387,10 +387,8 @@ async def _cinema_playback_allowed(uid: int) -> bool:
 
 async def api_cinema_source_state(request):
     user = await _user_from_request(request)
-    if not user:
-        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
-    uid = int(user['id'])
-    playback_allowed = await _cinema_playback_allowed(uid)
+    uid = int(user['id']) if user else 0
+    playback_allowed = await _cinema_playback_allowed(uid) if uid else False
     default_source = str(os.getenv('CINEMA_GLOBAL_SOURCE_DEFAULT') or 'kinopub').strip().lower()
     source = str(await get_setting('cinema_global_source', default_source) or default_source).strip().lower()
     if source == 'none':
@@ -1282,15 +1280,9 @@ async def api_kinopub_download(request):
 
 async def api_kinopub_overview(request):
     user = await _user_from_request(request)
-    if not user:
-        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
-    uid = int(user['id'])
-    if not await _cinema_access_allowed(uid):
-        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
-    token = await _kinopub_access_token(uid)
+    token = await _public_cinema_token(user)
     if not token:
-        return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
-
+        return web.json_response({'ok':False,'error':'catalog_source_unavailable'}, status=503)
     async def total_for(type_name):
         status, data = await _kinopub_api('GET','/v1/items',params={
             'access_token':token,'type':type_name,'perpage':1,'page':0,'sort':'updated-'
@@ -1937,17 +1929,24 @@ async def _kinopub_section_page(token, *, path='/v1/items', params=None):
             rows.append(row)
     return status, rows, _kinopub_total_from_data(data), data
 
+async def _public_cinema_token(user):
+    """Read-only catalogue token. Playback endpoints remain subscription guarded."""
+    uid = int(user['id']) if user else 0
+    if uid:
+        token = await _kinopub_access_token(uid)
+        if token:
+            return token
+    try:
+        owner = int(str(await get_setting('kinopub_owner_uid', '') or '').strip() or 0)
+    except Exception:
+        owner = 0
+    owner = owner or int(ADMIN_ID or 0)
+    return await _kinopub_access_token(owner) if owner else ''
 async def api_kinopub_section(request):
     user = await _user_from_request(request)
-    if not user:
-        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
-    uid = int(user['id'])
-    if not await _cinema_access_allowed(uid):
-        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
-    token = await _kinopub_access_token(uid)
+    token = await _public_cinema_token(user)
     if not token:
-        return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
-
+        return web.json_response({'ok':False,'error':'catalog_source_unavailable'}, status=503)
     section = str(request.query.get('section') or 'movies').strip().lower()
     sort = str(request.query.get('sort') or '').strip().lower()
     sort = {
@@ -2102,14 +2101,9 @@ async def api_kinopub_collection_items(request):
 
 async def api_kinopub_catalog(request):
     user = await _user_from_request(request)
-    if not user:
-        return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
-    uid = int(user['id'])
-    if not await _cinema_access_allowed(uid):
-        return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
-    token = await _kinopub_access_token(uid)
+    token = await _public_cinema_token(user)
     if not token:
-        return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
+        return web.json_response({'ok':False,'error':'catalog_source_unavailable'}, status=503)
     query = str(request.query.get('q') or '').strip()
     actor_query = str(request.query.get('actor') or '').strip()
     requested_kind = str(request.query.get('type') or '').strip().lower()
@@ -2134,7 +2128,6 @@ async def api_kinopub_catalog(request):
         params['sort'] = 'updated-'
     status, data = await _kinopub_api('GET', path, params=params)
     if status == 401:
-        await set_setting(f'kinopub_tokens:{uid}', '')
         return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
     if status >= 400:
         return web.json_response({'ok':False,'error':'kinopub_catalog_failed','status':status}, status=502)
