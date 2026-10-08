@@ -14593,10 +14593,10 @@ body.nativeTv .channel.focused::after{
   animation:abajNeonRotate 2.16s linear infinite!important;
   filter:drop-shadow(0 0 5px rgba(66,215,255,.85))!important;
 }
-/* light-theme TV channel cards only; leave quality badges untouched */
-body.nativeTv:not(.darkMode) .channel:is(:focus,.focused)::after{
-  inset:-5px!important;
-  border-width:7px!important;
+/* TV channel cards only, both themes; quality badges and player unchanged */
+body.nativeTv .channel:is(:focus,.focused)::after{
+  inset:-6px!important;
+  border-width:10px!important;
   filter:drop-shadow(0 0 7px rgba(66,215,255,.9))!important;
 }
 /* Keep the outer animated neon focus ring; remove only the inner yellow poster outline. */
