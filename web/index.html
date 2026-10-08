@@ -12688,6 +12688,9 @@ function installCinemaDetailHeroShade(){
   },{passive:true});
 }
 function renderCinemaDetail(item){
+  const previousDetailId=String(cinemaDetailMovie?.id||cinemaDetailMovie?.intent||'');
+  const nextDetailId=String(item?.id||item?.intent||'');
+  const detailChanged=previousDetailId!==nextDetailId;
   cinemaDetailMovie=item;
   cinemaSourcePickerMovie=item;
   const detail=document.getElementById('cinemaDetail');
@@ -12790,6 +12793,15 @@ function renderCinemaDetail(item){
     cinemaDetailFact(cinemaT().director,director)+
     (cinemaActorCards(item).length?'':cinemaDetailFact(cinemaT().cast,cast));
 
+  if(detailChanged){
+    cinemaAbajRatingMine=0;
+    paintCinemaAbajRating({average:0,count:0,mine:0});
+    const watchReset=document.getElementById('cinemaDetailWatch');
+    if(watchReset){
+      watchReset.disabled=false;
+      watchReset.textContent=cinemaT().watchMovie;
+    }
+  }
   loadCinemaAbajRating(item);
   renderKinoPubMediaRows(item);
   renderCinemaCast(item);
