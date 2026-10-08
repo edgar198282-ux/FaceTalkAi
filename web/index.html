@@ -14210,13 +14210,13 @@ body.nativeTv #tvSettingsModal .deviceDisconnect{
 @property --abaj-neon-angle{syntax:'<angle>';initial-value:0deg;inherits:false}
 @keyframes abajNeonRotate{to{--abaj-neon-angle:360deg}}
 @keyframes abajNeonFallback{to{filter:hue-rotate(360deg)}}
-body :is(.channel:focus,.cinemaPosterCard:focus,.cinemaSimilarCard:focus,.cinemaDetailAction:focus,.cinemaMenuItem:focus,.cinemaCategoryItem:focus,.cinemaKpNavBtn:focus,.cinemaRatingChoice:focus,.cinemaRatingCancel:focus,button:focus-visible):not(.cinemaCastCard){
+body :is(.channel:focus,.channel.focused,.cinemaPosterCard:focus,.cinemaSimilarCard:focus,.cinemaDetailAction:focus,.cinemaMenuItem:focus,.cinemaCategoryItem:focus,.cinemaKpNavBtn:focus,.cinemaRatingChoice:focus,.cinemaRatingCancel:focus,button:focus-visible):not(.cinemaCastCard){
   position:relative;
   outline:none!important;
   box-shadow:none!important;
   isolation:isolate;
 }
-body :is(.channel:focus,.cinemaPosterCard:focus,.cinemaSimilarCard:focus,.cinemaDetailAction:focus,.cinemaMenuItem:focus,.cinemaCategoryItem:focus,.cinemaKpNavBtn:focus,.cinemaRatingChoice:focus,.cinemaRatingCancel:focus,button:focus-visible):not(.cinemaCastCard)::after{
+body :is(.channel:focus,.channel.focused,.cinemaPosterCard:focus,.cinemaSimilarCard:focus,.cinemaDetailAction:focus,.cinemaMenuItem:focus,.cinemaCategoryItem:focus,.cinemaKpNavBtn:focus,.cinemaRatingChoice:focus,.cinemaRatingCancel:focus,button:focus-visible):not(.cinemaCastCard)::after{
   content:'';
   position:absolute;
   inset:-3.2px;
@@ -14229,6 +14229,12 @@ body :is(.channel:focus,.cinemaPosterCard:focus,.cinemaSimilarCard:focus,.cinema
   pointer-events:none;
   z-index:4;
   animation:abajNeonRotate 2.16s linear infinite;
+}
+body.nativeTv .channel.focused,
+body.nativeTv .channel:focus{
+  outline:none!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
 }
 body.nativeTv .cinemaPosterCard:focus :is(.cinemaPosterImg,.cinemaPosterFallback),
 body.nativeTv .playerCircleCtrl:focus .playerCtrlIcon{box-shadow:none!important;animation:none!important}
