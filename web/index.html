@@ -12200,6 +12200,7 @@ function renderCinemaRatingChoices(){
     btn.setAttribute('aria-label',String(i)+' / 10');
     btn.title=String(i)+'/10';
     btn.onclick=()=>submitCinemaRating(i);
+    btn.style.touchAction='manipulation';
     host.appendChild(btn);
   }
 }
@@ -12259,7 +12260,13 @@ function moveCinemaRatingFocus(step){
 async function submitCinemaRating(score){
   const id=String(cinemaDetailMovie?.id||'').trim();
   if(!id)return;
-  document.querySelectorAll('#cinemaRatingChoices .cinemaRatingChoice').forEach(x=>x.disabled=true);
+  if(!Number.isInteger(Number(score))||Number(score)<1||Number(score)>10)return;
+  document.querySelectorAll('#cinemaRatingChoices .cinemaRatingChoice').forEach(x=>{
+    const value=Number(x.dataset.score);
+    x.classList.toggle('selected',value===Number(score));
+    x.classList.toggle('selectedBefore',value<Number(score));
+    x.disabled=true;
+  });
   try{
     const r=await fetch('/api/cinema/rating',{
       method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},
@@ -12271,6 +12278,8 @@ async function submitCinemaRating(score){
     closeCinemaRating();
   }catch(e){
     document.querySelectorAll('#cinemaRatingChoices .cinemaRatingChoice').forEach(x=>x.disabled=false);
+    const sub=document.getElementById('cinemaRatingSub');
+    if(sub)sub.textContent=appLang==='en'?'Failed to save rating. Try again.':appLang==='hy'?'Գնահատականը չի պահպանվել։ Կրկին փորձեք։':'Не удалось сохранить оценку. Попробуйте снова.';
   }
 }
 async function downloadCinemaDetail(){
