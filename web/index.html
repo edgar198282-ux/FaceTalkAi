@@ -9374,6 +9374,57 @@ function toggleCinemaSideMenu(){
     }
   }
 }
+function initCinemaSideSwipe(){
+  const side=document.getElementById('cinemaSideMenu');
+  if(!side||side.dataset.swipeReady)return;
+  side.dataset.swipeReady='1';
+  let startX=0,startY=0,startedOpen=false,dragging=false,tracking=false;
+  document.addEventListener('touchstart',e=>{
+    if(nativeTv||e.touches.length!==1)return;
+    const touch=e.touches[0];
+    const open=side.classList.contains('open');
+    const onSide=side.contains(e.target);
+    const screen=document.getElementById('cinemaScreen');
+    const atEdge=touch.clientX<=28&&screen?.classList.contains('open');
+    if(!onSide&&!(!open&&atEdge))return;
+    if(e.target.closest('input,textarea,select'))return;
+    startX=touch.clientX;startY=touch.clientY;startedOpen=open;
+    tracking=true;dragging=false;
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!tracking||e.touches.length!==1)return;
+    const touch=e.touches[0];
+    const dx=touch.clientX-startX,dy=touch.clientY-startY;
+    if(!dragging){
+      if(Math.abs(dy)>Math.abs(dx)&&Math.abs(dy)>10){tracking=false;return}
+      if(Math.abs(dx)<12)return;
+      if(startedOpen&&dx>=0||!startedOpen&&dx<=0){tracking=false;return}
+      dragging=true;
+      side.style.transition='none';
+    }
+    if(e.cancelable)e.preventDefault();
+    const width=side.getBoundingClientRect().width;
+    side.style.transform='translateX('+Math.max(-width,Math.min(0,(startedOpen?0:-width)+dx))+'px)';
+  },{passive:false});
+  const finish=e=>{
+    if(!tracking)return;
+    tracking=false;
+    const touch=e.changedTouches?.[0];
+    const dx=touch?touch.clientX-startX:0;
+    side.style.transition='';
+    side.style.transform='';
+    if(!dragging)return;
+    if(startedOpen&&dx< -Math.min(70,side.offsetWidth*.22)){
+      side.classList.remove('open');
+    }else if(!startedOpen&&dx>Math.min(70,side.offsetWidth*.22)){
+      toggleCinemaSideMenu();
+    }
+    dragging=false;
+  };
+  document.addEventListener('touchend',finish,{passive:true});
+  document.addEventListener('touchcancel',finish,{passive:true});
+}
+document.addEventListener('DOMContentLoaded',initCinemaSideSwipe);
 function toggleCinemaCategoryMenu(){
   const cat=document.getElementById('cinemaCategoryMenu');
   const side=document.getElementById('cinemaSideMenu');
