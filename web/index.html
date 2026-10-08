@@ -12392,17 +12392,24 @@ function shareCinemaDetail(){
 function cinemaSeriesInfo(item){
   const rows=cinemaSeasonRows(item);
   if(!rows.length)return '';
-  const durations=[];
-  rows.forEach(r=>r.items.forEach(m=>{
-    const d=Number(m?.duration||0);
-    if(d>0)durations.push(d>60?Math.round(d/60):Math.round(d));
-  }));
-  const parts=['Сезонов '+rows.length];
-  if(durations.length){
-    const avg=Math.round(durations.reduce((a,b)=>a+b,0)/durations.length);
-    parts.push('Серия ~'+avg+' мин');
+  const selectedId=kinoMediaId(cinemaSelectedKinoMedia);
+  let entry=null;
+  for(const row of rows){
+    const index=row.items.findIndex(m=>selectedId&&kinoMediaId(m)===selectedId);
+    if(index>=0){entry={row,media:row.items[index],index};break}
   }
-  return parts.join(' · ');
+  if(!entry)entry={row:rows[0],media:rows[0].items[0],index:0};
+  const {row,media,index}=entry;
+  const season=media?.season??row.season??1;
+  const episode=media?.number??(index+1);
+  const d=Number(media?.duration||0);
+  const minutes=d>0?Math.round(d>180?d/60:d):0;
+  const unit=appLang==='en'?'min':appLang==='hy'?'ր':'мин';
+  return 'S'+season+'E'+episode+(minutes?' · ⏰ '+minutes+' '+unit:'');
+}
+function updateCinemaSelectedEpisodeInfo(){
+  const value=document.getElementById('cinemaSelectedEpisodeInfo');
+  if(value&&cinemaDetailMovie)value.textContent=cinemaSeriesInfo(cinemaDetailMovie);
 }
 function kinoMediaId(media){
   return String(media?.id??media?.media_id??media?.mid??'');
@@ -12446,6 +12453,7 @@ function renderKinoPubMediaRows(item){
         (min?'<small>'+min+' мин.</small>':'');
       btn.onclick=()=>{
         cinemaSelectedKinoMedia=media;
+        updateCinemaSelectedEpisodeInfo();
         host.querySelectorAll('.cinemaKpEpisodeBtn').forEach(x=>x.classList.remove('active'));
         btn.classList.add('active');
         watchCinemaDetail();
@@ -12520,6 +12528,7 @@ function renderCinemaSeasonEpisodes(row){
       '<small>'+(cinemaEpisodeWatched(media)?cinemaT().watched:(min?min+' '+cinemaT().minute:''))+'</small>';
     btn.onclick=()=>{
       cinemaSelectedKinoMedia=media;
+      updateCinemaSelectedEpisodeInfo();
       closeCinemaSeasons();
       const watchBtn=document.getElementById('cinemaDetailWatch');
       if(watchBtn)watchBtn.textContent=(appLang==='hy'?'ԴԻՏԵԼ ':(appLang==='en'?'WATCH ':'СМОТРЕТЬ '))+kinoMediaLabel(media,index);
@@ -12894,7 +12903,7 @@ function renderCinemaDetail(item){
     cinemaRatingFact(rating,kpRating,item)+
     cinemaDetailFact(cinemaT().year,year)+
     cinemaDetailFact(appLang==='en'?'Time':appLang==='hy'?'Տևողություն':'Время',duration||'—')+
-    cinemaDetailFact('📺',seriesInfo)+
+    cinemaDetailFact('📺',seriesInfo).replace('<div class="v">','<div class="v" id="cinemaSelectedEpisodeInfo">')+
     cinemaDetailFact(cinemaT().country,country)+
     cinemaDetailFact(cinemaT().genre,genre)+
     cinemaDetailFact(cinemaT().translation,translation)+
@@ -12925,6 +12934,7 @@ function renderCinemaDetail(item){
     if(first&&isSeries&&first.number==null)first.number=1;
     cinemaSelectedKinoMedia=first;
   }
+  updateCinemaSelectedEpisodeInfo();
   if(watchBtn&&cinemaSource==='kinopub'){
     const watchPrefix=appLang==='hy'?'ԴԻՏԵԼ ':(appLang==='en'?'WATCH ':'СМОТРЕТЬ ');
     watchBtn.textContent=isSeries
