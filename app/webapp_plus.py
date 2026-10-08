@@ -3097,6 +3097,10 @@ async def api_cinema_verified_cast_photo(request):
                     continue
     except Exception:
         pass
+    # Wikimedia sometimes emits thumbnail URLs at thumb.wikimedia.org.
+    # Use the public upload CDN path supported by Android WebView.
+    if image.startswith('https://thumb.wikimedia.org/wikipedia/'):
+        image='https://upload.wikimedia.org/'+image.split('thumb.wikimedia.org/',1)[1]
     return web.json_response({'ok':True,'image':image},
                              headers={'Cache-Control':'public, max-age=21600'})
 
