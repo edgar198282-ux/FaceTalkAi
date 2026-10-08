@@ -3104,6 +3104,39 @@ async def api_cinema_verified_cast_photo(request):
     return web.json_response({'ok':True,'image':image},
                              headers={'Cache-Control':'public, max-age=21600'})
 
+async def api_cinema_cast_image(request):
+    """Same-origin image relay only for a verified biography portrait."""
+    name=str(request.query.get('name') or '').strip()
+    if not 2 <= len(name) <= 100:
+        raise web.HTTPNotFound()
+    result=await api_cinema_verified_cast_photo(request)
+    try:
+        url=str(json.loads(result.body.decode()).get('image') or '')
+    except Exception:
+        url=''
+    from urllib.parse import urlsplit
+    parsed=urlsplit(url)
+    if parsed.scheme!='https' or parsed.hostname not in (
+        'upload.wikimedia.org','thumb.wikimedia.org','commons.wikimedia.org'):
+        raise web.HTTPNotFound()
+    try:
+        timeout=aiohttp.ClientTimeout(total=12,connect=4,sock_read=8)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url,allow_redirects=False) as response:
+                if response.status!=200:
+                    raise web.HTTPNotFound()
+                ctype=str(response.headers.get('Content-Type') or '').split(';')[0].lower()
+                if ctype not in ('image/jpeg','image/png','image/webp'):
+                    raise web.HTTPNotFound()
+                data=await response.content.read(1200001)
+                if not data or len(data)>1200000:
+                    raise web.HTTPNotFound()
+        return web.Response(body=data,content_type=ctype,headers={'Cache-Control':'public, max-age=86400'})
+    except web.HTTPException:
+        raise
+    except Exception:
+        raise web.HTTPNotFound()
+
 async def api_cinema_person(request):
     name = str(request.query.get('name') or '').strip()
     if len(name) < 2 or len(name) > 100:
@@ -4228,7 +4261,8 @@ async def start_webapp(bot):
     app.router.add_post('/api/cinema/catalog-cache', api_cinema_catalog_cache)
     app.router.add_get('/api/cinema/search', api_cinema_search)
     app.router.add_get('/api/cinema/person', api_cinema_person)
-    app.router.add_get('/api/cinema/verified-cast-photo', api_cinema_verified_cast_photo); app.router.add_get('/api/cinema/person-photo', api_cinema_person_photo); app.router.add_get('/api/cinema/meta', api_cinema_meta)
+    app.router.add_get('/api/cinema/verified-cast-photo', api_cinema_verified_cast_photo)
+    app.router.add_get('/api/cinema/cast-image', api_cinema_cast_image); app.router.add_get('/api/cinema/person-photo', api_cinema_person_photo); app.router.add_get('/api/cinema/meta', api_cinema_meta)
     app.router.add_post('/api/cinema/resolve', api_cinema_resolve)
     app.router.add_get('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider); app.router.add_post('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider)
     app.router.add_post('/api/support/message', api_support_message)
