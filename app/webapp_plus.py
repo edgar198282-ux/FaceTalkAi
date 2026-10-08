@@ -3121,15 +3121,15 @@ async def api_cinema_cast_image(request):
         raise web.HTTPNotFound()
     try:
         timeout=aiohttp.ClientTimeout(total=12,connect=4,sock_read=8)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(url,allow_redirects=False) as response:
+        async with aiohttp.ClientSession(timeout=timeout, headers={'User-Agent':'AbajTV/1.0 (https://facetalkai-production.up.railway.app/site; contact: bot @FaceTalkID_bot)', 'Accept':'image/avif,image/webp,image/png,image/jpeg,image/*;q=0.9,*/*;q=0.5'}) as session:
+            async with session.get(url,allow_redirects=True,max_redirects=3) as response:
                 if response.status!=200:
                     raise web.HTTPNotFound()
                 ctype=str(response.headers.get('Content-Type') or '').split(';')[0].lower()
-                if ctype not in ('image/jpeg','image/png','image/webp'):
+                if ctype not in ('image/jpeg','image/png','image/webp','image/avif'):
                     raise web.HTTPNotFound()
-                data=await response.content.read(1200001)
-                if not data or len(data)>1200000:
+                data=await response.content.read(5000001)
+                if not data or len(data)>5000000:
                     raise web.HTTPNotFound()
         return web.Response(body=data,content_type=ctype,headers={'Cache-Control':'public, max-age=86400'})
     except web.HTTPException:
