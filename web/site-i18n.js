@@ -11,7 +11,11 @@ document.documentElement.lang=lang==='hy'?'hy':lang;
 setText('.navlinks a',t.nav);
 setText('.eyebrow',t.eyebrow);
 const h=document.querySelector('.hero h1');if(h){const pair=t.h1.split('. ');h.innerHTML=(lang==='ru'?'Ваш экран.<br><span class="gradient">Ваш мир развлечений.</span>':lang==='hy'?'Ձեր էկրանը։<br><span class="gradient">Ձեր ժամանցի աշխարհը։</span>':'Your screen.<br><span class="gradient">Your world of entertainment.</span>');}
-setText('.hero .lead',[t.lead]);setText('.hero .actions a',t.buttons);setText('section h2',t.headings);setText('.stats span',t.stats);setText('.grid .card h3',t.cards);
+const showcase=document.querySelectorAll('.screenitems > div');
+if(showcase.length>=2){
+ showcase[0].innerHTML='📺 '+t.cards[0]+'<span class="screenStat">3000+</span><span class="screenDescription">'+t.stats[0]+'</span>';
+ showcase[1].innerHTML='🎬 '+t.cards[1]+'<span class="screenStat">40 000+</span><span class="screenDescription">'+t.stats[1]+'</span>';
+}setText('.hero .lead',[t.lead]);setText('.hero .actions a',t.buttons);setText('section h2',t.headings);setText('.stats span',t.stats);setText('.grid .card h3',t.cards);
 document.querySelectorAll('.siteLangBtn').forEach(b=>{b.classList.toggle('active',b.dataset.lang===lang);b.setAttribute('aria-pressed',String(b.dataset.lang===lang))});
 localStorage.setItem('abaj_site_lang',lang);
 }
