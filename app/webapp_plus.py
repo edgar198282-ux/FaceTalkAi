@@ -3015,7 +3015,7 @@ async def _wiki_person_lookup(name, session):
         host = 'ru.wikipedia.org' if re.search(r'[А-Яа-яЁё]', str(name or '')) else 'en.wikipedia.org'
         params = {
             'action':'query','generator':'search','gsrsearch':str(name or ''),'gsrlimit':'3',
-            'prop':'pageimages|langlinks','piprop':'thumbnail','pithumbsize':'500',
+            'prop':'pageimages|langlinks|pageprops','piprop':'thumbnail','pithumbsize':'500',
             'lllang':'en','lllimit':'1','format':'json'
         }
         async with session.get('https://' + host + '/w/api.php', params=params, allow_redirects=True) as resp:
@@ -3072,6 +3072,24 @@ async def api_cinema_verified_cast_photo(request):
                         url=str(thumb.get('source') or '').strip()
                         if url.startswith('https://'):
                             image=url
+                            break
+                        # The exact biography page may have no thumbnail even
+                        # when Wikidata provides its linked portrait (P18).
+                        entity_id=str((page.get('pageprops') or {}).get('wikibase_item') or '')
+                        if re.fullmatch(r'Q[1-9][0-9]*',entity_id):
+                            try:
+                                wd_url='https://www.wikidata.org/wiki/Special:EntityData/'+entity_id+'.json'
+                                async with session.get(wd_url) as wd_resp:
+                                    wd=await wd_resp.json(content_type=None) if wd_resp.status<400 else {}
+                                claims=((wd.get('entities') or {}).get(entity_id) or {}).get('claims') or {}
+                                for claim in claims.get('P18') or []:
+                                    filename=str((((claim.get('mainsnak') or {}).get('datavalue') or {}).get('value') or '')).strip()
+                                    if filename and '/' not in filename and len(filename)<200:
+                                        image='https://commons.wikimedia.org/wiki/Special:FilePath/'+quote(filename)+'?width=500'
+                                        break
+                            except Exception:
+                                pass
+                        if image:
                             break
                     if image:
                         break
