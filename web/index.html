@@ -12664,8 +12664,12 @@ function renderCinemaCast(item){
       pic.src=src;
     };
     if(image)setPhoto(image);
-    // KinoPub cast portraits must come from the exact KinoPub item, not public name searches.
-    // If KinoPub provides no image, leave the neutral placeholder instead of a wrong face.
+    else if(String(item?.source||'').toUpperCase()==='KINOPUB'){
+      fetch('/api/cinema/verified-cast-photo?name='+encodeURIComponent(name),{cache:'force-cache'})
+        .then(r=>r.ok?r.json():null)
+        .then(d=>{if(d?.image&&btn.isConnected)setPhoto(d.image);})
+        .catch(()=>{});
+    }
   });
   host.style.display=row.children.length?'block':'none';
   // Temporary admin-only source diagnostics for the reported KinoPub title.
