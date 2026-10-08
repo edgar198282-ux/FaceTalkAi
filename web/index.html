@@ -12663,7 +12663,7 @@ function renderCinemaCast(item){
       pic.src=src;
     };
     if(image)setPhoto(image);
-    else fetch('/api/cinema/person?name='+encodeURIComponent(searchName||name),{headers:authHeaders(),cache:'force-cache'})
+    else if(String(item?.source||'').toUpperCase()!=='KINOPUB')fetch('/api/cinema/person?name='+encodeURIComponent(searchName||name),{headers:authHeaders(),cache:'force-cache'})
       .then(r=>r.ok?r.json():null).then(d=>{
         if(!btn.isConnected)return;
         const englishName=String(d?.name||'').trim();
@@ -13294,6 +13294,10 @@ async function openCinemaMovie(item){
   if(isKinoPub&&metaPromise){
     const meta=await metaPromise;
     enriched=cinemaMergeMetadata(direct,meta);
+    // Cast must stay attached to the exact KinoPub item ID, never a title-only metadata match.
+    enriched.actors=direct.actors||'';
+    enriched.cast=direct.cast||'';
+    enriched.actor_cards=Array.isArray(direct.actor_cards)?direct.actor_cards:[];
     if(direct?.poster)enriched.poster=direct.poster;
     if(direct?.backdrop)enriched.backdrop=direct.backdrop;
     enriched.media_rows=Array.isArray(direct?.media_rows)?direct.media_rows:[];
