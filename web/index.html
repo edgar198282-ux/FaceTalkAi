@@ -12199,7 +12199,7 @@ function cinemaLocalizeDuration(value){
 function cinemaDetailFact(label,value){
   if(!value)return '';
   const esc=x=>String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
-  const icons={'Год':'📅','Year':'📅','Տարի':'📅','Страна':'📍','Country':'📍','Երկիր':'📍','Жанр':'🎭','Genre':'🎭','Ժանր':'🎭','Время':'⏰','Длительность':'⏰','Duration':'⏰','Տևողություն':'⏰','Режиссёр':'🎬','Режиссер':'🎬','Director':'🎬','Ռեժիսոր':'🎬','Перевод':'🔊','Translation':'🔊'};
+  const icons={'Год':'📅','Year':'📅','Տարի':'📅','Страна':'📍','Country':'📍','Երկիր':'📍','Жанр':'🎭','Genre':'🎭','Ժանր':'🎭','Время':'⏰','Длительность':'⏰','Duration':'⏰','Տևողություն':'⏰','Режиссёр':'🎬','Режиссер':'🎬','Director':'🎬','Ռեժիսոր':'🎬','Перевод':'🔊','Translation':'🔊','Серия':'📽️','Episode':'📽️','Սերիա':'📽️'};
   const icon=icons[String(label||'').trim()]||'';
   return '<div class="k">'+(icon?'<span class="cinemaFactIcon" aria-hidden="true">'+icon+'</span>':'')+esc(label)+'</div><div class="v">'+esc(value)+'</div>';
 }
@@ -12238,18 +12238,18 @@ function cinemaRatingFact(imdb,kp,item){
   const kpUrl=cinemaKpUrl(item?.kp_id||item?.kinopoisk||item?.kinopoisk_id);
   const parts=[];
   if(imdbValue){
-    const inner='<span class="cinemaRatingScore">'+imdbValue+'</span><span class="cinemaRatingLogo imdb"><img src="/static/assets/ratings/imdb.svg" alt="IMDb"></span>';
+    const inner='<span class="cinemaRatingLogo imdb"><img src="/static/assets/ratings/imdb.svg" alt="IMDb"></span><span class="cinemaRatingScore">'+imdbValue+'</span>';
     parts.push(imdbUrl
       ?'<button type="button" class="cinemaRatingPair cinemaRatingLink" onclick="openCinemaExternalRating(\''+imdbUrl+'\')" aria-label="Открыть IMDb">'+inner+'</button>'
       :'<span class="cinemaRatingPair">'+inner+'</span>');
   }
   if(kpValue){
-    const inner='<span class="cinemaRatingScore">'+kpValue+'</span><span class="cinemaRatingLogo kp"><img src="/static/assets/ratings/kinopoisk.svg" alt="Кинопоиск"></span>';
+    const inner='<span class="cinemaRatingLogo kp"><img src="/static/assets/ratings/kinopoisk.svg" alt="Кинопоиск"></span><span class="cinemaRatingScore">'+kpValue+'</span>';
     parts.push(kpUrl
       ?'<button type="button" class="cinemaRatingPair cinemaRatingLink" onclick="openCinemaExternalRating(\''+kpUrl+'\')" aria-label="Открыть Кинопоиск">'+inner+'</button>'
       :'<span class="cinemaRatingPair">'+inner+'</span>');
   }
-  parts.push('<button class="cinemaAbajRatingInline" id="cinemaAbajRating" type="button" onclick="openCinemaRating()" aria-label="Оценить в Abaj"><span class="cinemaRatingScore" id="cinemaAbajRatingScore">—</span><span class="cinemaRatingLogo abaj"><span class="cinemaAbajRatingBrand">Abaj</span></span></button>');
+  parts.push('<button class="cinemaAbajRatingInline" id="cinemaAbajRating" type="button" onclick="openCinemaRating()" aria-label="Оценить в Abaj"><span class="cinemaRatingLogo abaj"><span class="cinemaAbajRatingBrand">Abaj</span></span><span class="cinemaRatingScore" id="cinemaAbajRatingScore">—</span></button>');
   return '<div class="k"><span class="cinemaFactIcon" aria-hidden="true">⭐</span>'+ (appLang==='en'?'Rating':appLang==='hy'?'Վարկանիշ':'Рейтинг')+'</div><div class="v cinemaRatingValue">'+parts.join('')+'</div>';
 }
 let cinemaAbajRatingMine=0;
@@ -12954,7 +12954,7 @@ function renderCinemaDetail(item){
     cinemaRatingFact(rating,kpRating,item)+
     cinemaDetailFact(cinemaT().year,year)+
     cinemaDetailFact(appLang==='en'?'Time':appLang==='hy'?'Տևողություն':'Время',duration||'—')+
-    cinemaDetailFact('📽️ '+(appLang==='en'?'Episode':appLang==='hy'?'Սերիա':'Серия'),seriesInfo).replace('<div class="v">','<div class="v" id="cinemaSelectedEpisodeInfo">')+
+    cinemaDetailFact(appLang==='en'?'Episode':appLang==='hy'?'Սերիա':'Серия',seriesInfo).replace('<div class="v">','<div class="v" id="cinemaSelectedEpisodeInfo">')+
     cinemaDetailFact(cinemaT().country,country)+
     cinemaDetailFact(cinemaT().genre,genre)+
     cinemaDetailFact(cinemaT().translation,translation)+
