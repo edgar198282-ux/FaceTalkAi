@@ -13524,36 +13524,43 @@ async function openCinemaMovie(item){
 }
 function animateCinemaPageFlip(fromCinema){
   if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  const previous=document.getElementById('abajCinemaPageFlip');
-  if(previous)previous.remove();
   const app=document.getElementById('app');
   if(!app)return;
+  const old=document.getElementById('abajCinemaPageFlip');
+  if(old)old.remove();
   const overlay=document.createElement('div');
   overlay.id='abajCinemaPageFlip';
-  overlay.className=fromCinema?'abajFlipReverse':'abajFlipForward';
+  overlay.className=fromCinema?'abajCubeReverse':'abajCubeForward';
   overlay.setAttribute('aria-hidden','true');
-  const leaf=document.createElement('div');
-  leaf.className='abajFlipLeaf';
-  const snapshot=app.cloneNode(true);
-  snapshot.removeAttribute('id');
-  snapshot.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
-  snapshot.querySelectorAll('video,audio,iframe,script').forEach(el=>el.remove());
-  snapshot.style.cssText='width:100vw!important;min-height:100vh!important;pointer-events:none!important';
-  const source=fromCinema?snapshot.querySelector('.cinemaScreen'):snapshot.querySelector('.content');
-  if(source){
-    source.style.display='block';
-    const real=fromCinema?document.getElementById('cinemaScreen'):document.getElementById('content');
-    if(real)source.scrollTop=real.scrollTop;
+  const cube=document.createElement('div');
+  cube.className='abajCube';
+  function copyScreen(){
+    const clone=app.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[id]').forEach(node=>node.removeAttribute('id'));
+    clone.querySelectorAll('video,audio,iframe,script').forEach(node=>node.remove());
+    clone.style.cssText='width:100vw!important;min-height:100vh!important;pointer-events:none!important';
+    return clone;
   }
-  leaf.appendChild(snapshot);
-  const edge=document.createElement('span');
-  edge.className='abajFlipEdge';
-  leaf.appendChild(edge);
-  overlay.appendChild(leaf);
+  const front=document.createElement('div');
+  front.className='abajCubeFace abajCubeFront';
+  front.appendChild(copyScreen());
+  const next=document.createElement('div');
+  next.className='abajCubeFace abajCubeNext';
+  cube.appendChild(front);
+  cube.appendChild(next);
+  overlay.appendChild(cube);
   document.body.appendChild(overlay);
   const remove=()=>{if(overlay.isConnected)overlay.remove()};
-  overlay.addEventListener('animationend',e=>{if(e.target===leaf)remove()});
-  setTimeout(remove,3300);
+  setTimeout(()=>{
+    if(!overlay.isConnected)return;
+    try{
+      next.appendChild(copyScreen());
+      overlay.classList.add('abajCubePlay');
+    }catch(e){remove()}
+  },50);
+  cube.addEventListener('animationend',remove,{once:true});
+  setTimeout(remove,3250);
 }
 async function toggleCinemaMode(){
   await loadGlobalCinemaSource();
@@ -14690,14 +14697,17 @@ body.nativeTv :is(#cinemaToggleBtn,#tvSettingsBtn,#tvTopSearchBtn):is(:focus,:fo
   outline:none!important;
   border-color:transparent!important;
 }
-<style id="abaj-cinema-pageflip-v2">
-#abajCinemaPageFlip{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;perspective:1200px}
-#abajCinemaPageFlip .abajFlipLeaf{position:absolute;inset:0;overflow:hidden;background:#07131f;transform-origin:left center;backface-visibility:hidden;animation:abajTurnPage 3s cubic-bezier(.22,.68,.22,1) both;box-shadow:14px 0 38px rgba(0,0,0,.5)}
-#abajCinemaPageFlip.abajFlipReverse .abajFlipLeaf{transform-origin:right center;animation-name:abajTurnPageBack;box-shadow:-14px 0 38px rgba(0,0,0,.5)}
-#abajCinemaPageFlip .abajFlipEdge{position:absolute;right:0;top:0;bottom:0;width:7px;background:linear-gradient(180deg,#42d7ff,#b16bff,#ff4fa3,#47f58c,#42d7ff);box-shadow:0 0 16px #42d7ff,0 0 28px #b16bff}
-#abajCinemaPageFlip.abajFlipReverse .abajFlipEdge{right:auto;left:0}
-@keyframes abajTurnPage{0%{transform:rotateY(0);opacity:1}85%{opacity:1}100%{transform:rotateY(-100deg);opacity:0}}
-@keyframes abajTurnPageBack{0%{transform:rotateY(0);opacity:1}85%{opacity:1}100%{transform:rotateY(100deg);opacity:0}}
+<style id="abaj-cinema-cube-v2">
+#abajCinemaPageFlip{position:fixed;inset:0;z-index:2147483000;overflow:hidden;pointer-events:none;perspective:1100px;background:#07131f}
+#abajCinemaPageFlip .abajCube{position:absolute;inset:0;transform-style:preserve-3d;transform:translateZ(-50vw)}
+#abajCinemaPageFlip.abajCubePlay .abajCube{animation:abajCubeLeft 3s cubic-bezier(.35,.08,.24,1) both}
+#abajCinemaPageFlip.abajCubeReverse.abajCubePlay .abajCube{animation-name:abajCubeRight}
+#abajCinemaPageFlip .abajCubeFace{position:absolute;inset:0;overflow:hidden;background:#07131f;backface-visibility:hidden;box-shadow:0 0 28px rgba(66,215,255,.45);border-inline:3px solid #42d7ff}
+#abajCinemaPageFlip .abajCubeFront{transform:rotateY(0deg) translateZ(50vw)}
+#abajCinemaPageFlip .abajCubeNext{transform:rotateY(90deg) translateZ(50vw);border-color:#a872ff}
+#abajCinemaPageFlip.abajCubeReverse .abajCubeNext{transform:rotateY(-90deg) translateZ(50vw)}
+@keyframes abajCubeLeft{from{transform:translateZ(-50vw) rotateY(0deg)}to{transform:translateZ(-50vw) rotateY(-90deg)}}
+@keyframes abajCubeRight{from{transform:translateZ(-50vw) rotateY(0deg)}to{transform:translateZ(-50vw) rotateY(90deg)}}
 @media(prefers-reduced-motion:reduce){#abajCinemaPageFlip{display:none}}
 </style>
 </style>
