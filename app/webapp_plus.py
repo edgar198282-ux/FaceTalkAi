@@ -1023,6 +1023,18 @@ async def api_kinopub_item(request):
             pass
 
     normalized_item=_kinopub_normalize(item) or {'id':item_id,'title':str(item.get('title') or '')}
+    # Lightweight diagnostics: expose metadata shape without credentials or raw source payloads.
+    # This helps distinguish missing upstream portraits from broken image rendering.
+    if _is_admin_user(user):
+        raw_cast = item.get('actors') or item.get('cast') or item.get('actor') or []
+        cast_fields = sorted(set(raw_cast[0].keys())) if isinstance(raw_cast, list) and raw_cast and isinstance(raw_cast[0], dict) else []
+        normalized_item['cast_diagnostics'] = {
+            'source': 'KINOPUB',
+            'cast_format': 'objects' if cast_fields else ('text' if isinstance(raw_cast, str) else 'list'),
+            'cast_count': len(normalized_item.get('actor_cards') or []),
+            'photo_count': sum(bool(x.get('image')) for x in normalized_item.get('actor_cards') or []),
+            'actor_fields': cast_fields[:32],
+        }
 
     return web.json_response({
         'ok':True,
