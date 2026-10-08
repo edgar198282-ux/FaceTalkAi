@@ -14452,8 +14452,9 @@ body.nativeTv .playerView .playerUtilityCtrl:is(:focus,:focus-visible)::after{
 }
 body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible) .playerCtrlIcon{
   position:relative;
-  border-color:#42d7ff!important;
-  box-shadow:0 0 12px rgba(66,215,255,.38)!important;
+  border-color:transparent!important;
+  outline:none!important;
+  box-shadow:none!important;
 }
 body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible) .playerCtrlIcon::after,
 body.nativeTv .playerView .playerUtilityCtrl:is(:focus,:focus-visible)::before{
@@ -14462,7 +14463,7 @@ body.nativeTv .playerView .playerUtilityCtrl:is(:focus,:focus-visible)::before{
   inset:-4px;
   border:3px solid transparent;
   border-radius:inherit;
-  background:conic-gradient(from var(--abaj-neon-angle),#ff4fa3,#ffd84f,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box;
+  background:conic-gradient(from var(--abaj-neon-angle),#ff4fa3,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box;
   -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);
   -webkit-mask-composite:xor;
   mask-composite:exclude;
@@ -14472,12 +14473,19 @@ body.nativeTv .playerView .playerUtilityCtrl:is(:focus,:focus-visible)::before{
 }
 body.nativeTv .playerView .playerUtilityCtrl:is(:focus,:focus-visible){
   position:relative;
-  border-color:#42d7ff!important;
+  border-color:transparent!important;
   background:#123857!important;
-  box-shadow:0 0 12px rgba(66,215,255,.38)!important;
+  box-shadow:none!important;
 }
 body.nativeTv .playerView .playerUtilityCtrl:is(:focus,:focus-visible)::before{
   border-radius:inherit;
+}
+body.nativeTv .playerView.cinemaPlayback .playerCircleCtrl:is(:focus,:focus-visible) .playerCtrlIcon,
+body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible) .playerCtrlIcon{
+  border-color:transparent!important;
+  outline:none!important;
+  box-shadow:none!important;
+  filter:none!important;
 }
 /* Keep the outer animated neon focus ring; remove only the inner yellow poster outline. */
 .cinemaPosterCard:focus :is(.cinemaPosterImg,.cinemaPosterFallback),
