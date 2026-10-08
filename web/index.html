@@ -9000,6 +9000,7 @@ async function loadGlobalCinemaSource(){
     const d=await r.json();
     cinemaAccessEnabled=d.cinema_enabled!==false;
     cinemaPlaybackAllowed=d.playback_allowed!==false;
+    document.dispatchEvent(new CustomEvent('abaj-cinema-access-change',{detail:{allowed:cinemaPlaybackAllowed}}));
     const btn=document.getElementById('cinemaToggleBtn');
     if(btn)btn.style.display=cinemaAccessEnabled?'':'none';
     if(!cinemaAccessEnabled){
