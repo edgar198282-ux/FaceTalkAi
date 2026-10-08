@@ -14260,6 +14260,14 @@ body.nativeTv .channel:focus{
 }
 body.nativeTv .cinemaPosterCard:focus :is(.cinemaPosterImg,.cinemaPosterFallback),
 body.nativeTv .playerCircleCtrl:focus .playerCtrlIcon{box-shadow:none!important;animation:none!important}
+/* Keep the outer animated neon focus ring; remove only the inner yellow poster outline. */
+.cinemaPosterCard:focus :is(.cinemaPosterImg,.cinemaPosterFallback),
+.cinemaPosterCard.focused :is(.cinemaPosterImg,.cinemaPosterFallback),
+.nativeTv .cinemaPosterCard:focus :is(.cinemaPosterImg,.cinemaPosterFallback){
+  box-shadow:none!important;
+  outline:none!important;
+  border-color:transparent!important;
+}
 </style>
 <script src="/static/free-film.js"></script></body>
 </html>
