@@ -1560,7 +1560,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .nativeTv .cinemaDetailTools{top:-70px}
 .nativeTv .cinemaDetailSidePoster{width:99px;height:140px;border-radius:13px}
 .nativeTv .cinemaDetailHero::after{-webkit-backdrop-filter:none;backdrop-filter:none}
-.nativeTv .cinemaDetail{overscroll-behavior:contain}
+.nativeTv .cinemaDetail{overscroll-behavior:contain;scroll-behavior:smooth}
 .nativeTv .cinemaDetailBody{transform:translateZ(0)}
 .nativeTv .cinemaDetailTitle,.nativeTv .cinemaDetailOriginalTitle,.nativeTv .cinemaDetailBadges{max-width:calc(100% - 154px)}
 .cinemaDetailTitle,.cinemaDetailOriginalTitle,.cinemaDetailBadges{max-width:calc(100% - 118px)}
@@ -8675,7 +8675,7 @@ function moveCinemaDetailFocus(direction){
   const items=cinemaDetailFocusable();
   if(!items.length){
     if(detail&&(direction==='down'||direction==='up')){
-      const step=Math.max(56,Math.round(window.innerHeight*.10));
+      const step=Math.max(32,Math.round(window.innerHeight*.055));
       detail.scrollBy({top:direction==='down'?step:-step,behavior:'smooth'});
     }
     return;
@@ -8716,7 +8716,7 @@ function moveCinemaDetailFocus(direction){
   });
 
   if(direction==='down'||direction==='up'){
-    const step=Math.max(56,Math.round(window.innerHeight*.10));
+    const step=Math.max(32,Math.round(window.innerHeight*.055));
     if(!best){
       if(detail)detail.scrollBy({top:direction==='down'?step:-step,behavior:'smooth'});
       return;
