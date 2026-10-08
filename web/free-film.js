@@ -2,7 +2,20 @@
 'use strict';
 const css=`
 .abajFilmBadge{position:absolute;top:8px;right:8px;z-index:10;padding:3px 9px;border-radius:8px;background:#391744;color:#fff;font:900 13px system-ui;letter-spacing:.06em;box-shadow:0 2px 10px #0009}
-.abajFilmBadge.free{background:#03b68b;color:#021d19}
+/* Every cinema card gets a badge, including cards added by pagination/search. */
+#cinemaPosterGrid .cinemaPosterCard{position:relative!important;isolation:isolate}
+#cinemaPosterGrid .cinemaPosterCard::before{
+ content:"PRO"!important;position:absolute!important;top:9px!important;right:9px!important;
+ z-index:30!important;display:block!important;padding:3px 10px!important;
+ border-radius:9px!important;background:#421b55!important;color:#fff!important;
+ font:900 13px/1.5 system-ui,sans-serif!important;letter-spacing:.04em!important;
+ box-shadow:0 2px 10px #0009!important;pointer-events:none!important;
+ width:auto!important;height:auto!important;opacity:1!important;
+}
+#cinemaPosterGrid .cinemaPosterCard[data-abaj-free="1"]::before{
+ content:"FREE"!important;background:#05b990!important;color:#05291f!important;
+}
+#cinemaPosterGrid .cinemaPosterCard .abajFilmBadge{display:none!important}.abajFilmBadge.free{background:#03b68b;color:#021d19}
 .abajFreePoster{height:100%;min-height:125px;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#14597b,#45277e);font-size:66px}
 #freeCinemaModal{position:fixed;inset:0;background:#010712ec;z-index:999999;display:none;align-items:center;justify-content:center;padding:20px}
 #freeCinemaModal.isOpen{display:flex}
