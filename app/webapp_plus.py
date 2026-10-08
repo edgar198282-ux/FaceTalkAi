@@ -3053,7 +3053,7 @@ async def api_cinema_verified_cast_photo(request):
             # resolve alternate names, but fuzzy search results are never trusted.
             for host in ('ru.wikipedia.org','en.wikipedia.org'):
                 params = {'action':'query','titles':name,'redirects':'1',
-                          'prop':'pageimages|langlinks','piprop':'thumbnail',
+                          'prop':'pageimages|langlinks|pageprops','piprop':'thumbnail',
                           'pithumbsize':'500','lllang':'en','format':'json'}
                 try:
                     async with session.get('https://'+host+'/w/api.php',params=params) as resp:
