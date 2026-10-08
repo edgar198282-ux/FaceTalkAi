@@ -1507,13 +1507,13 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   background:linear-gradient(180deg,rgba(32,40,45,0) 0%,rgba(32,40,45,.18) 34%,rgba(32,40,45,.72) 76%,#20282d 100%)
 }
 .cinemaDetailBack{
-  position:absolute;left:18px;top:18px;z-index:4;width:46px;height:46px;border:1px solid rgba(255,255,255,.22);border-radius:14px;
-  background:rgba(10,24,36,.78);color:#fff;font-size:28px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;
-  box-shadow:0 6px 18px rgba(0,0,0,.28);backdrop-filter:blur(6px)
+  position:absolute;left:18px;top:18px;z-index:4;width:46px;height:46px;border:0;border-radius:0;
+  background:transparent;color:#fff;font-size:20px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;
+  box-shadow:none;backdrop-filter:none
 }
 .nativeTv .cinemaDetailBack{
-  width:50px;height:50px;left:20px;top:20px;border-radius:14px;font-size:30px;
-  background:rgba(8,26,40,.82)
+  width:50px;height:50px;left:20px;top:20px;border-radius:0;font-size:21px;
+  background:transparent
 }
 .cinemaDetailShare{
   position:absolute;right:18px;top:18px;z-index:4;width:48px;height:48px;border:0;border-radius:50%;
@@ -1534,9 +1534,10 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 }
 .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:148px}
 #cinemaDetailWatch{border:1px solid rgba(255,255,255,.56)}
-.cinemaDetailAction:focus,.cinemaDetailBack:focus{
+.cinemaDetailAction:focus{
   outline:none;box-shadow:0 0 0 2px #7fe3ff,0 0 16px rgba(63,198,255,.32);background:rgba(66,152,201,.78)
 }
+.cinemaDetailBack:focus{outline:2px solid #7fe3ff;outline-offset:-4px;background:transparent;box-shadow:none}
 .nativeTv .cinemaDetailActions{bottom:16px;gap:8px;max-width:86%}
 .nativeTv .cinemaDetailAction{min-width:154px;height:40px;font-size:12px;border-radius:7px;padding:0 14px}
 .nativeTv .cinemaDetailActions.hasSeasons .cinemaDetailAction{min-width:142px}
@@ -1668,7 +1669,7 @@ body:not(.darkMode) .cinemaAbajRatingInline{color:#173b52}
   .cinemaDetailFacts{grid-template-columns:96px minmax(0,1fr);font-size:16px;gap:10px 12px}
   .cinemaDetailFacts .v{min-width:0;overflow-wrap:anywhere}
   .cinemaDetailBadge{font-size:12px;padding:4px 9px}
-  .cinemaDetailBack{width:42px;height:42px;top:14px;left:14px;font-size:26px;border-radius:13px}
+  .cinemaDetailBack{width:42px;height:42px;top:14px;left:14px;font-size:18px;border-radius:0}
   .cinemaDetailShare{width:46px;height:46px;top:14px;right:14px}
   .cinemaSimilar{margin-top:24px}
   .cinemaSimilarRow{gap:10px!important;padding:4px 0 18px!important}
@@ -12873,8 +12874,8 @@ function renderCinemaDetail(item){
   const original=cinemaDetailText(item,'original_title','originalTitle','title_original','original','original_name');
   const durationRaw=cinemaDetailText(item,'duration','runtime','suggest_duration');
   let duration=cinemaLocalizeDuration(durationRaw);
-  // KinoPub sometimes has no movie-level duration but supplies episode seconds.
-  if(!duration&&cinemaItemLooksSeries(item)){
+  // KinoPub may provide duration only in media rows for both films and series.
+  if(!duration){
     const episodeSeconds=cinemaSeasonRows(item).flatMap(r=>r.items||[]).map(m=>Number(m?.duration||0)).filter(n=>n>0);
     if(episodeSeconds.length){
       const avg=episodeSeconds.reduce((a,b)=>a+b,0)/episodeSeconds.length;
