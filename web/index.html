@@ -12667,7 +12667,7 @@ function renderCinemaCast(item){
       .then(r=>r.ok?r.json():null).then(d=>{
         if(!btn.isConnected||!d?.image)return;
         const returned=String(d.name||'').trim();
-        const normalize=x=>String(x||'').normalize('NFKC').toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu,' ').trim();
+        const normalize=x=>String(x||'').normalize('NFKC').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
         // Never attach a loosely matched person's photograph to a KinoPub actor.
         const exact=normalize(returned)===normalize(searchName)||normalize(returned)===normalize(name);
         if(!exact)return;
