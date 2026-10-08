@@ -1558,7 +1558,11 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 .cinemaDetailTools{position:absolute;z-index:6;right:6.5%;top:-62px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;margin:0}
 .cinemaDetailSidePoster{width:87px;height:124px;object-fit:cover;object-position:center;border-radius:12px;background:#173247;box-shadow:0 9px 24px rgba(0,0,0,.28);display:none}
 .nativeTv .cinemaDetailTools{top:-70px}
-.nativeTv .cinemaDetailSidePoster{width:99px;height:140px;border-radius:13px}
+.nativeTv .cinemaDetailSidePoster{width:130px;height:184px;border-radius:13px}
+.nativeTv .cinemaDetailHero::after{-webkit-backdrop-filter:none;backdrop-filter:none}
+.nativeTv .cinemaDetail{overscroll-behavior:contain}
+.nativeTv .cinemaDetailBody{transform:translateZ(0)}
+.nativeTv .cinemaDetailTitle,.nativeTv .cinemaDetailOriginalTitle,.nativeTv .cinemaDetailBadges{max-width:calc(100% - 154px)}
 .cinemaDetailTitle,.cinemaDetailOriginalTitle,.cinemaDetailBadges{max-width:calc(100% - 118px)}
 .cinemaDetailTools #cinemaBookmarkBtn{
   width:43px;height:43px;border:0;border-radius:14px;padding:0;
