@@ -391,8 +391,10 @@ async def api_cinema_source_state(request):
         return web.json_response({'ok':False,'error':'unauthorized'}, status=401)
     uid = int(user['id'])
     playback_allowed = await _cinema_playback_allowed(uid)
-    default_source = str(os.getenv('CINEMA_GLOBAL_SOURCE_DEFAULT') or 'none').strip().lower()
+    default_source = str(os.getenv('CINEMA_GLOBAL_SOURCE_DEFAULT') or 'kinopub').strip().lower()
     source = str(await get_setting('cinema_global_source', default_source) or default_source).strip().lower()
+    if source == 'none':
+        source = 'kinopub'
     if source not in ('none','lazy','kinopub'):
         source = 'none'
     return web.json_response({

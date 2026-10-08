@@ -9012,8 +9012,8 @@ async function loadGlobalCinemaSource(){
     }
     const src=String(d.source||'none').toLowerCase();
     if(['none','lazy','kinopub'].includes(src)){
-      cinemaSource=src;
-      localStorage.setItem('abaj_cinema_source',src);
+      cinemaSource=src==='none'?'kinopub':src;
+      localStorage.setItem('abaj_cinema_source',cinemaSource);
       if(src!=='kinopub')localStorage.removeItem('abaj_kinopub_disabled');
       syncCinemaSourceUi();
     }
