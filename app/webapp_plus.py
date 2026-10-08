@@ -2168,16 +2168,6 @@ async def index(request):
     path = os.path.join(WEB_DIR, 'index.html')
     return web.FileResponse(path, headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0','Pragma':'no-cache'})
 
-async def api_free_film(request):
-    """One openly licensed feature film in the Free section."""
-    films = (
-        {"id":"sita-sings-the-blues","title":"Сита поёт блюз","year":2008,"genre":"Полнометражный музыкальный фильм","description":"История Ситы из древнеиндийского эпоса переплетается с современной историей любви. Полнометражный фильм Нины Пэйли, 82 минуты.","duration":"1 ч 22 мин","poster":"https://archive.org/services/img/sita-sings-the-blues_202403","url":"https://archive.org/download/sita-sings-the-blues_202403/SSTB_1080_FINAL_2009_02.mp4","credit":"Nina Paley, Sita Sings the Blues","license":"CC BY-SA / Free Culture"},
-    )
-    epoch = int(time.time())
-    period = 3 * 86400
-    anchor = 1791417600  # 2026-10-08 00:00 UTC; begin with the animated film
-    index = ((epoch - anchor) // period) % len(films)
-    return web.json_response({"ok":True,"film":films[index],"changes_at":anchor + ((epoch-anchor)//period+1)*period,"count":1},headers={"Cache-Control":"no-store"})
 async def abaj_site(request):
     return web.FileResponse(os.path.join(WEB_DIR, 'site.html'), headers={'Cache-Control':'no-cache'})
 
@@ -4128,7 +4118,6 @@ async def api_healthz(request):
 async def start_webapp(bot):
     app = web.Application(client_max_size=100*1024*1024, middlewares=[api_error_middleware]); app['bot']=bot
     app.router.add_get('/', index)
-    app.router.add_get('/api/cinema/free-film', api_free_film)
     app.router.add_get('/site', abaj_site)
     app.router.add_get('/site/', abaj_site)
     app.router.add_get('/favicon.ico', favicon)
