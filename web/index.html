@@ -12663,18 +12663,19 @@ function renderCinemaCast(item){
       pic.src=src;
     };
     if(image)setPhoto(image);
-    else if(String(item?.source||'').toUpperCase()!=='KINOPUB')fetch('/api/cinema/person?name='+encodeURIComponent(searchName||name),{headers:authHeaders(),cache:'force-cache'})
+    else fetch('/api/cinema/person?name='+encodeURIComponent(searchName||name),{headers:authHeaders(),cache:'force-cache'})
       .then(r=>r.ok?r.json():null).then(d=>{
-        if(!btn.isConnected)return;
-        const englishName=String(d?.name||'').trim();
-        if(englishName){
-          btn.dataset.actorSearchName=englishName;
-          if(appLang==='en'){
-            const label=btn.querySelector('.cinemaCastName');
-            if(label)label.textContent=englishName;
-          }
+        if(!btn.isConnected||!d?.image)return;
+        const returned=String(d.name||'').trim();
+        const normalize=x=>String(x||'').normalize('NFKC').toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu,' ').trim();
+        // Never attach a loosely matched person's photograph to a KinoPub actor.
+        const exact=normalize(returned)===normalize(searchName)||normalize(returned)===normalize(name);
+        if(!exact)return;
+        if(appLang==='en'&&returned){
+          const label=btn.querySelector('.cinemaCastName');
+          if(label)label.textContent=returned;
         }
-        setPhoto(String(d?.image||'').trim());
+        setPhoto(String(d.image).trim());
       }).catch(()=>{});
   });
   host.style.display=row.children.length?'block':'none';
