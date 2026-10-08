@@ -13522,9 +13522,24 @@ async function openCinemaMovie(item){
     renderCinemaDetail(enriched);
   }
 }
+function animateCinemaPageFlip(fromCinema){
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const existing=document.getElementById('abajCinemaPageFlip');
+  if(existing)existing.remove();
+  const overlay=document.createElement('div');
+  overlay.id='abajCinemaPageFlip';
+  overlay.className=fromCinema?'abajFlipReverse':'abajFlipForward';
+  overlay.setAttribute('aria-hidden','true');
+  overlay.innerHTML='<div class="abajFlipLeaf"><span class="abajFlipLogo">ABAJ TV</span></div>';
+  document.body.appendChild(overlay);
+  const remove=()=>{if(overlay.isConnected)overlay.remove()};
+  overlay.addEventListener('animationend',remove,{once:true});
+  setTimeout(remove,750);
+}
 async function toggleCinemaMode(){
   await loadGlobalCinemaSource();
   if(!cinemaAccessEnabled)return;
+  animateCinemaPageFlip(cinemaMode);
   cinemaMode=!cinemaMode;
   localStorage.setItem('abaj_cinema_mode',cinemaMode?'1':'0');
   if(cinemaMode){
@@ -14656,6 +14671,16 @@ body.nativeTv :is(#cinemaToggleBtn,#tvSettingsBtn,#tvTopSearchBtn):is(:focus,:fo
   outline:none!important;
   border-color:transparent!important;
 }
+<style id="abaj-cinema-pageflip-v1">
+#abajCinemaPageFlip{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;perspective:1000px;animation:abajFlipFade .58s ease-out both}
+#abajCinemaPageFlip .abajFlipLeaf{position:absolute;inset:0;background:linear-gradient(110deg,rgba(5,19,39,.08),rgba(16,67,122,.9) 45%,rgba(3,14,34,.97) 94%);border-right:3px solid #42d7ff;box-shadow:9px 0 22px rgba(66,215,255,.5),22px 0 42px rgba(0,0,0,.6);transform-origin:left center;backface-visibility:hidden;animation:abajTurnPage .58s cubic-bezier(.2,.6,.25,1) both}
+#abajCinemaPageFlip.abajFlipReverse .abajFlipLeaf{transform-origin:right center;animation-name:abajTurnPageBack;border-right:0;border-left:3px solid #b16bff;box-shadow:-9px 0 22px rgba(177,107,255,.45),-22px 0 42px rgba(0,0,0,.6)}
+#abajCinemaPageFlip .abajFlipLogo{position:absolute;top:46%;left:50%;transform:translate(-50%,-50%);white-space:nowrap;font-size:clamp(28px,7vw,64px);font-weight:900;letter-spacing:.09em;color:#5cdbff;text-shadow:0 0 14px #18bfff,0 0 30px #9b57ff}
+@keyframes abajTurnPage{0%{transform:rotateY(0deg);opacity:.95}100%{transform:rotateY(-96deg);opacity:0}}
+@keyframes abajTurnPageBack{0%{transform:rotateY(0deg);opacity:.95}100%{transform:rotateY(96deg);opacity:0}}
+@keyframes abajFlipFade{0%,70%{opacity:1}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){#abajCinemaPageFlip{display:none}}
+</style>
 </style>
 <script src="/static/free-film.js"></script></body>
 </html>
