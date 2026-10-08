@@ -286,33 +286,39 @@ def _kinopub_content_group(item):
     return 'series' if _kinopub_kind(item) == 'series' else 'movies'
 
 def _kinopub_actor_image(actor):
+    """Extract only portraits supplied by KinoPub, including nested URL variants."""
     if not isinstance(actor, dict):
         return ''
-    for key in ('photo','image','poster','avatar','picture','thumbnail'):
-        value = actor.get(key)
-        if isinstance(value, str) and value.strip().startswith(('http://','https://')):
-            return value.strip()
+    def image_url(value, depth=0):
+        if depth > 4:
+            return ''
+        if isinstance(value, str):
+            url = value.strip()
+            if url.startswith(('https://', 'http://')):
+                return url
+            if url.startswith('//'):
+                return 'https:' + url
+            return ''
         if isinstance(value, dict):
-            for sub in ('full','big','large','medium','small','url','src','imageUrl','original'):
-                url = value.get(sub)
-                if isinstance(url, str) and url.strip().startswith(('http://','https://')):
-                    return url.strip()
-    for key in ('images','posters','photos','pictures'):
-        value = actor.get(key)
-        if isinstance(value, dict):
-            for sub in ('full','big','large','medium','small','url','src','imageUrl','original'):
-                url = value.get(sub)
-                if isinstance(url, str) and url.strip().startswith(('http://','https://')):
-                    return url.strip()
-        elif isinstance(value, list):
-            for row in value:
-                if isinstance(row, str) and row.strip().startswith(('http://','https://')):
-                    return row.strip()
-                if isinstance(row, dict):
-                    for sub in ('full','big','large','medium','small','url','src','imageUrl','original'):
-                        url = row.get(sub)
-                        if isinstance(url, str) and url.strip().startswith(('http://','https://')):
-                            return url.strip()
+            for key in ('original','full','large','big','medium','small',
+                        'url','src','imageUrl','image_url','path','href','link',
+                        'photo','image','poster','avatar','portrait','pictures',
+                        'photos','images','file'):
+                candidate = image_url(value.get(key), depth + 1)
+                if candidate:
+                    return candidate
+        if isinstance(value, list):
+            for entry in value:
+                candidate = image_url(entry, depth + 1)
+                if candidate:
+                    return candidate
+        return ''
+    for key in ('photo','image','poster','avatar','portrait','picture','thumbnail',
+                'photos','images','posters','pictures','portrait_url','photo_url',
+                'image_url','avatar_url','photoUrl','imageUrl','profile'):
+        candidate = image_url(actor.get(key))
+        if candidate:
+            return candidate
     return ''
 
 def _kinopub_normalize(item):
