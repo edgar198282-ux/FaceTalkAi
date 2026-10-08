@@ -12665,10 +12665,17 @@ function renderCinemaCast(item){
     };
     if(image)setPhoto(image);
     else if(String(item?.source||'').toUpperCase()==='KINOPUB'){
-      fetch('/api/cinema/verified-cast-photo?name='+encodeURIComponent(name),{cache:'force-cache'})
-        .then(r=>r.ok?r.json():null)
-        .then(d=>{if(d?.image&&btn.isConnected)setPhoto(d.image);})
-        .catch(()=>{});
+      const variants=[name,searchName].filter((v,i,a)=>v&&a.indexOf(v)===i);
+      (async()=>{
+        for(const variant of variants){
+          try{
+            const r=await fetch('/api/cinema/verified-cast-photo?name='+encodeURIComponent(variant),{cache:'force-cache'});
+            if(!r.ok||!btn.isConnected)return;
+            const d=await r.json();
+            if(d?.image){setPhoto(d.image);return;}
+          }catch(e){}
+        }
+      })();
     }
   });
   host.style.display=row.children.length?'block':'none';
