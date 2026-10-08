@@ -7,7 +7,7 @@ const css=`
 #freeCinemaModal{position:fixed;inset:0;background:#010712ec;z-index:999999;display:none;align-items:center;justify-content:center;padding:20px}
 #freeCinemaModal.isOpen{display:flex}
 #freeCinemaModal .freeBox{background:#102238;border:1px solid #5bdcf8;border-radius:18px;max-width:960px;width:100%;padding:18px;max-height:94vh;overflow:auto;color:#fff}
-#freeCinemaModal video{width:100%;max-height:70vh;background:#000;border-radius:12px}
+#freeCinemaModal .freeWatch{display:inline-flex;background:#23c9ec;color:#061a2a;border:0;border-radius:12px;padding:12px 25px;font-weight:900;margin:14px 0;cursor:pointer}#freeCinemaModal .freeDescription{color:#c3dbea;margin:12px 0}#freeCinemaModal video{width:100%;max-height:70vh;background:#000;border-radius:12px}
 #freeCinemaModal .freeClose{float:right;background:#264c65;color:white;border:0;border-radius:8px;padding:6px 13px;font-size:19px;cursor:pointer}
 `;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
@@ -25,7 +25,7 @@ function openFilm(){
  getFilm().then(d=>{
   t.textContent=d.film.title+' ('+d.film.year+')';
   info.textContent=d.film.genre+' · '+d.film.license+' · '+d.film.credit;
-  v.src=d.film.url;v.load();v.play().catch(()=>{});
+  modal.querySelector(".freeWatch").onclick=()=>{v.src=d.film.url;v.load();v.play().catch(()=>{});modal.querySelector(".freeWatch").style.display="none";};modal.querySelector(".freeWatch").style.display="inline-flex";
  }).catch(()=>{t.textContent='Фильм временно недоступен';});
 }
 function closeFilm(){
@@ -52,12 +52,17 @@ function decorateCinema(){
 document.addEventListener('DOMContentLoaded',()=>{
  const old=document.getElementById('freeCinemaAccess');if(old)old.remove();
  const modal=document.createElement('div');modal.id='freeCinemaModal';
- modal.innerHTML='<div class="freeBox"><button type="button" class="freeClose" aria-label="Закрыть">✕</button><h3 class="freeTitle">Бесплатный фильм</h3><p class="freeInfo"></p><video controls playsinline preload="metadata"></video></div>';
+ modal.innerHTML='<div class="freeBox"><button type="button" class="freeClose" aria-label="Закрыть">✕</button><h3 class="freeTitle">Бесплатный фильм</h3><p class="freeInfo"></p><div class="freeDescription">Нажмите «Смотреть» для просмотра бесплатного фильма.</div><button type="button" class="freeWatch">▶ Смотреть</button><video controls playsinline preload="metadata"></video></div>';
  document.body.appendChild(modal);
  modal.querySelector('.freeClose').onclick=closeFilm;
  modal.addEventListener('click',e=>{if(e.target===modal)closeFilm();});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('isOpen')){e.preventDefault();e.stopPropagation();closeFilm();}},true);
  if(document.getElementById('cinemaPosterGrid')){
+  const grid=document.getElementById('cinemaPosterGrid');
+  const observer=new MutationObserver(()=>{
+    if(!grid.querySelector('.cinemaPosterCard[data-abaj-free="1"]')||[...grid.querySelectorAll('.cinemaPosterCard:not([data-abaj-free="1"])')].some(c=>!c.querySelector('.abajFilmBadge')))decorateCinema();
+  });
+  observer.observe(grid,{childList:true});
   if(typeof renderCinemaCatalog==='function'){
    const original=renderCinemaCatalog;
    renderCinemaCatalog=function(...args){const result=original.apply(this,args);decorateCinema();return result;};
