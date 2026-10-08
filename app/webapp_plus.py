@@ -3044,7 +3044,7 @@ async def api_cinema_verified_cast_photo(request):
         return web.json_response({'ok':False,'image':''}, status=400)
     image = ''
     def norm(v):
-        return re.sub(r'[^\\w]+', ' ', str(v or '').casefold(), flags=re.UNICODE).strip()
+        return re.sub(r'[^\w]+', ' ', str(v or '').casefold(), flags=re.UNICODE).strip()
     try:
         timeout = aiohttp.ClientTimeout(total=10, connect=4, sock_read=6)
         headers = {'User-Agent':'AbajTV/1.0 (verified cast portrait)', 'Accept':'application/json'}
