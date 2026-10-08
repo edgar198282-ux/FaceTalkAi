@@ -3037,6 +3037,28 @@ async def _wiki_person_lookup(name, session):
     except Exception:
         return {}
 
+async def api_cinema_verified_cast_photo(request):
+    """Portrait from the exact Wikipedia biography, never a fuzzy name match."""
+    name = str(request.query.get('name') or '').strip()
+    if not (2 <= len(name) <= 100):
+        return web.json_response({'ok':False,'image':''},status=400)
+    image = ''
+    try:
+        timeout = aiohttp.ClientTimeout(total=9,connect=4,sock_read=5)
+        async with aiohttp.ClientSession(timeout=timeout,headers={'User-Agent':'AbajTV/1.0 (cast portraits)'}) as session:
+            info = await _wiki_person_lookup(name,session)
+        title = str(info.get('name') or '').strip()
+        def norm(v):
+            return re.sub(r'[^\\w]+',' ',str(v or '').casefold(),flags=re.UNICODE).strip()
+        # A Wikipedia search can return an unrelated person: require an exact
+        # biography title, not just a plausible-looking search result.
+        if norm(title) == norm(name):
+            image = str(info.get('image') or '').strip()
+    except Exception:
+        pass
+    return web.json_response({'ok':True,'image':image},
+                             headers={'Cache-Control':'public, max-age=86400'})
+
 async def api_cinema_person(request):
     name = str(request.query.get('name') or '').strip()
     if len(name) < 2 or len(name) > 100:
@@ -4160,7 +4182,8 @@ async def start_webapp(bot):
     app.router.add_post('/api/iptv/ai-dub/chunk', api_iptv_ai_dub_chunk)
     app.router.add_post('/api/cinema/catalog-cache', api_cinema_catalog_cache)
     app.router.add_get('/api/cinema/search', api_cinema_search)
-    app.router.add_get('/api/cinema/person', api_cinema_person); app.router.add_get('/api/cinema/person-photo', api_cinema_person_photo); app.router.add_get('/api/cinema/meta', api_cinema_meta)
+    app.router.add_get('/api/cinema/person', api_cinema_person)
+    app.router.add_get('/api/cinema/verified-cast-photo', api_cinema_verified_cast_photo); app.router.add_get('/api/cinema/person-photo', api_cinema_person_photo); app.router.add_get('/api/cinema/meta', api_cinema_meta)
     app.router.add_post('/api/cinema/resolve', api_cinema_resolve)
     app.router.add_get('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider); app.router.add_post('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider)
     app.router.add_post('/api/support/message', api_support_message)
