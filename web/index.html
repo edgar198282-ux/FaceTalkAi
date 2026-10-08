@@ -13553,7 +13553,7 @@ function animateCinemaPageFlip(fromCinema){
   document.body.appendChild(overlay);
   const remove=()=>{if(overlay.isConnected)overlay.remove()};
   overlay.addEventListener('animationend',e=>{if(e.target===leaf)remove()});
-  setTimeout(remove,2300);
+  setTimeout(remove,3300);
 }
 async function toggleCinemaMode(){
   await loadGlobalCinemaSource();
@@ -14692,7 +14692,7 @@ body.nativeTv :is(#cinemaToggleBtn,#tvSettingsBtn,#tvTopSearchBtn):is(:focus,:fo
 }
 <style id="abaj-cinema-pageflip-v2">
 #abajCinemaPageFlip{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;perspective:1200px}
-#abajCinemaPageFlip .abajFlipLeaf{position:absolute;inset:0;overflow:hidden;background:#07131f;transform-origin:left center;backface-visibility:hidden;animation:abajTurnPage 2s cubic-bezier(.22,.68,.22,1) both;box-shadow:14px 0 38px rgba(0,0,0,.5)}
+#abajCinemaPageFlip .abajFlipLeaf{position:absolute;inset:0;overflow:hidden;background:#07131f;transform-origin:left center;backface-visibility:hidden;animation:abajTurnPage 3s cubic-bezier(.22,.68,.22,1) both;box-shadow:14px 0 38px rgba(0,0,0,.5)}
 #abajCinemaPageFlip.abajFlipReverse .abajFlipLeaf{transform-origin:right center;animation-name:abajTurnPageBack;box-shadow:-14px 0 38px rgba(0,0,0,.5)}
 #abajCinemaPageFlip .abajFlipEdge{position:absolute;right:0;top:0;bottom:0;width:7px;background:linear-gradient(180deg,#42d7ff,#b16bff,#ff4fa3,#47f58c,#42d7ff);box-shadow:0 0 16px #42d7ff,0 0 28px #b16bff}
 #abajCinemaPageFlip.abajFlipReverse .abajFlipEdge{right:auto;left:0}
