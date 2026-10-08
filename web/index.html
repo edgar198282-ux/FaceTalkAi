@@ -14581,8 +14581,8 @@ body.nativeTv .channel:focus::after,
 body.nativeTv .channel.focused::after{
   content:''!important;
   position:absolute!important;
-  inset:-3.2px!important;
-  border:3.2px solid transparent!important;
+  inset:-4px!important;
+  border:5px solid transparent!important;
   border-radius:inherit!important;
   background:conic-gradient(from var(--abaj-neon-angle),#ff4fa3,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box!important;
   -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0)!important;
@@ -14591,6 +14591,7 @@ body.nativeTv .channel.focused::after{
   pointer-events:none!important;
   z-index:4!important;
   animation:abajNeonRotate 2.16s linear infinite!important;
+  filter:drop-shadow(0 0 5px rgba(66,215,255,.85))!important;
 }
 /* Keep the outer animated neon focus ring; remove only the inner yellow poster outline. */
 .cinemaPosterCard:focus :is(.cinemaPosterImg,.cinemaPosterFallback),
