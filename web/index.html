@@ -14487,6 +14487,57 @@ body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible) .playerCtr
   box-shadow:none!important;
   filter:none!important;
 }
+/* tv-player-all-controls-neon-only */
+body.nativeTv .playerView :is(button.ctrl,button.playerCircleCtrl,button.playerUtilityCtrl):is(:focus,:focus-visible,[data-tv-focused="1"]){
+  outline:none!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-focused="1"]) .playerCtrlIcon{
+  position:relative!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  outline:none!important;
+  filter:none!important;
+}
+body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-focused="1"]) .playerCtrlIcon::after{
+  content:''!important;
+  position:absolute!important;
+  inset:-4px!important;
+  border:3px solid transparent!important;
+  border-radius:50%!important;
+  background:conic-gradient(from var(--abaj-neon-angle),#ff4fa3,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box!important;
+  -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0)!important;
+  -webkit-mask-composite:xor!important;
+  mask-composite:exclude!important;
+  pointer-events:none!important;
+  z-index:4!important;
+  animation:abajNeonRotate 2.16s linear infinite!important;
+}
+body.nativeTv .playerView .playerUtilityCtrl:is(:focus,:focus-visible,[data-tv-focused="1"]){
+  position:relative!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+body.nativeTv .playerView .playerUtilityCtrl:is(:focus,:focus-visible,[data-tv-focused="1"])::before{
+  content:''!important;
+  position:absolute!important;
+  inset:-4px!important;
+  border:3px solid transparent!important;
+  border-radius:inherit!important;
+  background:conic-gradient(from var(--abaj-neon-angle),#ff4fa3,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box!important;
+  -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0)!important;
+  -webkit-mask-composite:xor!important;
+  mask-composite:exclude!important;
+  pointer-events:none!important;
+  z-index:4!important;
+  animation:abajNeonRotate 2.16s linear infinite!important;
+}
+body.nativeTv .playerView .playerSeekRange:is(:focus,:focus-visible){
+  outline:none!important;
+  filter:drop-shadow(0 0 5px #42d7ff)!important;
+}
 /* Keep the outer animated neon focus ring; remove only the inner yellow poster outline. */
 .cinemaPosterCard:focus :is(.cinemaPosterImg,.cinemaPosterFallback),
 .cinemaPosterCard.focused :is(.cinemaPosterImg,.cinemaPosterFallback),
