@@ -3049,7 +3049,7 @@ async def api_cinema_verified_cast_photo(request):
             info = await _wiki_person_lookup(name,session)
         title = str(info.get('name') or '').strip()
         def norm(v):
-            return re.sub(r'[^\\w]+',' ',str(v or '').casefold(),flags=re.UNICODE).strip()
+            return re.sub(r'[^\w]+',' ',str(v or '').casefold(),flags=re.UNICODE).strip()
         # A Wikipedia search can return an unrelated person: require an exact
         # biography title, not just a plausible-looking search result.
         if norm(title) == norm(name):
