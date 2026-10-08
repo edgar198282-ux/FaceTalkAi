@@ -2333,8 +2333,8 @@ body:not(.cinemaMode) .cinemaShellSide{
       </div>
     </div>
     <div class="cinemaShellCategory" id="cinemaCategoryMenu">
-      <button class="cinemaCategoryItem active" data-cinema-category="all" onclick="setCinemaShellCategory('all')">ФИЛЬМЫ ВСЕ</button>
-      <button class="cinemaCategoryItem" data-cinema-category="new" onclick="setCinemaShellCategory('new')">ФИЛЬМЫ НОВИНКИ</button>
+      <button class="cinemaCategoryItem" data-cinema-category="all" onclick="setCinemaShellCategory('all')">ФИЛЬМЫ ВСЕ</button>
+      <button class="cinemaCategoryItem active" data-cinema-category="new" onclick="setCinemaShellCategory('new')">ФИЛЬМЫ НОВИНКИ</button>
       <button class="cinemaCategoryItem" data-cinema-category="popular" onclick="setCinemaShellCategory('popular')">ФИЛЬМЫ ПОПУЛЯРНЫЕ</button>
       <button class="cinemaCategoryItem" data-cinema-category="hot" onclick="setCinemaShellCategory('hot')">ФИЛЬМЫ ГОРЯЧИЕ</button>
       <button class="cinemaCategoryItem" data-cinema-category="4k" onclick="setCinemaShellCategory('4k')">ФИЛЬМЫ 4K</button>
@@ -9310,7 +9310,7 @@ function syncCinemaTypeUi(){
     setCinemaShellTitle((cinemaType==='series'?t.series:t.movies)+' '+t.new);
   }
 }
-let cinemaShellCategory='all';
+let cinemaShellCategory='new';
 let cinemaShellKind=cinemaType==='series'?'series':'movies';
 let cinemaFocusFirstPosterOnRender=false;
 function closeCinemaShellMenus(){
