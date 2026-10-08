@@ -12705,20 +12705,7 @@ function renderCinemaCast(item){
     }
   });
   host.style.display=row.children.length?'block':'none';
-  // Temporary admin-only source diagnostics for the reported KinoPub title.
-  const oldDiag=document.getElementById('abajCastDiag');
-  if(oldDiag)oldDiag.remove();
-  const diag=item?.cast_diagnostics;
-  if(String(item?.id||'')==='127942'&&diag&&host){
-    const bar=document.createElement('div');bar.id='abajCastDiag';
-    bar.style.cssText='font-size:12px;color:#90bdcd;margin:6px 0 10px;word-break:break-word';
-    bar.textContent='KinoPub ID 127942 · Актёров: '+diag.cast_count+
-      ' · Фото из API: '+diag.photo_count+
-      ' · Формат: '+diag.cast_format+
-      ' · Поля: '+(diag.actor_fields||[]).join(', ');
-    host.appendChild(bar);
-    host.style.display='block';
-  }
+
 }
 function renderCinemaSimilar(item){
   const host=document.getElementById('cinemaSimilar');
@@ -12906,7 +12893,7 @@ function renderCinemaDetail(item){
     cinemaRatingFact(rating,kpRating,item)+
     cinemaDetailFact(cinemaT().year,year)+
     cinemaDetailFact(appLang==='en'?'Time':appLang==='hy'?'Տևողություն':'Время',duration||'—')+
-    cinemaDetailFact('',seriesInfo)+
+    cinemaDetailFact('📺',seriesInfo)+
     cinemaDetailFact(cinemaT().country,country)+
     cinemaDetailFact(cinemaT().genre,genre)+
     cinemaDetailFact(cinemaT().translation,translation)+
