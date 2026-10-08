@@ -12163,10 +12163,7 @@ async function loadCinemaAbajRating(item){
   try{
     const r=await fetch('/api/cinema/rating?item_id='+encodeURIComponent(id),{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return;
-    const data=await r.json();
-    const currentId=String(cinemaDetailMovie?.id||'').trim();
-    if(currentId!==id)return;
-    paintCinemaAbajRating(data);
+    paintCinemaAbajRating(await r.json());
   }catch(e){}
 }
 function renderCinemaRatingChoices(){
