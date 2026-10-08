@@ -33,10 +33,10 @@ async function getFilm(){
 function openFilm(){
  const modal=document.getElementById('freeCinemaModal');if(!modal)return;
  modal.classList.add('isOpen');
- const t=modal.querySelector('.freeTitle'),v=modal.querySelector('video'),info=modal.querySelector('.freeInfo');
+ const t=modal.querySelector('.freeTitle'),v=modal.querySelector('video'),info=modal.querySelector('.freeInfo'),description=modal.querySelector('.freeDescription');
  t.textContent='Загрузка…';
  getFilm().then(d=>{
-  t.textContent=d.film.title+' ('+d.film.year+')';
+  t.textContent=d.film.title+' ('+d.film.year+')';if(description)description.textContent=d.film.description||'';
   info.textContent=d.film.genre+' · '+d.film.license+' · '+d.film.credit;
   modal.querySelector(".freeWatch").onclick=()=>{v.src=d.film.url;v.load();v.play().catch(()=>{});modal.querySelector(".freeWatch").style.display="none";};modal.querySelector(".freeWatch").style.display="inline-flex";
  }).catch(()=>{t.textContent='Фильм временно недоступен';});
@@ -60,7 +60,13 @@ function decorateCinema(){
   first.onclick=openFilm;
   grid.prepend(first);
  }
- if(filmData?.film)first.querySelector('.freeTitle').textContent=filmData.film.title;
+ if(filmData?.film){
+ const film=filmData.film;
+ first.querySelector('.freeTitle').textContent=film.title;
+ const poster=first.querySelector('.abajFreePoster');
+ if(poster&&film.poster)poster.innerHTML='<img class="cinemaPosterImg" src="'+film.poster+'" alt="" loading="eager" style="width:100%;height:100%;object-fit:cover">';
+ const sub=first.querySelector('.cinemaPosterSub');if(sub)sub.textContent=film.year+' · '+film.genre;
+}
 }
 document.addEventListener('DOMContentLoaded',()=>{
  const old=document.getElementById('freeCinemaAccess');if(old)old.remove();

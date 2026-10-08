@@ -2171,9 +2171,7 @@ async def index(request):
 async def api_free_film(request):
     """One CC-BY Blender short film, rotated every 72 hours in UTC."""
     films = (
-        {"id":"big-buck-bunny","title":"Большой кролик Бак","year":2008,"genre":"Мультфильм, комедия","url":"https://video.blender.org/object-storage/web_videos/bf1f3fb5-b119-4f9f-9930-8e20e892b898-720.mp4","credit":"© 2008 Blender Foundation / bigbuckbunny.org","license":"CC BY 3.0"},
-        {"id":"sintel","title":"Синтел","year":2010,"genre":"Анимация, фэнтези","url":"https://video.blender.org/object-storage/web_videos/0eb052d0-fd51-43e6-aa33-ecdbf77a5d40-818.mp4","credit":"© Blender Foundation / sintel.org","license":"CC BY 3.0"},
-        {"id":"tears-of-steel","title":"Слёзы стали","year":2012,"genre":"Фантастика","url":"https://video.blender.org/object-storage/web_videos/8533ea43-4271-4a57-9694-e9d0b35e1aa1-800.mp4","credit":"© Blender Foundation / mango.blender.org","license":"CC BY 3.0"},
+        {"id":"the-general-1926","title":"Генерал","year":1926,"genre":"Комедия, приключения","description":"Машинист Джонни Грей отправляется вслед за похищенным поездом, чтобы спасти любимую и вернуть локомотив. Полнометражная приключенческая комедия Бастера Китона.","duration":"1 ч 7 мин","poster":"https://archive.org/services/img/TheGeneral","url":"https://archive.org/download/TheGeneral/The_General_512kb.mp4","credit":"Buster Keaton / United Artists, 1926","license":"Public domain (US)"},
     )
     epoch = int(time.time())
     period = 3 * 86400

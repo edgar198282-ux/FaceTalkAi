@@ -20,11 +20,14 @@ document.querySelectorAll('.siteLangBtn').forEach(b=>{b.classList.toggle('active
 localStorage.setItem('abaj_site_lang',lang);
 }
 document.addEventListener('DOMContentLoaded',()=>{
-const stats=document.querySelector('.stats');if(stats){
-const group=document.createElement('div');group.className='siteLangSwitcher';group.setAttribute('aria-label','Language / Язык / Լեզու');
-['ru','hy','en'].forEach((lang,i)=>{const b=document.createElement('button');b.type='button';b.className='siteLangBtn';b.dataset.lang=lang;b.textContent=['RU','AM','EN'][i];b.onclick=()=>apply(lang);group.appendChild(b)});
-const secondStat=stats.children[1];if(secondStat){const big=secondStat.querySelector('strong');if(big)big.textContent='40 000+';}const languageStat=stats.children[2];if(languageStat){languageStat.querySelector('strong').replaceWith(group)}else stats.appendChild(group);
-}
-const themeBtn=document.createElement('button');themeBtn.type='button';themeBtn.className='siteThemeBtn';themeBtn.setAttribute('aria-label','Toggle light or dark theme');const group=document.querySelector('.siteLangSwitcher');if(group)group.appendChild(themeBtn);function setTheme(light){document.body.classList.toggle('siteLight',light);themeBtn.textContent=light?'🌙':'☀️';themeBtn.title=light?'Тёмная тема':'Светлая тема';localStorage.setItem('abaj_site_light',light?'1':'0');}themeBtn.onclick=()=>setTheme(!document.body.classList.contains('siteLight'));setTheme(localStorage.getItem('abaj_site_light')==='1');apply(localStorage.getItem('abaj_site_lang')||'ru');
+const group=document.createElement('div');
+group.className='siteLangSwitcher';
+group.setAttribute('aria-label','Language');
+['ru','hy','en'].forEach((lang,i)=>{
+ const b=document.createElement('button');b.type='button';b.className='siteLangBtn';
+ b.dataset.lang=lang;b.textContent=['RU','AM','EN'][i];b.onclick=()=>apply(lang);group.appendChild(b);
+});
+const nav=document.querySelector('.nav');
+if(nav)nav.appendChild(group);const themeBtn=document.createElement('button');themeBtn.type='button';themeBtn.className='siteThemeBtn';themeBtn.setAttribute('aria-label','Toggle light or dark theme');group.appendChild(themeBtn);function setTheme(light){document.body.classList.toggle('siteLight',light);themeBtn.textContent=light?'🌙':'☀️';themeBtn.title=light?'Тёмная тема':'Светлая тема';localStorage.setItem('abaj_site_light',light?'1':'0');}themeBtn.onclick=()=>setTheme(!document.body.classList.contains('siteLight'));setTheme(localStorage.getItem('abaj_site_light')==='1');apply(localStorage.getItem('abaj_site_lang')||'ru');
 });
 })();
