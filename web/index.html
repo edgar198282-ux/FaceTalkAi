@@ -1776,6 +1776,12 @@ body:not(.darkMode) .cinemaDetailFacts{background:rgba(235,247,255,.65);border-c
 </style>
 
 
+<style id="cinema-episode-alert-style">
+.cinemaDetailTools #cinemaEpisodeAlertBtn{width:43px;height:43px;border:0;border-radius:14px;padding:0;background:rgba(255,255,255,.03);color:#b6c9d5;font-size:29px;align-items:center;justify-content:center;cursor:pointer;filter:grayscale(1);transition:color .16s ease,filter .16s ease}
+.cinemaDetailTools #cinemaEpisodeAlertBtn.active{color:#ffd43b;filter:none;text-shadow:0 0 12px rgba(255,200,30,.65)}
+.cinemaDetailTools #cinemaEpisodeAlertBtn:focus-visible{outline:2px solid #ffd43b;outline-offset:2px}
+#cinemaEpisodeAlertToast{position:fixed;z-index:2147483500;left:50%;bottom:max(70px,env(safe-area-inset-bottom));transform:translateX(-50%);width:max-content;max-width:min(90vw,400px);padding:12px 17px;border-radius:13px;background:#17364a;color:#fff;border:1px solid #57748a;text-align:center;box-shadow:0 10px 30px #0006;font-size:14px}
+</style>
 <style id="abaj-cinema-facts-rating-layout">
 /* Cinema facts: shared mobile + Android TV, ratings never collide. */
 .cinemaDetailFacts{grid-template-columns:minmax(105px,26%) minmax(0,1fr)!important;column-gap:12px!important;max-width:100%!important}
@@ -2434,6 +2440,7 @@ body:not(.cinemaMode) .cinemaShellSide{
     <path d="M32 53.2 9.1 31.1C2.8 25 2.4 14.8 8.2 8.7c5.8-6.2 15.7-6.3 21.7-.2L32 10.7l2.1-2.2c6-6.1 15.9-6 21.7.2 5.8 6.1 5.4 16.3-.9 22.4L32 53.2Z"/>
   </svg>
 </button>
+        <button id="cinemaEpisodeAlertBtn" type="button" onclick="toggleCinemaEpisodeAlert()" aria-label="Уведомления о новых сериях" title="Уведомления о новых сериях" style="display:none">🔔</button>
       </div>
       <div class="cinemaDetailDescription" id="cinemaDetailDescription"></div>
       <button class="cinemaDescriptionMore" id="cinemaDescriptionMore" type="button" style="display:none" onclick="toggleCinemaDescription()">Подробнее</button>
@@ -8698,7 +8705,7 @@ function cinemaDetailOpen(){
   return !!document.getElementById('cinemaDetail')?.classList.contains('open');
 }
 function cinemaDetailFocusable(){
-  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction,#cinemaDetail #cinemaBookmarkBtn,#cinemaDetail #cinemaAbajRating,#cinemaDetail .cinemaDescriptionMore,#cinemaDetail .cinemaKpEpisodeBtn,#cinemaDetail .cinemaSimilarCard')]
+  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction,#cinemaDetail #cinemaBookmarkBtn,#cinemaDetail #cinemaEpisodeAlertBtn,#cinemaDetail #cinemaAbajRating,#cinemaDetail .cinemaDescriptionMore,#cinemaDetail .cinemaKpEpisodeBtn,#cinemaDetail .cinemaSimilarCard')]
     .filter(el=>el.offsetParent!==null);
 }
 function moveCinemaDetailFocus(direction){
@@ -12852,12 +12859,64 @@ function installCinemaDetailHeroShade(){
     raf=requestAnimationFrame(()=>{raf=0;updateCinemaDetailHeroShade()});
   },{passive:true});
 }
+const cinemaEpisodeAlertStorage='abaj_cinema_episode_alerts_v1';
+function readCinemaEpisodeAlerts(){
+  try{return JSON.parse(localStorage.getItem(cinemaEpisodeAlertStorage)||'{}')||{}}catch(_){return {}}
+}
+function cinemaEpisodeCount(item){
+  return (Array.isArray(item?.media_rows)?item.media_rows:[]).reduce((total,row)=>total+(Array.isArray(row?.items)?row.items.length:0),0);
+}
+function cinemaEpisodeAlertToast(message){
+  let el=document.getElementById('cinemaEpisodeAlertToast');
+  if(!el){el=document.createElement('div');el.id='cinemaEpisodeAlertToast';document.body.appendChild(el)}
+  el.textContent=message;
+  el.style.display='block';
+  clearTimeout(cinemaEpisodeAlertToast.timer);
+  cinemaEpisodeAlertToast.timer=setTimeout(()=>{el.style.display='none'},2800);
+}
+function renderCinemaEpisodeAlert(item){
+  const btn=document.getElementById('cinemaEpisodeAlertBtn');
+  if(!btn)return;
+  const show=cinemaItemLooksSeries(item)&&!!item?.id&&cinemaSource==='kinopub';
+  btn.style.display=show?'inline-flex':'none';
+  if(!show)return;
+  const saved=readCinemaEpisodeAlerts()[String(item.id)];
+  btn.classList.toggle('active',!!saved);
+  btn.setAttribute('aria-pressed',saved?'true':'false');
+}
+function toggleCinemaEpisodeAlert(){
+  const item=cinemaDetailMovie;
+  if(!item||!cinemaItemLooksSeries(item)||!item.id)return;
+  const subs=readCinemaEpisodeAlerts(),key=String(item.id);
+  if(subs[key]){
+    delete subs[key];
+    cinemaEpisodeAlertToast(appLang==='hy'?'Նոր սերիաների ծանուցումներն անջատված են':appLang==='en'?'New episode alerts disabled':'Уведомления о новых сериях отключены');
+  }else{
+    subs[key]={title:String(item.title||item.name||''),count:cinemaEpisodeCount(item),at:Date.now()};
+    cinemaEpisodeAlertToast(appLang==='hy'?'Նոր սերիաների մասին կտեղեկացվեք':appLang==='en'?'You will be notified about new episodes':'О новых сериях вы будете уведомлены');
+  }
+  try{localStorage.setItem(cinemaEpisodeAlertStorage,JSON.stringify(subs))}catch(_){}
+  renderCinemaEpisodeAlert(item);
+}
+function checkCinemaEpisodeAlert(item){
+  if(!item?.id||!cinemaItemLooksSeries(item)||!Array.isArray(item.media_rows)||!item.media_rows.length)return;
+  const subs=readCinemaEpisodeAlerts(),key=String(item.id),saved=subs[key];
+  if(!saved)return;
+  const count=cinemaEpisodeCount(item);
+  if(count>saved.count){
+    cinemaEpisodeAlertToast(appLang==='hy'?'Նոր սերիաներ կան':appLang==='en'?'New episodes available':'Вышли новые серии');
+    subs[key]={...saved,count};
+    try{localStorage.setItem(cinemaEpisodeAlertStorage,JSON.stringify(subs))}catch(_){}
+  }
+}
 function renderCinemaDetail(item){
   const previousDetailId=String(cinemaDetailMovie?.id||cinemaDetailMovie?.intent||'');
   const nextDetailId=String(item?.id||item?.intent||'');
   const detailChanged=previousDetailId!==nextDetailId;
   cinemaDetailMovie=item;
   cinemaSourcePickerMovie=item;
+  renderCinemaEpisodeAlert(item);
+  checkCinemaEpisodeAlert(item);
   const detail=document.getElementById('cinemaDetail');
   const hero=document.getElementById('cinemaDetailHero');
   const title=document.getElementById('cinemaDetailTitle');
