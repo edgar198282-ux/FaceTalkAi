@@ -12148,7 +12148,7 @@ function cinemaLocalizeDuration(value){
 function cinemaDetailFact(label,value){
   if(!value)return '';
   const esc=x=>String(x).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
-  const icons={'Год':'📅','Year':'📅','Տարի':'📅','Страна':'📍','Country':'📍','Երկիր':'📍','Жанр':'🎭','Genre':'🎭','Ժանր':'🎭','Время':'⏱','Длительность':'⏱','Duration':'⏱','Տևողություն':'⏱','Режиссёр':'🎬','Режиссер':'🎬','Director':'🎬','Ռեժիսոր':'🎬','Перевод':'🔊','Translation':'🔊'};
+  const icons={'Год':'📅','Year':'📅','Տարի':'📅','Страна':'📍','Country':'📍','Երկիր':'📍','Жанр':'🎭','Genre':'🎭','Ժանր':'🎭','Время':'⏰','Длительность':'⏰','Duration':'⏰','Տևողություն':'⏰','Режиссёр':'🎬','Режиссер':'🎬','Director':'🎬','Ռեժիսոր':'🎬','Перевод':'🔊','Translation':'🔊'};
   const icon=icons[String(label||'').trim()]||'';
   return '<div class="k">'+(icon?'<span class="cinemaFactIcon" aria-hidden="true">'+icon+'</span>':'')+esc(label)+'</div><div class="v">'+esc(value)+'</div>';
 }
@@ -12405,7 +12405,7 @@ function cinemaSeriesInfo(item){
   const d=Number(media?.duration||0);
   const minutes=d>0?Math.round(d>180?d/60:d):0;
   const unit=appLang==='en'?'min':appLang==='hy'?'ր':'мин';
-  return 'S'+season+'E'+episode+(minutes?' · ⏰ '+minutes+' '+unit:'');
+  return 'S'+season+'E'+episode+(minutes?' · '+minutes+' '+unit:'');
 }
 function updateCinemaSelectedEpisodeInfo(){
   const value=document.getElementById('cinemaSelectedEpisodeInfo');
