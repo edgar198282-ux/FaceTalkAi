@@ -1785,7 +1785,13 @@ body:not(.darkMode) .cinemaDetailFacts{background:rgba(235,247,255,.65);border-c
 .cinemaDetailFacts>.v.cinemaRatingValue{grid-column:2;display:flex!important;flex-wrap:nowrap!important;align-items:center;justify-content:flex-end!important;gap:6px!important;padding:8px 0;min-width:0;border-bottom:1px solid rgba(130,170,194,.2)}
 .cinemaRatingValue .cinemaRatingPair,.cinemaRatingValue .cinemaAbajRatingInline{display:inline-flex!important;flex:0 0 auto;gap:4px!important;align-items:center;max-width:100%;white-space:nowrap}
 .cinemaRatingValue .cinemaRatingScore{font-size:clamp(14px,3.6vw,18px)!important}
-.cinemaRatingValue .cinemaRatingLogo.abaj{min-width:0!important;width:auto!important;padding:0 5px!important;height:23px!important}
+.cinemaRatingValue .cinemaRatingPair,.cinemaRatingValue .cinemaAbajRatingInline{height:27px!important;line-height:1!important;vertical-align:middle!important}
+.cinemaRatingValue .cinemaRatingLogo,.cinemaRatingValue .cinemaRatingScore{display:inline-flex!important;align-items:center!important;justify-content:center!important;align-self:center!important;line-height:1!important;vertical-align:middle!important}
+.cinemaRatingValue .cinemaRatingScore{height:25px!important}
+.cinemaRatingValue .cinemaRatingLogo{height:25px!important}
+.cinemaRatingValue .cinemaRatingLogo.abaj{height:25px!important}
+.cinemaRatingValue .cinemaAbajRatingBrand{line-height:1!important}
+.cinemaRatingValue .cinemaRatingLogo.abaj{min-width:0!important;width:auto!important;padding:0 5px!important;height:25px!important}
 .cinemaRatingValue .cinemaAbajRatingBrand{font-size:11px!important}
 @media(max-width:760px){.cinemaDetailFacts{grid-template-columns:minmax(100px,32%) minmax(0,1fr)!important;column-gap:8px!important;padding:8px 12px!important}.cinemaDetailFacts>.v.cinemaRatingValue{gap:4px!important}.cinemaRatingValue .cinemaRatingScore{font-size:clamp(12px,3.3vw,16px)!important}.cinemaRatingValue .cinemaRatingLogo.imdb{min-width:30px!important;padding:0 2px!important}.cinemaRatingValue .cinemaRatingLogo.kp{min-width:23px!important;width:23px!important}}
 .nativeTv .cinemaDetailFacts>.v.cinemaRatingValue{gap:12px!important}
