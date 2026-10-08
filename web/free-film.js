@@ -2,7 +2,7 @@
 const style=document.createElement('style');
 style.textContent=`
 #cinemaPosterGrid .cinemaPosterCard{position:relative!important}
-#cinemaPosterGrid .cinemaPosterCard::before{
+#cinemaPosterGrid:not(.abajProUnlocked) .cinemaPosterCard::before{
  content:"PRO"!important;position:absolute!important;top:9px!important;right:9px!important;
  z-index:30!important;padding:3px 10px!important;border-radius:9px!important;
  background:#421b55!important;color:#fff!important;font:900 13px/1.5 system-ui,sans-serif!important;
@@ -12,11 +12,18 @@ style.textContent=`
 #cinemaPosterGrid .cinemaPosterCard .abajFilmBadge{display:none!important}
 `;
 document.head.appendChild(style);
+function syncBadges(){
+ const grid=document.getElementById('cinemaPosterGrid');if(!grid)return;
+ // This flag is populated from the server-verified subscription state in the main app.
+ grid.classList.toggle('abajProUnlocked',window.cinemaPlaybackAllowed===true);
+}
 function cleanup(){
  document.querySelectorAll('#cinemaPosterGrid .cinemaPosterCard[data-abaj-free="1"],#freeCinemaAccess,#freeCinemaModal').forEach(e=>e.remove());
 }
 document.addEventListener('DOMContentLoaded',()=>{
  cleanup();
+ syncBadges();
+ document.addEventListener('abaj-cinema-access-change',syncBadges);
  const grid=document.getElementById('cinemaPosterGrid');
  if(grid)new MutationObserver(()=>{const old=grid.querySelector('.cinemaPosterCard[data-abaj-free="1"]');if(old)old.remove()}).observe(grid,{childList:true});
 });
