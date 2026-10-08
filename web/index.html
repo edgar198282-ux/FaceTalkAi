@@ -12677,7 +12677,12 @@ function renderCinemaCast(item){
             const r=await fetch('/api/cinema/verified-cast-photo?name='+encodeURIComponent(variant),{cache:'force-cache'});
             if(!r.ok||!btn.isConnected)return;
             const d=await r.json();
-            if(d?.image){setPhoto(d.image);return;}
+            if(d?.image){
+              // Serve verified portraits from our own domain; Android WebView
+              // may reject direct Wikimedia thumbnail URLs.
+              setPhoto('/api/cinema/cast-image?name='+encodeURIComponent(variant));
+              return;
+            }
           }catch(e){}
         }
       })();
