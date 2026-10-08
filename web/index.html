@@ -12661,6 +12661,11 @@ function renderCinemaCast(item){
         const old=btn.querySelector('img,.cinemaCastAvatarFallback');
         if(old)old.replaceWith(pic);
       };
+      pic.onerror=()=>{
+        if(pic.dataset.relayTried==='1'||!src.includes('wikimedia.org/'))return;
+        pic.dataset.relayTried='1';
+        pic.src='/api/cinema/cast-image?name='+encodeURIComponent(name);
+      };
       pic.src=src;
     };
     if(image)setPhoto(image);
