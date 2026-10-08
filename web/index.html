@@ -8418,7 +8418,18 @@ function moveTvSettingsFocusSpatial(direction){
 
 function tvNativeRemote(action){
   if(!nativeTv)return;
-  cancelLastChannelAutoStart(false);
+  if(cinemaRatingModalOpen()){
+    if(action==='left')moveCinemaRatingFocus(-1);
+    else if(action==='right')moveCinemaRatingFocus(1);
+    else if(action==='up')moveCinemaRatingFocus(-5);
+    else if(action==='down')moveCinemaRatingFocus(5);
+    else if(action==='ok'){
+      const focused=document.activeElement;
+      if(focused?.matches?.('#cinemaRatingModal .cinemaRatingChoice,#cinemaRatingCancel'))focused.click();
+      else moveCinemaRatingFocus(0);
+    }
+    return;
+  }  cancelLastChannelAutoStart(false);
   const player=document.getElementById('playerView');
   if(player&&player.classList.contains('open')){
     if(cinemaTrackMenuOpen()){
