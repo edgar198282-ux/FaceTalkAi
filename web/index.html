@@ -12039,6 +12039,7 @@ function renderCinemaHeroSlider(item,poster,bg){
   const host=document.getElementById('cinemaDetailHeroSlides');
   if(!host)return;
   host.innerHTML='';
+  if(!nativeTv)return;
   const images=cinemaHeroGallery(item,poster,bg);
   if(images.length<2)return;
   images.forEach((src,index)=>{
@@ -12067,6 +12068,12 @@ function applyCinemaHeroImage(hero,poster,bg){
   const token=++cinemaHeroLoadToken;
   const fallback=String(poster||'').trim();
   const backdrop=String(bg||'').trim();
+  if(!nativeTv&&backdrop){
+    hero.style.backgroundImage=`url(${backdrop})`;
+    hero.style.backgroundPosition='center 28%';
+    hero.style.backgroundSize='cover';
+    return;
+  }
 
   if(fallback){
     hero.style.backgroundImage='url("'+fallback.replace(/"/g,'%22')+'")';
