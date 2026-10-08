@@ -1613,6 +1613,7 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
 body:not(.darkMode) .cinemaAbajRatingInline{color:#173b52}
 .cinemaRatingModal{position:fixed;inset:0;z-index:2147483620;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.76);padding:18px}
 .cinemaRatingModal.open{display:flex}
+.cinemaDetail.ratingLocked{overflow:hidden!important;overscroll-behavior:none!important}
 .cinemaRatingCard{width:min(500px,94vw);border:1px solid rgba(90,203,255,.28);border-radius:22px;padding:22px;background:linear-gradient(180deg,#102b42,#081725);color:#fff;box-shadow:0 24px 70px rgba(0,0,0,.52)}
 .cinemaRatingTitle{font-size:24px;font-weight:900;text-align:center}
 .cinemaRatingSub{margin-top:6px;text-align:center;color:#a9c9dc;font-size:13px}
@@ -4130,6 +4131,7 @@ function openSupportAdmin(){
   if(input)input.placeholder=appLang==='hy'?'Գրեք հաղորդագրություն…':(appLang==='en'?'Write a message…':'Напишите сообщение…');
   if(status)status.textContent='';
   if(modal)modal.classList.add('open');
+  document.getElementById('cinemaDetail')?.classList.add('ratingLocked');
   setTimeout(()=>input&&input.focus(),100);
 }
 function closeSupportAdmin(){
@@ -7610,6 +7612,7 @@ function setQuality(value){
 function openAiDubMenu(){
   const modal=document.getElementById('aiDubModal');
   if(modal)modal.classList.add('open');
+  document.getElementById('cinemaDetail')?.classList.add('ratingLocked');
   updateAiDubUi(aiDubEnabled?'AI перевод включён':'Выберите язык перевода');
 }
 function closeAiDubMenu(){
@@ -12188,7 +12191,7 @@ function renderCinemaRatingChoices(){
     host.appendChild(btn);
   }
 }
-document.addEventListener('keydown',e=>{
+window.addEventListener('keydown',e=>{
   if(!cinemaRatingModalOpen())return;
   const key=e.key;
   const code=e.keyCode||e.which;
@@ -12217,6 +12220,7 @@ function openCinemaRating(){
   if(sub)sub.textContent=appLang==='en'?'Choose from 1 to 10 stars':(appLang==='hy'?'Ընտրեք 1-ից 10 աստղ':'Выберите от 1 до 10 звёзд');
   renderCinemaRatingChoices();
   if(modal)modal.classList.add('open');
+  document.getElementById('cinemaDetail')?.classList.add('ratingLocked');
   setTimeout(()=>{
     const selected=document.querySelector('#cinemaRatingChoices .selected');
     const first=document.querySelector('#cinemaRatingChoices .cinemaRatingChoice');
@@ -12225,6 +12229,7 @@ function openCinemaRating(){
 }
 function closeCinemaRating(){
   document.getElementById('cinemaRatingModal')?.classList.remove('open');
+  document.getElementById('cinemaDetail')?.classList.remove('ratingLocked');
 }
 function moveCinemaRatingFocus(step){
   const items=[...document.querySelectorAll('#cinemaRatingModal .cinemaRatingChoice,#cinemaRatingCancel')].filter(x=>x.offsetParent!==null&&!x.disabled);
