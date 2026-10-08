@@ -12663,39 +12663,8 @@ function renderCinemaCast(item){
       pic.src=src;
     };
     if(image)setPhoto(image);
-    else fetch('/api/cinema/person?name='+encodeURIComponent(searchName||name),{headers:authHeaders(),cache:'force-cache'})
-      .then(r=>r.ok?r.json():null).then(d=>{
-        if(!btn.isConnected||!d?.image)return;
-        const returned=String(d.name||'').trim();
-        const normalize=x=>String(x||'').normalize('NFKC').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
-        // Never attach a loosely matched person's photograph to a KinoPub actor.
-        const ruMap={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'i',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',ч:'ch',ш:'sh',щ:'shch',ы:'y',э:'e',ю:'yu',я:'ya',ь:'',ъ:''};
-        const latin=x=>normalize(x).replace(/[а-яё]/g,ch=>ruMap[ch]??ch);
-        const distance=(a,b)=>{
-          let prev=Array.from({length:b.length+1},(_,i)=>i);
-          for(let i=1;i<=a.length;i++){
-            const cur=[i];
-            for(let j=1;j<=b.length;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
-            prev=cur;
-          }
-          return prev[b.length];
-        };
-        const similar=(a,b)=>{
-          a=latin(a);b=latin(b);
-          if(!a||!b)return false;
-          if(a===b)return true;
-          const aa=a.split(' ').filter(Boolean),bb=b.split(' ').filter(Boolean);
-          if(aa.length<2||bb.length<2||aa.length!==bb.length)return false;
-          return aa.every((part,i)=>1-distance(part,bb[i])/Math.max(part.length,bb[i].length)>=0.66);
-        };
-        const exact=similar(returned,searchName)||similar(returned,name);
-        if(!exact)return;
-        if(appLang==='en'&&returned){
-          const label=btn.querySelector('.cinemaCastName');
-          if(label)label.textContent=returned;
-        }
-        setPhoto(String(d.image).trim());
-      }).catch(()=>{});
+    // KinoPub cast portraits must come from the exact KinoPub item, not public name searches.
+    // If KinoPub provides no image, leave the neutral placeholder instead of a wrong face.
   });
   host.style.display=row.children.length?'block':'none';
 }
