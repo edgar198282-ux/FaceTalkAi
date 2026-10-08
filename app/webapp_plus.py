@@ -2173,6 +2173,18 @@ async def index(request):
     path = os.path.join(WEB_DIR, 'index.html')
     return web.FileResponse(path, headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0','Pragma':'no-cache'})
 
+async def api_free_film(request):
+    """One CC-BY Blender short film, rotated every 72 hours in UTC."""
+    films = (
+        {"id":"big-buck-bunny","title":"Большой кролик Бак","year":2008,"genre":"Мультфильм, комедия","url":"https://video.blender.org/object-storage/web_videos/bf1f3fb5-b119-4f9f-9930-8e20e892b898-720.mp4","credit":"© 2008 Blender Foundation / bigbuckbunny.org","license":"CC BY 3.0"},
+        {"id":"sintel","title":"Синтел","year":2010,"genre":"Анимация, фэнтези","url":"https://video.blender.org/object-storage/web_videos/0eb052d0-fd51-43e6-aa33-ecdbf77a5d40-818.mp4","credit":"© Blender Foundation / sintel.org","license":"CC BY 3.0"},
+        {"id":"tears-of-steel","title":"Слёзы стали","year":2012,"genre":"Фантастика","url":"https://video.blender.org/object-storage/web_videos/8533ea43-4271-4a57-9694-e9d0b35e1aa1-800.mp4","credit":"© Blender Foundation / mango.blender.org","license":"CC BY 3.0"},
+    )
+    epoch = int(time.time())
+    period = 3 * 86400
+    anchor = 1791417600  # 2026-10-08 00:00 UTC; begin with the animated film
+    index = ((epoch - anchor) // period) % len(films)
+    return web.json_response({"ok":True,"film":films[index],"changes_at":anchor + ((epoch-anchor)//period+1)*period,"count":1},headers={"Cache-Control":"no-store"})
 async def abaj_site(request):
     return web.FileResponse(os.path.join(WEB_DIR, 'site.html'), headers={'Cache-Control':'no-cache'})
 
@@ -4123,6 +4135,7 @@ async def api_healthz(request):
 async def start_webapp(bot):
     app = web.Application(client_max_size=100*1024*1024, middlewares=[api_error_middleware]); app['bot']=bot
     app.router.add_get('/', index)
+    app.router.add_get('/api/cinema/free-film', api_free_film)
     app.router.add_get('/site', abaj_site)
     app.router.add_get('/site/', abaj_site)
     app.router.add_get('/favicon.ico', favicon)
