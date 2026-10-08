@@ -12661,11 +12661,6 @@ function renderCinemaCast(item){
         const old=btn.querySelector('img,.cinemaCastAvatarFallback');
         if(old)old.replaceWith(pic);
       };
-      pic.onerror=()=>{
-        if(pic.dataset.relayTried==='1'||!src.includes('wikimedia.org/'))return;
-        pic.dataset.relayTried='1';
-        pic.src='/api/cinema/cast-image?name='+encodeURIComponent(name);
-      };
       pic.src=src;
     };
     if(image)setPhoto(image);
@@ -12677,12 +12672,7 @@ function renderCinemaCast(item){
             const r=await fetch('/api/cinema/verified-cast-photo?name='+encodeURIComponent(variant),{cache:'force-cache'});
             if(!r.ok||!btn.isConnected)return;
             const d=await r.json();
-            if(d?.image){
-              // Serve verified portraits from our own domain; Android WebView
-              // may reject direct Wikimedia thumbnail URLs.
-              setPhoto('/api/cinema/cast-image?name='+encodeURIComponent(variant));
-              return;
-            }
+            if(d?.image){setPhoto(d.image);return;}
           }catch(e){}
         }
       })();
