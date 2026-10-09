@@ -14754,6 +14754,30 @@ body:not(.nativeTv) .cinemaPosterCard[data-cinema-selected="1"] :is(.cinemaPoste
 @media(prefers-reduced-motion:reduce){#abajCinemaPageFlip{display:none}}
 </style>
 </style>
+<style id="abaj-mobile-player-neon-shapes-v2">
+body:not(.nativeTv) #playerView .playerCircleCtrl:is(:focus,:focus-visible,:active,.abajTouchSelected){
+  outline:none!important;outline-offset:0!important;box-shadow:none!important;
+  background:transparent!important;-webkit-tap-highlight-color:transparent!important;
+}
+body:not(.nativeTv) #playerView .playerCircleCtrl:is(:focus,:focus-visible,:active,.abajTouchSelected)::before,
+body:not(.nativeTv) #playerView .playerCircleCtrl:is(:focus,:focus-visible,:active,.abajTouchSelected)::after{
+  content:none!important;display:none!important;box-shadow:none!important;
+}
+body:not(.nativeTv) #playerView .playerCircleCtrl .playerCtrlIcon{
+  -webkit-tap-highlight-color:transparent!important;
+}
+body:not(.nativeTv) #playerView .playerCircleCtrl .playerCtrlIcon.abajTouchSelected{
+  position:relative!important;border-radius:50%!important;
+  outline:none!important;
+}
+body:not(.nativeTv) #playerView .playerCircleCtrl .playerCtrlIcon.abajTouchSelected::after{
+  display:block!important;content:''!important;border-radius:50%!important;
+  inset:-3px!important;
+}
+body:not(.nativeTv) #playerView .playerCircleCtrl .playerCtrlIcon.abajTouchSelected::before{
+  content:none!important;display:none!important;
+}
+</style>
 <script src="/static/free-film.js"></script><script>
 (function(){
   if(document.body.classList.contains('nativeTv'))return;
