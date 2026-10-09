@@ -14546,6 +14546,17 @@ body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible) .playerCtr
   box-shadow:none!important;
   filter:none!important;
 }
+/* tv-player-round-focus-only */
+body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-focused="1"])::before,
+body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-focused="1"])::after,
+body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-focused="1"]) .playerCtrlIcon::before{
+  content:none!important;
+  display:none!important;
+}
+body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-focused="1"]) .playerCtrlIcon::after{
+  display:block!important;
+  border-radius:50%!important;
+}
 /* tv-player-all-controls-neon-only */
 body.nativeTv .playerView :is(button.ctrl,button.playerCircleCtrl,button.playerUtilityCtrl):is(:focus,:focus-visible,[data-tv-focused="1"]){
   outline:none!important;
@@ -14809,7 +14820,7 @@ body:not(.nativeTv) #playerView .playerCircleCtrl .playerCtrlIcon.abajTouchSelec
     const br=getComputedStyle(target).borderRadius;
     overlay.style.cssText='left:'+Math.max(0,r.left-2)+'px;top:'+Math.max(0,r.top-2)+'px;width:'+r.width+'px;height:'+r.height+'px;border-radius:'+(br&&br!=='0px'?br:'12px');
     document.body.appendChild(overlay);
-    setTimeout(()=>overlay.remove(),450);
+    setTimeout(()=>overlay.remove(),250);
   },{capture:true,passive:true});
 })();
 </script>
