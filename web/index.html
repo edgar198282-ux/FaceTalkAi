@@ -14697,6 +14697,11 @@ body.nativeTv :is(#cinemaToggleBtn,#tvSettingsBtn,#tvTopSearchBtn):is(:focus,:fo
   outline:none!important;
   border-color:transparent!important;
 }
+<style id="abaj-mobile-universal-touch-v1">
+body:not(.nativeTv) .abajTouchNeon{position:fixed;pointer-events:none;z-index:2147482000;box-sizing:border-box;border:3px solid transparent;background:conic-gradient(#ff4fa3,#ffd84f,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box;-webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:abajTouchNeonPulse .4s ease-out both}
+@keyframes abajTouchNeonPulse{0%{opacity:0;filter:brightness(1.5)}20%{opacity:1}70%{opacity:1}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){body:not(.nativeTv) .abajTouchNeon{animation:none;opacity:0}}
+</style>
 <style id="abaj-mobile-poster-tap-v1">
 body:not(.nativeTv) .cinemaPosterCard:is(:focus,:focus-visible){outline:none!important;box-shadow:none!important;transform:none!important}
 body:not(.nativeTv) .cinemaPosterCard:is(:focus,:focus-visible):not(.abajMobilePosterTap)::after{content:none!important;animation:none!important}
@@ -14716,5 +14721,24 @@ body:not(.nativeTv) .cinemaPosterCard.abajMobilePosterTap::after{content:''!impo
 @media(prefers-reduced-motion:reduce){#abajCinemaPageFlip{display:none}}
 </style>
 </style>
-<script src="/static/free-film.js"></script></body>
+<script src="/static/free-film.js"></script><script>
+(function(){
+  if(document.body.classList.contains('nativeTv'))return;
+  document.addEventListener('pointerdown',function(event){
+    if(event.pointerType==='mouse'&&event.button!==0)return;
+    const target=event.target instanceof Element?event.target.closest('button,a,[role="button"],.channel,.cinemaPosterCard,.cinemaSimilarCard,.cinemaCastCard,.cinemaMenuItem,.cinemaCategoryItem,.cinemaKpFilterBtn,.cinemaBookmarkFolder,.cinemaEpisodeRow,.cinemaSeasonRow,.cinemaTypeCard,.cinemaDetailAction,.cinemaShellDrop,.iconBtn,.flagBtn,.groupBtn,.categoryBtn,select,input[type="checkbox"],input[type="radio"]'):null;
+    if(!target||target.closest('[disabled],[aria-disabled="true"]'))return;
+    const r=target.getBoundingClientRect();
+    if(r.width<8||r.height<8||r.width>innerWidth*.98||r.height>innerHeight*.85)return;
+    document.querySelectorAll('.abajTouchNeon').forEach(el=>el.remove());
+    const overlay=document.createElement('div');
+    overlay.className='abajTouchNeon';
+    const br=getComputedStyle(target).borderRadius;
+    overlay.style.cssText='left:'+Math.max(0,r.left-2)+'px;top:'+Math.max(0,r.top-2)+'px;width:'+r.width+'px;height:'+r.height+'px;border-radius:'+(br&&br!=='0px'?br:'12px');
+    document.body.appendChild(overlay);
+    setTimeout(()=>overlay.remove(),450);
+  },{capture:true,passive:true});
+})();
+</script>
+</body>
 </html>
