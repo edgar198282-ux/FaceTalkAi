@@ -7858,7 +7858,13 @@ function closePlayer(){
       cards.forEach(el=>{
         const selected=el.dataset.id===lastChannelId;
         el.classList.toggle('abajLastChannel',selected);
-        if(selected)last=el;
+        if(selected){
+          el.dataset.lastPlayed='1';
+          last=el;
+        }else{
+          el.removeAttribute('data-last-played');
+          el.classList.remove('abajTouchSelected');
+        }
       });
       if(last){
         last.classList.remove('abajTouchSelected');
