@@ -14899,6 +14899,34 @@ body:not(.nativeTv) :is(.chip,.cat,.iconBtn,.groupBtn,.categoryBtn,.flagBtn,.cin
   box-shadow:none!important;
 }
 </style>
+<style id="abaj-cinema-top-single-neon-v2">
+body:not(.nativeTv) :is(.cinemaTvQuickBtn,.cinemaShellBtn,.cinemaTvQuickBtn *,#cinemaTvBtn,#cinemaBackToTvBtn):is(:focus,:focus-visible,:active,.focused,.abajTouchSelected),
+body.nativeTv :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:focus,:focus-visible,.focused){
+  outline:none!important;
+  outline-offset:0!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  -webkit-tap-highlight-color:transparent!important;
+}
+body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:focus,:focus-visible,:active,.focused,.abajTouchSelected)::before{
+  content:none!important;display:none!important;
+}
+body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:focus,:focus-visible,:active,.focused,.abajTouchSelected)::after{
+  content:''!important;
+  display:block!important;
+  position:absolute!important;
+  inset:-3px!important;
+  border:2.1px solid transparent!important;
+  border-radius:inherit!important;
+  background:conic-gradient(from var(--abaj-neon-angle,0deg),#ff4fa3,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box!important;
+  -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0)!important;
+  -webkit-mask-composite:xor!important;
+  mask-composite:exclude!important;
+  pointer-events:none!important;
+  z-index:8!important;
+  animation:abajNeonRotate 2.16s linear infinite!important;
+}
+</style>
 <script src="/static/free-film.js"></script><script>
 (function(){
   if(document.body.classList.contains('nativeTv'))return;
