@@ -5329,7 +5329,7 @@ function render(){
         :fallbackLogo;
       const channelNo=(channelNumberMap.get(ch.id)||1);
       const qualityLabel=channelQualityLabel(ch);
-      out+='<div class="channel" tabindex="'+(tvMode?'0':'-1')+'" data-id="'+esc(ch.id)+'" data-channel-no="'+channelNo+'" onclick="openPlayer(\''+ch.id+'\')">'+
+      out+='<div class="channel'+(!nativeTv&&String(ch.id)===String(lastChannelId)?' abajLastChannel':'')+'" tabindex="'+(tvMode?'0':'-1')+'" data-id="'+esc(ch.id)+'" data-channel-no="'+channelNo+'" onclick="openPlayer(\''+ch.id+'\')">'+
         '<div class="channelNumber">'+channelNo+'</div>'+
         (qualityLabel?'<div class="qualityBadge">'+qualityLabel+'</div>':'')+
         (nativeTv&&favs.has(ch.id)?'<div class="tvFavLeft" aria-hidden="true">♥</div>':'')+
