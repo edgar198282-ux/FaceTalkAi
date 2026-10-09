@@ -14850,6 +14850,7 @@ body:not(.nativeTv) #content .channel.abajLastChannel::after{content:''!importan
     document.querySelectorAll('.abajTouchSelected').forEach(el=>el.classList.remove('abajTouchSelected'));
     highlight.classList.add('abajTouchSelected');
     setTimeout(()=>highlight.classList.remove('abajTouchSelected'),250);
+    if(circle)return;
     document.querySelectorAll('.abajTouchNeon').forEach(el=>el.remove());
     const overlay=document.createElement('div');
     overlay.className='abajTouchNeon';
