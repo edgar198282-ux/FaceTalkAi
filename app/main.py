@@ -283,7 +283,7 @@ def _telegram_lang(user) -> str:
 
 async def send_language_picker(m: Message):
     await _hide_reply_keyboard(m)
-    caption = '🌐 Ընտրեք լեզուն / Выберите язык / Choose language'
+    caption = '📺 Abaj TV — 3000+ ալիք և ֆիլմեր մեկ հավելվածում։\n🎬 Abaj TV — более 3000 каналов и фильмы в одном приложении.'
     logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'media', 'abaj_tv_logo.jpg')
     keyboard = language_keyboard()
     try:
@@ -402,7 +402,7 @@ async def start_handler(m: Message):
         await send_language_picker(m)
     except Exception as exc:
         logging.exception("Abaj TV /start failed: %r", exc)
-        await _answer(m, '🌐 Ընտրեք լեզուն / Выберите язык / Choose language', reply_markup=language_keyboard())
+        await _answer(m, '📺 Abaj TV — 3000+ ալիք և ֆիլմեր մեկ հավելվածում։\n🎬 Abaj TV — более 3000 каналов и фильмы в одном приложении.', reply_markup=language_keyboard())
 
 @dp.message(F.text.regexp(r'^\d{6}$'))
 async def tv_pair_code_handler(m: Message):
