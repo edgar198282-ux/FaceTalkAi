@@ -53,8 +53,10 @@ button{cursor:pointer}
 
 body:not(.nativeTv) .top.mobileScrollCollapsing{
   overflow:hidden;
-  max-height:var(--mobile-header-height, 480px);
-  transition:max-height .32s ease,opacity .28s ease,padding .32s ease,border-width .32s ease;
+  flex:0 0 auto;
+  box-sizing:border-box;
+  min-height:0;
+  transition:none;
 }
 body:not(.nativeTv) .top.mobileScrollCollapsing.mobileHeaderHidden{
   max-height:0!important;
@@ -5355,27 +5357,27 @@ function render(){
 }
 function updateMobileHeaderCollapse(){
   if(nativeTv)return;
-  const content=document.getElementById('content');
-  const top=document.querySelector('.top');
-  if(!content||!top)return;
-
-  if(Date.now()<mobileHeaderResetUntil){
-    content.scrollTop=0;
-    top.classList.remove('mobileHeaderHidden');
-    return;
-  }
-
-  const st=Math.max(0,content.scrollTop||0);
-  const hide=st>18;
-
-  top.classList.toggle('mobileHeaderHidden',hide);
-}
-function installMobileHeaderCollapse(){
+  confunction updateMobileHeaderCollapse(){
   if(nativeTv)return;
   const content=document.getElementById('content');
   const top=document.querySelector('.top');
   if(!content||!top)return;
-  top.style.setProperty('--mobile-header-height',top.scrollHeight+'px');
+
+  const fullHeight=Number(top.dataset.mobileFullHeight)||top.scrollHeight;
+  if(!fullHeight)return;
+  const st=Date.now()<mobileHeaderResetUntil?0:Math.max(0,content.scrollTop||0);
+  const progress=Math.min(1,st/fullHeight);
+  top.style.height=Math.max(0,fullHeight-st)+'px';
+  top.style.maxHeight='none';
+  top.style.paddingTop=(11*(1-progress))+'px';
+  top.style.paddingBottom=(9*(1-progress))+'px';
+  top.style.opacity=String(Math.min(1,(1-progress)*2));
+  top.style.pointerEvents=progress>=1?'none':'';
+}
+nst content=document.getElementById('content');
+  const top=document.querySelector('.top');
+  if(!content||!top)return;
+  top.dataset.mobileFullHeight=String(top.getBoundingClientRect().height);
   top.classList.add('mobileScrollCollapsing');
   const schedule=()=>{
     if(mobileHeaderRaf)return;
