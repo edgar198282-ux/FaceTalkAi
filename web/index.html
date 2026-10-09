@@ -14698,6 +14698,10 @@ body.nativeTv :is(#cinemaToggleBtn,#tvSettingsBtn,#tvTopSearchBtn):is(:focus,:fo
   outline:none!important;
   border-color:transparent!important;
 }
+<style id="abaj-mobile-sticky-neon-v1">
+body:not(.nativeTv) .abajTouchSelected{position:relative;outline:none!important}
+body:not(.nativeTv) .abajTouchSelected:not(.cinemaPosterCard)::after{content:''!important;position:absolute;inset:-3px;border:3px solid transparent;border-radius:inherit;background:conic-gradient(from var(--abaj-neon-angle,0deg),#ff4fa3,#ffd84f,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box;-webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:5;opacity:1!important;animation:abajNeonRotate 2.16s linear infinite!important}
+</style>
 <style id="abaj-mobile-universal-touch-v1">
 body:not(.nativeTv) .abajTouchNeon{position:fixed;pointer-events:none;z-index:2147482000;box-sizing:border-box;border:3px solid transparent;background:conic-gradient(#ff4fa3,#ffd84f,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box;-webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:abajTouchNeonPulse .4s ease-out both}
 @keyframes abajTouchNeonPulse{0%{opacity:0;filter:brightness(1.5)}20%{opacity:1}70%{opacity:1}100%{opacity:0}}
@@ -14736,6 +14740,8 @@ body:not(.nativeTv) .cinemaPosterCard[data-cinema-selected="1"] :is(.cinemaPoste
     if(!target||target.closest('[disabled],[aria-disabled="true"]'))return;
     const r=target.getBoundingClientRect();
     if(r.width<8||r.height<8||r.width>innerWidth*.98||r.height>innerHeight*.85)return;
+    document.querySelectorAll('.abajTouchSelected').forEach(el=>el.classList.remove('abajTouchSelected'));
+    target.classList.add('abajTouchSelected');
     document.querySelectorAll('.abajTouchNeon').forEach(el=>el.remove());
     const overlay=document.createElement('div');
     overlay.className='abajTouchNeon';
