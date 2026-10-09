@@ -14801,6 +14801,31 @@ body:not(.nativeTv) #playerView .playerCircleCtrl .playerCtrlIcon.abajTouchSelec
   content:none!important;display:none!important;
 }
 </style>
+<style id="abaj-player-neon-focus-fix">
+body.nativeTv .playerView :is(button.ctrl,button.playerCircleCtrl,button.playerUtilityCtrl):is(:focus,:focus-visible,[data-tv-focused="1"])::before,
+body.nativeTv .playerView :is(button.ctrl,button.playerCircleCtrl,button.playerUtilityCtrl):is(:focus,:focus-visible,[data-tv-focused="1"])::after{
+  content:none!important;display:none!important;
+}
+body.nativeTv .playerView :is(button.ctrl,button.playerCircleCtrl,button.playerUtilityCtrl):is(:focus,:focus-visible,[data-tv-focused="1"]) .playerCtrlIcon::before{
+  content:none!important;display:none!important;
+}
+body.nativeTv .playerView :is(button.ctrl,button.playerCircleCtrl,button.playerUtilityCtrl):is(:focus,:focus-visible,[data-tv-focused="1"]) .playerCtrlIcon{
+  position:relative!important;border-radius:50%!important;outline:none!important;box-shadow:none!important;
+}
+body.nativeTv .playerView :is(button.ctrl,button.playerCircleCtrl,button.playerUtilityCtrl):is(:focus,:focus-visible,[data-tv-focused="1"]) .playerCtrlIcon::after{
+  content:''!important;display:block!important;position:absolute!important;inset:-3px!important;
+  border:2.1px solid transparent!important;border-radius:50%!important;
+  background:conic-gradient(from var(--abaj-neon-angle),#ff4fa3,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box!important;
+  -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0)!important;
+  -webkit-mask-composite:xor!important;mask-composite:exclude!important;
+  pointer-events:none!important;animation:abajNeonRotate 2.16s linear infinite!important;
+}
+body:not(.nativeTv) #content .channel.abajLastChannel::after{
+  content:''!important;display:block!important;opacity:1!important;border-radius:inherit!important;
+}
+body:not(.nativeTv) #content .channel.abajLastChannel.abajTouchSelected::after{opacity:1!important}
+body:not(.nativeTv) .abajTouchNeon{animation-duration:.25s!important}
+</style>
 <script src="/static/free-film.js"></script><script>
 (function(){
   if(document.body.classList.contains('nativeTv'))return;
@@ -14814,6 +14839,7 @@ body:not(.nativeTv) #playerView .playerCircleCtrl .playerCtrlIcon.abajTouchSelec
     if(r.width<8||r.height<8||r.width>innerWidth*.98||r.height>innerHeight*.85)return;
     document.querySelectorAll('.abajTouchSelected').forEach(el=>el.classList.remove('abajTouchSelected'));
     highlight.classList.add('abajTouchSelected');
+    setTimeout(()=>highlight.classList.remove('abajTouchSelected'),250);
     document.querySelectorAll('.abajTouchNeon').forEach(el=>el.remove());
     const overlay=document.createElement('div');
     overlay.className='abajTouchNeon';
