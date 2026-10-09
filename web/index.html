@@ -14825,7 +14825,7 @@ body:not(.nativeTv) #content .channel.abajLastChannel::after{
   content:''!important;display:block!important;opacity:1!important;border-radius:inherit!important;
 }
 body:not(.nativeTv) #content .channel.abajLastChannel.abajTouchSelected::after{opacity:1!important}
-body:not(.nativeTv) .abajTouchNeon{animation-duration:.25s!important}
+body:not(.nativeTv) .abajTouchNeon{animation-duration:.1s!important}
 </style>
 <style id="abaj-neon-final-mobile-tv">
 body:not(.nativeTv) #playerView .playerCircleCtrl .playerCtrlIcon.abajTouchSelected::after{border-radius:50%!important}
@@ -14875,7 +14875,7 @@ body:not(.nativeTv) #list .channel[data-last-played="1"]::after{
     if(r.width<8||r.height<8||r.width>innerWidth*.98||r.height>innerHeight*.85)return;
     document.querySelectorAll('.abajTouchSelected').forEach(el=>el.classList.remove('abajTouchSelected'));
     highlight.classList.add('abajTouchSelected');
-    setTimeout(()=>highlight.classList.remove('abajTouchSelected'),250);
+    setTimeout(()=>highlight.classList.remove('abajTouchSelected'),100);
     if(circle)return;
     document.querySelectorAll('.abajTouchNeon').forEach(el=>el.remove());
     const overlay=document.createElement('div');
@@ -14883,7 +14883,7 @@ body:not(.nativeTv) #list .channel[data-last-played="1"]::after{
     const br=circle?'50%':getComputedStyle(highlight).borderRadius;
     overlay.style.cssText='left:'+Math.max(0,r.left-2)+'px;top:'+Math.max(0,r.top-2)+'px;width:'+r.width+'px;height:'+r.height+'px;border-radius:'+(br&&br!=='0px'?br:'12px');
     document.body.appendChild(overlay);
-    setTimeout(()=>overlay.remove(),250);
+    setTimeout(()=>overlay.remove(),100);
   },{capture:true,passive:true});
 })();
 </script>
