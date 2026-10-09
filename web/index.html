@@ -14826,6 +14826,16 @@ body:not(.nativeTv) #content .channel.abajLastChannel::after{
 body:not(.nativeTv) #content .channel.abajLastChannel.abajTouchSelected::after{opacity:1!important}
 body:not(.nativeTv) .abajTouchNeon{animation-duration:.25s!important}
 </style>
+<style id="abaj-neon-final-mobile-tv">
+body:not(.nativeTv) #playerView .playerCircleCtrl .playerCtrlIcon.abajTouchSelected::after{border-radius:50%!important}
+body:not(.nativeTv) #playerView .playerCircleCtrl:is(:focus,:focus-visible,:active)::after,
+body:not(.nativeTv) #playerView .playerCircleCtrl:is(:focus,:focus-visible,:active)::before{content:none!important;display:none!important}
+body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-focused="1"])::after,
+body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-focused="1"])::before{content:none!important;display:none!important}
+body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-focused="1"]) .playerCtrlIcon::after{border-radius:50%!important}
+body:not(.nativeTv) #content .channel.abajLastChannel{outline:none!important;position:relative!important;isolation:isolate!important}
+body:not(.nativeTv) #content .channel.abajLastChannel::after{content:''!important;display:block!important;opacity:1!important;visibility:visible!important;z-index:6!important}
+</style>
 <script src="/static/free-film.js"></script><script>
 (function(){
   if(document.body.classList.contains('nativeTv'))return;
@@ -14843,7 +14853,7 @@ body:not(.nativeTv) .abajTouchNeon{animation-duration:.25s!important}
     document.querySelectorAll('.abajTouchNeon').forEach(el=>el.remove());
     const overlay=document.createElement('div');
     overlay.className='abajTouchNeon';
-    const br=getComputedStyle(target).borderRadius;
+    const br=circle?'50%':getComputedStyle(highlight).borderRadius;
     overlay.style.cssText='left:'+Math.max(0,r.left-2)+'px;top:'+Math.max(0,r.top-2)+'px;width:'+r.width+'px;height:'+r.height+'px;border-radius:'+(br&&br!=='0px'?br:'12px');
     document.body.appendChild(overlay);
     setTimeout(()=>overlay.remove(),250);
