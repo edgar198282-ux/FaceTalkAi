@@ -7849,6 +7849,11 @@ function closePlayer(){
       setTimeout(()=>renderCinemaDetail(cinemaDetailMovie),80);
     }
   }
+  if(!nativeTv&&closingId&&!closingCinemaExternal){
+    document.querySelectorAll('#content .channel.abajLastChannel').forEach(el=>el.classList.remove('abajLastChannel'));
+    const last=[...document.querySelectorAll('#content .channel')].find(el=>el.dataset.id===String(closingId));
+    if(last)last.classList.add('abajLastChannel');
+  }
   if(nativeTv&&closingId){
     const cards=[...document.querySelectorAll('.channel')];
     const idx=cards.findIndex(x=>x.dataset.id===closingId);
@@ -14709,6 +14714,13 @@ body:not(.nativeTv) .cinemaShellBar .abajTouchSelected::after{content:none!impor
 body:not(.nativeTv) #cinemaDetailHero{border-bottom:0!important;box-shadow:none!important}
 body:not(.nativeTv) #cinemaDetailHero .abajTouchNeon{display:none!important}
 </style>
+<style id="abaj-mobile-iptv-focus-fix-v1">
+body:not(.nativeTv) #playerView .playerCircleCtrl:is(:focus,:focus-visible)::after{content:none!important}
+body:not(.nativeTv) #playerView .playerCircleCtrl .playerCtrlIcon.abajTouchSelected{position:relative;border-radius:50%!important}
+body:not(.nativeTv) #playerView .playerCircleCtrl .playerCtrlIcon.abajTouchSelected::after{border-radius:50%!important;inset:-3px!important}
+body:not(.nativeTv) #content .channel.abajLastChannel{position:relative;isolation:isolate;outline:none!important}
+body:not(.nativeTv) #content .channel.abajLastChannel::after{content:''!important;position:absolute;inset:-3px;border:2.1px solid transparent;border-radius:inherit;background:conic-gradient(from var(--abaj-neon-angle,0deg),#ff4fa3,#ffd84f,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box;-webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:5;animation:abajNeonRotate 2.16s linear infinite!important}
+</style>
 <style id="abaj-mobile-sticky-neon-v1">
 body:not(.nativeTv) .abajTouchSelected{position:relative;outline:none!important}
 body:not(.nativeTv) .abajTouchSelected:not(.cinemaPosterCard)::after{content:''!important;position:absolute;inset:-3px;border:2.1px solid transparent;border-radius:inherit;background:conic-gradient(from var(--abaj-neon-angle,0deg),#ff4fa3,#ffd84f,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box;-webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:5;opacity:1!important;animation:abajNeonRotate 2.16s linear infinite!important}
@@ -14750,10 +14762,12 @@ body:not(.nativeTv) .cinemaPosterCard[data-cinema-selected="1"] :is(.cinemaPoste
     const target=event.target instanceof Element?event.target.closest('button,a,[role="button"],.channel,.cinemaPosterCard,.cinemaSimilarCard,.cinemaCastCard,.cinemaMenuItem,.cinemaCategoryItem,.cinemaKpFilterBtn,.cinemaBookmarkFolder,.cinemaEpisodeRow,.cinemaSeasonRow,.cinemaTypeCard,.cinemaDetailAction,.cinemaShellDrop,.iconBtn,.flagBtn,.groupBtn,.categoryBtn,select,input[type="checkbox"],input[type="radio"]'):null;
     if(!target||target.closest('[disabled],[aria-disabled="true"]'))return;
     if(target.closest('.cinemaShellBar'))return;
-    const r=target.getBoundingClientRect();
+    const circle=target.closest('#playerView .playerCircleCtrl');
+    const highlight=circle?(circle.querySelector('.playerCtrlIcon')||circle):target;
+    const r=highlight.getBoundingClientRect();
     if(r.width<8||r.height<8||r.width>innerWidth*.98||r.height>innerHeight*.85)return;
     document.querySelectorAll('.abajTouchSelected').forEach(el=>el.classList.remove('abajTouchSelected'));
-    target.classList.add('abajTouchSelected');
+    highlight.classList.add('abajTouchSelected');
     document.querySelectorAll('.abajTouchNeon').forEach(el=>el.remove());
     const overlay=document.createElement('div');
     overlay.className='abajTouchNeon';
