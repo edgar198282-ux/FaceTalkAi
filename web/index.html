@@ -14698,6 +14698,17 @@ body.nativeTv :is(#cinemaToggleBtn,#tvSettingsBtn,#tvTopSearchBtn):is(:focus,:fo
   outline:none!important;
   border-color:transparent!important;
 }
+<style id="abaj-mobile-neon-exclusions-v1">
+body:not(.nativeTv) .cinemaShellBar,
+body:not(.nativeTv) .cinemaDetailHero,
+body:not(.nativeTv) .cinemaDetailBody{outline:none!important;outline-offset:0!important}
+body:not(.nativeTv) .cinemaShellBar::after,
+body:not(.nativeTv) .cinemaDetailHero.abajTouchSelected::after,
+body:not(.nativeTv) .cinemaDetailBody.abajTouchSelected::after{animation:none!important;border:0!important;box-shadow:none!important}
+body:not(.nativeTv) .cinemaShellBar .abajTouchSelected::after{content:none!important}
+body:not(.nativeTv) #cinemaDetailHero{border-bottom:0!important;box-shadow:none!important}
+body:not(.nativeTv) #cinemaDetailHero .abajTouchNeon{display:none!important}
+</style>
 <style id="abaj-mobile-sticky-neon-v1">
 body:not(.nativeTv) .abajTouchSelected{position:relative;outline:none!important}
 body:not(.nativeTv) .abajTouchSelected:not(.cinemaPosterCard)::after{content:''!important;position:absolute;inset:-3px;border:3px solid transparent;border-radius:inherit;background:conic-gradient(from var(--abaj-neon-angle,0deg),#ff4fa3,#ffd84f,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box;-webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:5;opacity:1!important;animation:abajNeonRotate 2.16s linear infinite!important}
@@ -14738,6 +14749,7 @@ body:not(.nativeTv) .cinemaPosterCard[data-cinema-selected="1"] :is(.cinemaPoste
     if(event.pointerType==='mouse'&&event.button!==0)return;
     const target=event.target instanceof Element?event.target.closest('button,a,[role="button"],.channel,.cinemaPosterCard,.cinemaSimilarCard,.cinemaCastCard,.cinemaMenuItem,.cinemaCategoryItem,.cinemaKpFilterBtn,.cinemaBookmarkFolder,.cinemaEpisodeRow,.cinemaSeasonRow,.cinemaTypeCard,.cinemaDetailAction,.cinemaShellDrop,.iconBtn,.flagBtn,.groupBtn,.categoryBtn,select,input[type="checkbox"],input[type="radio"]'):null;
     if(!target||target.closest('[disabled],[aria-disabled="true"]'))return;
+    if(target.closest('.cinemaShellBar'))return;
     const r=target.getBoundingClientRect();
     if(r.width<8||r.height<8||r.width>innerWidth*.98||r.height>innerHeight*.85)return;
     document.querySelectorAll('.abajTouchSelected').forEach(el=>el.classList.remove('abajTouchSelected'));
