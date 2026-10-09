@@ -14868,6 +14868,25 @@ body:not(.nativeTv) #list .channel[data-last-played="1"]::after{
   animation:abajNeonRotate 2.16s linear infinite!important;
 }
 </style>
+<style id="abaj-single-neon-button-focus">
+body:not(.nativeTv) .abajTouchSelected:not(.channel):not(.playerCtrlIcon)::after{content:none!important;display:none!important}
+body:not(.nativeTv) .abajTouchSelected:not(.channel):not(.playerCtrlIcon){outline:none!important;box-shadow:none!important}
+body.nativeTv :is(.chip,.cat,.search,.select,.cinemaTvQuickBtn,#tvSettingsBtn,#tvTopSearchBtn):is(:focus,:focus-visible,.focused){
+  outline:none!important;border-color:transparent!important;box-shadow:none!important;
+}
+body.nativeTv :is(.chip,.cat,.cinemaTvQuickBtn,#tvSettingsBtn,#tvTopSearchBtn):is(:focus,:focus-visible,.focused)::before{
+  content:none!important;display:none!important;
+}
+body.nativeTv .playerView :is(.ctrl,.playerCircleCtrl,.playerUtilityCtrl):is(:focus,:focus-visible,[data-tv-focused="1"]){
+  outline:none!important;box-shadow:none!important;border-color:transparent!important;
+}
+body.nativeTv .playerView :is(.ctrl,.playerCircleCtrl,.playerUtilityCtrl):is(:focus,:focus-visible,[data-tv-focused="1"])::after{
+  content:none!important;display:none!important;
+}
+body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-focused="1"]) .playerCtrlIcon{
+  box-shadow:none!important;border-color:transparent!important;
+}
+</style>
 <script src="/static/free-film.js"></script><script>
 (function(){
   if(document.body.classList.contains('nativeTv'))return;
