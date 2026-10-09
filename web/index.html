@@ -10349,8 +10349,15 @@ function renderCinemaCatalog(items,options={}){
       warm();
       document.querySelectorAll('.cinemaPosterCard').forEach(x=>{if(x.dataset)x.dataset.cinemaSelected='0'});
       card.dataset.cinemaSelected='1';
-      if(String(item.source||'').toUpperCase()==='KINOPUB_COLLECTION'||String(item.kind||'')==='collection')openKinoPubCollection(item);
-      else openCinemaMovie(item);
+      const open=()=>{
+        if(String(item.source||'').toUpperCase()==='KINOPUB_COLLECTION'||String(item.kind||'')==='collection')openKinoPubCollection(item);
+        else openCinemaMovie(item);
+      };
+      if(nativeTv){open();return}
+      card.classList.remove('abajMobilePosterTap');
+      void card.offsetWidth;
+      card.classList.add('abajMobilePosterTap');
+      setTimeout(open,180);
     };
     grid.appendChild(card);
   });
@@ -14690,6 +14697,14 @@ body.nativeTv :is(#cinemaToggleBtn,#tvSettingsBtn,#tvTopSearchBtn):is(:focus,:fo
   outline:none!important;
   border-color:transparent!important;
 }
+<style id="abaj-mobile-poster-tap-v1">
+body:not(.nativeTv) .cinemaPosterCard:is(:focus,:focus-visible){outline:none!important;box-shadow:none!important;transform:none!important}
+body:not(.nativeTv) .cinemaPosterCard:is(:focus,:focus-visible):not(.abajMobilePosterTap)::after{content:none!important;animation:none!important}
+body:not(.nativeTv) .cinemaPosterCard:is(:focus,:focus-visible) :is(.cinemaPosterImg,.cinemaPosterFallback){box-shadow:0 6px 18px rgba(0,0,0,.24)!important}
+body:not(.nativeTv) .cinemaPosterCard.abajMobilePosterTap{position:relative;isolation:isolate;outline:none!important;box-shadow:none!important}
+body:not(.nativeTv) .cinemaPosterCard.abajMobilePosterTap::after{content:''!important;position:absolute;inset:-3px;border:4px solid transparent;border-radius:14px;background:conic-gradient(#ff4fa3,#ffd84f,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box;-webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:5;animation:abajMobilePosterFlash .35s ease-out both!important}
+@keyframes abajMobilePosterFlash{0%{opacity:0;transform:scale(.985)}22%{opacity:1;transform:scale(1)}70%{opacity:1}100%{opacity:0}}
+</style>
 <style id="abaj-cinema-pageflip-v2">
 #abajCinemaPageFlip{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;perspective:1200px}
 #abajCinemaPageFlip .abajFlipLeaf{position:absolute;inset:0;overflow:hidden;background:#07131f;transform-origin:left center;backface-visibility:hidden;animation:abajTurnPage 3s cubic-bezier(.22,.68,.22,1) both;box-shadow:14px 0 38px rgba(0,0,0,.5)}
