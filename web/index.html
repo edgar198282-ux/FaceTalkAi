@@ -7850,9 +7850,21 @@ function closePlayer(){
     }
   }
   if(!nativeTv&&closingId&&!closingCinemaExternal){
-    document.querySelectorAll('#content .channel.abajLastChannel').forEach(el=>el.classList.remove('abajLastChannel'));
-    const last=[...document.querySelectorAll('#content .channel')].find(el=>el.dataset.id===String(closingId));
-    if(last)last.classList.add('abajLastChannel');
+    lastChannelId=String(closingId);
+    localStorage.setItem('iptv_last_channel',lastChannelId);
+    requestAnimationFrame(()=>{
+      const cards=document.querySelectorAll('#content .channel');
+      let last=null;
+      cards.forEach(el=>{
+        const selected=el.dataset.id===lastChannelId;
+        el.classList.toggle('abajLastChannel',selected);
+        if(selected)last=el;
+      });
+      if(last){
+        last.classList.remove('abajTouchSelected');
+        last.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+      }
+    });
   }
   if(nativeTv&&closingId){
     const cards=[...document.querySelectorAll('.channel')];
