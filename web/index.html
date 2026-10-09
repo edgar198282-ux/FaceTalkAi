@@ -14887,6 +14887,18 @@ body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-fo
   box-shadow:none!important;border-color:transparent!important;
 }
 </style>
+<style id="abaj-no-blue-selection-fill">
+body:not(.nativeTv) :is(.chip,.cat,.iconBtn,.groupBtn,.categoryBtn,.flagBtn,.cinemaTvQuickBtn,.cinemaShellBtn,.cinemaDetailAction,.cinemaMenuItem,.cinemaCategoryItem):is(:active,:focus,:focus-visible,.abajTouchSelected),
+body.nativeTv :is(.chip,.cat,.iconBtn,.groupBtn,.categoryBtn,.flagBtn,.cinemaTvQuickBtn,.cinemaShellBtn,.cinemaDetailAction,.cinemaMenuItem,.cinemaCategoryItem):is(:focus,:focus-visible,.focused){
+  background-color:transparent!important;
+  background-image:none!important;
+  -webkit-tap-highlight-color:transparent!important;
+}
+body:not(.nativeTv) :is(.chip,.cat,.iconBtn,.groupBtn,.categoryBtn,.flagBtn,.cinemaTvQuickBtn,.cinemaShellBtn,.cinemaDetailAction,.cinemaMenuItem,.cinemaCategoryItem):is(:active,:focus,:focus-visible,.abajTouchSelected){
+  outline:none!important;
+  box-shadow:none!important;
+}
+</style>
 <script src="/static/free-film.js"></script><script>
 (function(){
   if(document.body.classList.contains('nativeTv'))return;
