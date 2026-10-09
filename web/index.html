@@ -14793,8 +14793,7 @@ body:not(.nativeTv) #playerView .playerCircleCtrl .playerCtrlIcon.abajTouchSelec
 <script src="/static/free-film.js"></script><script>
 (function(){
   if(document.body.classList.contains('nativeTv'))return;
-  document.addEventListener('pointerdown',function(event){
-    if(event.pointerType==='mouse'&&event.button!==0)return;
+  document.addEventListener('click',function(event){
     const target=event.target instanceof Element?event.target.closest('button,a,[role="button"],.channel,.cinemaPosterCard,.cinemaSimilarCard,.cinemaCastCard,.cinemaMenuItem,.cinemaCategoryItem,.cinemaKpFilterBtn,.cinemaBookmarkFolder,.cinemaEpisodeRow,.cinemaSeasonRow,.cinemaTypeCard,.cinemaDetailAction,.cinemaShellDrop,.iconBtn,.flagBtn,.groupBtn,.categoryBtn,select,input[type="checkbox"],input[type="radio"]'):null;
     if(!target||target.closest('[disabled],[aria-disabled="true"]'))return;
     if(target.closest('.cinemaShellBar'))return;
