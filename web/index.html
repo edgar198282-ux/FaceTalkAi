@@ -5329,7 +5329,7 @@ function render(){
         :fallbackLogo;
       const channelNo=(channelNumberMap.get(ch.id)||1);
       const qualityLabel=channelQualityLabel(ch);
-      out+='<div class="channel'+(!nativeTv&&String(ch.id)===String(lastChannelId)?' abajLastChannel':'')+'" tabindex="'+(tvMode?'0':'-1')+'" data-id="'+esc(ch.id)+'" data-channel-no="'+channelNo+'" onclick="openPlayer(\''+ch.id+'\')">'+
+      out+='<div class="channel'+(!nativeTv&&String(ch.id)===String(lastChannelId)?' abajLastChannel':'')+'" tabindex="'+(tvMode?'0':'-1')+'" data-id="'+esc(ch.id)+'" data-last-played="'+(!nativeTv&&String(ch.id)===String(lastChannelId)?'1':'0')+'" data-channel-no="'+channelNo+'" onclick="openPlayer(\''+ch.id+'\')">'+
         '<div class="channelNumber">'+channelNo+'</div>'+
         (qualityLabel?'<div class="qualityBadge">'+qualityLabel+'</div>':'')+
         (nativeTv&&favs.has(ch.id)?'<div class="tvFavLeft" aria-hidden="true">♥</div>':'')+
@@ -7862,6 +7862,7 @@ function closePlayer(){
       });
       if(last){
         last.classList.remove('abajTouchSelected');
+        last.setAttribute('data-last-played','1');
         last.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
       }
     });
@@ -14835,6 +14836,31 @@ body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-fo
 body.nativeTv .playerView .playerCircleCtrl:is(:focus,:focus-visible,[data-tv-focused="1"]) .playerCtrlIcon::after{border-radius:50%!important}
 body:not(.nativeTv) #content .channel.abajLastChannel{outline:none!important;position:relative!important;isolation:isolate!important}
 body:not(.nativeTv) #content .channel.abajLastChannel::after{content:''!important;display:block!important;opacity:1!important;visibility:visible!important;z-index:6!important}
+</style>
+<style id="abaj-last-iptv-highlight-stable">
+body:not(.nativeTv) #list > .channel[data-last-played="1"],
+body:not(.nativeTv) #list .channel[data-last-played="1"]{
+  position:relative!important;
+  outline:2px solid #42d7ff!important;
+  outline-offset:2px!important;
+  box-shadow:0 0 7px rgba(66,215,255,.7)!important;
+}
+body:not(.nativeTv) #list .channel[data-last-played="1"]::after{
+  content:''!important;
+  display:block!important;
+  position:absolute!important;
+  inset:-3px!important;
+  border:2.1px solid transparent!important;
+  border-radius:inherit!important;
+  background:conic-gradient(from var(--abaj-neon-angle,0deg),#ff4fa3,#ffd84f,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box!important;
+  -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0)!important;
+  -webkit-mask-composite:xor!important;
+  mask-composite:exclude!important;
+  opacity:1!important;
+  pointer-events:none!important;
+  z-index:7!important;
+  animation:abajNeonRotate 2.16s linear infinite!important;
+}
 </style>
 <script src="/static/free-film.js"></script><script>
 (function(){
