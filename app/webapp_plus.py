@@ -1516,128 +1516,32 @@ async def api_cinema_bookmark_folders(request):
     uid = int(user['id'])
     if not await _cinema_access_allowed(uid):
         return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
-    token, folders = await _kinopub_bookmark_folders(uid)
-    if not token:
-        return web.json_response({'ok':False,'error':'kinopub_not_connected'}, status=409)
-
+    rows = await _cinema_library_read(uid, 'bookmarks')
     if request.method == 'GET':
         item_id = str(request.query.get('item_id') or '').strip()
-        visible = folders[:30]
-        results = []
-        if item_id and visible:
-            results = await asyncio.gather(*[
-                _kinopub_bookmark_folder_items(token, str(folder.get('id') or '')) for folder in visible
-            ], return_exceptions=True)
-        out = []
-        for index, folder in enumerate(visible):
-            row = dict(folder)
-            row['selected'] = False
-            if item_id and index < len(results) and isinstance(results[index], list):
-                row['selected'] = any(str(x.get('id') or '').strip() == item_id for x in results[index])
-            out.append(row)
-        return web.json_response({'ok':True,'folders':out}, headers={'Cache-Control':'no-store'})
-
+        selected = bool(item_id and any(str(row.get('id') or '') == item_id for row in rows))
+        return web.json_response({'ok':True,'folders':[{
+            'id':'personal','title':'Избранное','count':len(rows),
+            'selected':selected,'kind':'bookmark_folder',
+        }]}, headers={'Cache-Control':'no-store'})
     body = await request.json()
-    item = body.get('item') if isinstance(body,dict) else None
-    selected = body.get('folders') if isinstance(body,dict) else None
-    original = body.get('original') if isinstance(body,dict) else None
-    create_title = str(body.get('create_title') or '').strip() if isinstance(body,dict) else ''
-    if not isinstance(item,dict):
-        return web.json_response({'ok':False,'error':'bad_request'}, status=400)
-    item_id = str(item.get('id') or '').strip()
-    if not item_id or not item_id.isdigit():
+    item = body.get('item') if isinstance(body, dict) else None
+    if not isinstance(item, dict):
         return web.json_response({'ok':False,'error':'bad_item'}, status=400)
-
-    if create_title:
-        create_title = create_title[:80]
-        status, data = await _kinopub_api(
-            'POST',
-            '/v1/bookmarks/create',
-            params={'access_token': token},
-            form_body={'title': create_title},
-        )
-        if status >= 400 or (isinstance(data,dict) and data.get('error')):
-            status, data = await _kinopub_api(
-                'POST',
-                '/v1/bookmarks/create',
-                params={'access_token': token},
-                form_body={'name': create_title},
-            )
-        if status >= 400 or (isinstance(data,dict) and data.get('error')):
-            return web.json_response({'ok':False,'error':'kinopub_folder_create_failed'}, status=502)
-        _, fresh_folders = await _kinopub_bookmark_folders(uid)
-        created = next((x for x in fresh_folders if str(x.get('title') or '').strip().casefold() == create_title.casefold()), None)
-        if not created:
-            return web.json_response({'ok':False,'error':'kinopub_folder_not_found_after_create'}, status=502)
-        folder_id = str(created.get('id') or '').strip()
-        if not folder_id.isdigit():
-            return web.json_response({'ok':False,'error':'kinopub_folder_bad_id'}, status=502)
-        add_status, add_data = await _kinopub_api(
-            'POST',
-            '/v1/bookmarks/add',
-            params={'access_token': token},
-            form_body={'item': int(item_id), 'folder': int(folder_id)},
-        )
-        if add_status >= 400 or (isinstance(add_data,dict) and add_data.get('error')):
-            return web.json_response({'ok':False,'error':'kinopub_bookmark_update_failed'}, status=502)
-        rows = await _cinema_library_read(uid, 'bookmarks')
-        key = item_id
-        rows = [x for x in rows if (str(x.get('id') or '').strip() or str(x.get('title') or '').strip().casefold()) != key]
-        compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
-        compact['saved_at'] = int(time.time())
-        rows.insert(0, compact)
-        await _cinema_library_write(uid, 'bookmarks', rows[:300])
-        return web.json_response({'ok':True,'added':True,'created_folder':created}, headers={'Cache-Control':'no-store'})
-
-    if not isinstance(selected,list):
-        return web.json_response({'ok':False,'error':'bad_request'}, status=400)
-    selected_ids = {str(x).strip() for x in selected if str(x).strip()}
-    valid_ids = {str(x.get('id') or '').strip() for x in folders}
-    selected_ids &= valid_ids
-    original_ids = {str(x).strip() for x in original if str(x).strip()} if isinstance(original,list) else None
-    if original_ids is not None:
-        original_ids &= valid_ids
-    changed = 0
-    errors = []
-    for folder in folders[:30]:
-        folder_id = str(folder.get('id') or '').strip()
-        if not folder_id or not folder_id.isdigit():
-            continue
-        if original_ids is not None:
-            current = folder_id in original_ids
-        else:
-            current = False
-            try:
-                items = await _kinopub_bookmark_folder_items(token, folder_id)
-                current = any(str(x.get('id') or '').strip() == item_id for x in items)
-            except Exception:
-                pass
-        wanted = folder_id in selected_ids
-        if current == wanted:
-            continue
-        endpoint = '/v1/bookmarks/add' if wanted else '/v1/bookmarks/remove-item'
-        status, data = await _kinopub_api(
-            'POST',
-            endpoint,
-            params={'access_token': token},
-            form_body={'item': int(item_id), 'folder': int(folder_id)},
-        )
-        if status >= 400 or (isinstance(data,dict) and data.get('error')):
-            errors.append(folder_id)
-        else:
-            changed += 1
-    if errors:
-        return web.json_response({'ok':False,'error':'kinopub_bookmark_update_failed','folders':errors}, status=502)
-
-    rows = await _cinema_library_read(uid, 'bookmarks')
-    key = item_id
-    rows = [x for x in rows if (str(x.get('id') or '').strip() or str(x.get('title') or '').strip().casefold()) != key]
-    if selected_ids:
+    item_id = str(item.get('id') or '').strip()
+    title = str(item.get('title') or '').strip()
+    if not item_id and not title:
+        return web.json_response({'ok':False,'error':'bad_item'}, status=400)
+    key = item_id or title.casefold()
+    selected = body.get('folders') if isinstance(body.get('folders'), list) else []
+    enabled = 'personal' in [str(x) for x in selected]
+    rows = [row for row in rows if (str(row.get('id') or '').strip() or str(row.get('title') or '').strip().casefold()) != key]
+    if enabled:
         compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
         compact['saved_at'] = int(time.time())
         rows.insert(0, compact)
     await _cinema_library_write(uid, 'bookmarks', rows[:300])
-    return web.json_response({'ok':True,'added':bool(selected_ids),'selected':sorted(selected_ids),'changed':changed}, headers={'Cache-Control':'no-store'})
+    return web.json_response({'ok':True,'added':enabled,'selected':['personal'] if enabled else []}, headers={'Cache-Control':'no-store'})
 
 
 async def api_cinema_library_bookmark(request):
