@@ -2475,6 +2475,7 @@ public class MainActivity extends Activity {
                 if("facetalk".equals(scheme)&&"auth".equalsIgnoreCase(uri.getHost())){consumeAuthUri(uri);loadOrAuthorize();return true;}
                 if("facetalk".equals(scheme)&&"check-update".equalsIgnoreCase(uri.getHost())){if(!BuildConfig.PLAY_STORE_BUILD)checkForAppUpdate(true,true);return true;}
                 if(url.endsWith(".apk")||url.contains("/api/app-download")){if(!BuildConfig.PLAY_STORE_BUILD)downloadAndInstallApk(url);return true;}
+                if(("http".equals(scheme)||"https".equals(scheme))&&"/api/app-auth/telegram-start".equals(uri.getPath())){openExternal(uri);return true;}
                 if("tg".equals(scheme)||"t.me".equals(host)||"telegram.me".equals(host)){openExternal(uri);return true;}
                 if(!"http".equals(scheme)&&!"https".equals(scheme)){openExternal(uri);return true;} return false; }
             @Override public void onPageFinished(WebView view,String url){
