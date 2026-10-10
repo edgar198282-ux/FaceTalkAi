@@ -10063,17 +10063,24 @@ async function toggleCinemaBookmark(){
   const item=cinemaDetailMovie;
   if(!item||cinemaSource!=='kinopub')return;
   const btn=document.getElementById('cinemaBookmarkBtn');
-  if(!btn)return;
-
-  const alreadyAdded=btn.classList.contains('bookmarked');
+  if(!btn||btn.disabled)return;
+  const wasAdded=btn.classList.contains('bookmarked');
   btn.disabled=true;
-
-  if(alreadyAdded){
-    await removeCinemaBookmarkDirect(item,btn);
-    return;
+  try{
+    const r=await fetch('/api/cinema/library/bookmark',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',...authHeaders()},
+      body:JSON.stringify({item})
+    });
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    setCinemaBookmarkButtonState(!!data.added);
+    await refreshCinemaLibraryCounts();
+  }catch(e){
+    setCinemaBookmarkButtonState(wasAdded);
+  }finally{
+    btn.disabled=false;
   }
-
-  await openCinemaBookmarkPicker(item);
 }
 async function rememberCinemaWatch(item,media=null){
   if(!item||cinemaSource!=='kinopub')return;
