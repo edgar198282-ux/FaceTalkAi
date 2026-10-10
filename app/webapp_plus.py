@@ -1505,32 +1505,8 @@ async def api_cinema_library(request):
     section = str(request.query.get('section') or 'history').strip().lower()
     if section not in ('history','watching','bookmarks'):
         return web.json_response({'ok':False,'error':'bad_section'}, status=400)
+    # Bookmarks belong to the authenticated Telegram account, never to a shared KinoPub token.
     rows = await _cinema_library_read(uid, section)
-    if section == 'bookmarks':
-        try:
-            token, folders = await _kinopub_bookmark_folders(uid)
-            folder_id = str(request.query.get('folder') or '').strip()
-            flat = str(request.query.get('flat') or '').strip().lower() in ('1','true','yes')
-            if folder_id and token:
-                remote = await _kinopub_bookmark_folder_items(token, folder_id)
-                return web.json_response({'ok':True,'section':section,'folder':folder_id,'items':remote,'count':len(remote)}, headers={'Cache-Control':'no-store'})
-            if folders and not flat:
-                total = sum(int(x.get('count') or 0) for x in folders)
-                return web.json_response({'ok':True,'section':section,'folders':folders,'items':[],'count':total,'folder_count':len(folders)}, headers={'Cache-Control':'no-store'})
-            remote = await _kinopub_sync_bookmarks(uid)
-            if remote:
-                merged = []
-                seen = set()
-                for item in remote + rows:
-                    key = str(item.get('id') or '').strip() or str(item.get('title') or '').strip().casefold()
-                    if not key or key in seen:
-                        continue
-                    seen.add(key)
-                    merged.append(item)
-                rows = merged[:300]
-                await _cinema_library_write(uid, 'bookmarks', rows)
-        except Exception as exc:
-            logging.warning('KINOPUB_BOOKMARK_SYNC failed uid=%s error=%s', uid, type(exc).__name__)
     return web.json_response({'ok':True,'section':section,'items':rows,'count':len(rows)}, headers={'Cache-Control':'no-store'})
 
 async def api_cinema_bookmark_folders(request):
