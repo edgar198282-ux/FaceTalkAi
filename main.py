@@ -37,7 +37,7 @@ def _loop_exception_handler(loop, context):
 
 async def _heartbeat():
     while True:
-        await asyncio.sleep(60)
+        await asyncio.sleep(2)
         rss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         logging.info(
             "PROCESS_DIAGNOSTIC alive pid=%s uptime_s=%d peak_rss_mb=%.1f",
@@ -48,6 +48,7 @@ async def _heartbeat():
 async def _run_with_diagnostics():
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(_loop_exception_handler)
+    logging.warning("PROCESS_DIAGNOSTIC boot pid=%s", os.getpid())
     heartbeat = asyncio.create_task(_heartbeat())
     try:
         await facetalk_app.main()
