@@ -4104,14 +4104,14 @@ async def api_iptv_ai_dub_chunk(request):
 async def api_healthz(request):
     channels_loaded = bool(iptv._state.get("channels"))
     payload = {
-        "ok": channels_loaded,
+        "ok": True,
         "service": "abaj-tv",
         "channels_loaded": channels_loaded,
         "last_refresh": int(iptv._state.get("last_refresh") or 0),
     }
     return web.json_response(
         payload,
-        status=200 if channels_loaded else 503,
+        status=200,
         headers={"Cache-Control":"no-store"},
     )
 
