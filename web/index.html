@@ -7425,6 +7425,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
         }
       }
 
+      if(String(ch.id||'').startsWith('cinema:external:') && data.type===Hls.ErrorTypes.NETWORK_ERROR && retryCinemaPlayback('direct_hls_network'))return;
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR && !nativeTv && !forceProxy && !ch.personal && !String(ch.id||'').startsWith('cinema:external:')){
         clearFirstFrameTimer();
         err.textContent='Проверяю совместимый поток…';
@@ -13270,6 +13271,7 @@ async function resolveKinoPubInternalStream(item,media=null){
     if(id)params.set('id',id);
     if(mid)params.set('mid',mid);
     params.set('format','hls4');
+    params.set('direct','1');
     const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return null;
     const d=await r.json();
@@ -13314,7 +13316,7 @@ async function watchCinemaDetail(){
         String(item.title||'Кино')+(mediaLabel?' · '+mediaLabel:''),
         'KINOPUB',
         resolved.headers||{},
-        [],
+        Array.isArray(resolved.fallbacks)?resolved.fallbacks:[],
         {
           item_id:String(item.id||''),
           media_id:kinoMediaId(media),
