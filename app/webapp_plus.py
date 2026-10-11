@@ -782,12 +782,16 @@ def _kinopub_direct_stream_response(request, uid, url):
         ','.join(diag.get('query_keys') or []), diag.get('path')
     )
     proxied = _kinopub_proxy_url(request, uid, direct)
+    # Deliver video directly from KinoPub when the client permits it.
+    # Keep the existing proxy as an explicit fallback for CORS/ISP problems.
+    use_direct = str(request.query.get('direct') or '').strip() == '1'
     return web.json_response({
         'ok': True,
-        'url': proxied,
+        'url': direct if use_direct else proxied,
+        'fallbacks': [{'url': proxied, 'format': 'hls4'}] if use_direct else [],
         'provider': 'KINOPUB',
-        'direct': False,
-        'proxied': True,
+        'direct': use_direct,
+        'proxied': not use_direct,
     }, headers={'Cache-Control':'no-store'})
 
 
