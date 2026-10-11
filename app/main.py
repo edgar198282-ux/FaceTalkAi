@@ -352,6 +352,20 @@ async def _confirm_tv_pair_code(m: Message, code: str, lang: str) -> bool:
     return True
 
 
+@dp.message(F.text == "/status")
+async def bot_status_handler(m: Message):
+    if not m.from_user or m.chat.type != "private":
+        return
+    is_admin = bool(ADMIN_ID and int(m.from_user.id) == int(ADMIN_ID))
+    app_ready = bool(MINIAPP_URL.startswith("https://"))
+    await _answer(m,
+        f"Telegram ID: {m.from_user.id}\\n"
+        f"Администратор: {'да' if is_admin else 'нет'}\\n"
+        f"Mini App: {'настроен' if app_ready else 'не настроен'}",
+        reply_markup=miniapp_keyboard(m.from_user.id, await get_user_language(m.from_user.id) or 'ru')
+    )
+
+
 @dp.message(CommandStart())
 async def start_handler(m: Message):
     await _track_incoming(m)
