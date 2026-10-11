@@ -12,13 +12,13 @@ on:
           - stable
           - beta
   push:
-    branches: [ "main" ]
+    branches: [ "abajtv-new-railway" ]
     paths:
       - "android/**"
       - ".github/workflows/build-android-apk.yml"
 
 concurrency:
-  group: facetalk-android-main
+  group: facetalk-android-new-railway
   cancel-in-progress: true
 
 jobs:
@@ -90,11 +90,11 @@ jobs:
       - name: Build signed release APK
         working-directory: android
         env:
-          FACETALK_WEB_APP_URL: ${{ vars.FACETALK_WEB_APP_URL }}
+          FACETALK_WEB_APP_URL: https://facetalkai-production-9387.up.railway.app
         shell: bash
         run: |
           set -euo pipefail
-          WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
+          WEB_APP_URL="https://facetalkai-production-9387.up.railway.app"
           case "$WEB_APP_URL" in https://*) ;; *) echo "::error::FACETALK_WEB_APP_URL must start with https://"; exit 1 ;; esac
           gradle :app:assembleRelease -PWEB_APP_URL="$WEB_APP_URL" -PAPP_VERSION_NAME="${{ steps.version.outputs.name }}" -PAPP_VERSION_CODE="${{ steps.version.outputs.code }}"
 
@@ -128,7 +128,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
+          WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production-9387.up.railway.app}"
           gradle :app:assembleRelease \
             -PWEB_APP_URL="$WEB_APP_URL" \
             -PAPP_ID="ai.abaj.tv" \
@@ -207,7 +207,7 @@ jobs:
             echo "::error::Set FACETALK_APK_DEPLOY_TOKEN or INTERNAL_API_SECRET in GitHub Actions secrets"
             exit 1
           fi
-          WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
+          WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production-9387.up.railway.app}"
           # Stable OTA must always publish the standard phone APK. The build output
           # below is overwritten later by the TV-compat build, so use the preserved
           # standard artifact from /tmp instead of app-release.apk.
@@ -229,7 +229,7 @@ jobs:
           FACETALK_WEB_APP_URL: ${{ vars.FACETALK_WEB_APP_URL }}
         run: |
           set -euo pipefail
-          WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production.up.railway.app}"
+          WEB_APP_URL="${FACETALK_WEB_APP_URL:-https://facetalkai-production-9387.up.railway.app}"
           EXPECTED_CODE="${{ steps.version.outputs.code }}"
           CHANNEL="$RELEASE_CHANNEL"
           for attempt in $(seq 1 18); do
