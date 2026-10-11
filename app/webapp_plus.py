@@ -1523,7 +1523,7 @@ async def api_cinema_library(request):
     folders = [{'id':'personal','title':'Моё избранное ABAJ TV',
                 'count':len(rows),'kind':'bookmark_folder','source':'ABAJ'}]
     for fid, data in custom.items():
-        if isinstance(data,dict):
+        if isinstance(data,dict) and not fid.startswith('kp:'):
             folders.append({'id':fid,'title':str(data.get('title') or 'Папка'),
                             'count':len(data.get('items') or []),'kind':'bookmark_folder','source':'ABAJ'})
     kp_token = None
@@ -1537,11 +1537,16 @@ async def api_cinema_library(request):
     if folder_id:
         if folder_id == 'personal':
             selected = rows
-        elif folder_id in custom:
+        elif folder_id in custom and not folder_id.startswith('kp:'):
             selected = custom[folder_id].get('items') or []
         elif has_personal_kp and kp_token and any(f['id'] == folder_id and f.get('source') == 'KINOPUB' for f in folders):
             try:
                 selected = await _kinopub_bookmark_folder_items(kp_token, folder_id)
+                overlay = custom.get('kp:' + folder_id) or {}
+                seen = {str(x.get('id') or '').strip() for x in selected}
+                for saved in overlay.get('items') or []:
+                    if isinstance(saved,dict) and str(saved.get('id') or '').strip() not in seen:
+                        selected.insert(0,saved)
             except Exception:
                 logging.exception('KinoPub bookmark folder loading failed')
                 return web.json_response({'ok':False,'error':'folder_unavailable'}, status=502)
@@ -1578,8 +1583,22 @@ async def api_cinema_bookmark_folders(request):
         folders = [{'id':'personal','title':'Моё избранное ABAJ TV','count':len(rows),
                     'selected':bool(item_id and any(item_key(x) == item_id for x in rows)),
                     'kind':'bookmark_folder'}]
+        personal_tokens = await _kinopub_tokens(uid)
+        if personal_tokens.get('access_token') or personal_tokens.get('refresh_token'):
+            try:
+                _, kp_folders = await _kinopub_bookmark_folders(uid)
+                for folder in kp_folders:
+                    fid = 'kp:' + str(folder['id'])
+                    overlay = custom.get(fid) or {}
+                    local_items = overlay.get('items') if isinstance(overlay.get('items'),list) else []
+                    folders.append({'id':fid,'title':folder['title'],
+                                    'count':max(0,int(folder.get('count') or 0))+len(local_items),
+                                    'selected':bool(item_id and any(item_key(x) == item_id for x in local_items)),
+                                    'kind':'bookmark_folder'})
+            except Exception:
+                logging.exception('KinoPub bookmark folder picker failed')
         for fid, data in custom.items():
-            if not isinstance(data,dict):
+            if not isinstance(data,dict) or fid.startswith('kp:'):
                 continue
             items = data.get('items') if isinstance(data.get('items'),list) else []
             folders.append({'id':fid,'title':str(data.get('title') or 'Папка'),
@@ -1600,6 +1619,18 @@ async def api_cinema_bookmark_folders(request):
         new_folder = 'local:' + secrets.token_hex(8)
         custom[new_folder] = {'title':title,'items':[]}
         selected.append(new_folder)
+    personal_tokens = await _kinopub_tokens(uid)
+    if personal_tokens.get('access_token') or personal_tokens.get('refresh_token'):
+        kp_selected = [fid for fid in selected if fid.startswith('kp:')]
+        if kp_selected:
+            _, available_folders = await _kinopub_bookmark_folders(uid)
+            allowed = {'kp:' + str(folder['id']):folder for folder in available_folders}
+            selected = [fid for fid in selected if not fid.startswith('kp:') or fid in allowed]
+            for fid in kp_selected:
+                if fid in allowed and fid not in custom:
+                    custom[fid] = {'title':str(allowed[fid]['title']),'items':[]}
+    else:
+        selected = [fid for fid in selected if not fid.startswith('kp:')]
     compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
     compact['saved_at'] = int(time.time())
     rows = [x for x in rows if item_key(x) != key]
