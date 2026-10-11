@@ -1506,20 +1506,40 @@ async def api_cinema_library(request):
     if section not in ('history','watching','bookmarks'):
         return web.json_response({'ok':False,'error':'bad_section'}, status=400)
     rows = await _cinema_library_read(uid, section)
-    if section == 'bookmarks':
-        personal_tokens = await _kinopub_tokens(uid)
-        if personal_tokens.get('access_token') or personal_tokens.get('refresh_token'):
+    if section != 'bookmarks':
+        return web.json_response({'ok':True,'section':section,'items':rows,'count':len(rows)}, headers={'Cache-Control':'no-store'})
+
+    # Never expose the owner/admin KinoPub bookmark folders to users of a
+    # shared connection. Only accounts with their own saved credentials sync.
+    personal_tokens = await _kinopub_tokens(uid)
+    has_personal_kp = bool(personal_tokens.get('access_token') or personal_tokens.get('refresh_token'))
+    folder_id = str(request.query.get('folder') or '').strip()
+    folders = [{'id':'personal','title':'Моё избранное ABAJ TV',
+                'count':len(rows),'kind':'bookmark_folder','source':'ABAJ'}]
+    kp_token = None
+    if has_personal_kp:
+        try:
+            kp_token, kp_folders = await _kinopub_bookmark_folders(uid)
+            folders.extend(kp_folders)
+        except Exception:
+            logging.exception('KinoPub personal bookmark folder listing failed')
+
+    if folder_id:
+        if folder_id == 'personal':
+            selected = rows
+        elif has_personal_kp and kp_token and any(f['id'] == folder_id and f.get('source') == 'KINOPUB' for f in folders):
             try:
-                upstream = await _kinopub_sync_bookmarks(uid)
-                seen = {str(row.get('id') or '').strip() or str(row.get('title') or '').strip().casefold() for row in rows}
-                for item in upstream:
-                    key = str(item.get('id') or '').strip() or str(item.get('title') or '').strip().casefold()
-                    if key and key not in seen:
-                        rows.append(item)
-                        seen.add(key)
+                selected = await _kinopub_bookmark_folder_items(kp_token, folder_id)
             except Exception:
-                logging.exception('KinoPub personal bookmarks sync failed')
-    return web.json_response({'ok':True,'section':section,'items':rows,'count':len(rows)}, headers={'Cache-Control':'no-store'})
+                logging.exception('KinoPub bookmark folder loading failed')
+                return web.json_response({'ok':False,'error':'folder_unavailable'}, status=502)
+        else:
+            return web.json_response({'ok':False,'error':'folder_not_found'}, status=404)
+        return web.json_response({'ok':True,'section':section,'items':selected,'count':len(selected)}, headers={'Cache-Control':'no-store'})
+
+    return web.json_response({'ok':True,'section':section,'items':[],
+                              'folders':folders,'count':sum(int(f.get('count') or 0) for f in folders)},
+                             headers={'Cache-Control':'no-store'})
 
 async def api_cinema_bookmark_folders(request):
     user = await _user_from_request(request)
