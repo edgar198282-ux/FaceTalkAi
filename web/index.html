@@ -2270,6 +2270,11 @@ body:not(.cinemaMode) .cinemaShellSide{
   }
 }
 </style>
+<style id="abaj-cinema-settings-gear-v1">
+#cinemaSettingsBtn{display:inline-flex!important;align-items:center;justify-content:center;flex:none;color:#8bcfff;font-size:23px;line-height:1;min-width:40px;min-height:40px}
+#cinemaSettingsBtn:focus-visible,#cinemaSettingsBtn.focused{outline:2px solid #66d4ff;outline-offset:2px}
+@media(max-width:700px){#cinemaSettingsBtn{width:40px;height:40px;min-width:40px;min-height:40px;font-size:22px}.cinemaShellActions{gap:5px}}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
@@ -2372,6 +2377,7 @@ body:not(.cinemaMode) .cinemaShellSide{
     <path d="M11 1.5 16 4l5-2.5"></path>
   </svg>
 </button>
+        <button class="cinemaShellBtn cinemaSettingsQuickBtn" id="cinemaSettingsBtn" onclick="openTvSettings()" title="Настройки" aria-label="Настройки">⚙</button>
         <button class="cinemaShellBtn" id="cinemaSearchBtn" onclick="openTvSearch()" aria-label="Поиск">🔍</button>
       </div>
     </div>
