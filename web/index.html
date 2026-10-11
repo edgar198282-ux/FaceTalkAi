@@ -2376,7 +2376,7 @@ body:not(.cinemaMode) .cinemaShellSide{
 
   <section class="cinemaScreen" id="cinemaScreen">
     <div class="cinemaShellBar">
-      <button class="cinemaShellBtn" id="cinemaMenuBtn" onclick="toggleCinemaSideMenu()" aria-label="Меню">☰</button>
+      <button class="cinemaShellBtn" id="cinemaMenuBtn" onclick="cinemaFolderBackOrMenu()" aria-label="Меню">☰</button>
       <div class="cinemaShellTitle" id="cinemaShellTitle">ФИЛЬМЫ НОВИНКИ</div>
       <button class="cinemaShellBtn cinemaShellDrop" id="cinemaCategoryBtn" onclick="toggleCinemaCategoryMenu()" aria-label="Категория">▾</button>
       <div class="cinemaShellBrandAnim" aria-label="ABAJ TV"><span class="titleWord"><span>A</span><span>B</span><span>A</span><span>J</span></span><span class="titleWord"><span>T</span><span>V</span></span></div>
@@ -9820,8 +9820,21 @@ async function refreshCinemaLibraryCounts(){
   }));
 }
 let cinemaBookmarkFolderActive=null;
+function cinemaFolderBackOrMenu(){
+  if(cinemaBookmarkFolderActive){loadCinemaLibrary('bookmarks');return;}
+  toggleCinemaSideMenu();
+}
+function updateCinemaFolderBackButton(){
+  const btn=document.getElementById('cinemaMenuBtn');
+  if(!btn)return;
+  const inFolder=!!cinemaBookmarkFolderActive;
+  btn.textContent=inFolder?'←':'☰';
+  btn.setAttribute('aria-label',inFolder?'Назад к папкам':'Меню');
+  btn.title=inFolder?'Назад к папкам':'Меню';
+}
 function renderCinemaBookmarkFolders(folders){
   cinemaBookmarkFolderActive=null;
+  updateCinemaFolderBackButton();
   const grid=document.getElementById('cinemaPosterGrid');
   if(!grid)return;
   grid.innerHTML='';
@@ -9856,6 +9869,7 @@ async function loadCinemaBookmarkFolder(folder){
   const id=String(folder?.id||'').trim();
   if(!id)return;
   cinemaBookmarkFolderActive={id,title:String(folder?.title||cinemaT().bookmarks)};
+  updateCinemaFolderBackButton();
   cinemaLibraryMode=true;
   const status=document.getElementById('cinemaStatus');
   setCinemaShellTitle(String(folder?.title||cinemaT().bookmarks));
@@ -13510,6 +13524,10 @@ window.addEventListener('popstate',()=>{
     }
     if(cinemaDetailOpen()){
       closeCinemaDetailInternal();
+      return;
+    }
+    if(cinemaBookmarkFolderActive){
+      loadCinemaLibrary('bookmarks');
       return;
     }
   }finally{
