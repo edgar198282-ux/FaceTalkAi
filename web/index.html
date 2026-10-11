@@ -2296,6 +2296,25 @@ body:not(.cinemaMode) .cinemaShellSide{
 .amc-posters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.amc-poster{height:clamp(100px,13vw,190px);border-radius:9px;display:flex;align-items:end;padding:15px;font-weight:800;color:white;text-shadow:0 2px 5px black;background:linear-gradient(0deg,#000b,transparent),linear-gradient(135deg,#684323,#142946);border:1px solid #624932}.amc-poster:nth-child(2){background:linear-gradient(0deg,#000a,transparent),linear-gradient(135deg,#1c2436,#6b4642)}.amc-poster:nth-child(3){background:linear-gradient(0deg,#000a,transparent),linear-gradient(135deg,#133754,#18a1bd)}.amc-poster:nth-child(4){background:linear-gradient(0deg,#000a,transparent),linear-gradient(135deg,#46372f,#56706a)}.amc-poster:nth-child(5){background:linear-gradient(0deg,#000a,transparent),linear-gradient(135deg,#27163c,#b24b6c)}
 @media(max-width:700px){.amc-top{height:75px}.amc-top-left,.amc-top-right{min-width:18%;font-size:11px}.amc-console{height:auto;min-height:240px;padding:15px 0}.amc-dial{min-width:46px;min-height:46px;border-width:3px}.amc-control{font-size:8px;gap:8px}.amc-feature{min-height:175px;min-width:175px;width:48vw;height:48vw;border-width:7px}.amc-nav{grid-template-columns:repeat(3,1fr);gap:7px}.amc-nav button{min-height:75px}.amc-posters{grid-template-columns:repeat(2,1fr)}.amc-poster:nth-child(n+5){display:none}}
 </style>
+<style id="abaj-home-mobile-polish">
+@media(max-width:700px){
+ .amc-top{min-height:95px;height:auto;padding:16px 5% 10px;align-items:flex-start}
+ .amc-brand{font-size:clamp(26px,8vw,38px);line-height:1.08}
+ .amc-brand small{letter-spacing:.21em;font-size:7px;margin-top:8px}
+ .amc-console{min-height:230px;padding:12px 2%;overflow:hidden}
+ .amc-feature{width:45vw;height:45vw;min-width:152px;min-height:152px;padding:0 7px 14px}
+ .amc-feature h2{font-size:20px}
+ .amc-play{font-size:14px;padding:6px 12px}
+ .amc-control{min-width:48px;width:18%;overflow:hidden;font-size:8px;letter-spacing:0;white-space:normal}
+ .amc-dial{min-width:43px;min-height:43px}
+ .amc-nav{padding:8px 5%;gap:7px}
+ .amc-nav button{min-height:70px;font-size:14px}
+ .amc-nav button span{font-size:25px}
+ .amc-popular{padding-top:5px}
+ .amc-posters{gap:8px}
+ .amc-poster{height:115px}
+}
+</style>
 </head>
 <body>
 <section id="abajMediaHome" aria-label="Abaj TV Медиацентр">
@@ -2348,7 +2367,7 @@ body:not(.cinemaMode) .cinemaShellSide{
       </div>
       <div class="icons">
         <button id="cinemaToggleBtn" class="iconBtn tvTopAction cinemaSwitchBtn" onclick="toggleCinemaMode()" title="Кино" aria-label="Кино"><span id="cinemaToggleIcon">🎬</span></button>
-        <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="openTvSettings()" title="Настройки" aria-label="Настройки">⚙</button>
+        <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="abajShowHome()" title="На главный экран" aria-label="На главный экран">⚙</button>
         <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск" aria-label="Поиск">🔍</button>
         <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
       </div>
@@ -15005,7 +15024,15 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
 </script>
 <script id="abaj-media-center-control">
 (function(){
-window.abajShowHome=function(){const home=document.getElementById('abajMediaHome');if(home){home.hidden=false;try{home.querySelector('.amc-selected').focus()}catch(e){}}};
+window.abajShowHome=function(){
+ const home=document.getElementById('abajMediaHome');
+ if(!home)return;
+ try{closeTvSettings()}catch(e){}
+ home.hidden=false;
+ home.scrollTop=0;
+ const initial=home.querySelector('.amc-selected');
+ if(initial)try{initial.focus({preventScroll:true})}catch(e){}
+};
 window.abajHomeEnter=async function(kind){
  const home=document.getElementById('abajMediaHome');if(!home)return;
  if(kind==='radio'||kind==='karaoke'||kind==='media'){alert('Этот раздел пока готовится');return;}
