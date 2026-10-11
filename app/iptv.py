@@ -3134,58 +3134,51 @@ async def api_proxy(request):
 
 
 async def _bootstrap_public_channels():
-    """Seed a new volume with public free-TV channels without heavy IPTV scans."""
-    if _state["channels"]:
-        return
+    """Merge bounded public playlists into an existing channel snapshot."""
     sources = [
-        ("snapshot", "https://facetalkai-production.up.railway.app/api/iptv/channels?compact=1&fast=1", ""),
-        ("playlist", "https://iptv-org.github.io/iptv/countries/am.m3u", "AM"),
-        ("playlist", "https://iptv-org.github.io/iptv/countries/ru.m3u", "RU"),
+        ("AM", "https://iptv-org.github.io/iptv/countries/am.m3u"),
+        ("RU", "https://iptv-org.github.io/iptv/countries/ru.m3u"),
+        ("AM", "https://iptv-org.github.io/iptv/languages/hye.m3u"),
+        ("RU", "https://iptv-org.github.io/iptv/languages/rus.m3u"),
+        ("RU", "https://raw.githubusercontent.com/smolnp/IPTVru/refs/heads/gh-pages/IPTVstable.m3u8"),
+        ("RU", "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv-top.m3u"),
+        ("AM", "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_armenia.m3u8"),
+        ("RU", "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_russia.m3u8"),
+        ("AM", "https://dearbulut.github.io/iptv/playlists/country/am.m3u"),
+        ("RU", "https://dearbulut.github.io/iptv/playlists/country/ru.m3u"),
     ]
-    result = {}
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=18), headers={"User-Agent":"AbajTV/1.0"}) as session:
-        for kind, url, country in sources:
+    result = dict(_state["channels"])
+    original_count = len(result)
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20), headers={"User-Agent": "AbajTV/1.0"}) as session:
+        for country, url in sources:
             try:
                 async with session.get(url, ssl=False) as response:
-                    if response.status != 200 or int(response.headers.get("Content-Length") or 0) > 6 * 1048576:
+                    if response.status != 200 or int(response.headers.get("Content-Length") or 0) > 5 * 1048576:
                         continue
-                    raw = await response.content.read(6 * 1048576 + 1)
-                    if len(raw) > 6 * 1048576:
+                    raw = await response.content.read(5 * 1048576 + 1)
+                    if len(raw) > 5 * 1048576 or not raw.startswith(b"#EXTM3U"):
                         continue
-                if kind == "snapshot":
-                    payload = json.loads(raw.decode("utf-8"))
-                    rows = payload.get("channels", []) if isinstance(payload, dict) else []
-                    if not isinstance(rows, list):
-                        continue
-                    for row in rows[:5000]:
-                        if not isinstance(row, dict) or row.get("personal") or row.get("adult"):
-                            continue
-                        url_value = str(row.get("url") or "")
-                        if not url_value.startswith(("https://", "http://")):
-                            continue
-                        if not row.get("id") or not row.get("name"):
-                            continue
-                        clean = {k: v for k, v in row.items() if k in ("id", "name", "group", "country", "logo", "status", "tvg_id", "quality", "height", "url", "backups", "adult", "latency_ms", "source")}
-                        clean["status"] = "ONLINE"
-                        result[str(clean["id"])] = clean
-                else:
-                    for row in _parse_m3u(raw.decode("utf-8", "ignore"), country, url):
-                        if not _is_adult_channel(row):
-                            row["status"] = "ONLINE"
-                            result.setdefault(str(row["id"]), row)
-                logging.info("IPTV light bootstrap %s: %d channels", kind, len(result))
-                if len(result) >= 1000:
+                parsed = _parse_m3u(raw.decode("utf-8", "ignore"), country, url)
+                for row in parsed:
+                    if not _is_adult_channel(row):
+                        row["status"] = "ONLINE"  # Playlist candidate; playback has not been probed yet.
+                        result.setdefault(str(row["id"]), row)
+                logging.info("IPTV light source %s: %d candidates, total %d", country, len(parsed), len(result))
+                del raw, parsed
+                if len(result) >= 3500:
                     break
             except Exception as exc:
-                logging.warning("IPTV light bootstrap source error: %s", type(exc).__name__)
-    if result and not _state["channels"]:
+                logging.warning("IPTV light source failed: %s", type(exc).__name__)
+    if len(result) > original_count:
         _state["channels"] = result
         _state["last_refresh"] = int(time.time())
-        _state["stats"] = {"total":len(result),"online":len(result),"offline":0}
-        _save_json(SNAPSHOT_PATH, {"saved_at":int(time.time()),"state":{"channels":list(result.values()),"last_refresh":_state["last_refresh"],"stats":_state["stats"],"error":""}})
-        logging.info("IPTV light bootstrap saved %d public channels to volume",len(result))
-    elif not result:
-        logging.warning("IPTV light bootstrap found no public channels")
+        _state["stats"] = {"total": len(result), "online": len(result), "offline": 0}
+        _save_json(SNAPSHOT_PATH, {"saved_at": int(time.time()), "state": {
+            "channels": list(result.values()), "last_refresh": _state["last_refresh"],
+            "stats": _state["stats"], "error": ""}})
+        logging.info("IPTV light catalogue saved %d channels (+%d) to volume", len(result), len(result)-original_count)
+    else:
+        logging.info("IPTV light catalogue unchanged: %d channels", original_count)
 
 
 async def start_background(app):
