@@ -1237,7 +1237,7 @@ body.cinemaMode .top{display:none!important}
   #cinemaMenuBtn{width:28px;height:28px;min-width:28px;font-size:18px;border-radius:7px}
   .cinemaShellTitle{font-size:9px;font-weight:500;max-width:88px}
   .cinemaShellDrop{width:18px!important;min-width:18px!important;font-size:10px;margin-left:-3px}
-  .cinemaShellBrandAnim{left:58%;font-size:13px}
+  .cinemaShellBrandAnim{left:53%;font-size:13px}
   .cinemaShellActions{gap:4px}
   .cinemaShellActions .cinemaShellBtn{width:28px;height:28px;min-width:28px;font-size:18px;border-radius:7px}
   .cinemaTvQuickBtn{display:flex!important;width:36px!important;height:30px!important;min-width:36px!important}
@@ -2377,9 +2377,17 @@ body:not(.cinemaMode) .cinemaShellSide{
         </div>
         <button class="cinemaShellBtn cinemaTvQuickBtn" id="cinemaTvQuickBtn" onclick="toggleCinemaMode()" title="ТВ" aria-label="ТВ">
   <svg class="cinemaTvQuickSvg" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-    <rect x="3" y="6" width="26" height="19" rx="3.5"></rect>
-    <rect x="6.5" y="9.5" width="19" height="12" rx="1.5"></rect>
-    <path d="M12 29h8M16 25v4"></path>
+    <defs>
+      <linearGradient id="cinemaTvDisplay" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#6ddfff"/>
+        <stop offset=".55" stop-color="#168cd6"/>
+        <stop offset="1" stop-color="#074777"/>
+      </linearGradient>
+    </defs>
+    <rect x="2" y="5" width="28" height="21" rx="3" fill="#c5d5e1" stroke="#e0f4ff" stroke-width="1"/>
+    <rect x="4.5" y="7.5" width="23" height="16" rx="1.5" fill="url(#cinemaTvDisplay)" stroke="#173d58" stroke-width=".8"/>
+    <path d="M7 19L21 9" stroke="#b8f4ff" stroke-width="1.5" opacity=".5"/>
+    <path d="M13 26v3m6-3v3M10 29h12" stroke="#c5d5e1" stroke-width="2" stroke-linecap="round"/>
   </svg>
 </button>
         <button class="cinemaShellBtn cinemaSettingsQuickBtn" id="cinemaSettingsBtn" onclick="openTvSettings()" title="Настройки" aria-label="Настройки">⚙</button>
