@@ -2270,8 +2270,40 @@ body:not(.cinemaMode) .cinemaShellSide{
   }
 }
 </style>
+<style id="abaj-media-center-v1">
+#abajMediaHome{position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse at 50% 8%,#113052 0%,#05101e 55%,#02050b 100%);color:#f7e9d5;overflow:auto;font-family:Arial,sans-serif;box-sizing:border-box}
+#abajMediaHome *{box-sizing:border-box}
+#abajMediaHome[hidden]{display:none!important}
+.amc-top{height:11%;min-height:74px;display:flex;justify-content:space-between;align-items:center;padding:10px 5%;background:linear-gradient(90deg,#03101f,#07192d,#03101f)}
+.amc-brand{text-align:center;font-size:clamp(28px,3.8vw,60px);font-weight:800;color:#f4c895;text-shadow:0 0 16px #cd7b35}
+.amc-brand b{color:#20a9ff;text-shadow:0 0 15px #008fff}
+.amc-brand small{display:block;letter-spacing:.55em;font-size:clamp(7px,.7vw,12px);font-weight:400;color:#b4acaa;margin-top:3px}
+.amc-top-left,.amc-top-right{min-width:22%;font-size:clamp(12px,1.3vw,20px)}
+.amc-top-right{text-align:right}
+.amc-console{position:relative;margin:0 3%;height:47%;min-height:280px;background:repeating-linear-gradient(0deg,transparent 0px,rgba(255,255,255,.013) 2px,transparent 4px),linear-gradient(100deg,#090c13,#2a2525 18%,#0b0b12 45%,#222025 80%,#0a0b13);border:1px solid #715039;box-shadow:inset 0 0 28px #000,0 12px 24px #000;border-radius:8px;display:flex;align-items:center;justify-content:space-around}
+.amc-dial{width:min(15vw,22vh);height:min(15vw,22vh);min-width:88px;min-height:88px;border-radius:50%;border:5px solid #9e6a31;background:repeating-conic-gradient(from 15deg,#24262b 0deg,#45464a 6deg,#15171c 14deg);box-shadow:0 0 6px #ffc17a,0 0 20px #a26123,inset 0 0 12px black;position:relative}
+.amc-dial:after{content:'';position:absolute;inset:12%;border-radius:50%;background:conic-gradient(from 110deg,#0d1016,#454b53,#11131a,#4e5054,#101217)}
+.amc-control{text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center;color:#dab38a;letter-spacing:.15em;font-size:clamp(10px,.9vw,14px)}
+.amc-feature{height:min(34vw,43vh);width:min(34vw,43vh);min-width:190px;min-height:190px;border-radius:50%;border:12px ridge #bc874f;box-shadow:0 0 23px #d89648,inset 0 0 14px #000;display:flex;flex-direction:column;justify-content:end;align-items:center;padding:0 15px 20px;text-align:center;background:linear-gradient(0deg,#050a16 0%,transparent 65%),radial-gradient(circle at 55% 35%,#94b5cc 0%,#38556e 22%,#102237 45%,#0a101b 85%)}
+.amc-feature h2{font-size:clamp(16px,2.2vw,33px);margin:3px 0;line-height:1.15;text-shadow:0 2px 8px #000}
+.amc-feature p{font-size:clamp(9px,.9vw,13px);margin:4px}
+.amc-play{border:1px solid #efb36d;background:#15141a;color:#ffe1b0;border-radius:25px;padding:9px 22px;box-shadow:0 0 9px #cd863b;cursor:pointer}
+.amc-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;padding:10px 5%}
+.amc-nav button{background:linear-gradient(#0c1a2c,#090a11);border:1px solid #5a3f35;border-radius:12px;color:#ffdfb7;min-height:90px;cursor:pointer;font-size:clamp(12px,1.1vw,19px);box-shadow:inset 0 0 10px #06111f;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}
+.amc-nav button span{font-size:clamp(25px,2.5vw,38px)}
+.amc-nav button:focus,.amc-nav button:hover,.amc-nav button.amc-selected{outline:none;border:2px solid #ffd087;box-shadow:0 0 16px #bd743a}
+.amc-popular{margin:0 5%;padding:12px 0}.amc-popular h3{font-size:clamp(16px,1.5vw,23px);margin:4px 0 12px}
+.amc-posters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.amc-poster{height:clamp(100px,13vw,190px);border-radius:9px;display:flex;align-items:end;padding:15px;font-weight:800;color:white;text-shadow:0 2px 5px black;background:linear-gradient(0deg,#000b,transparent),linear-gradient(135deg,#684323,#142946);border:1px solid #624932}.amc-poster:nth-child(2){background:linear-gradient(0deg,#000a,transparent),linear-gradient(135deg,#1c2436,#6b4642)}.amc-poster:nth-child(3){background:linear-gradient(0deg,#000a,transparent),linear-gradient(135deg,#133754,#18a1bd)}.amc-poster:nth-child(4){background:linear-gradient(0deg,#000a,transparent),linear-gradient(135deg,#46372f,#56706a)}.amc-poster:nth-child(5){background:linear-gradient(0deg,#000a,transparent),linear-gradient(135deg,#27163c,#b24b6c)}
+@media(max-width:700px){.amc-top{height:75px}.amc-top-left,.amc-top-right{min-width:18%;font-size:11px}.amc-console{height:auto;min-height:240px;padding:15px 0}.amc-dial{min-width:46px;min-height:46px;border-width:3px}.amc-control{font-size:8px;gap:8px}.amc-feature{min-height:175px;min-width:175px;width:48vw;height:48vw;border-width:7px}.amc-nav{grid-template-columns:repeat(3,1fr);gap:7px}.amc-nav button{min-height:75px}.amc-posters{grid-template-columns:repeat(2,1fr)}.amc-poster:nth-child(n+5){display:none}}
+</style>
 </head>
 <body>
+<section id="abajMediaHome" aria-label="Abaj TV Медиацентр">
+  <header class="amc-top"><div class="amc-top-left"><span id="amcClock">20:24</span><div style="font-size:10px;letter-spacing:.2em;color:#c49465;margin-top:9px">МИР РАЗВЛЕЧЕНИЙ</div></div><div class="amc-brand">Abaj<b>TV</b><small>MEDIA FOR A RICHER LIFE</small></div><div class="amc-top-right">⌕　♧　♙</div></header>
+  <div class="amc-console"><div class="amc-control"><div class="amc-dial"></div>−　 ГРОМКОСТЬ　+</div><div class="amc-feature"><div style="font-size:12px;color:#efb57c;letter-spacing:.25em">ABAJ TV</div><h2>Медиацентр</h2><p>ТВ · Фильмы · Развлечения</p><button class="amc-play" onclick="abajHomeEnter('cinema')">▶ Смотреть</button></div><div class="amc-control"><div class="amc-dial"></div>−　 ВЫБОР　+</div></div>
+  <nav class="amc-nav"><button class="amc-selected" onclick="abajHomeEnter('tv')"><span>▣</span>TV</button><button onclick="abajHomeEnter('cinema')"><span>◉</span>Кинотеатр</button><button onclick="abajHomeEnter('radio')"><span>▤</span>Радио</button><button onclick="abajHomeEnter('karaoke')"><span>♬</span>Караоке</button><button onclick="abajHomeEnter('media')"><span>▱</span>Мои медиа</button><button onclick="abajHomeEnter('settings')"><span>⚙</span>Настройки</button></nav>
+  <div class="amc-popular"><h3>Популярное на Abaj TV</h3><div class="amc-posters"><div class="amc-poster">Фантастика</div><div class="amc-poster">Драмы</div><div class="amc-poster">Документальные</div><div class="amc-poster">Приключения</div><div class="amc-poster">Новинки</div></div></div>
+</section>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
   <div class="tvSearchCard">
     <div class="tvSearchTitle">Поиск канала</div>
@@ -14969,6 +15001,24 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
     document.body.appendChild(overlay);
     setTimeout(()=>overlay.remove(),100);
   },{capture:true,passive:true});
+})();
+</script>
+<script id="abaj-media-center-control">
+(function(){
+window.abajShowHome=function(){const home=document.getElementById('abajMediaHome');if(home){home.hidden=false;try{home.querySelector('.amc-selected').focus()}catch(e){}}};
+window.abajHomeEnter=async function(kind){
+ const home=document.getElementById('abajMediaHome');if(!home)return;
+ if(kind==='radio'||kind==='karaoke'||kind==='media'){alert('Этот раздел пока готовится');return;}
+ if(kind==='settings'){home.hidden=true;try{openTvSettings()}catch(e){home.hidden=false}return;}
+ if(kind==='cinema'){
+   try{if(typeof cinemaMode!=='undefined'&&!cinemaMode)await toggleCinemaMode();if(typeof cinemaMode!=='undefined'&&!cinemaMode)return;}catch(e){console.warn('Cinema entry',e);return;}
+ }else if(kind==='tv'){
+   try{if(typeof cinemaMode!=='undefined'&&cinemaMode)await toggleCinemaMode()}catch(e){console.warn('TV entry',e);return;}
+ }
+ home.hidden=true;
+};
+document.addEventListener('keydown',function(e){const home=document.getElementById('abajMediaHome');if(home&&!home.hidden){if(e.key==='Escape'||e.key==='Backspace'){e.preventDefault();return;}}else if(e.key==='Escape'||e.key==='Backspace'){const modal=document.querySelector('.playerView.open,.cinemaDetailModal.open,.tvSettingsModal.open');if(!modal){abajShowHome();e.preventDefault();}}});
+const clock=document.getElementById('amcClock');if(clock){const d=new Date();clock.textContent=d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}
 })();
 </script>
 </body>
