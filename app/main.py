@@ -766,12 +766,8 @@ async def main():
             'Paste only the BotFather token in digits:secret format.'
         ) from exc
 
-    try:
-        await bot.set_my_name(name="Abaj TV")
-        await bot.set_my_short_description(short_description="Армянские и российские IPTV каналы")
-        await bot.set_my_description(description="Abaj TV — армянские и российские телеканалы, поиск, избранное и TV режим.")
-    except Exception as exc:
-        logging.warning("Telegram bot profile rename skipped: %r", exc)
+    # Bot profile is managed in BotFather; changing it on every restart triggers Telegram flood limits.
+    logging.info("Telegram profile update skipped during startup")
 
     me = await bot.get_me()
     actual_username = (me.username or '').lstrip('@')
