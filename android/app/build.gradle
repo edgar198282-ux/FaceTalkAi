@@ -2,7 +2,7 @@ plugins {
     id 'com.android.application'
 }
 
-def webUrl = providers.gradleProperty('WEB_APP_URL').orElse('https://facetalkai-production.up.railway.app').get()
+def webUrl = providers.gradleProperty('WEB_APP_URL').orElse('https://facetalkai-production-9387.up.railway.app').get()
 def vCode = providers.gradleProperty('APP_VERSION_CODE').orElse('1').get().toInteger()
 def vName = providers.gradleProperty('APP_VERSION_NAME').orElse('1.0.0').get()
 def playStoreBuild = providers.gradleProperty('PLAY_STORE_BUILD').orElse('false').get().toBoolean()
