@@ -736,7 +736,7 @@ body.darkMode .appearanceToggle button.active{background:#087fe1;color:#fff;bord
 .adminTitle{min-width:0;flex:1}
 .adminHeadActions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto}
 .adminHeadActions .adminBack,.adminHeadActions .adminClose{height:42px;display:inline-flex;align-items:center;justify-content:center;padding:0 14px;white-space:nowrap}.adminTitle{font-size:22px;font-weight:800;color:#0d4d86}.adminClose{border:0;background:#d9efff;color:#0b5f9e;border-radius:12px;padding:10px 13px;font-weight:800}.adminForm{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin:14px 0}.adminForm input{height:44px;border:1px solid #aad7f2;border-radius:11px;padding:0 11px;background:white}.adminForm button{border:0;border-radius:11px;background:#087fe1;color:white;padding:0 14px;font-weight:800}.adminRows{display:grid;gap:8px}.adminRow{background:white;border:1px solid #cde7f7;border-radius:14px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}.adminMeta{font-size:12px;color:#55758c;margin-top:4px}.limitBox{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.limitBox input{width:58px;height:36px;border:1px solid #b9dff5;border-radius:9px;padding:0 8px}.limitBox button{height:36px;border:0;border-radius:9px;background:#168de8;color:white;padding:0 10px}.adminEmpty{padding:18px;text-align:center;color:#66869a}@media(max-width:650px){.adminForm{grid-template-columns:1fr}.adminRow{grid-template-columns:1fr}.limitBox{justify-content:flex-start}}
-.settingsModal{position:fixed;inset:0;z-index:520;display:none;align-items:flex-end;justify-content:center;background:rgba(3,27,62,.72);padding:12px}.settingsModal.open{display:flex}.settingsCard{width:min(560px,100%);max-height:90vh;overflow:auto;background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}
+.settingsModal{position:fixed;inset:0;z-index:520;display:none;align-items:flex-end;justify-content:center;background:rgba(3,27,62,.72);padding:12px}.settingsModal.open{display:flex}body.cinemaMode #tvSettingsModal.open{z-index:1100!important}.settingsCard{width:min(560px,100%);max-height:90vh;overflow:auto;background:#f5fbff;border-radius:22px 22px 10px 10px;padding:18px;box-shadow:0 18px 60px rgba(0,35,90,.38)}
 @media(max-width:700px){
   body:not(.nativeTv) #tvSettingsModal{
     padding:0!important;
@@ -2617,7 +2617,9 @@ function openTvSettings(){
   const modal=document.getElementById('tvSettingsModal');
   if(modal){
     cinemaSourceIgnoreUntil=Date.now()+450;
-  modal.classList.add('open');
+    modal.classList.add('open');
+    const card=modal.querySelector('.settingsCard');
+    if(card)card.scrollTop=0;
     if(nativeTv)setTimeout(()=>{
       const first=[...modal.querySelectorAll('button,select,input[type="range"]')].find(el=>{
         if(el.disabled)return false;
