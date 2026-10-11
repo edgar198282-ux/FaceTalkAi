@@ -2270,90 +2270,8 @@ body:not(.cinemaMode) .cinemaShellSide{
   }
 }
 </style>
-<style id="abaj-media-center-v1">
-#abajMediaHome{position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse at 50% 8%,#113052 0%,#05101e 55%,#02050b 100%);color:#f7e9d5;overflow:auto;font-family:Arial,sans-serif;box-sizing:border-box}
-#abajMediaHome *{box-sizing:border-box}
-#abajMediaHome[hidden]{display:none!important}
-.amc-top{height:11%;min-height:74px;display:flex;justify-content:space-between;align-items:center;padding:10px 5%;background:linear-gradient(90deg,#03101f,#07192d,#03101f)}
-.amc-brand{text-align:center;font-size:clamp(28px,3.8vw,60px);font-weight:800;color:#f4c895;text-shadow:0 0 16px #cd7b35}
-.amc-brand b{color:#20a9ff;text-shadow:0 0 15px #008fff}
-.amc-brand small{display:block;letter-spacing:.55em;font-size:clamp(7px,.7vw,12px);font-weight:400;color:#b4acaa;margin-top:3px}
-.amc-top-left,.amc-top-right{min-width:22%;font-size:clamp(12px,1.3vw,20px)}
-.amc-top-right{text-align:right}
-.amc-console{position:relative;margin:0 3%;height:47%;min-height:280px;background:repeating-linear-gradient(0deg,transparent 0px,rgba(255,255,255,.013) 2px,transparent 4px),linear-gradient(100deg,#090c13,#2a2525 18%,#0b0b12 45%,#222025 80%,#0a0b13);border:1px solid #715039;box-shadow:inset 0 0 28px #000,0 12px 24px #000;border-radius:8px;display:flex;align-items:center;justify-content:space-around}
-.amc-dial{width:min(15vw,22vh);height:min(15vw,22vh);min-width:88px;min-height:88px;border-radius:50%;border:5px solid #9e6a31;background:repeating-conic-gradient(from 15deg,#24262b 0deg,#45464a 6deg,#15171c 14deg);box-shadow:0 0 6px #ffc17a,0 0 20px #a26123,inset 0 0 12px black;position:relative}
-.amc-dial:after{content:'';position:absolute;inset:12%;border-radius:50%;background:conic-gradient(from 110deg,#0d1016,#454b53,#11131a,#4e5054,#101217)}
-.amc-control{text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center;color:#dab38a;letter-spacing:.15em;font-size:clamp(10px,.9vw,14px)}
-.amc-feature{height:min(34vw,43vh);width:min(34vw,43vh);min-width:190px;min-height:190px;border-radius:50%;border:12px ridge #bc874f;box-shadow:0 0 23px #d89648,inset 0 0 14px #000;display:flex;flex-direction:column;justify-content:end;align-items:center;padding:0 15px 20px;text-align:center;background:linear-gradient(0deg,#050a16 0%,transparent 65%),radial-gradient(circle at 55% 35%,#94b5cc 0%,#38556e 22%,#102237 45%,#0a101b 85%)}
-.amc-feature h2{font-size:clamp(16px,2.2vw,33px);margin:3px 0;line-height:1.15;text-shadow:0 2px 8px #000}
-.amc-feature p{font-size:clamp(9px,.9vw,13px);margin:4px}
-.amc-play{border:1px solid #efb36d;background:#15141a;color:#ffe1b0;border-radius:25px;padding:9px 22px;box-shadow:0 0 9px #cd863b;cursor:pointer}
-.amc-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;padding:10px 5%}
-.amc-nav button{background:linear-gradient(#0c1a2c,#090a11);border:1px solid #5a3f35;border-radius:12px;color:#ffdfb7;min-height:90px;cursor:pointer;font-size:clamp(12px,1.1vw,19px);box-shadow:inset 0 0 10px #06111f;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}
-.amc-nav button span{font-size:clamp(25px,2.5vw,38px)}
-.amc-nav button:focus,.amc-nav button:hover,.amc-nav button.amc-selected{outline:none;border:2px solid #ffd087;box-shadow:0 0 16px #bd743a}
-.amc-popular{margin:0 5%;padding:12px 0}.amc-popular h3{font-size:clamp(16px,1.5vw,23px);margin:4px 0 12px}
-.amc-posters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.amc-poster{height:clamp(100px,13vw,190px);border-radius:9px;display:flex;align-items:end;padding:15px;font-weight:800;color:white;text-shadow:0 2px 5px black;background:linear-gradient(0deg,#000b,transparent),linear-gradient(135deg,#684323,#142946);border:1px solid #624932}.amc-poster:nth-child(2){background:linear-gradient(0deg,#000a,transparent),linear-gradient(135deg,#1c2436,#6b4642)}.amc-poster:nth-child(3){background:linear-gradient(0deg,#000a,transparent),linear-gradient(135deg,#133754,#18a1bd)}.amc-poster:nth-child(4){background:linear-gradient(0deg,#000a,transparent),linear-gradient(135deg,#46372f,#56706a)}.amc-poster:nth-child(5){background:linear-gradient(0deg,#000a,transparent),linear-gradient(135deg,#27163c,#b24b6c)}
-@media(max-width:700px){.amc-top{height:75px}.amc-top-left,.amc-top-right{min-width:18%;font-size:11px}.amc-console{height:auto;min-height:240px;padding:15px 0}.amc-dial{min-width:46px;min-height:46px;border-width:3px}.amc-control{font-size:8px;gap:8px}.amc-feature{min-height:175px;min-width:175px;width:48vw;height:48vw;border-width:7px}.amc-nav{grid-template-columns:repeat(3,1fr);gap:7px}.amc-nav button{min-height:75px}.amc-posters{grid-template-columns:repeat(2,1fr)}.amc-poster:nth-child(n+5){display:none}}
-</style>
-<style id="abaj-home-mobile-polish">
-@media(max-width:700px){
- .amc-top{min-height:95px;height:auto;padding:16px 5% 10px;align-items:flex-start}
- .amc-brand{font-size:clamp(26px,8vw,38px);line-height:1.08}
- .amc-brand small{letter-spacing:.21em;font-size:7px;margin-top:8px}
- .amc-console{min-height:230px;padding:12px 2%;overflow:hidden}
- .amc-feature{width:45vw;height:45vw;min-width:152px;min-height:152px;padding:0 7px 14px}
- .amc-feature h2{font-size:20px}
- .amc-play{font-size:14px;padding:6px 12px}
- .amc-control{min-width:48px;width:18%;overflow:hidden;font-size:8px;letter-spacing:0;white-space:normal}
- .amc-dial{min-width:43px;min-height:43px}
- .amc-nav{padding:8px 5%;gap:7px}
- .amc-nav button{min-height:70px;font-size:14px}
- .amc-nav button span{font-size:25px}
- .amc-popular{padding-top:5px}
- .amc-posters{gap:8px}
- .amc-poster{height:115px}
-}
-</style>
-<style id="abaj-local-gallery-style">
-#abajLocalGallery{position:fixed;inset:0;z-index:9100;background:#050d1b;color:#f8d7a8;overflow:auto;padding:18px;box-sizing:border-box}
-#abajLocalGallery[hidden]{display:none!important}
-#abajLocalGallery .galleryTop{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:18px}
-#abajLocalGallery button{background:#101f32;border:1px solid #b48750;color:#ffe0b0;padding:11px 17px;border-radius:12px;font-size:16px;cursor:pointer}
-#abajLocalGallery .galleryGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px}
-#abajLocalGallery .galleryItem{min-height:130px;background:#101b2d;border:1px solid #58422d;border-radius:12px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column}
-#abajLocalGallery .galleryItem img,#abajLocalGallery .galleryItem video{width:100%;height:160px;object-fit:contain;background:#000}
-#abajLocalGallery .galleryItem span{padding:7px;color:#e7d6c3;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#abajLocalGallery .galleryItem:focus{outline:3px solid #e9a850}
-</style>
-<style id="abaj-home-new-posters-v1">
-.amc-popular-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.amc-popular-head h3{margin:8px 0 14px}
-.amc-popular-head button{border:1px solid #bc854e;background:#131a28;color:#f8dbb2;padding:7px 11px;border-radius:10px}
-.amc-news-status{color:#d1b99c;padding:12px 3px}
-#amcNewPosters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
-#amcNewPosters .amc-new-card{padding:0;min-width:0;border-radius:12px;overflow:hidden;background:#101a29;border:1px solid #6c4b34;color:#fff;cursor:pointer;text-align:left;box-shadow:0 4px 14px #0007}
-#amcNewPosters .amc-new-card:focus-visible{outline:3px solid #efb56f;outline-offset:2px}
-#amcNewPosters img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;background:#13283e}
-#amcNewPosters .amc-new-caption{padding:8px 10px;min-height:58px;display:flex;flex-direction:column;gap:4px}
-#amcNewPosters strong{font-size:clamp(12px,1.1vw,16px);line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-#amcNewPosters small{font-size:11px;color:#ddbb93}
-@media(max-width:700px){#abajMediaHome .amc-top{padding-top:24px;min-height:105px}#abajMediaHome .amc-brand{font-size:30px}#amcNewPosters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#amcNewPosters .amc-new-card{align-self:start}#abajMediaHome .amc-feature{overflow:hidden}#abajMediaHome .amc-feature h2{font-size:19px}#abajMediaHome .amc-control{flex-shrink:0}}
-</style>
 </head>
 <body>
-<section id="abajLocalGallery" hidden aria-label="Мои медиа">
-<div class="galleryTop"><button type="button" onclick="abajGalleryClose()">← Главная</button><strong>▱ Мои медиа</strong><button type="button" onclick="document.getElementById('abajGalleryPicker').click()">＋ Открыть файлы</button></div>
-<input id="abajGalleryPicker" type="file" accept="image/*,video/*,audio/*" multiple style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="abajGalleryFiles(this.files)">
-<p id="abajGalleryHelp" style="color:#b3c1d5;text-align:center">Выберите фото, видео или музыку из памяти устройства. Файлы остаются на устройстве.</p>
-<div id="abajGalleryGrid" class="galleryGrid"></div>
-</section>
-<section id="abajMediaHome" aria-label="Abaj TV Медиацентр">
-  <header class="amc-top"><div class="amc-top-left"><span id="amcClock">20:24</span><div style="font-size:10px;letter-spacing:.2em;color:#c49465;margin-top:9px">МИР РАЗВЛЕЧЕНИЙ</div></div><div class="amc-brand">Abaj<b>TV</b><small>MEDIA FOR A RICHER LIFE</small></div><div class="amc-top-right">⌕　♧　♙</div></header>
-  <div class="amc-console"><div class="amc-control"><div class="amc-dial"></div>−　 ГРОМКОСТЬ　+</div><div class="amc-feature"><div style="font-size:12px;color:#efb57c;letter-spacing:.25em">ABAJ TV</div><h2>Медиацентр</h2><p>ТВ · Фильмы · Развлечения</p><button class="amc-play" onclick="abajHomeEnter('cinema')">▶ Смотреть</button></div><div class="amc-control"><div class="amc-dial"></div>−　 ВЫБОР　+</div></div>
-  <nav class="amc-nav"><button class="amc-selected" onclick="abajHomeEnter('tv')"><span>▣</span>TV</button><button onclick="abajHomeEnter('cinema')"><span>◉</span>Кинотеатр</button><button onclick="abajHomeEnter('radio')"><span>▤</span>Радио</button><button onclick="abajHomeEnter('karaoke')"><span>♬</span>Караоке</button><button onclick="abajHomeEnter('media')"><span>▱</span>Мои медиа</button><button onclick="abajHomeEnter('settings')"><span>⚙</span>Настройки</button></nav>
-  <div class="amc-popular"><div class="amc-popular-head"><h3>Последние новинки</h3><button type="button" onclick="abajHomeNewsLoad(true)">↻ Обновить</button></div><div id="amcNewsStatus" class="amc-news-status">Загрузка новинок…</div><div class="amc-posters" id="amcNewPosters"></div></div>
-</section>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
   <div class="tvSearchCard">
     <div class="tvSearchTitle">Поиск канала</div>
@@ -2398,7 +2316,7 @@ body:not(.cinemaMode) .cinemaShellSide{
       </div>
       <div class="icons">
         <button id="cinemaToggleBtn" class="iconBtn tvTopAction cinemaSwitchBtn" onclick="toggleCinemaMode()" title="Кино" aria-label="Кино"><span id="cinemaToggleIcon">🎬</span></button>
-        <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="abajShowHome()" title="На главный экран" aria-label="На главный экран">⚙</button>
+        <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="openTvSettings()" title="Настройки" aria-label="Настройки">⚙</button>
         <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск" aria-label="Поиск">🔍</button>
         <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
       </div>
@@ -15051,100 +14969,6 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
     document.body.appendChild(overlay);
     setTimeout(()=>overlay.remove(),100);
   },{capture:true,passive:true});
-})();
-</script>
-<script id="abaj-media-center-control">
-(function(){
-window.abajShowHome=function(){
- const home=document.getElementById('abajMediaHome');
- if(!home)return;
- try{closeTvSettings()}catch(e){}
- home.hidden=false;
- home.scrollTop=0;
- const initial=home.querySelector('.amc-selected');
- if(initial)try{initial.focus({preventScroll:true})}catch(e){}
-};
-window.abajHomeEnter=async function(kind){
- const home=document.getElementById('abajMediaHome');if(!home)return;
- if(kind==='media'){abajGalleryOpen();return;}
- if(kind==='radio'||kind==='karaoke'){alert('Этот раздел пока готовится');return;}
- if(kind==='settings'){home.hidden=true;try{openTvSettings()}catch(e){home.hidden=false}return;}
- if(kind==='cinema'){
-   try{if(typeof cinemaMode!=='undefined'&&!cinemaMode)await toggleCinemaMode();if(typeof cinemaMode!=='undefined'&&!cinemaMode)return;}catch(e){console.warn('Cinema entry',e);return;}
- }else if(kind==='tv'){
-   try{if(typeof cinemaMode!=='undefined'&&cinemaMode)await toggleCinemaMode()}catch(e){console.warn('TV entry',e);return;}
- }
- home.hidden=true;
-};
-document.addEventListener('keydown',function(e){const home=document.getElementById('abajMediaHome');if(home&&!home.hidden){if(e.key==='Escape'||e.key==='Backspace'){e.preventDefault();return;}}else if(e.key==='Escape'||e.key==='Backspace'){const modal=document.querySelector('.playerView.open,.cinemaDetailModal.open,.tvSettingsModal.open');if(!modal){abajShowHome();e.preventDefault();}}});
-const clock=document.getElementById('amcClock');if(clock){const d=new Date();clock.textContent=d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}
-})();
-</script>
-<script id="abaj-gallery-control">
-(function(){
-const galleryUrls=[];
-function releaseUrls(){for(const url of galleryUrls)URL.revokeObjectURL(url);galleryUrls.length=0}
-window.abajGalleryClose=function(){
- document.getElementById('abajLocalGallery').hidden=true;
- releaseUrls();
- const grid=document.getElementById('abajGalleryGrid');if(grid)grid.replaceChildren();
- const picker=document.getElementById('abajGalleryPicker');if(picker)picker.value='';
- const home=document.getElementById('abajMediaHome');if(home)home.hidden=false;
-};
-window.abajGalleryOpen=function(){
- const gallery=document.getElementById('abajLocalGallery');if(!gallery)return;
- gallery.hidden=false;
- const home=document.getElementById('abajMediaHome');if(home)home.hidden=true;
- document.getElementById('abajGalleryPicker').click();
-};
-window.abajGalleryFiles=function(files){
- releaseUrls();const grid=document.getElementById('abajGalleryGrid');grid.replaceChildren();
- const selected=Array.from(files||[]).slice(0,100);
- document.getElementById('abajGalleryHelp').textContent=selected.length?'Выбрано файлов: '+selected.length:'Выберите фото, видео или музыку из памяти устройства.';
- selected.forEach(file=>{
-  const url=URL.createObjectURL(file);galleryUrls.push(url);
-  const card=document.createElement('button');card.className='galleryItem';card.type='button';
-  let media;
-  if(file.type.startsWith('image/')){media=document.createElement('img');media.src=url;media.alt=file.name;}
-  else if(file.type.startsWith('video/')){media=document.createElement('video');media.src=url;media.controls=true;media.preload='metadata';}
-  else{media=document.createElement('div');media.textContent='♫';media.style='font-size:60px;padding:30px';card.onclick=()=>{const player=new Audio(url);player.play().catch(()=>{});};}
-  card.appendChild(media);
-  const name=document.createElement('span');name.textContent=file.name;card.appendChild(name);grid.appendChild(card);
- });
-};
-})();
-</script>
-<script id="abaj-home-kinopub-new">
-(function(){
-let loading=false,lastLoaded=0;
-const esc=t=>String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-window.abajHomeNewsLoad=async function(force=false){
- const grid=document.getElementById('amcNewPosters'),status=document.getElementById('amcNewsStatus');
- if(!grid||loading||(!force&&lastLoaded&&Date.now()-lastLoaded<300000))return;
- loading=true;status.textContent='Загрузка новинок…';status.hidden=false;
- try{
-   const response=await fetch('/api/kinopub/section?section=fresh&page=1&perpage=12',{headers:typeof authHeaders==='function'?authHeaders():{},cache:'no-store'});
-   if(!response.ok)throw Error(response.status===401?'Подключите Kinopub в настройках кинотеатра':'Источник Kinopub временно недоступен');
-   const data=await response.json(),items=Array.isArray(data.items)?data.items.slice(0,10):[];
-   grid.replaceChildren();
-   if(!items.length){status.textContent='Новинки пока недоступны.';return}
-   items.forEach(item=>{
-     const card=document.createElement('button');card.type='button';card.className='amc-new-card';
-     const poster=String(item.poster||'');
-     const img=document.createElement('img');img.loading='lazy';img.alt='';img.decoding='async';
-     if(poster.startsWith('https://')||poster.startsWith('/')||poster.startsWith('http://'))img.src=poster;
-     const caption=document.createElement('div');caption.className='amc-new-caption';
-     const title=document.createElement('strong');title.textContent=String(item.title||item.name||'Без названия');
-     const detail=document.createElement('small');detail.textContent=[item.year,item.quality].filter(Boolean).join(' · ');
-     caption.append(title,detail);card.append(img,caption);
-     card.onclick=async()=>{try{if(typeof cinemaMode!=='undefined'&&!cinemaMode)await toggleCinemaMode();document.getElementById('abajMediaHome').hidden=true;await openCinemaMovie(item)}catch(e){console.warn('Open Kinopub item',e)}};
-     grid.appendChild(card);
-   });
-   status.hidden=true;lastLoaded=Date.now();
- }catch(e){grid.replaceChildren();status.hidden=false;status.textContent=e.message||'Не удалось загрузить новинки';}
- finally{loading=false}
-};
-document.addEventListener('DOMContentLoaded',()=>abajHomeNewsLoad());
 })();
 </script>
 </body>
