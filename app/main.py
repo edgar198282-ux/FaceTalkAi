@@ -203,18 +203,17 @@ def _telegram_init_data_for_user(user) -> str:
     return urlencode(payload)
 
 def miniapp_keyboard(user_id: int | None = None, lang: str = 'ru'):
-    if not MINIAPP_URL:
-        return None
     labels={'hy':'📺 Բացել Abaj TV','ru':'📺 Открыть Abaj TV','en':'📺 Open Abaj TV'}
     apk_labels={'hy':'📱 Ներբեռնել APK','ru':'📱 Скачать APK','en':'📱 Download APK'}
     tv_apk_labels={'hy':'🖥️ Ներբեռնել TV APK','ru':'🖥️ Скачать TV APK','en':'🖥️ Download TV APK'}
-    return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=labels.get(lang, labels['ru']), web_app=WebAppInfo(url=_miniapp_url_for_user(user_id)))],
-                  [KeyboardButton(text=apk_labels.get(lang, apk_labels['ru']))],
-                  [KeyboardButton(text=tv_apk_labels.get(lang, tv_apk_labels['ru']))]],
-        resize_keyboard=True,
-        is_persistent=True,
-    )
+    rows = []
+    if MINIAPP_URL.startswith('https://'):
+        rows.append([KeyboardButton(text=labels.get(lang, labels['ru']), web_app=WebAppInfo(url=_miniapp_url_for_user(user_id)))])
+    rows.extend([
+        [KeyboardButton(text=apk_labels.get(lang, apk_labels['ru']))],
+        [KeyboardButton(text=tv_apk_labels.get(lang, tv_apk_labels['ru']))],
+    ])
+    return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True, is_persistent=True)
 
 async def _ensure_latest_menu(m: Message, lang: str):
     if not m.from_user:
@@ -294,7 +293,7 @@ async def send_language_picker(m: Message):
         logging.warning('Abaj TV start photo failed, fallback to text: %r', exc)
     if not sent_photo:
         await _answer(m, caption, reply_markup=keyboard)
-    if m.from_user and MINIAPP_URL:
+    if m.from_user:
         lang = await get_user_language(m.from_user.id) or _telegram_lang(m.from_user)
         await _answer(
             m,
