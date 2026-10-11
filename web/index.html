@@ -3449,13 +3449,14 @@ function renderAdminCinemaHeader(){
 }
 
 async function checkAdmin(){
+  const relink=document.getElementById('relinkTelegramBtn');
+  if(relink)relink.style.display=(window.AbajNative&&typeof window.AbajNative.reconnectTelegram==='function')?'':'none';
   try{
     const r=await fetch('/api/me',{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return;
     const d=await r.json();
     appIsAdmin=!!d.is_admin;
-    const relink=document.getElementById('relinkTelegramBtn');
-    if(relink)relink.style.display=(window.AbajNative&&typeof window.AbajNative.reconnectTelegram==='function')?'':'none';
+
     const btn=document.getElementById('settingsAdminBtn');
     if(btn)btn.style.display=appIsAdmin?'':'none';
     const kpDays=document.getElementById('cinemaKinoPubDays');
