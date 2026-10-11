@@ -1534,6 +1534,22 @@ async def api_cinema_library(request):
         except Exception:
             logging.exception('KinoPub personal bookmark folder listing failed')
 
+    if str(request.query.get('flat') or '').strip() == '1' and not folder_id:
+        merged = list(rows)
+        seen = {str(x.get('id') or '').strip() or str(x.get('title') or '').strip().casefold() for x in merged}
+        for data in custom.values():
+            if not isinstance(data,dict):
+                continue
+            for item in data.get('items') or []:
+                if not isinstance(item,dict):
+                    continue
+                key = str(item.get('id') or '').strip() or str(item.get('title') or '').strip().casefold()
+                if key and key not in seen:
+                    merged.append(item)
+                    seen.add(key)
+        return web.json_response({'ok':True,'section':section,'items':merged,'count':len(merged)},
+                                 headers={'Cache-Control':'no-store'})
+
     if folder_id:
         if folder_id == 'personal':
             selected = rows
