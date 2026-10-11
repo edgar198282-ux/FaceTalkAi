@@ -56,7 +56,13 @@ TELEGRAM_BOT_TOKEN_SOURCE = next((name for name, value in _TOKEN_CANDIDATES if _
 TELEGRAM_BOT_TOKEN = next((value for _name, value in _TOKEN_CANDIDATES if _looks_like_bot_token(value)), "")
 BOT_TOKEN = TELEGRAM_BOT_TOKEN
 EXPECTED_BOT_USERNAME = os.getenv("EXPECTED_BOT_USERNAME", "FaceTalkID_bot").strip().lstrip("@")
-MINIAPP_URL = os.getenv("MINIAPP_URL", "").rstrip("/")
+_miniapp_value = os.getenv("MINIAPP_URL", "").strip().strip('"').strip("'").rstrip("/")
+if _miniapp_value and "://" not in _miniapp_value:
+    _miniapp_value = "https://" + _miniapp_value
+if not _miniapp_value.startswith("https://"):
+    _railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "").strip()
+    _miniapp_value = "https://" + _railway_domain if _railway_domain else ""
+MINIAPP_URL = _miniapp_value
 PORT = _int("PORT", 8080)
 ADMIN_ID = _int("ADMIN_ID", 0)
 
