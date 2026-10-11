@@ -2280,6 +2280,20 @@ body:not(.cinemaMode) .cinemaShellSide{
 #cinemaScreen :is(#cinemaTvQuickBtn,#cinemaSettingsBtn,#cinemaSearchBtn){margin:0!important;padding:5px!important;flex:0 0 auto}
 #cinemaScreen #cinemaTvQuickBtn .cinemaTvQuickSvg{display:block!important;width:27px!important;height:27px!important;stroke:#87ceff!important;stroke-width:2!important;fill:none!important}
 @media(max-width:700px){#cinemaScreen .cinemaShellActions{gap:0!important}#cinemaScreen :is(#cinemaTvQuickBtn,#cinemaSettingsBtn,#cinemaSearchBtn){width:35px!important;height:39px!important;min-width:35px!important;min-height:39px!important;padding:4px!important}#cinemaScreen #cinemaTvQuickBtn .cinemaTvQuickSvg{width:26px!important;height:26px!important}}
+<style id="abaj-iptv-header-icons-unboxed-v1">
+@media(max-width:700px){
+  body:not(.nativeTv):not(.cinemaMode) .top .icons :is(#cinemaToggleBtn,#tvSettingsBtn,#tvTopSearchBtn,#refreshBtn){
+    background:transparent!important;
+    border-color:transparent!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+  }
+  body:not(.nativeTv):not(.cinemaMode) .top .icons :is(#cinemaToggleBtn,#tvSettingsBtn,#tvTopSearchBtn,#refreshBtn):is(:active,:focus,:focus-visible){
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+}
+</style>
 </style>
 </head>
 <body>
