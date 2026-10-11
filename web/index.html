@@ -9855,33 +9855,59 @@ function renderCinemaBookmarkFolders(folders){
     count.className='cinemaBookmarkFolderCount';
     count.textContent=String(Number(folder?.count||0));
     btn.append(icon,title,count);
-    btn.onclick=()=>loadCinemaBookmarkFolder(folder);
     const entry=document.createElement('div');
     entry.className='cinemaBookmarkFolderEntry';
+    entry.style.position='relative';
     entry.appendChild(btn);
-    if(String(folder?.id||'').startsWith('local:')){
-      const actions=document.createElement('button');
-      actions.type='button';
-      actions.className='cinemaBookmarkFolderDelete';
-      actions.textContent='⋮';
-      actions.title='Удалить папку';
-      actions.setAttribute('aria-label','Удалить папку '+String(folder?.title||''));
-      actions.onclick=async()=>{
-        const name=String(folder?.title||'Папка');
-        if(!confirm('Удалить папку «'+name+'»?\\nФильмы в KinoPub не удалятся.'))return;
-        actions.disabled=true;
+    let holdTimer=null, longPressed=false;
+    const menu=document.createElement('button');
+    menu.type='button';
+    menu.className='cinemaBookmarkFolderDelete';
+    menu.textContent='Удалить папку';
+    menu.style.cssText='display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:3;min-height:40px;padding:6px 12px;border-radius:8px;background:#363636;color:#fff;border:1px solid #777;font-size:15px';
+    const canDelete=String(folder?.id||'').startsWith('local:');
+    const hideMenu=()=>{menu.style.display='none'};
+    const cancelHold=()=>{if(holdTimer!==null){clearTimeout(holdTimer);holdTimer=null}};
+    btn.onclick=e=>{
+      if(longPressed){e.preventDefault();longPressed=false;return}
+      if(menu.style.display!=='none'){hideMenu();return}
+      loadCinemaBookmarkFolder(folder);
+    };
+    if(canDelete){
+      const beginHold=()=>{
+        cancelHold();
+        longPressed=false;
+        holdTimer=setTimeout(()=>{
+          holdTimer=null;
+          longPressed=true;
+          menu.style.display='block';
+        },3000);
+      };
+      btn.addEventListener('pointerdown',beginHold);
+      btn.addEventListener('pointerup',cancelHold);
+      btn.addEventListener('pointercancel',cancelHold);
+      btn.addEventListener('pointerleave',cancelHold);
+      btn.addEventListener('contextmenu',e=>{e.preventDefault();cancelHold();longPressed=true;menu.style.display='block'});
+      btn.addEventListener('keydown',e=>{
+        if(e.key==='Enter'||e.key===' '){if(e.repeat)return;beginHold()}
+      });
+      btn.addEventListener('keyup',cancelHold);
+      menu.onclick=async e=>{
+        e.stopPropagation();
+        if(!confirm('Удалить папку «'+String(folder?.title||'Папка')+'»?\nФильмы в KinoPub не удалятся.'))return;
+        menu.disabled=true;
         try{
-          const r=await fetch('/api/cinema/bookmark-folders?folder_id='+encodeURIComponent(String(folder.id)),{
+          const response=await fetch('/api/cinema/bookmark-folders?folder_id='+encodeURIComponent(String(folder.id)),{
             method:'DELETE',headers:authHeaders(),cache:'no-store'
           });
-          if(!r.ok)throw new Error('HTTP '+r.status);
+          if(!response.ok)throw new Error('HTTP '+response.status);
           await loadCinemaLibrary('bookmarks');
-        }catch(e){
+        }catch(err){
           alert('Не удалось удалить папку. Попробуйте снова.');
-          actions.disabled=false;
+          menu.disabled=false;
         }
       };
-      entry.appendChild(actions);
+      entry.appendChild(menu);
     }
     list.appendChild(entry);
   });
