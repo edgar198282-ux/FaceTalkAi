@@ -7108,7 +7108,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
   // /api/iptv/play proxy, adding an extra server hop before HLS could start.
   // If a source blocks CORS/mixed-content, the existing mobile NETWORK_ERROR
   // path immediately retries through the proxy.
-  const useDirectClient=!ch.personal&&!!directSrc&&!forceProxy;
+  const useDirectClient=!ch.personal&&!!directSrc&&(!forceProxy||String(ch.id||'').startsWith('cinema:external:'));
   const src=useDirectClient?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
@@ -7424,7 +7424,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
         }
       }
 
-      if(data.type===Hls.ErrorTypes.NETWORK_ERROR && !nativeTv && !forceProxy && !ch.personal){
+      if(data.type===Hls.ErrorTypes.NETWORK_ERROR && !nativeTv && !forceProxy && !ch.personal && !String(ch.id||'').startsWith('cinema:external:')){
         clearFirstFrameTimer();
         err.textContent='Проверяю совместимый поток…';
         startStream(ch,preferBackup,true);
