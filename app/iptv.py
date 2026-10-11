@@ -3133,6 +3133,61 @@ async def api_proxy(request):
         raise
 
 
+async def _bootstrap_public_channels():
+    """Seed a new volume with public free-TV channels without heavy IPTV scans."""
+    if _state["channels"]:
+        return
+    sources = [
+        ("snapshot", "https://facetalkai-production.up.railway.app/api/iptv/channels?compact=1&fast=1", ""),
+        ("playlist", "https://iptv-org.github.io/iptv/countries/am.m3u", "AM"),
+        ("playlist", "https://iptv-org.github.io/iptv/countries/ru.m3u", "RU"),
+    ]
+    result = {}
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=18), headers={"User-Agent":"AbajTV/1.0"}) as session:
+        for kind, url, country in sources:
+            try:
+                async with session.get(url, ssl=False) as response:
+                    if response.status != 200 or int(response.headers.get("Content-Length") or 0) > 6 * 1048576:
+                        continue
+                    raw = await response.content.read(6 * 1048576 + 1)
+                    if len(raw) > 6 * 1048576:
+                        continue
+                if kind == "snapshot":
+                    payload = json.loads(raw.decode("utf-8"))
+                    rows = payload.get("channels", []) if isinstance(payload, dict) else []
+                    if not isinstance(rows, list):
+                        continue
+                    for row in rows[:5000]:
+                        if not isinstance(row, dict) or row.get("personal") or row.get("adult"):
+                            continue
+                        url_value = str(row.get("url") or "")
+                        if not url_value.startswith(("https://", "http://")):
+                            continue
+                        if not row.get("id") or not row.get("name"):
+                            continue
+                        clean = {k: v for k, v in row.items() if k in ("id", "name", "group", "country", "logo", "status", "tvg_id", "quality", "height", "url", "backups", "adult", "latency_ms", "source")}
+                        clean["status"] = "ONLINE"
+                        result[str(clean["id"])] = clean
+                else:
+                    for row in _parse_m3u(raw.decode("utf-8", "ignore"), country, url):
+                        if not _is_adult_channel(row):
+                            row["status"] = "ONLINE"
+                            result.setdefault(str(row["id"]), row)
+                logging.info("IPTV light bootstrap %s: %d channels", kind, len(result))
+                if len(result) >= 1000:
+                    break
+            except Exception as exc:
+                logging.warning("IPTV light bootstrap source error: %s", type(exc).__name__)
+    if result and not _state["channels"]:
+        _state["channels"] = result
+        _state["last_refresh"] = int(time.time())
+        _state["stats"] = {"total":len(result),"online":len(result),"offline":0}
+        _save_json(SNAPSHOT_PATH, {"saved_at":int(time.time()),"state":{"channels":list(result.values()),"last_refresh":_state["last_refresh"],"stats":_state["stats"],"error":""}})
+        logging.info("IPTV light bootstrap saved %d public channels to volume",len(result))
+    elif not result:
+        logging.warning("IPTV light bootstrap found no public channels")
+
+
 async def start_background(app):
     restored_channels = 0
     try:
@@ -3209,7 +3264,9 @@ async def start_background(app):
         logging.info("IPTV EPG background refresh disabled by IPTV_EPG_ENABLED")
 
     if worker_mode:
-        app["iptv_task"] = None
+        # The full scanner is deliberately off on small instances. Restore
+        # only public channel catalogue in a bounded one-time background task.
+        app["iptv_task"] = asyncio.create_task(_bootstrap_public_channels())
         return
 
     async def loop():
