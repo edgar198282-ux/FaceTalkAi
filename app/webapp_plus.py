@@ -1505,8 +1505,20 @@ async def api_cinema_library(request):
     section = str(request.query.get('section') or 'history').strip().lower()
     if section not in ('history','watching','bookmarks'):
         return web.json_response({'ok':False,'error':'bad_section'}, status=400)
-    # Bookmarks belong to the authenticated Telegram account, never to a shared KinoPub token.
     rows = await _cinema_library_read(uid, section)
+    if section == 'bookmarks':
+        personal_tokens = await _kinopub_tokens(uid)
+        if personal_tokens.get('access_token') or personal_tokens.get('refresh_token'):
+            try:
+                upstream = await _kinopub_sync_bookmarks(uid)
+                seen = {str(row.get('id') or '').strip() or str(row.get('title') or '').strip().casefold() for row in rows}
+                for item in upstream:
+                    key = str(item.get('id') or '').strip() or str(item.get('title') or '').strip().casefold()
+                    if key and key not in seen:
+                        rows.append(item)
+                        seen.add(key)
+            except Exception:
+                logging.exception('KinoPub personal bookmarks sync failed')
     return web.json_response({'ok':True,'section':section,'items':rows,'count':len(rows)}, headers={'Cache-Control':'no-store'})
 
 async def api_cinema_bookmark_folders(request):
