@@ -1353,30 +1353,50 @@ def _parse_epg_xml(text: str) -> tuple[dict, dict, dict, dict]:
     return programmes, names, logos, logo_names
 
 
+async def _fetch_epg_limited(session: aiohttp.ClientSession, url: str, max_bytes: int) -> str:
+    """Bound memory for XMLTV downloads; never load an unlimited guide into RAM."""
+    async with session.get(url, timeout=aiohttp.ClientTimeout(total=40)) as response:
+        if response.status >= 400:
+            return ""
+        if int(response.headers.get("Content-Length") or 0) > max_bytes:
+            logging.warning("EPG source skipped: declared size exceeds %d MB", max_bytes // 1048576)
+            return ""
+        buffer = bytearray()
+        async for chunk in response.content.iter_chunked(65536):
+            if len(buffer) + len(chunk) > max_bytes:
+                logging.warning("EPG source skipped: download exceeded %d MB", max_bytes // 1048576)
+                return ""
+            buffer.extend(chunk)
+        return buffer.decode("utf-8", "ignore")
+
+
 async def refresh_epg(force: bool = False):
     now = int(time.time())
     if not force and _state["epg"] and now - int(_state["epg_last_refresh"] or 0) < EPG_REFRESH_SECONDS:
         return
     try:
-        connector = aiohttp.TCPConnector(limit=8, ssl=False)
+        # Process sources sequentially. Previously three entire XML feeds and
+        # three parsed trees were held concurrently, exhausting a 1 GB service.
+        max_bytes = max(1, min(24, int(os.getenv("IPTV_EPG_MAX_MB", "8")))) * 1048576
+        source_count = max(1, min(len(EPG_URLS), int(os.getenv("IPTV_EPG_SOURCE_COUNT", "1"))))
+        all_programmes, all_names, all_logos, all_logo_names = {}, {}, {}, {}
+        connector = aiohttp.TCPConnector(limit=2, ssl=False)
         async with aiohttp.ClientSession(connector=connector, headers={"User-Agent": "AbajTV/1.0"}) as session:
-            texts = await asyncio.gather(*[_fetch_text(session, url) for _, url in EPG_URLS])
-        all_programmes = {}
-        all_names = {}
-        all_logos = {}
-        all_logo_names = {}
-        parsed_feeds = await asyncio.gather(
-            *[asyncio.to_thread(_parse_epg_xml, text) for text in texts]
-        )
-        for programmes, names, logos, logo_names in parsed_feeds:
-            for cid, rows in programmes.items():
-                all_programmes.setdefault(cid, []).extend(rows)
-            for key, value in names.items():
-                all_names.setdefault(key, value)
-            for key, value in logos.items():
-                all_logos.setdefault(key, value)
-            for key, value in logo_names.items():
-                all_logo_names.setdefault(key, value)
+            for _, url in EPG_URLS[:source_count]:
+                text = await _fetch_epg_limited(session, url, max_bytes)
+                if not text:
+                    continue
+                programmes, names, logos, logo_names = await asyncio.to_thread(_parse_epg_xml, text)
+                del text
+                for cid, rows in programmes.items():
+                    all_programmes.setdefault(cid, []).extend(rows)
+                for key, value in names.items():
+                    all_names.setdefault(key, value)
+                for key, value in logos.items():
+                    all_logos.setdefault(key, value)
+                for key, value in logo_names.items():
+                    all_logo_names.setdefault(key, value)
+                del programmes, names, logos, logo_names
         for rows in all_programmes.values():
             rows.sort(key=lambda x: x["start"])
         _state["epg"] = all_programmes
@@ -1384,9 +1404,11 @@ async def refresh_epg(force: bool = False):
         _state["epg_logos"] = all_logos
         _state["epg_logo_names"] = all_logo_names
         _state["epg_last_refresh"] = int(time.time())
-        _state["epg_error"] = ""
+        _state["epg_error"] = "" if all_programmes else "EPG sources exceeded safe memory limits or were unavailable"
+        logging.info("EPG safe refresh: %d channels", len(all_programmes))
     except Exception as exc:
         _state["epg_error"] = repr(exc)[:300]
+        logging.exception("EPG safe refresh failed")
 
 
 def _epg_logo_for_channel(item: dict) -> str:
