@@ -2098,7 +2098,7 @@ async def _public_signed_apk_release():
                     payload = await response.json()
                     assets = payload.get("assets") or []
                     asset = next((a for a in assets if a.get("name") == "AbajTV-latest.apk"), None)
-                    version = re.search(r"1\\.2\\.(\\d{9,11})", str(payload.get("name") or ""))
+                    version = re.search(r"1\.2\.(\d{9,11})", str(payload.get("name") or ""))
                     if asset and version and int(asset.get("size") or 0) >= MIN_APK_SIZE:
                         result = {
                             "available": True,
