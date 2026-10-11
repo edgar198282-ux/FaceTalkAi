@@ -676,7 +676,11 @@ def _kinopub_proxy_url(request, uid: int, url: str) -> str:
         sig = hmac.new(external_secret.encode(), packed.encode(), hashlib.sha256).hexdigest()
         return external_base + '/p?t=' + quote(packed + '.' + sig, safe='')
     token = _kinopub_store_stream(uid, url)
-    return f'{request.scheme}://{request.host}/api/kinopub/proxy?t={quote(token, safe="")}'
+    # Railway terminates TLS at its edge. request.scheme may be http even
+    # when the Android WebView is on https; HLS.js rejects mixed-content URLs.
+    forwarded = str(request.headers.get('X-Forwarded-Proto') or '').split(',')[0].strip().lower()
+    scheme = 'https' if forwarded == 'https' or str(request.host).endswith('.up.railway.app') else request.scheme
+    return f'{scheme}://{request.host}/api/kinopub/proxy?t={quote(token, safe="")}'
 
 
 def _kinopub_url_diag(url):
