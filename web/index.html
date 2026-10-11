@@ -2326,6 +2326,20 @@ body:not(.cinemaMode) .cinemaShellSide{
 #abajLocalGallery .galleryItem span{padding:7px;color:#e7d6c3;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #abajLocalGallery .galleryItem:focus{outline:3px solid #e9a850}
 </style>
+<style id="abaj-home-new-posters-v1">
+.amc-popular-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.amc-popular-head h3{margin:8px 0 14px}
+.amc-popular-head button{border:1px solid #bc854e;background:#131a28;color:#f8dbb2;padding:7px 11px;border-radius:10px}
+.amc-news-status{color:#d1b99c;padding:12px 3px}
+#amcNewPosters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+#amcNewPosters .amc-new-card{padding:0;min-width:0;border-radius:12px;overflow:hidden;background:#101a29;border:1px solid #6c4b34;color:#fff;cursor:pointer;text-align:left;box-shadow:0 4px 14px #0007}
+#amcNewPosters .amc-new-card:focus-visible{outline:3px solid #efb56f;outline-offset:2px}
+#amcNewPosters img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;background:#13283e}
+#amcNewPosters .amc-new-caption{padding:8px 10px;min-height:58px;display:flex;flex-direction:column;gap:4px}
+#amcNewPosters strong{font-size:clamp(12px,1.1vw,16px);line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#amcNewPosters small{font-size:11px;color:#ddbb93}
+@media(max-width:700px){#abajMediaHome .amc-top{padding-top:24px;min-height:105px}#abajMediaHome .amc-brand{font-size:30px}#amcNewPosters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#amcNewPosters .amc-new-card{align-self:start}#abajMediaHome .amc-feature{overflow:hidden}#abajMediaHome .amc-feature h2{font-size:19px}#abajMediaHome .amc-control{flex-shrink:0}}
+</style>
 </head>
 <body>
 <section id="abajLocalGallery" hidden aria-label="Мои медиа">
@@ -2338,7 +2352,7 @@ body:not(.cinemaMode) .cinemaShellSide{
   <header class="amc-top"><div class="amc-top-left"><span id="amcClock">20:24</span><div style="font-size:10px;letter-spacing:.2em;color:#c49465;margin-top:9px">МИР РАЗВЛЕЧЕНИЙ</div></div><div class="amc-brand">Abaj<b>TV</b><small>MEDIA FOR A RICHER LIFE</small></div><div class="amc-top-right">⌕　♧　♙</div></header>
   <div class="amc-console"><div class="amc-control"><div class="amc-dial"></div>−　 ГРОМКОСТЬ　+</div><div class="amc-feature"><div style="font-size:12px;color:#efb57c;letter-spacing:.25em">ABAJ TV</div><h2>Медиацентр</h2><p>ТВ · Фильмы · Развлечения</p><button class="amc-play" onclick="abajHomeEnter('cinema')">▶ Смотреть</button></div><div class="amc-control"><div class="amc-dial"></div>−　 ВЫБОР　+</div></div>
   <nav class="amc-nav"><button class="amc-selected" onclick="abajHomeEnter('tv')"><span>▣</span>TV</button><button onclick="abajHomeEnter('cinema')"><span>◉</span>Кинотеатр</button><button onclick="abajHomeEnter('radio')"><span>▤</span>Радио</button><button onclick="abajHomeEnter('karaoke')"><span>♬</span>Караоке</button><button onclick="abajHomeEnter('media')"><span>▱</span>Мои медиа</button><button onclick="abajHomeEnter('settings')"><span>⚙</span>Настройки</button></nav>
-  <div class="amc-popular"><h3>Популярное на Abaj TV</h3><div class="amc-posters"><div class="amc-poster">Фантастика</div><div class="amc-poster">Драмы</div><div class="amc-poster">Документальные</div><div class="amc-poster">Приключения</div><div class="amc-poster">Новинки</div></div></div>
+  <div class="amc-popular"><div class="amc-popular-head"><h3>Последние новинки</h3><button type="button" onclick="abajHomeNewsLoad(true)">↻ Обновить</button></div><div id="amcNewsStatus" class="amc-news-status">Загрузка новинок…</div><div class="amc-posters" id="amcNewPosters"></div></div>
 </section>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
   <div class="tvSearchCard">
@@ -15098,6 +15112,39 @@ window.abajGalleryFiles=function(files){
   const name=document.createElement('span');name.textContent=file.name;card.appendChild(name);grid.appendChild(card);
  });
 };
+})();
+</script>
+<script id="abaj-home-kinopub-new">
+(function(){
+let loading=false,lastLoaded=0;
+const esc=t=>String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+window.abajHomeNewsLoad=async function(force=false){
+ const grid=document.getElementById('amcNewPosters'),status=document.getElementById('amcNewsStatus');
+ if(!grid||loading||(!force&&lastLoaded&&Date.now()-lastLoaded<300000))return;
+ loading=true;status.textContent='Загрузка новинок…';status.hidden=false;
+ try{
+   const response=await fetch('/api/kinopub/section?section=fresh&page=1&perpage=12',{headers:typeof authHeaders==='function'?authHeaders():{},cache:'no-store'});
+   if(!response.ok)throw Error(response.status===401?'Подключите Kinopub в настройках кинотеатра':'Источник Kinopub временно недоступен');
+   const data=await response.json(),items=Array.isArray(data.items)?data.items.slice(0,10):[];
+   grid.replaceChildren();
+   if(!items.length){status.textContent='Новинки пока недоступны.';return}
+   items.forEach(item=>{
+     const card=document.createElement('button');card.type='button';card.className='amc-new-card';
+     const poster=String(item.poster||'');
+     const img=document.createElement('img');img.loading='lazy';img.alt='';img.decoding='async';
+     if(poster.startsWith('https://')||poster.startsWith('/')||poster.startsWith('http://'))img.src=poster;
+     const caption=document.createElement('div');caption.className='amc-new-caption';
+     const title=document.createElement('strong');title.textContent=String(item.title||item.name||'Без названия');
+     const detail=document.createElement('small');detail.textContent=[item.year,item.quality].filter(Boolean).join(' · ');
+     caption.append(title,detail);card.append(img,caption);
+     card.onclick=async()=>{try{if(typeof cinemaMode!=='undefined'&&!cinemaMode)await toggleCinemaMode();document.getElementById('abajMediaHome').hidden=true;await openCinemaMovie(item)}catch(e){console.warn('Open Kinopub item',e)}};
+     grid.appendChild(card);
+   });
+   status.hidden=true;lastLoaded=Date.now();
+ }catch(e){grid.replaceChildren();status.hidden=false;status.textContent=e.message||'Не удалось загрузить новинки';}
+ finally{loading=false}
+};
+document.addEventListener('DOMContentLoaded',()=>abajHomeNewsLoad());
 })();
 </script>
 </body>
