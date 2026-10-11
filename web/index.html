@@ -5052,7 +5052,7 @@ function buildQuickCats(groups){
   const labels={General:t.general,News:t.news,Sports:t.sports,Movies:t.movies,Kids:t.kids,Music:t.music};
   const icons={General:'⌂',News:'▤',Sports:'⚽',Movies:'🎬',Kids:'★',Music:'♫'};
   const normalized=new Set(groups.map(normalizeCat));
-  const cats=preferred.filter(x=>normalized.has(x));
+  // Keep the familiar category bar visible while the IPTV catalogue loads.\n  // Availability and channel counts are still determined by the actual data.\n  const cats=channels.length ? preferred.filter(x=>normalized.has(x)) : preferred;
   document.getElementById('quickCats').innerHTML=
     '<button class="cat active" data-cat="" onclick="setCategory(\'\')"><span class="catIcon">▦</span><span class="catLabel">'+esc(t.allCategories)+'</span></button>'+
     cats.map(x=>'<button class="cat" data-cat="'+esc(x)+'" onclick="setCategory(\''+x+'\')"><span class="catIcon">'+esc(icons[x]||'•')+'</span><span class="catLabel">'+esc(labels[x]||x)+'</span></button>').join('');
