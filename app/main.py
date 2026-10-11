@@ -282,17 +282,25 @@ def _telegram_lang(user) -> str:
     return 'ru'
 
 async def send_language_picker(m: Message):
-    await _hide_reply_keyboard(m)
     caption = '📺 Abaj TV — 3000+ ալիք և ֆիլմեր մեկ հավելվածում։\n🎬 Abaj TV — более 3000 каналов и фильмы в одном приложении.'
     logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'media', 'abaj_tv_logo.jpg')
     keyboard = language_keyboard()
+    sent_photo = False
     try:
         if os.path.exists(logo_path):
             await _answer_photo(m, FSInputFile(logo_path), caption=caption, reply_markup=keyboard)
-            return
+            sent_photo = True
     except Exception as exc:
-        logging.warning("Abaj TV start photo failed, fallback to text: %r", exc)
-    await _answer(m, caption, reply_markup=keyboard)
+        logging.warning('Abaj TV start photo failed, fallback to text: %r', exc)
+    if not sent_photo:
+        await _answer(m, caption, reply_markup=keyboard)
+    if m.from_user and MINIAPP_URL:
+        lang = await get_user_language(m.from_user.id) or _telegram_lang(m.from_user)
+        await _answer(
+            m,
+            {'hy':'Ընտրեք գործողությունը ստորև։','ru':'Выберите действие внизу.','en':'Choose an action below.'}.get(lang, 'Выберите действие внизу.'),
+            reply_markup=miniapp_keyboard(m.from_user.id, lang),
+        )
 
 async def _paired_device_count(uid: int, current_device_id: str = '') -> tuple[int, bool]:
     rows = await list_settings_prefix('tv_device:')
