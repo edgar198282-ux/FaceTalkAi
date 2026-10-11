@@ -2275,6 +2275,12 @@ body:not(.cinemaMode) .cinemaShellSide{
 #cinemaSettingsBtn:focus-visible,#cinemaSettingsBtn.focused{outline:2px solid #66d4ff;outline-offset:2px}
 @media(max-width:700px){#cinemaSettingsBtn{width:40px;height:40px;min-width:40px;min-height:40px;font-size:22px}.cinemaShellActions{gap:5px}}
 </style>
+<style id="cinema-three-actions-tight-v1">
+#cinemaScreen .cinemaShellActions{gap:3px!important}
+#cinemaScreen :is(#cinemaTvQuickBtn,#cinemaSettingsBtn,#cinemaSearchBtn){margin:0!important;padding:5px!important;flex:0 0 auto}
+#cinemaScreen #cinemaTvQuickBtn .cinemaTvQuickSvg{display:block!important;width:27px!important;height:27px!important;stroke:#87ceff!important;stroke-width:2!important;fill:none!important}
+@media(max-width:700px){#cinemaScreen .cinemaShellActions{gap:1px!important}#cinemaScreen :is(#cinemaTvQuickBtn,#cinemaSettingsBtn,#cinemaSearchBtn){width:37px!important;height:39px!important;min-width:37px!important;min-height:39px!important;padding:4px!important}#cinemaScreen #cinemaTvQuickBtn .cinemaTvQuickSvg{width:26px!important;height:26px!important}}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
@@ -2370,11 +2376,10 @@ body:not(.cinemaMode) .cinemaShellSide{
           <button class="cinemaKpNavBtn" data-kp-nav="settings" onclick="cinemaKpNav('settings')">Настройки</button>
         </div>
         <button class="cinemaShellBtn cinemaTvQuickBtn" id="cinemaTvQuickBtn" onclick="toggleCinemaMode()" title="ТВ" aria-label="ТВ">
-  <svg class="cinemaTvQuickSvg" viewBox="0 0 32 26" aria-hidden="true" focusable="false">
-    <rect x="3" y="4" width="26" height="17" rx="3"></rect>
-    <path d="M12 23h8"></path>
-    <path d="M16 21v2"></path>
-    <path d="M11 1.5 16 4l5-2.5"></path>
+  <svg class="cinemaTvQuickSvg" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+    <rect x="3" y="6" width="26" height="19" rx="3.5"></rect>
+    <rect x="6.5" y="9.5" width="19" height="12" rx="1.5"></rect>
+    <path d="M12 29h8M16 25v4"></path>
   </svg>
 </button>
         <button class="cinemaShellBtn cinemaSettingsQuickBtn" id="cinemaSettingsBtn" onclick="openTvSettings()" title="Настройки" aria-label="Настройки">⚙</button>
