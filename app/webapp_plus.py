@@ -3941,9 +3941,12 @@ async def api_admin_tv_disconnect(request):
 
 
 async def api_app_auth_start(request):
-    me = await request.app['bot'].get_me()
-    username = (me.username or '').lstrip('@')
-    if not username: raise web.HTTPServiceUnavailable(text='Telegram bot username unavailable')
+    # The login link must remain usable even when the Bot API is unavailable
+    # or the old instance used a revoked Telegram token. No network call here.
+    from .config import EXPECTED_BOT_USERNAME
+    username = (EXPECTED_BOT_USERNAME or 'FaceTalkID_bot').strip().lstrip('@')
+    if not re.fullmatch(r'[A-Za-z0-9_]{5,32}', username):
+        username = 'FaceTalkID_bot'
     nonce = ''.join(ch for ch in (request.query.get('nonce') or '') if ch.isalnum() or ch in ('-','_'))[:96]
     payload = f'app_login_{nonce}' if nonce else 'app_login'
     raise web.HTTPFound(f'https://t.me/{quote(username)}?start={quote(payload)}')
