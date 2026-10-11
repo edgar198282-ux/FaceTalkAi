@@ -791,7 +791,15 @@ async def main():
     polling_enabled = str(os.getenv('TELEGRAM_POLLING_ENABLED', '1')).strip().lower() not in {'0','false','no','off'}
     if polling_enabled:
         logging.info('Telegram polling enabled for this service')
-        await dp.start_polling(bot)
+        while True:
+            try:
+                await dp.start_polling(bot, close_bot_session=False)
+                logging.warning('Telegram polling stopped; retrying in 15 seconds')
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logging.exception('Telegram polling failed; web server stays available; retrying in 15 seconds')
+            await asyncio.sleep(15)
     else:
         logging.info('Telegram polling disabled for this service; web server remains active')
         await asyncio.Event().wait()
