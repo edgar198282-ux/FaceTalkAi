@@ -1518,8 +1518,13 @@ async def api_cinema_library(request):
     personal_tokens = await _kinopub_tokens(uid)
     has_personal_kp = bool(personal_tokens.get('access_token') or personal_tokens.get('refresh_token'))
     folder_id = str(request.query.get('folder') or '').strip()
+    custom = await _cinema_custom_folders(uid)
     folders = [{'id':'personal','title':'Моё избранное ABAJ TV',
                 'count':len(rows),'kind':'bookmark_folder','source':'ABAJ'}]
+    for fid, data in custom.items():
+        if isinstance(data,dict):
+            folders.append({'id':fid,'title':str(data.get('title') or 'Папка'),
+                            'count':len(data.get('items') or []),'kind':'bookmark_folder','source':'ABAJ'})
     kp_token = None
     if has_personal_kp:
         try:
@@ -1531,6 +1536,8 @@ async def api_cinema_library(request):
     if folder_id:
         if folder_id == 'personal':
             selected = rows
+        elif folder_id in custom:
+            selected = custom[folder_id].get('items') or []
         elif has_personal_kp and kp_token and any(f['id'] == folder_id and f.get('source') == 'KINOPUB' for f in folders):
             try:
                 selected = await _kinopub_bookmark_folder_items(kp_token, folder_id)
@@ -1545,6 +1552,15 @@ async def api_cinema_library(request):
                               'folders':folders,'count':sum(int(f.get('count') or 0) for f in folders)},
                              headers={'Cache-Control':'no-store'})
 
+async def _cinema_custom_folders(uid):
+    raw = await get_setting(f'cinema_custom_folders:{int(uid)}', '')
+    try:
+        data = json.loads(raw or '{}')
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
 async def api_cinema_bookmark_folders(request):
     user = await _user_from_request(request)
     if not user:
@@ -1553,31 +1569,54 @@ async def api_cinema_bookmark_folders(request):
     if not await _cinema_access_allowed(uid):
         return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
     rows = await _cinema_library_read(uid, 'bookmarks')
+    custom = await _cinema_custom_folders(uid)
+    def item_key(item):
+        return str(item.get('id') or '').strip() or str(item.get('title') or '').strip().casefold()
     if request.method == 'GET':
         item_id = str(request.query.get('item_id') or '').strip()
-        selected = bool(item_id and any(str(row.get('id') or '') == item_id for row in rows))
-        return web.json_response({'ok':True,'folders':[{
-            'id':'personal','title':'Избранное','count':len(rows),
-            'selected':selected,'kind':'bookmark_folder',
-        }]}, headers={'Cache-Control':'no-store'})
+        folders = [{'id':'personal','title':'Моё избранное ABAJ TV','count':len(rows),
+                    'selected':bool(item_id and any(item_key(x) == item_id for x in rows)),
+                    'kind':'bookmark_folder'}]
+        for fid, data in custom.items():
+            if not isinstance(data,dict):
+                continue
+            items = data.get('items') if isinstance(data.get('items'),list) else []
+            folders.append({'id':fid,'title':str(data.get('title') or 'Папка'),
+                            'count':len(items),'selected':bool(item_id and any(item_key(x) == item_id for x in items)),
+                            'kind':'bookmark_folder'})
+        return web.json_response({'ok':True,'folders':folders}, headers={'Cache-Control':'no-store'})
     body = await request.json()
-    item = body.get('item') if isinstance(body, dict) else None
-    if not isinstance(item, dict):
+    item = body.get('item') if isinstance(body,dict) else None
+    if not isinstance(item,dict):
         return web.json_response({'ok':False,'error':'bad_item'}, status=400)
-    item_id = str(item.get('id') or '').strip()
-    title = str(item.get('title') or '').strip()
-    if not item_id and not title:
+    key = item_key(item)
+    if not key:
         return web.json_response({'ok':False,'error':'bad_item'}, status=400)
-    key = item_id or title.casefold()
-    selected = body.get('folders') if isinstance(body.get('folders'), list) else []
-    enabled = 'personal' in [str(x) for x in selected]
-    rows = [row for row in rows if (str(row.get('id') or '').strip() or str(row.get('title') or '').strip().casefold()) != key]
-    if enabled:
-        compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
-        compact['saved_at'] = int(time.time())
-        rows.insert(0, compact)
-    await _cinema_library_write(uid, 'bookmarks', rows[:300])
-    return web.json_response({'ok':True,'added':enabled,'selected':['personal'] if enabled else []}, headers={'Cache-Control':'no-store'})
+    title = str(body.get('create_title') or '').strip()[:80]
+    selected = [str(x) for x in body.get('folders',[]) if isinstance(x,(str,int))] if isinstance(body.get('folders'),list) else []
+    new_folder = ''
+    if title:
+        new_folder = 'local:' + secrets.token_hex(8)
+        custom[new_folder] = {'title':title,'items':[]}
+        selected.append(new_folder)
+    compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
+    compact['saved_at'] = int(time.time())
+    rows = [x for x in rows if item_key(x) != key]
+    if 'personal' in selected:
+        rows.insert(0,compact)
+    await _cinema_library_write(uid,'bookmarks',rows[:300])
+    for fid, data in custom.items():
+        if not isinstance(data,dict):
+            continue
+        old = data.get('items') if isinstance(data.get('items'),list) else []
+        filtered = [x for x in old if isinstance(x,dict) and item_key(x) != key]
+        if fid in selected:
+            filtered.insert(0,dict(compact))
+        data['items'] = filtered[:300]
+    await set_setting(f'cinema_custom_folders:{uid}',json.dumps(custom,ensure_ascii=False))
+    added = any(x in selected for x in ['personal',*custom.keys()])
+    return web.json_response({'ok':True,'added':added,'selected':selected,'created':new_folder},
+                             headers={'Cache-Control':'no-store'})
 
 
 async def api_cinema_library_bookmark(request):
