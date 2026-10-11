@@ -3179,7 +3179,12 @@ async def start_background(app):
         while True:
             await refresh_epg(force=False)
             await asyncio.sleep(EPG_REFRESH_SECONDS)
-    app["iptv_epg_task"] = asyncio.create_task(epg_loop())
+    epg_enabled = str(os.getenv("IPTV_EPG_ENABLED", "1")).strip().lower() not in {"0", "false", "no", "off"}
+    if epg_enabled:
+        app["iptv_epg_task"] = asyncio.create_task(epg_loop())
+    else:
+        app["iptv_epg_task"] = None
+        logging.info("IPTV EPG background refresh disabled by IPTV_EPG_ENABLED")
 
     if worker_mode:
         app["iptv_task"] = None
