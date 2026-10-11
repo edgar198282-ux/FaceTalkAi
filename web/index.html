@@ -2548,6 +2548,7 @@ body:not(.cinemaMode) .cinemaShellSide{
       <option value="1080">1080p</option>
       <option value="2160">4K</option>
     </select>
+    <button class="settingsAction" id="relinkTelegramBtn" onclick="relinkTelegramApp()" style="display:none;background:#096a9b">🔗 Перепривязать Telegram в этом APK</button>
     <button class="settingsAction" id="settingsAdminBtn" onclick="openAdminFromTvSettings()" style="display:none;background:#0b5f9e">🛠 Админ-панель</button>
     <button class="settingsClose" id="settingsCloseBtn" onclick="closeTvSettings()">Закрыть</button>
   </div>
@@ -3453,6 +3454,8 @@ async function checkAdmin(){
     if(!r.ok)return;
     const d=await r.json();
     appIsAdmin=!!d.is_admin;
+    const relink=document.getElementById('relinkTelegramBtn');
+    if(relink)relink.style.display=(window.AbajNative&&typeof window.AbajNative.reconnectTelegram==='function')?'':'none';
     const btn=document.getElementById('settingsAdminBtn');
     if(btn)btn.style.display=appIsAdmin?'':'none';
     const kpDays=document.getElementById('cinemaKinoPubDays');
@@ -4151,6 +4154,13 @@ function resetThemeHue(){
   localStorage.setItem('abaj_tv_theme_hue','204');
   applyThemeHue();
   paintTvSettings();
+}
+function relinkTelegramApp(){
+  if(window.AbajNative && typeof window.AbajNative.reconnectTelegram==='function'){
+    window.AbajNative.reconnectTelegram();
+  }else{
+    openActivationBot();
+  }
 }
 function openActivationBot(){
   const url='https://t.me/FaceTalkID_bot';
