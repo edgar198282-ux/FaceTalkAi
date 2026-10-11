@@ -1578,6 +1578,14 @@ public class MainActivity extends Activity {
     }
 
     public final class AbajNativeBridge {
+        @JavascriptInterface public void reconnectTelegram(){
+            runOnUiThread(()->{
+                if(isTv){Toast.makeText(MainActivity.this,"Для Android TV используйте привязку по QR-коду",Toast.LENGTH_LONG).show();return;}
+                String nonce=java.util.UUID.randomUUID().toString().replace("-","");
+                prefs.edit().putString("app_auth_nonce",nonce).apply();
+                openExternal(Uri.parse(baseUrl()+"/api/app-auth/telegram-start?nonce="+Uri.encode(nonce)));
+            });
+        }
         @JavascriptInterface public int adjustVolume(int delta){
             AudioManager am=(AudioManager)getSystemService(Context.AUDIO_SERVICE);
             if(am==null)return -1;
@@ -2925,7 +2933,7 @@ public class MainActivity extends Activity {
     private void consumeAuthIntent(Intent i){if(i!=null){consumeAuthUri(i.getData());consumeExternalMediaIntent(i);}}
     private void saveSignedAuth(String uid,String ts,String sig){if(uid==null||ts==null||sig==null||uid.isEmpty()||ts.isEmpty()||sig.isEmpty())return;prefs.edit().putString("ft_uid",uid).putString("ft_ts",ts).putString("ft_sig",sig).remove("app_auth_nonce").apply();}
     private void checkPendingAppAuth(){
-        if(isTv||hasSignedAuth())return;
+        if(isTv)return;
         String nonce=prefs.getString("app_auth_nonce","");
         if(nonce==null||nonce.isEmpty())return;
         new Thread(()->{
