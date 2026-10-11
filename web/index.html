@@ -2315,8 +2315,25 @@ body:not(.cinemaMode) .cinemaShellSide{
  .amc-poster{height:115px}
 }
 </style>
+<style id="abaj-local-gallery-style">
+#abajLocalGallery{position:fixed;inset:0;z-index:9100;background:#050d1b;color:#f8d7a8;overflow:auto;padding:18px;box-sizing:border-box}
+#abajLocalGallery[hidden]{display:none!important}
+#abajLocalGallery .galleryTop{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:18px}
+#abajLocalGallery button{background:#101f32;border:1px solid #b48750;color:#ffe0b0;padding:11px 17px;border-radius:12px;font-size:16px;cursor:pointer}
+#abajLocalGallery .galleryGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px}
+#abajLocalGallery .galleryItem{min-height:130px;background:#101b2d;border:1px solid #58422d;border-radius:12px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column}
+#abajLocalGallery .galleryItem img,#abajLocalGallery .galleryItem video{width:100%;height:160px;object-fit:contain;background:#000}
+#abajLocalGallery .galleryItem span{padding:7px;color:#e7d6c3;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#abajLocalGallery .galleryItem:focus{outline:3px solid #e9a850}
+</style>
 </head>
 <body>
+<section id="abajLocalGallery" hidden aria-label="Мои медиа">
+<div class="galleryTop"><button type="button" onclick="abajGalleryClose()">← Главная</button><strong>▱ Мои медиа</strong><button type="button" onclick="document.getElementById('abajGalleryPicker').click()">＋ Открыть файлы</button></div>
+<input id="abajGalleryPicker" type="file" accept="image/*,video/*,audio/*" multiple style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="abajGalleryFiles(this.files)">
+<p id="abajGalleryHelp" style="color:#b3c1d5;text-align:center">Выберите фото, видео или музыку из памяти устройства. Файлы остаются на устройстве.</p>
+<div id="abajGalleryGrid" class="galleryGrid"></div>
+</section>
 <section id="abajMediaHome" aria-label="Abaj TV Медиацентр">
   <header class="amc-top"><div class="amc-top-left"><span id="amcClock">20:24</span><div style="font-size:10px;letter-spacing:.2em;color:#c49465;margin-top:9px">МИР РАЗВЛЕЧЕНИЙ</div></div><div class="amc-brand">Abaj<b>TV</b><small>MEDIA FOR A RICHER LIFE</small></div><div class="amc-top-right">⌕　♧　♙</div></header>
   <div class="amc-console"><div class="amc-control"><div class="amc-dial"></div>−　 ГРОМКОСТЬ　+</div><div class="amc-feature"><div style="font-size:12px;color:#efb57c;letter-spacing:.25em">ABAJ TV</div><h2>Медиацентр</h2><p>ТВ · Фильмы · Развлечения</p><button class="amc-play" onclick="abajHomeEnter('cinema')">▶ Смотреть</button></div><div class="amc-control"><div class="amc-dial"></div>−　 ВЫБОР　+</div></div>
@@ -15035,7 +15052,8 @@ window.abajShowHome=function(){
 };
 window.abajHomeEnter=async function(kind){
  const home=document.getElementById('abajMediaHome');if(!home)return;
- if(kind==='radio'||kind==='karaoke'||kind==='media'){alert('Этот раздел пока готовится');return;}
+ if(kind==='media'){abajGalleryOpen();return;}
+ if(kind==='radio'||kind==='karaoke'){alert('Этот раздел пока готовится');return;}
  if(kind==='settings'){home.hidden=true;try{openTvSettings()}catch(e){home.hidden=false}return;}
  if(kind==='cinema'){
    try{if(typeof cinemaMode!=='undefined'&&!cinemaMode)await toggleCinemaMode();if(typeof cinemaMode!=='undefined'&&!cinemaMode)return;}catch(e){console.warn('Cinema entry',e);return;}
@@ -15046,6 +15064,40 @@ window.abajHomeEnter=async function(kind){
 };
 document.addEventListener('keydown',function(e){const home=document.getElementById('abajMediaHome');if(home&&!home.hidden){if(e.key==='Escape'||e.key==='Backspace'){e.preventDefault();return;}}else if(e.key==='Escape'||e.key==='Backspace'){const modal=document.querySelector('.playerView.open,.cinemaDetailModal.open,.tvSettingsModal.open');if(!modal){abajShowHome();e.preventDefault();}}});
 const clock=document.getElementById('amcClock');if(clock){const d=new Date();clock.textContent=d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}
+})();
+</script>
+<script id="abaj-gallery-control">
+(function(){
+const galleryUrls=[];
+function releaseUrls(){for(const url of galleryUrls)URL.revokeObjectURL(url);galleryUrls.length=0}
+window.abajGalleryClose=function(){
+ document.getElementById('abajLocalGallery').hidden=true;
+ releaseUrls();
+ const grid=document.getElementById('abajGalleryGrid');if(grid)grid.replaceChildren();
+ const picker=document.getElementById('abajGalleryPicker');if(picker)picker.value='';
+ const home=document.getElementById('abajMediaHome');if(home)home.hidden=false;
+};
+window.abajGalleryOpen=function(){
+ const gallery=document.getElementById('abajLocalGallery');if(!gallery)return;
+ gallery.hidden=false;
+ const home=document.getElementById('abajMediaHome');if(home)home.hidden=true;
+ document.getElementById('abajGalleryPicker').click();
+};
+window.abajGalleryFiles=function(files){
+ releaseUrls();const grid=document.getElementById('abajGalleryGrid');grid.replaceChildren();
+ const selected=Array.from(files||[]).slice(0,100);
+ document.getElementById('abajGalleryHelp').textContent=selected.length?'Выбрано файлов: '+selected.length:'Выберите фото, видео или музыку из памяти устройства.';
+ selected.forEach(file=>{
+  const url=URL.createObjectURL(file);galleryUrls.push(url);
+  const card=document.createElement('button');card.className='galleryItem';card.type='button';
+  let media;
+  if(file.type.startsWith('image/')){media=document.createElement('img');media.src=url;media.alt=file.name;}
+  else if(file.type.startsWith('video/')){media=document.createElement('video');media.src=url;media.controls=true;media.preload='metadata';}
+  else{media=document.createElement('div');media.textContent='♫';media.style='font-size:60px;padding:30px';card.onclick=()=>{const player=new Audio(url);player.play().catch(()=>{});};}
+  card.appendChild(media);
+  const name=document.createElement('span');name.textContent=file.name;card.appendChild(name);grid.appendChild(card);
+ });
+};
 })();
 </script>
 </body>
