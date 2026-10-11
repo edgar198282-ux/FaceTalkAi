@@ -1592,6 +1592,13 @@ async def api_cinema_bookmark_folders(request):
         return web.json_response({'ok':False,'error':'cinema_access_required'}, status=403)
     rows = await _cinema_library_read(uid, 'bookmarks')
     custom = await _cinema_custom_folders(uid)
+    if request.method == 'DELETE':
+        folder_id = str(request.query.get('folder_id') or '').strip()
+        if not folder_id.startswith('local:') or folder_id not in custom:
+            return web.json_response({'ok':False,'error':'folder_not_deletable'}, status=403)
+        custom.pop(folder_id)
+        await set_setting(f'cinema_custom_folders:{uid}', json.dumps(custom, ensure_ascii=False))
+        return web.json_response({'ok':True,'deleted':folder_id}, headers={'Cache-Control':'no-store'})
     def item_key(item):
         return str(item.get('id') or '').strip() or str(item.get('title') or '').strip().casefold()
     if request.method == 'GET':
@@ -4298,7 +4305,7 @@ async def start_webapp(bot):
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
     app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play); app.router.add_get('/api/kinopub/benchmark', api_kinopub_benchmark); app.router.add_get('/api/kinopub/proxy', api_kinopub_proxy); app.router.add_get('/api/kinopub/download', api_kinopub_download); app.router.add_get('/api/kinopub/item', api_kinopub_item)
-    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/rating', api_cinema_rating); app.router.add_post('/api/cinema/rating', api_cinema_rating); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_get('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_post('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items); app.router.add_get('/api/cinema/progress', api_cinema_progress); app.router.add_post('/api/cinema/progress', api_cinema_progress)
+    app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/rating', api_cinema_rating); app.router.add_post('/api/cinema/rating', api_cinema_rating); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_get('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_delete('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_post('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items); app.router.add_get('/api/cinema/progress', api_cinema_progress); app.router.add_post('/api/cinema/progress', api_cinema_progress)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)
     app.router.add_get('/api/iptv/state', api_iptv_state); app.router.add_post('/api/iptv/state', api_iptv_state_save)
     app.router.add_get('/api/iptv/edem/status', api_iptv_edem_status); app.router.add_get('/api/iptv/edem/channels', api_iptv_edem_channels); app.router.add_get('/api/iptv/edem/play', api_iptv_edem_play); app.router.add_get('/api/iptv/edem/proxy', api_iptv_edem_proxy); app.router.add_post('/api/iptv/edem/payment-request', api_iptv_edem_payment_request)
