@@ -2080,11 +2080,50 @@ async def privacy_policy(request):
     path = os.path.join(WEB_DIR, 'privacy.html')
     return web.FileResponse(path, headers={'Cache-Control':'public, max-age=3600'})
 
+_public_release_cache = {"expires": 0, "data": None}
+
+async def _public_signed_apk_release():
+    """Fallback for fresh Railway volumes before OTA upload is configured."""
+    now = time.monotonic()
+    if now < _public_release_cache["expires"]:
+        return _public_release_cache["data"]
+    result = None
+    try:
+        endpoint = "https://api.github.com/repos/edgar198282-ux/FaceTalkAi/releases/tags/abajtv-latest"
+        timeout = aiohttp.ClientTimeout(total=8)
+        async with aiohttp.ClientSession(timeout=timeout, headers={
+            "Accept": "application/vnd.github+json", "User-Agent": "AbajTV-OTA"}) as session:
+            async with session.get(endpoint) as response:
+                if response.status == 200:
+                    payload = await response.json()
+                    assets = payload.get("assets") or []
+                    asset = next((a for a in assets if a.get("name") == "AbajTV-latest.apk"), None)
+                    version = re.search(r"1\\.2\\.(\\d{9,11})", str(payload.get("name") or ""))
+                    if asset and version and int(asset.get("size") or 0) >= MIN_APK_SIZE:
+                        result = {
+                            "available": True,
+                            "version_name": version.group(0),
+                            "version_code": int(version.group(1)),
+                            "size_bytes": int(asset["size"]),
+                            "download_url": str(asset.get("browser_download_url") or ""),
+                            "published_at": payload.get("published_at"),
+                        }
+    except Exception as exc:
+        logging.warning("Abaj TV public OTA release lookup failed: %s", type(exc).__name__)
+    _public_release_cache.update({"expires": now + 180, "data": result})
+    return result
+
+
 async def api_app_release(request):
     channel = request.query.get('channel') or request.headers.get('X-AbajTV-Channel') or 'stable'
     apk_path, _, public_path, channel = _apk_target(channel)
     meta = _read_apk_meta(channel)
     available = os.path.isfile(apk_path) and os.path.getsize(apk_path) >= MIN_APK_SIZE
+    if not available and channel == 'stable':
+        published = await _public_signed_apk_release()
+        if published:
+            return web.json_response({'ok':True, 'service':'abajtv-ota',
+                'channel':channel, **published}, headers={'Cache-Control':'no-store, max-age=0'})
     return web.json_response({'ok':True,'service':'abajtv-ota','channel':channel,'available':available,'version_name':str(meta.get('version_name') or ''),'version_code':int(meta.get('version_code') or 0),'size_bytes':os.path.getsize(apk_path) if available else 0,'download_url':public_path if available else '','published_at':meta.get('published_at')}, headers={'Cache-Control':'no-store, max-age=0'})
 
 async def api_app_download(request):
