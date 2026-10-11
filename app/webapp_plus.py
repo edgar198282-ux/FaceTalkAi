@@ -1594,6 +1594,9 @@ async def api_cinema_bookmark_folders(request):
     custom = await _cinema_custom_folders(uid)
     if request.method == 'DELETE':
         folder_id = str(request.query.get('folder_id') or '').strip()
+        if folder_id == 'personal' and request.query.get('clear') == '1':
+            await _cinema_library_write(uid, 'bookmarks', [])
+            return web.json_response({'ok':True,'cleared':'personal'}, headers={'Cache-Control':'no-store'})
         if not folder_id.startswith('local:') or folder_id not in custom:
             return web.json_response({'ok':False,'error':'folder_not_deletable'}, status=403)
         custom.pop(folder_id)
