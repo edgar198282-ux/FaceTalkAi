@@ -6908,6 +6908,7 @@ async function recoverKinoPubNativePlayback(reason='native_stall',positionMs=0){
     if(itemId)params.set('id',itemId);
     if(mediaId)params.set('mid',mediaId);
     params.set('format','hls4');
+    params.set('direct','1');
     const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
     const d=r.ok?await r.json():null;
     const fresh=String(d?.url||'').trim();
@@ -7247,7 +7248,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
   // If a source blocks CORS/mixed-content, the existing mobile NETWORK_ERROR
   // path immediately retries through the proxy.
   const useDirectClient=!ch.personal&&!!directSrc&&(!forceProxy||String(ch.id||'').startsWith('cinema:external:'));
-  const src=useDirectClient?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+'&t='+Date.now());
+  const src=useDirectClient?directSrc:(basePath+'?id='+encodeURIComponent(ch.id)+(preferBackup?'&failover=1':'')+(forceProxy&&!ch.personal?'&proxy=1':'')+(ch.personal&&!forceProxy?'&direct=1':'')+'&t='+Date.now());
   resetQualityMenu();
 
   const kinoPubHls=String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&(!ch.cinemaForceHttp||/\.m3u8(?:[?#]|$)/i.test(src)||/\/hls(?:\/|[?#]|$)/i.test(src));
@@ -7346,6 +7347,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
           if(ch.cinemaItemId)params.set('id',String(ch.cinemaItemId));
           if(ch.cinemaMediaId)params.set('mid',String(ch.cinemaMediaId));
           params.set('format','hls4');
+          params.set('direct','1');
           const rr=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
           const dd=rr.ok?await rr.json():null;
           const fallbackUrl=String(dd?.url||'').trim();
@@ -7536,6 +7538,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
           if(ch.cinemaItemId)params.set('id',String(ch.cinemaItemId));
           if(ch.cinemaMediaId)params.set('mid',String(ch.cinemaMediaId));
           params.set('format','hls4');
+          params.set('direct','1');
           const rr=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
           const dd=rr.ok?await rr.json():null;
           const fallbackUrl=String(dd?.url||'').trim();
@@ -7562,6 +7565,12 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
       }
 
       if(String(ch.id||'').startsWith('cinema:external:') && data.type===Hls.ErrorTypes.NETWORK_ERROR && retryCinemaPlayback('direct_hls_network'))return;
+      if(ch.personal && data.type===Hls.ErrorTypes.NETWORK_ERROR && !forceProxy){
+        clearFirstFrameTimer();
+        err.textContent='Пробую совместимое подключение…';
+        startStream(ch,preferBackup,true);
+        return;
+      }
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR && !nativeTv && !forceProxy && !ch.personal && !String(ch.id||'').startsWith('cinema:external:')){
         clearFirstFrameTimer();
         err.textContent='Проверяю совместимый поток…';
