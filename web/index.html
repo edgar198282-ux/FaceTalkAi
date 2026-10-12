@@ -4818,6 +4818,18 @@ function renderNamedPlaylistChips(playlists,rows){
   syncIptvPlaylistToggle();
 }
 function setSourceFilter(btn,v){
+  if(sourceFilter!==v){
+    modeFilter='all';
+    activeCategory='';
+    localStorage.setItem('abaj_tv_filter','all');
+    localStorage.setItem('abaj_tv_category','');
+    const group=document.getElementById('group');
+    if(group)group.value='';
+    const search=document.getElementById('search');
+    if(search)search.value='';
+    document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',!x.dataset.cat));
+    document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.toggle('active',x.dataset.filter==='all'));
+  }
   sourceFilter=v;
   localStorage.setItem('abaj_tv_source_filter',v);
   document.querySelectorAll('.chip[data-source]').forEach(x=>x.classList.toggle('active',x===btn));
@@ -5116,14 +5128,36 @@ function addRecent(id,deferSync=false){
   saveRecent(deferSync);
 }
 function normalizeCat(group){
-  const g=(group||'').toLowerCase();
-  if(g.includes('news'))return 'News';
-  if(g.includes('sport'))return 'Sports';
-  if(g.includes('kids')||g.includes('children')||g.includes('animation'))return 'Kids';
-  if(g.includes('movie')||g.includes('film'))return 'Movies';
-  if(g.includes('music'))return 'Music';
-  if(g.includes('general'))return 'General';
+  const g=String(group||'').toLowerCase();
+  if(/news|новост|новини|հուր|լուր/.test(g))return 'News';
+  if(/sport|спорт|սպորտ/.test(g))return 'Sports';
+  if(/kids|child|animation|cartoon|детск|мульт|երեխ|մանկա/.test(g))return 'Kids';
+  if(/movie|film|кино|фильм|сериал|ֆիլմ|սերիալ/.test(g))return 'Movies';
+  if(/music|музык|музыка|երաժշտ/.test(g))return 'Music';
+  if(/general|общие|общий|основн|развлек|ընդհան/.test(g))return 'General';
   return group||'Other';
+}
+function playlistCountry(channel){
+  const existing=String(channel.country||'').trim().toUpperCase();
+  if(COUNTRY_FILTERS.has(existing))return existing;
+  const group=String(channel.group||'');
+  const name=String(channel.name||'');
+  const tags=String(channel.tvg_id||'');
+  const field=(group+' '+tags).toLowerCase();
+  const patterns=[
+    ['AM',/(?:^|[^a-zа-я])(armenia|armenian|армения|армянск|հայաստան|հայկական|arm)(?:$|[^a-zа-я])/i],
+    ['RU',/(?:^|[^a-zа-я])(russia|russian|россия|российск|русск|рос|rus)(?:$|[^a-zа-я])/i],
+    ['GE',/(?:^|[^a-zа-я])(georgia|грузия|грузинск|საქართველო|geo)(?:$|[^a-zа-я])/i],
+    ['UA',/(?:^|[^a-zа-я])(ukraine|украина|украинск|україна|ukr)(?:$|[^a-zа-я])/i],
+    ['BY',/(?:^|[^a-zа-я])(belarus|беларус|белорус|blr)(?:$|[^a-zа-я])/i],
+    ['KZ',/(?:^|[^a-zа-я])(kazakhstan|казахстан|казахск|kaz)(?:$|[^a-zа-я])/i],
+    ['UZ',/(?:^|[^a-zа-я])(uzbekistan|узбекистан|узбекск|uzb)(?:$|[^a-zа-я])/i],
+    ['MD',/(?:^|[^a-zа-я])(moldova|молдова|молдавск|mda)(?:$|[^a-zа-я])/i]
+  ];
+  for(const [country,re] of patterns)if(re.test(field))return country;
+  const title=name.toLowerCase();
+  for(const [country,re] of patterns)if(re.test(title))return country;
+  return existing;
 }
 function localizedCategoryLabel(group){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
@@ -5255,7 +5289,7 @@ async function load(){
         return {...item,logo:String(matched.logo||'').trim()||item.logo,
           epg_now:matched.epg_now||item.epg_now,epg_next:matched.epg_next||item.epg_next};
       });
-      base=base.concat(ed.channels.map(x=>({...x,personal:true,provider:'Edem'})));
+      base=base.concat(ed.channels.map(x=>({...x,country:playlistCountry(x),personal:true,provider:'Edem'})));
       renderNamedPlaylistChips(ed.playlists||[],ed.channels);
     }
     if(!Array.isArray(ed.channels)||!ed.channels.length)renderNamedPlaylistChips(ed.playlists||[],[]);
