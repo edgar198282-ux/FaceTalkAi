@@ -4756,7 +4756,7 @@ function renderNamedPlaylistChips(playlists,rows){
     const id=String(channel.playlist_id||'legacy');
     playlistCounts.set(id,(playlistCounts.get(id)||0)+1);
   }
-  iptvPlaylistMenuOptions=[{value:'free',name:'Free'}];
+  iptvPlaylistMenuOptions=[{value:'free',name:'Free',count:channels.filter(x=>!x.personal).length}];
   for(const p of playlists||[]){
     const id=String(p.id||'');
     const name=String(p.name||'').trim();
