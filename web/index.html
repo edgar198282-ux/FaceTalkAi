@@ -4050,23 +4050,49 @@ async function forceIptvRefresh(){
 }
 
 async function assignEdem(){
-  const url=document.getElementById('edemUrl').value.trim();
-  const playlistName=document.getElementById('edemPlaylistName').value.trim();
+  const urlInput=document.getElementById('edemUrl');
+  const nameInput=document.getElementById('edemPlaylistName');
+  const url=urlInput.value.trim();
+  const playlistName=nameInput.value.trim();
   if(!url||!playlistName)return;
-  const r=await fetch('/api/admin/iptv/edem/assign',{
-    method:'POST',
-    headers:{'Content-Type':'application/json',...authHeaders()},
-    body:JSON.stringify({user_id:0,playlist_url:url,playlist_name:playlistName})
-  });
-  if(r.ok){
-    document.getElementById('edemUrl').value='';
-    document.getElementById('edemPlaylistName').value='';
-    await loadAdminEdem();
-    await load();
-  }else{
-    const data=await r.json().catch(()=>({}));
-    alert('Ошибка добавления: '+(data.error||('HTTP '+r.status)));
+  const saveBtn=document.querySelector('#settingsModal button[onclick="assignEdem()"]');
+  if(saveBtn?.disabled)return;
+  if(saveBtn)saveBtn.disabled=true;
+  try{
+    const r=await fetch('/api/admin/iptv/edem/assign',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',...authHeaders()},
+      body:JSON.stringify({user_id:0,playlist_url:url,playlist_name:playlistName})
+    });
+    if(!r.ok){
+      const data=await r.json().catch(()=>({}));
+      alert('Ошибка сохранения: '+(data.error||('HTTP '+r.status)));
+      return;
+    }
+    urlInput.value='';
+    nameInput.value='';
+    closeSettings();
+    showEdemSavedNotice();
+    Promise.allSettled([loadAdminEdem(),load()]);
+  }catch(e){
+    alert('Ошибка сохранения: '+String(e.message||e));
+  }finally{
+    if(saveBtn)saveBtn.disabled=false;
   }
+}
+function showEdemSavedNotice(){
+  let notice=document.getElementById('edemSavedNotice');
+  if(!notice){
+    notice=document.createElement('div');
+    notice.id='edemSavedNotice';
+    notice.setAttribute('role','status');
+    notice.style.cssText='position:fixed;left:50%;bottom:max(28px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:100000;background:#16a05d;color:#fff;border-radius:12px;padding:12px 24px;font-size:17px;font-weight:800;box-shadow:0 10px 32px #0005;pointer-events:none';
+    document.body.appendChild(notice);
+  }
+  notice.textContent='Сохранено';
+  notice.hidden=false;
+  clearTimeout(showEdemSavedNotice.timeoutId);
+  showEdemSavedNotice.timeoutId=setTimeout(()=>{notice.hidden=true},2200);
 }
 async function removeNamedEdem(uid,name){
   const r=await fetch('/api/admin/iptv/edem/assign',{
