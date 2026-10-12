@@ -5141,25 +5141,36 @@ function normalizeCat(group){
   return group||'Other';
 }
 function playlistCountry(channel){
+  const aliases={ARM:'AM',RUS:'RU',RUSSIAN:'RU',GEO:'GE',UKR:'UA',BLR:'BY',BEL:'BY',KAZ:'KZ',UZB:'UZ',MDA:'MD'};
   const existing=String(channel.country||'').trim().toUpperCase();
   if(COUNTRY_FILTERS.has(existing))return existing;
-  const group=String(channel.group||'');
-  const name=String(channel.name||'');
-  const tags=String(channel.tvg_id||'');
-  const field=(group+' '+tags).toLowerCase();
-  const patterns=[
-    ['AM',/(?:^|[^a-zа-я])(armenia|armenian|армения|армянск|հայաստան|հայկական|arm)(?:$|[^a-zа-я])/i],
-    ['RU',/(?:^|[^a-zа-я])(russia|russian|россия|российск|русск|рос|rus)(?:$|[^a-zа-я])/i],
-    ['GE',/(?:^|[^a-zа-я])(georgia|грузия|грузинск|საქართველო|geo)(?:$|[^a-zа-я])/i],
-    ['UA',/(?:^|[^a-zа-я])(ukraine|украина|украинск|україна|ukr)(?:$|[^a-zа-я])/i],
-    ['BY',/(?:^|[^a-zа-я])(belarus|беларус|белорус|blr)(?:$|[^a-zа-я])/i],
-    ['KZ',/(?:^|[^a-zа-я])(kazakhstan|казахстан|казахск|kaz)(?:$|[^a-zа-я])/i],
-    ['UZ',/(?:^|[^a-zа-я])(uzbekistan|узбекистан|узбекск|uzb)(?:$|[^a-zа-я])/i],
-    ['MD',/(?:^|[^a-zа-я])(moldova|молдова|молдавск|mda)(?:$|[^a-zа-я])/i]
+  if(aliases[existing])return aliases[existing];
+  const text=[channel.group,channel.tvg_id,channel.name].filter(Boolean).join(' ');
+  const flagCodes={'🇦🇲':'AM','🇷🇺':'RU','🇬🇪':'GE','🇺🇦':'UA','🇧🇾':'BY','🇰🇿':'KZ','🇺🇿':'UZ','🇲🇩':'MD'};
+  for(const [flag,code] of Object.entries(flagCodes))if(text.includes(flag))return code;
+  const group=String(channel.group||'').trim();
+  const title=String(channel.name||'').trim();
+  const explicitCode=/^(AM|RU|GE|UA|BY|KZ|UZ|MD|ARM|RUS|GEO|UKR|BLR|KAZ|UZB|MDA)(?=\s*[-|:/\\\]]|\s+)/i;
+  for(const value of [group,title]){
+    const match=value.match(explicitCode);
+    if(match)return aliases[match[1].toUpperCase()]||match[1].toUpperCase();
+  }
+  const rules=[
+    ['AM',/armen(?:ia|ian)|армени|армян|հայաստան|հայկական/i],
+    ['RU',/russia|russian|росси|россий|русск|россия/i],
+    ['GE',/georgia|грузи|грузин|საქართველო/i],
+    ['UA',/ukraine|украин|україна/i],
+    ['BY',/belarus|беларус|белорус/i],
+    ['KZ',/kazakhstan|казахстан|казах/i],
+    ['UZ',/uzbekistan|узбекистан|узбек/i],
+    ['MD',/moldova|молдова|молдав/i]
   ];
-  for(const [country,re] of patterns)if(re.test(field))return country;
-  const title=name.toLowerCase();
-  for(const [country,re] of patterns)if(re.test(title))return country;
+  for(const value of [group,title]){
+    for(const [code,pattern] of rules)if(pattern.test(value))return code;
+  }
+  const id=String(channel.tvg_id||'').toLowerCase();
+  const suffix=id.match(/(?:^|[.@_-])(am|ru|ge|ua|by|kz|uz|md)(?:$|[.@_-])/);
+  if(suffix)return suffix[1].toUpperCase();
   return existing;
 }
 function channelCategory(ch){
