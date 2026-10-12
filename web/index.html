@@ -4761,7 +4761,7 @@ function renderNamedPlaylistChips(playlists,rows){
   for(const p of playlists||[]){
     const id=String(p.id||'');
     const name=String(p.name||'').trim();
-    if(id&&name&&playlistCounts.has(id))iptvPlaylistMenuOptions.push({value:'playlist:'+id,name,count:playlistCounts.get(id)});
+    if(id&&name)iptvPlaylistMenuOptions.push({value:'playlist:'+id,name,count:playlistCounts.get(id)||0});
   }
   if(sourceFilter.startsWith('playlist:')&&!iptvPlaylistMenuOptions.some(x=>x.value===sourceFilter))sourceFilter='free';
   closeIptvPlaylistMenu();
@@ -5170,11 +5170,11 @@ async function load(){
     const d=await mainPromise;
     edemStatus=await Promise.race([
       edemStatusPromise,
-      new Promise(resolve=>setTimeout(()=>resolve({active:false,configured:false}),2500))
+      new Promise(resolve=>setTimeout(()=>resolve({active:false,configured:false}),12000))
     ]);
     const ed=await Promise.race([
       edemPromise,
-      new Promise(resolve=>setTimeout(()=>resolve({channels:[]}),2500))
+      new Promise(resolve=>setTimeout(()=>resolve({channels:[]}),12000))
     ]);
     let base=(d.channels||[]).filter(x=>{
       const key=(String(x&&x.name||'')+' '+String(x&&x.tvg_id||'')).toLowerCase();
