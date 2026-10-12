@@ -4054,7 +4054,13 @@ async function removeEdem(uid){
     headers:{'Content-Type':'application/json',...authHeaders()},
     body:JSON.stringify({user_id:Number(uid),playlist_url:'',delete_all:true})
   });
-  if(r.ok)loadAdminEdem();
+  if(!r.ok){
+    const data=await r.json().catch(()=>({}));
+    alert('Ошибка удаления: '+(data.error||('HTTP '+r.status)));
+    return;
+  }
+  await loadAdminEdem();
+  await load();
 }
 async function markEdemPayment(uid,action){
   const el=document.getElementById('days-'+uid);

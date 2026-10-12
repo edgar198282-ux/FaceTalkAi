@@ -4026,7 +4026,7 @@ async def api_admin_iptv_edem_assign(request):
         if parsed.scheme not in ('http','https') or not parsed.netloc:
             return web.json_response({'ok':False,'error':'invalid playlist_url'}, status=400)
     playlist_name = str(body.get('playlist_name') or '').strip()[:32]
-    if uid and body.get('delete_all') is True:
+    if body.get('delete_all') is True:
         await set_setting(f'edem_playlist:{uid}', '')
         await set_setting(f'edem_named_playlists:{uid}', '[]')
         await set_setting(f'edem_expires_at:{uid}', '0')
