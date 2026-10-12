@@ -15478,6 +15478,22 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
   },{capture:true,passive:true});
 })();
 </script>
+<style id="abaj-mobile-settings-buttons-30pct">
+@media(max-width:700px){
+  body:not(.nativeTv) #tvSettingsModal .settingsAction,
+  body:not(.nativeTv) #tvSettingsModal .settingsClose,
+  body:not(.nativeTv) #tvSettingsModal .appearanceToggle button,
+  body:not(.nativeTv) #tvSettingsModal .themeReset{
+    min-height:60px!important;
+    height:auto!important;
+    padding-top:13px!important;
+    padding-bottom:13px!important;
+  }
+  body:not(.nativeTv) #tvSettingsModal #activationBotLink{
+    min-height:60px!important;
+  }
+}
+</style>
 </body>
 </html>
 
