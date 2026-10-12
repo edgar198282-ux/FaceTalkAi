@@ -2738,7 +2738,7 @@ async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
     rows = _unique_edem_channel_ids(iptv._parse_m3u(text, 'ED', playlist_url))
     guide = await _edem_xmltv_guide(_playlist_xmltv_url(text))
     out = []
-    for row in rows[:2500]:
+    for row in rows:
         item = dict(row)
         if guide:
             _edem_guide_channel(item, guide)
@@ -2891,7 +2891,7 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                 guide = await _edem_xmltv_guide(_playlist_xmltv_url(body))
                 compiled = []
                 import hashlib
-                for row in parsed_rows[:2500]:
+                for row in parsed_rows:
                     item = dict(row)
                     if guide:
                         _edem_guide_channel(item, guide)
