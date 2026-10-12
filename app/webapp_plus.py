@@ -2694,7 +2694,7 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
         key = f'{owner_uid}:{playlist_id}'
         cached = _edem_named_cache.get(key)
         now = int(time.time())
-        if force or not cached or cached.get('url') != url or now - cached.get('ts', 0) >= 600:
+        if (force and not shared) or not cached or cached.get('url') != url or now - cached.get('ts', 0) >= 86400:
             try:
                 timeout = aiohttp.ClientTimeout(total=25, connect=8, sock_read=15)
                 async with aiohttp.ClientSession(headers={'User-Agent':'AbajTV/1.0'}) as session:
@@ -2724,6 +2724,34 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
         channels.extend(cached.get('channels') or [])
     return {**legacy, 'channels': channels, 'configured': bool(labels),
             'playlists': labels}
+
+
+async def _refresh_named_playlists_daily():
+    await asyncio.sleep(90)
+    while True:
+        try:
+            rows = await list_settings_prefix('edem_named_playlists:')
+            owners = set()
+            for entry in rows:
+                try:
+                    uid = int(str(entry.get('key') or '').split(':', 1)[1])
+                    if str(entry.get('value') or '').strip() not in ('', '[]'):
+                        owners.add(uid)
+                except (ValueError, TypeError):
+                    continue
+            for uid in sorted(owners):
+                if uid and not (await _edem_subscription_state(uid))['active']:
+                    continue
+                try:
+                    await _load_edem_playlist_for_uid(uid, force=True)
+                except (aiohttp.ClientError, TimeoutError, ValueError):
+                    pass
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            pass
+        await asyncio.sleep(86400)
 
 
 async def _tv_device_usage(uid: int, current_device_id: str = '') -> tuple[int, bool]:
@@ -4444,4 +4472,5 @@ async def start_webapp(bot):
     app.router.add_static('/generated/', GEN_DIR, show_index=False); app.router.add_static('/static/', WEB_DIR, show_index=False)
     runner=web.AppRunner(app); await runner.setup(); site=web.TCPSite(runner,'0.0.0.0',PORT); await site.start()
     print('IPTV Player web endpoints active')
+    app['named_iptv_refresh_task']=asyncio.create_task(_refresh_named_playlists_daily())
     app['cleanup_task']=__import__('asyncio').create_task(cleanup_generated(app)); return runner
