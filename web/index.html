@@ -4987,6 +4987,28 @@ async function load(){
       base=[...am,...ru].slice(0,5);
     }
     if(Array.isArray(ed.channels)&&ed.channels.length){
+      const normalizeChannelName=value=>String(value||'').toLowerCase()
+        .replace(/\\b(?:4k|uhd|fhd|hd|sd|1080p|720p)\\b/gi,'')
+        .replace(/[^\\p{L}\\p{N}]+/gu,' ').trim();
+      const byTvgId=new Map();
+      const byName=new Map();
+      for(const item of ed.channels){
+        const id=String(item.tvg_id||'').split('@')[0].toLowerCase().trim();
+        const name=normalizeChannelName(item.name);
+        if(id&&!byTvgId.has(id))byTvgId.set(id,item);
+        if(name&&!byName.has(name))byName.set(name,item);
+      }
+      base=base.map(item=>{
+        const id=String(item.tvg_id||'').split('@')[0].toLowerCase().trim();
+        const matched=(id&&byTvgId.get(id))||byName.get(normalizeChannelName(item.name));
+        if(!matched)return item;
+        return {
+          ...item,
+          logo:String(matched.logo||'').trim()||item.logo,
+          epg_now:matched.epg_now||item.epg_now,
+          epg_next:matched.epg_next||item.epg_next
+        };
+      });
       base=base.concat(ed.channels.map(x=>({...x,personal:true,provider:'Edem'})));
     }
     const dedup=new Map();
