@@ -4690,6 +4690,12 @@ function syncIptvPlaylistToggle(){
   if(!btn)return;
   const selected=iptvPlaylistMenuOptions.find(x=>x.value===sourceFilter);
   btn.textContent=(selected?selected.name:'Эдем')+' ▾';
+  if(selected&&Number.isFinite(selected.count)){
+    const count=document.createElement('span');
+    count.textContent=' '+selected.count;
+    count.style.cssText='font-size:11px;font-weight:600;opacity:.8;margin-left:5px';
+    btn.appendChild(count);
+  }
   btn.classList.toggle('active',!!selected);
 }
 function toggleIptvPlaylistMenu(){
@@ -4708,6 +4714,12 @@ function toggleIptvPlaylistMenu(){
     const item=document.createElement('button');
     item.type='button';item.setAttribute('role','menuitem');
     item.textContent=option.name;
+    if(Number.isFinite(option.count)){
+      const count=document.createElement('span');
+      count.textContent=' · '+option.count;
+      count.style.cssText='font-size:11px;opacity:.75';
+      item.appendChild(count);
+    }
     item.style.cssText='display:block;width:100%;text-align:left;background:'+(sourceFilter===option.value?'#087fca':'transparent')+';border:0;border-radius:9px;color:white;padding:12px 15px;font:inherit;cursor:pointer';
     item.onclick=()=>chooseIptvPlaylist(option.value);
     menu.appendChild(item);
@@ -4734,12 +4746,16 @@ function renderNamedPlaylistChips(playlists,rows){
     const favorite=host.querySelector('[data-filter="fav"]');
     host.insertBefore(btn,favorite?.nextSibling||host.firstChild);
   }
-  const available=new Set((rows||[]).map(x=>String(x.playlist_id||'legacy')));
+  const playlistCounts=new Map();
+  for(const channel of rows||[]){
+    const id=String(channel.playlist_id||'legacy');
+    playlistCounts.set(id,(playlistCounts.get(id)||0)+1);
+  }
   iptvPlaylistMenuOptions=[{value:'free',name:'Free'}];
   for(const p of playlists||[]){
     const id=String(p.id||'');
     const name=String(p.name||'').trim();
-    if(id&&name&&available.has(id))iptvPlaylistMenuOptions.push({value:'playlist:'+id,name});
+    if(id&&name&&playlistCounts.has(id))iptvPlaylistMenuOptions.push({value:'playlist:'+id,name,count:playlistCounts.get(id)});
   }
   if(sourceFilter.startsWith('playlist:')&&!iptvPlaylistMenuOptions.some(x=>x.value===sourceFilter))sourceFilter='free';
   closeIptvPlaylistMenu();
