@@ -2732,7 +2732,8 @@ body:not(.cinemaMode) .cinemaShellSide{
       <button class="ctrl playerCircleCtrl cinemaSeekCtrl" onclick="seekPlayerBy(10)" title="Вперёд 10 секунд"><span class="playerCtrlIcon">↷</span><small>+10 сек</small></button>
       <button class="ctrl playerCircleCtrl" onclick="toggleFullscreen()" title="На весь экран"><span class="playerCtrlIcon">⛶</span><small>Экран</small></button>
       <button class="ctrl playerCircleCtrl tvChannelCtrl" onclick="playNext()" title="Следующий канал"><span class="playerCtrlIcon">|▶</span><small>След. канал</small></button>
-      <button id="cinemaNextEpisodeBtn" class="ctrl playerCircleCtrl" style="display:none" onclick="playAdjacentCinemaEpisode(1)" title="Следующая серия"><span class="playerCtrlIcon">▶|</span><small>След. серия</small></button>
+      <button id="cinemaPrevEpisodeBtn" class="ctrl playerCircleCtrl cinemaEpisodeCtrl" style="display:none" onclick="playAdjacentCinemaEpisode(-1)" title="Предыдущая серия"><span class="playerCtrlIcon">|◀</span><small>Пред. серия</small></button>
+      <button id="cinemaNextEpisodeBtn" class="ctrl playerCircleCtrl cinemaEpisodeCtrl" style="display:none" onclick="playAdjacentCinemaEpisode(1)" title="Следующая серия"><span class="playerCtrlIcon">▶|</span><small>След. серия</small></button>
     </div>
     <div id="cinemaEpisodePrompt" style="display:none;text-align:center;padding:9px;border-radius:12px;background:rgba(8,29,49,.92);color:#fff;margin-top:6px">
       <span id="cinemaEpisodePromptText">Серия заканчивается</span>
@@ -13321,8 +13322,11 @@ function cinemaAdjacentMedia(step){
   return idx<0?null:(media[idx+step]||null);
 }
 function updateCinemaNextEpisodeButton(){
-  const btn=document.getElementById('cinemaNextEpisodeBtn');
-  if(btn)btn.style.display=cinemaAdjacentMedia(1)?'inline-flex':'none';
+  const next=document.getElementById('cinemaNextEpisodeBtn');
+  const prev=document.getElementById('cinemaPrevEpisodeBtn');
+  const isSeries=!!(current&&String(current.cinemaProvider||'').toUpperCase()==='KINOPUB'&&cinemaDetailMovie&&cinemaItemLooksSeries(cinemaDetailMovie));
+  if(next)next.style.display=isSeries&&cinemaAdjacentMedia(1)?'inline-flex':'none';
+  if(prev)prev.style.display=isSeries&&cinemaAdjacentMedia(-1)?'inline-flex':'none';
 }
 async function playAdjacentCinemaEpisode(step=1){
   const next=cinemaAdjacentMedia(step);
@@ -14568,6 +14572,45 @@ body.nativeTv .playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtr
 }
 </style>
 
+<style id="abaj-cinema-episode-controls-row-v1">
+#playerView.cinemaPlayback .playerPrimaryControls{
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  justify-content:center!important;
+  align-items:flex-start!important;
+  gap:clamp(4px,1vw,14px)!important;
+  max-width:none!important;
+  width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  margin:8px auto 0!important;
+  scrollbar-width:none;
+}
+#playerView.cinemaPlayback .playerPrimaryControls::-webkit-scrollbar{display:none}
+#playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtrl{
+  flex:0 0 auto!important;
+  min-width:0!important;
+}
+#playerView.cinemaPlayback .playerPrimaryControls>.cinemaEpisodeCtrl{
+  display:none;
+}
+body.nativeTv #playerView.cinemaPlayback .playerPrimaryControls{
+  max-width:920px!important;
+}
+@media (max-width:600px){
+  body:not(.nativeTv) #playerView.cinemaPlayback .playerPrimaryControls{
+    justify-content:flex-start!important;
+  }
+  body:not(.nativeTv) #playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtrl{
+    flex:0 0 68px!important;
+    width:68px!important;
+  }
+  body:not(.nativeTv) #playerView.cinemaPlayback .playerPrimaryControls .playerCtrlIcon{
+    max-width:62px!important;
+    max-height:62px!important;
+  }
+}
+</style>
 <style id="settings-close-top-buttons-plus20-v1">
 #tvSettingsModal .settingsCard{
   position:relative!important;
