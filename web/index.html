@@ -2593,7 +2593,7 @@ body:not(.cinemaMode) .cinemaShellSide{
     <div class="settingsTitle">⚙ Настройки Edem TV</div>
     <div class="settingsLabel">Назначить Edem TV пользователю</div>
     <div class="adminForm" style="grid-template-columns:1fr">
-      <input id="edemUid" inputmode="numeric" placeholder="Telegram ID (необязательно — пусто для всех)">
+      <input id="edemUid" inputmode="numeric" placeholder="Telegram ID пользователя">
       <input id="edemUrl" placeholder="M3U ссылка Edem TV">
       <input id="edemPlaylistName" maxlength="32" placeholder="Название плейлиста: EDM, KRM…">
       <input id="edemExpiry" type="date" title="Срок доступа">
@@ -2921,24 +2921,9 @@ function isFreePreviewChannel(ch){
 function applyChannelAccessGate(rows){
   const list=Array.isArray(rows)?rows:[];
   if(hasFullChannelAccess())return list;
-  const shared=list.filter(ch=>ch.public_playlist);
-  const free=list.filter(ch=>!ch.personal&&ch.status==='ONLINE'&&!ch.unreliable);
-  const qualityScore=ch=>({SD:0,HD:10,FHD:20,'4K':30}[channelQuality(ch)]||0)+
-    (ch.quality_verified?15:0)+Math.min(20,Number(ch.health_score||0)/5);
-  const ordered=free.sort((a,b)=>Number(isFreePreviewChannel(b))-Number(isFreePreviewChannel(a))||qualityScore(b)-qualityScore(a));
-  const chosen=[],seen=new Set();
-  const take=(country,max)=>{
-    for(const ch of ordered){
-      if(chosen.filter(c=>c.country===country).length>=max)break;
-      if(ch.country!==country)continue;
-      const key=String(ch.tvg_id||ch.name||ch.id).toLowerCase().replace(/\s*\((?:2160|1080|720|480)[^)]*\)/g,'').trim();
-      if(seen.has(country+'|'+key))continue;
-      seen.add(country+'|'+key);
-      chosen.push(ch);
-    }
-  };
-  take('AM',3);take('RU',2);
-  return [...chosen,...shared];
+  const preview=list.filter(ch=>!ch.personal&&isFreePreviewChannel(ch));
+  if(preview.length)return preview;
+  return list.filter(ch=>!ch.personal&&['AM','RU'].includes(String(ch.country||''))).slice(0,8);
 }
 const deviceId=localStorage.getItem('abaj_device_id')||(
   (crypto&&crypto.randomUUID)?crypto.randomUUID():('abaj-'+Date.now()+'-'+Math.random().toString(36).slice(2))
@@ -4041,7 +4026,7 @@ async function assignEdem(){
   const url=document.getElementById('edemUrl').value.trim();
   const playlistName=document.getElementById('edemPlaylistName').value.trim();
   const expiry=document.getElementById('edemExpiry').value;
-  if(!url||(!uid&&!playlistName))return;
+  if(!uid||!url)return;
   let expiresAt=0;
   if(expiry){
     const d=new Date(expiry+'T23:59:59');
@@ -4050,7 +4035,7 @@ async function assignEdem(){
   const r=await fetch('/api/admin/iptv/edem/assign',{
     method:'POST',
     headers:{'Content-Type':'application/json',...authHeaders()},
-    body:JSON.stringify({user_id:uid?Number(uid):0,playlist_url:url,playlist_name:playlistName,...(uid?{expires_at:expiresAt}:{})})
+    body:JSON.stringify({user_id:Number(uid),playlist_url:url,playlist_name:playlistName,expires_at:expiresAt})
   });
   if(r.ok){
     document.getElementById('edemUrl').value='';
@@ -5035,12 +5020,12 @@ function installPlayerTouchGestures(){
 function dismissMobilePlayerLoading(event){
   if(event){event.preventDefault();event.stopPropagation()}
   if(nativeTv)return;
+  const brand=document.querySelector('#playerView .playerBrand');
+  if(brand)brand.style.display='none';
   const player=document.getElementById('playerView');
-  if(!player||!player.classList.contains('open'))return;
-  if(player.classList.contains('cinemaPlayback')){showTvPlayerUi(true);return}
-  if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
-  const showing=player.classList.toggle('loadingControlsVisible');
-  document.body.classList.toggle('playerClean',!showing);
+  if(player)player.classList.remove('appFullscreen');
+  document.body.classList.remove('playerFullscreenActive','playerClean');
+  showTvPlayerUi(true);
 }
 function handlePlayerSurfaceClick(event){
   if(Date.now()<playerGestureSuppressClickUntil)return;
@@ -5099,7 +5084,7 @@ function cacheChannels(){
       id:x.id,name:x.name,group:x.group,country:x.country,logo:x.logo,status:x.status,tvg_id:x.tvg_id,
       quality:x.quality,resolution:x.resolution,video_quality:x.video_quality,height:x.height,quality_verified:x.quality_verified===true,
       latency_ms:x.latency_ms,backup_count:x.backup_count,uptime_pct:x.uptime_pct,health_score:x.health_score,health_samples:x.health_samples,unreliable:!!x.unreliable,epg_now:x.epg_now,epg_next:x.epg_next,
-      personal:!!x.personal,provider:x.provider,playlist_id:x.playlist_id,playlist_name:x.playlist_name,public_playlist:!!x.public_playlist,adult:!!x.adult
+      personal:!!x.personal,provider:x.provider,adult:!!x.adult
     }));
     localStorage.setItem(CHANNEL_CACHE_KEY,JSON.stringify({ts:Date.now(),channels:slim}));
   }catch(e){}
@@ -5125,58 +5110,7 @@ function restoreCachedChannels(){
     return true;
   }catch(e){return false}
 }
-async function enrichPlaylistLogos(playlistRows,freeRows){
-  const byId=new Map(),byName=new Map();
-  const canonical=name=>String(name||'').toLowerCase()
-    .replace(/\s*\([^)]*(?:2160|1080|720|480|4k|uhd|fhd|hd|sd)[^)]*\)/gi,' ')
-    .replace(/\s+(?:4k|uhd|fhd|hd|sd|2160p|1080p|720p)$/i,'')
-    .replace(/\s+/g,' ').trim();
-  for(const channel of freeRows){
-    const logo=String(channel.logo||'');
-    if(!/^https?:\/\//i.test(logo))continue;
-    const tvg=String(channel.tvg_id||'').toLowerCase();
-    if(tvg)byId.set(tvg,logo);
-    const name=canonical(channel.name);
-    if(name)byName.set(name,logo);
-  }
-  return playlistRows.map(row=>{
-    if(/^https?:\/\//i.test(String(row.logo||'')))return row;
-    const found=byId.get(String(row.tvg_id||'').toLowerCase())||byName.get(canonical(row.name));
-    return found?{...row,logo:found}:row;
-  });
-}
-function deduplicateFreeQuality(rows){
-  const result=[];
-  const freeByName=new Map();
-  const rank={SD:1,HD:2,FHD:3,'4K':4};
-  for(const ch of rows){
-    if(ch.personal){result.push(ch);continue}
-    const name=String(ch.name||'').trim();
-    const normalized=name.toLowerCase()
-      .replace(/\s*\([^)]*(?:2160|1080|720|480|4k|uhd|fhd|hd|sd)[^)]*\)/gi,' ')
-      .replace(/(?:^|\s)(?:4k|uhd|fhd|full\s*hd|hd|sd|2160p|1080p|720p|480p)(?=\s|$)/gi,' ')
-      .replace(/\s+/g,' ').trim();
-    const key=String(ch.country||'')+'|'+normalized;
-    if(!normalized){result.push(ch);continue}
-    const prev=freeByName.get(key);
-    if(!prev){
-      freeByName.set(key,{ch,index:result.length});
-      result.push(ch);
-      continue;
-    }
-    const old=prev.ch;
-    const rankNew=rank[channelQuality(ch)]||1;
-    const rankOld=rank[channelQuality(old)]||1;
-    const goodNew=Number(ch.health_score||0)+(ch.unreliable?-200:0);
-    const goodOld=Number(old.health_score||0)+(old.unreliable?-200:0);
-    if(rankNew>rankOld||(rankNew===rankOld&&goodNew>goodOld)){
-      result[prev.index]=ch;
-      freeByName.set(key,{ch,index:prev.index});
-    }
-  }
-  return result;
-}
-function load(){
+async function load(){
   try{
     restoreCachedChannels();
     const edemStatusPromise=fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'})
@@ -5210,7 +5144,7 @@ function load(){
       base=[...am,...ru].slice(0,5);
     }
     if(Array.isArray(ed.channels)&&ed.channels.length){
-      base=base.concat(enrichPlaylistLogos(ed.channels,base).map(x=>({...x,personal:true,provider:'Edem'})));
+      base=base.concat(ed.channels.map(x=>({...x,personal:true,provider:'Edem'})));
       renderNamedPlaylistChips(ed.playlists||[],ed.channels);
     }
     if(!Array.isArray(ed.channels)||!ed.channels.length)renderNamedPlaylistChips(ed.playlists||[],[]);
@@ -5220,7 +5154,7 @@ function load(){
       const key=(providerKey+'|'+(ch.tvg_id||'')+'|'+(ch.country||'')+'|'+(ch.name||'')).toLowerCase();
       if(!dedup.has(key))dedup.set(key,ch);
     }
-    channels=applyChannelAccessGate(deduplicateFreeQuality([...dedup.values()]));
+    channels=applyChannelAccessGate([...dedup.values()]);
     const groups=visibleChannelGroups();
     const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const sel=document.getElementById('group');
@@ -5251,24 +5185,6 @@ function load(){
     if(!channels.length)document.getElementById('status').textContent=(UI_TEXT[appLang]||UI_TEXT.ru).loadError;
   }
 }
-const IPTV_DAILY_SYNC_KEY='abajtv_iptv_daily_sync_v1';
-let iptvDailySyncBusy=false;
-async function syncIptvCatalogDaily(){
-  if(iptvDailySyncBusy||document.visibilityState!=='visible')return;
-  let previous=0;
-  try{previous=Number(localStorage.getItem(IPTV_DAILY_SYNC_KEY)||0)}catch(e){}
-  if(Date.now()-previous<86400000)return;
-  iptvDailySyncBusy=true;
-  try{
-    const response=await fetch('/api/iptv/edem/channels?refresh=1',{headers:authHeaders(),cache:'no-store'});
-    if(!response.ok)throw new Error('playlist refresh failed');
-    await load();
-    localStorage.setItem(IPTV_DAILY_SYNC_KEY,String(Date.now()));
-  }catch(e){}finally{iptvDailySyncBusy=false}
-}
-setInterval(syncIptvCatalogDaily,60*60*1000);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')syncIptvCatalogDaily()});
-setTimeout(syncIptvCatalogDaily,20000);
 function toggleCountryFilters(){
   const open=!document.body.classList.contains('countryPanelOpen');
   document.body.classList.toggle('countryPanelOpen',open);
@@ -6699,7 +6615,6 @@ function openPlayer(id){
   if(!nativeTv)playerView.classList.remove('videoFill');
   const loadingBrand=playerView.querySelector('.playerBrand');
   if(loadingBrand)loadingBrand.style.display='flex';
-  playerView.classList.remove('loadingControlsVisible');
   playerView.classList.add('open');
   document.body.classList.remove('playerClean');
   if(nativeTv){
@@ -14764,19 +14679,6 @@ body.nativeTv .playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtr
 }
 </style>
 
-<style id="abaj-loading-touch-controls-v1">
-body:not(.nativeTv) #playerView.open.loadingControlsVisible .playerBottom{
-  position:relative!important;
-  z-index:121!important;
-  opacity:1!important;
-  pointer-events:auto!important;
-}
-body:not(.nativeTv) #playerView.open.loadingControlsVisible .playerTop{
-  z-index:121!important;
-  opacity:1!important;
-  pointer-events:auto!important;
-}
-</style>
 <style id="abaj-cinema-episode-controls-row-v1">
 #playerView .playerPrimaryControls>.cinemaEpisodeCtrl[hidden]{display:none!important}
 #playerView.cinemaPlayback .playerPrimaryControls{
