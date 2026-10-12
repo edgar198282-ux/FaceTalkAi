@@ -1625,7 +1625,7 @@ async def api_cinema_bookmark_folders(request):
                     overlay = custom.get(fid) or {}
                     local_items = overlay.get('items') if isinstance(overlay.get('items'),list) else []
                     folders.append({'id':fid,'title':folder['title'],
-                                    'count':max(0,int(folder.get('count') or 0))+len(local_items),
+                                    'count':max(0,int(folder.get('count') or 0)),
                                     'selected':bool(item_id and any(item_key(x) == item_id for x in local_items)),
                                     'kind':'bookmark_folder'})
             except Exception:
@@ -1659,9 +1659,30 @@ async def api_cinema_bookmark_folders(request):
             _, available_folders = await _kinopub_bookmark_folders(uid)
             allowed = {'kp:' + str(folder['id']):folder for folder in available_folders}
             selected = [fid for fid in selected if not fid.startswith('kp:') or fid in allowed]
-            for fid in kp_selected:
-                if fid in allowed and fid not in custom:
-                    custom[fid] = {'title':str(allowed[fid]['title']),'items':[]}
+            kp_token = await _kinopub_access_token(uid)
+            kp_folders = [fid for fid in allowed if fid in selected]
+            current_status, current_data = await _kinopub_api('GET', '/v1/bookmarks/get-item-folders',
+                params={'access_token':kp_token,'item':key})
+            if current_status >= 400:
+                return web.json_response({'ok':False,'error':'kinopub_sync_unavailable'}, status=502)
+            current_rows = current_data.get('folders') or current_data.get('items') or []
+            if isinstance(current_rows,dict):
+                current_rows = current_rows.get('items') or []
+            current_ids = {'kp:'+str(x.get('id')) for x in current_rows if isinstance(x,dict)}
+            for fid in allowed:
+                if fid in selected and fid not in current_ids:
+                    status, result = await _kinopub_api('POST','/v1/bookmarks/add',
+                        params={'access_token':kp_token},form_body={'item':key,'folder':fid[3:]})
+                elif fid not in selected and fid in current_ids:
+                    status, result = await _kinopub_api('POST','/v1/bookmarks/remove-item',
+                        params={'access_token':kp_token},form_body={'item':key,'folder':fid[3:]})
+                else:
+                    continue
+                if status >= 400 or int(result.get('status') or 200) >= 400:
+                    return web.json_response({'ok':False,'error':'kinopub_sync_failed'},status=502)
+            for fid in list(custom):
+                if fid.startswith('kp:'):
+                    custom.pop(fid,None)
     else:
         selected = [fid for fid in selected if not fid.startswith('kp:')]
     compact = {k:item.get(k) for k in ('id','title','original_title','year','poster','description','rating','kind','source') if item.get(k) is not None}
