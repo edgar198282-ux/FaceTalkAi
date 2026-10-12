@@ -5215,6 +5215,9 @@ async function load(){
       if(!dedup.has(key))dedup.set(key,ch);
     }
     channels=applyChannelAccessGate([...dedup.values()]);
+    const freeOption=iptvPlaylistMenuOptions.find(option=>option.value==='free');
+    if(freeOption)freeOption.count=channels.filter(channel=>!channel.personal).length;
+    syncIptvPlaylistToggle();
     const groups=visibleChannelGroups();
     const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const sel=document.getElementById('group');
