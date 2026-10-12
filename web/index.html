@@ -5162,6 +5162,18 @@ function playlistCountry(channel){
   for(const [country,re] of patterns)if(re.test(title))return country;
   return existing;
 }
+function channelCategory(ch){
+  const group=String(ch?.group||'').trim();
+  const kind=normalizeCat(group);
+  if(['News','Sports','Kids','Movies','Music','General'].includes(kind))return kind;
+  const name=String(ch?.name||'');
+  if(/(?:новост|news|вести|информ|լուր|հուր)/i.test(name))return 'News';
+  if(/(?:спорт|sport|football|футбол|basketball|хоккей|սպորտ)/i.test(name))return 'Sports';
+  if(/(?:мульт|детск|cartoon|kids|nickelodeon|disney|մանկա)/i.test(name))return 'Kids';
+  if(/(?:кино|фильм|movie|cinema|сериал|ֆիլմ)/i.test(name))return 'Movies';
+  if(/(?:музык|music|музыка|երաժշտ|mtv)/i.test(name))return 'Music';
+  return kind;
+}
 function localizedCategoryLabel(group){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
   const key=normalizeCat(group);
@@ -5408,7 +5420,7 @@ function getFiltered(){
     rows=rows.filter(x=>pos.has(x.id)).sort((a,b)=>pos.get(a.id)-pos.get(b.id));
   }
   if(g)rows=rows.filter(x=>(x.group||'Other')===g);
-  if(activeCategory)rows=rows.filter(x=>normalizeCat(x.group)===activeCategory);
+  if(activeCategory)rows=rows.filter(x=>channelCategory(x)===activeCategory);
   if(q){
     const terms=q.split(' ').filter(Boolean);
     rows=rows.filter(x=>{
