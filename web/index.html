@@ -5094,7 +5094,7 @@ function channelQuality(ch){
   return 'SD';
 }
 
-const CHANNEL_CACHE_KEY='abajtv_channels_cache_v5';
+const CHANNEL_CACHE_KEY='abajtv_channels_cache_v6';
 function cacheChannels(){
   try{
     const slim=channels.map(x=>({
@@ -5162,14 +5162,14 @@ async function load(){
     }
     if(Array.isArray(ed.channels)&&ed.channels.length){
       const normalizePlaylistChannelName=value=>String(value||'').toLowerCase()
-        .replace(/\\b(?:4k|uhd|fhd|hd|sd|1080p|720p)\\b/gi,'')
-        .replace(/[^\\p{L}\\p{N}]+/gu,' ').trim();
+        .replace(/\b(?:4k|uhd|fhd|hd|sd|1080p|720p)\b/gi,'')
+        .replace(/[^\p{L}\p{N}]+/gu,' ').trim();
       const logoById=new Map(),logoByName=new Map();
       for(const item of ed.channels){
         const id=String(item.tvg_id||'').split('@')[0].trim().toLowerCase();
         const name=normalizePlaylistChannelName(item.name);
         if(id&&!logoById.has(id))logoById.set(id,item);
-        if(name&&!logoByName.has(name))logoByName.set(name,item);
+        if(name&&name.length>=3&&!logoByName.has(name))logoByName.set(name,item);
       }
       base=base.map(item=>{
         const id=String(item.tvg_id||'').split('@')[0].trim().toLowerCase();
