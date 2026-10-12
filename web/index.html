@@ -3737,8 +3737,31 @@ async function connectKinoPubFromAdmin(){
     if(meta)meta.textContent='Не удалось подключить KinoPub. Нажмите «Подключить» и повторите подтверждение.';
   }
 }
+function abajConfirmAction(message,actionLabel){
+  return new Promise(resolve=>{
+    const overlay=document.getElementById('abajConfirmOverlay');
+    const messageEl=document.getElementById('abajConfirmMessage');
+    const cancel=document.getElementById('abajConfirmCancel');
+    const accept=document.getElementById('abajConfirmAccept');
+    if(!overlay||!messageEl||!cancel||!accept){resolve(false);return}
+    messageEl.textContent=message;
+    accept.textContent=actionLabel;
+    overlay.hidden=false;
+    const close=ok=>{
+      overlay.hidden=true;
+      cancel.onclick=null;accept.onclick=null;overlay.onclick=null;
+      document.removeEventListener('keydown',onKey);
+      resolve(ok);
+    };
+    const onKey=e=>{if(e.key==='Escape')close(false)};
+    cancel.onclick=()=>close(false);
+    accept.onclick=()=>close(true);
+    overlay.onclick=e=>{if(e.target===overlay)close(false)};
+    document.addEventListener('keydown',onKey);
+  });
+}
 async function disconnectKinoPubFromAdmin(){
-  if(!window.confirm('Подтвердите отключение источника кино.'))return;
+  if(!await abajConfirmAction('Отключить источник кино?','Отключить'))return;
   try{
     await fetch('/api/kinopub/disconnect',{method:'POST',headers:authHeaders(),cache:'no-store'});
   }catch(e){}
@@ -3825,7 +3848,7 @@ function renderAdminAccess(){
   }).join(''):'<div class="adminEmpty">Пользователи не найдены</div>';
 }
 async function setUserAccess(uid,action){
-  if((action==='revoke'||action==='delete')&&!window.confirm(action==='delete'?'Подтвердите удаление пользователя ID '+uid+'.':'Подтвердите отключение пользователя ID '+uid+'.'))return;
+  if((action==='revoke'||action==='delete')&&!await abajConfirmAction(action==='delete'?'Удалить пользователя ID '+uid+'?':'Отключить пользователя ID '+uid+'?',action==='delete'?'Удалить':'Отключить'))return;
   const r=await fetch('/api/admin/access/set',{
     method:'POST',
     headers:{'Content-Type':'application/json',...authHeaders()},
@@ -4054,7 +4077,7 @@ async function removeNamedEdem(uid,name){
   if(r.ok)loadAdminEdem();
 }
 async function removeEdem(uid){
-  if(!window.confirm('Подтвердите удаление плейлиста для ID '+uid+'.'))return;
+  if(!await abajConfirmAction('Удалить плейлист?','Удалить'))return;
   const r=await fetch('/api/admin/iptv/edem/assign',{
     method:'POST',
     headers:{'Content-Type':'application/json',...authHeaders()},
@@ -15508,6 +15531,25 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
   padding-bottom:0!important;
   align-self:center!important;
 }
+</style>
+<div id="abajConfirmOverlay" class="abajConfirmOverlay" hidden role="presentation">
+  <div class="abajConfirmCard" role="dialog" aria-modal="true" aria-labelledby="abajConfirmMessage">
+    <div id="abajConfirmMessage" class="abajConfirmMessage"></div>
+    <div class="abajConfirmButtons">
+      <button type="button" id="abajConfirmCancel">Отмена</button>
+      <button type="button" id="abajConfirmAccept">Удалить</button>
+    </div>
+  </div>
+</div>
+<style>
+.abajConfirmOverlay[hidden]{display:none!important}
+.abajConfirmOverlay{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.58);display:flex;align-items:center;justify-content:center;padding:20px}
+.abajConfirmCard{width:min(360px,100%);padding:22px 18px 16px;border-radius:18px;background:#142538;color:#fff;box-shadow:0 20px 50px #0006}
+.abajConfirmMessage{font-size:19px;font-weight:750;line-height:1.35;text-align:center;margin:6px 0 24px}
+.abajConfirmButtons{display:flex;gap:10px}
+.abajConfirmButtons button{flex:1;min-height:45px;border:0;border-radius:11px;font-size:16px;font-weight:800}
+#abajConfirmCancel{background:#30465c;color:#fff}
+#abajConfirmAccept{background:#d84b5b;color:#fff}
 </style>
 </body>
 </html>
