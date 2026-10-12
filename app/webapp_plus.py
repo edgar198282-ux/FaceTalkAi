@@ -2460,9 +2460,24 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
             text = await r.text(errors='ignore')
 
     rows = iptv._parse_m3u(text, 'ED', playlist_url)
+    free_by_id = {}
+    free_by_name = {}
+    for free_channel in iptv._state.get('channels', {}).values():
+        tvg_id = str(free_channel.get('tvg_id') or '').split('@', 1)[0].strip().lower()
+        if tvg_id:
+            free_by_id.setdefault(tvg_id, free_channel)
+        name = iptv._normalize_name(free_channel.get('name') or '')
+        if name:
+            free_by_name.setdefault(name, free_channel)
     out = []
     for row in rows[:2500]:
         item = dict(row)
+        if not str(item.get('logo') or '').strip():
+            tvg_id = str(item.get('tvg_id') or '').split('@', 1)[0].strip().lower()
+            name = iptv._normalize_name(item.get('name') or '')
+            free_channel = (free_by_id.get(tvg_id) if tvg_id else None) or free_by_name.get(name)
+            if free_channel:
+                item['logo'] = str(free_channel.get('logo') or iptv._epg_logo_for_channel(free_channel) or '').strip()
         item['status'] = 'ONLINE'
         item['latency_ms'] = 0
         item['backup_count'] = 0
