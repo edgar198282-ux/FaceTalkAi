@@ -4402,11 +4402,7 @@ function isAdultChannel(ch){
   return /(^|[^a-z0-9])(18\+|xxx|adult|erotic|erotica|porn|porno|playboy|penthouse|hustler|dorcel|brazzers|redlight)([^a-z0-9]|$)/i.test(raw);
 }
 function visibleChannelGroups(){
-  let rows=adultEnabled?channels:channels.filter(x=>!isAdultChannel(x));
-  if(sourceFilter==='free')rows=rows.filter(x=>!x.personal);
-  else if(sourceFilter==='edem')rows=rows.filter(x=>!!x.personal);
-  else if(sourceFilter.startsWith('playlist:'))rows=rows.filter(x=>x.personal&&String(x.playlist_id||'legacy')===sourceFilter.slice(9));
-  if(COUNTRY_FILTERS.has(modeFilter))rows=rows.filter(x=>String(x.country||'').toUpperCase()===modeFilter);
+  const rows=adultEnabled?channels:channels.filter(x=>!isAdultChannel(x));
   return [...new Set(rows.map(x=>x.group||'Other'))].sort((a,b)=>a.localeCompare(b,'ru'));
 }
 function refreshGroupFilters(){
@@ -4743,7 +4739,6 @@ function chooseIptvPlaylist(value){
   document.querySelectorAll('.chip[data-source]').forEach(x=>x.classList.remove('active'));
   closeIptvPlaylistMenu();
   syncIptvPlaylistToggle();
-  refreshGroupFilters();
   focusIndex=0;
   render();
   focusFirstChannelAfterFilter();
@@ -4860,7 +4855,6 @@ function setModeFilter(btn,v){
     if(search)search.value='';
   }
   syncIptvPlaylistToggle();
-  refreshGroupFilters();
   document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.toggle('active',x===btn));
   document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',x.dataset.cat===activeCategory));
   focusIndex=0;
