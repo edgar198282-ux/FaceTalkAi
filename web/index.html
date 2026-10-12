@@ -4823,10 +4823,12 @@ function installPlayerTouchGestures(){
   const wrap=document.querySelector('.videoWrap');
   if(!wrap||wrap.dataset.gestureReady==='1')return;
   wrap.dataset.gestureReady='1';
-  let sx=0,sy=0,lx=0,ly=0,mode='',active=false,startedAt=0;
+  let sx=0,sy=0,lx=0,ly=0,mode='',active=false,startedAt=0,gestureSide='right',videoBrightness=1;
   wrap.addEventListener('touchstart',e=>{
     if(nativeTv||e.touches.length!==1)return;
     const p=e.touches[0]; sx=lx=p.clientX; sy=ly=p.clientY; mode=''; active=true; startedAt=Date.now();
+    const bounds=wrap.getBoundingClientRect();
+    gestureSide=p.clientX<bounds.left+bounds.width/2?'left':'right';
   },{passive:true});
   wrap.addEventListener('touchmove',e=>{
     if(!active||e.touches.length!==1)return;
@@ -4838,7 +4840,14 @@ function installPlayerTouchGestures(){
       const delta=p.clientY-ly;
       if(Math.abs(delta)>=18){
         const steps=Math.max(1,Math.floor(Math.abs(delta)/18));
-        adjustPlayerVolume(delta<0?steps:-steps);
+        if(gestureSide==='right'){
+          for(let i=0;i<steps;i++)adjustPlayerVolume(delta<0?1:-1);
+        }else{
+          videoBrightness=Math.max(0.25,Math.min(1.5,videoBrightness+(delta<0?1:-1)*steps*0.045));
+          const video=document.getElementById('video');
+          if(video)video.style.filter='brightness('+videoBrightness.toFixed(2)+')';
+          showPlayerGestureHint('☀ '+Math.round(videoBrightness*100)+'%');
+        }
         ly=p.clientY;
       }
     }
