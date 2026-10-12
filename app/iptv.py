@@ -1201,12 +1201,17 @@ def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
         if line.startswith("#EXTINF"):
             attrs = _attrs(line)
             name = _extinf_name(line, attrs.get("tvg-name", "Channel"))
+            m3u_country = str(attrs.get("tvg-country") or attrs.get("country") or "").strip().upper()
+            country_aliases = {"ARM":"AM", "RUS":"RU", "GEO":"GE", "UKR":"UA",
+                               "BLR":"BY", "KAZ":"KZ", "UZB":"UZ", "MDA":"MD"}
+            m3u_country = country_aliases.get(m3u_country, m3u_country)
+            channel_country = m3u_country if country == "ED" and m3u_country in COUNTRY_CODES else country
             pending = {
                 "name": name or "Channel",
                 "group": attrs.get("group-title", "") or "Other",
                 "tvg_id": attrs.get("tvg-id", ""),
                 "logo": attrs.get("tvg-logo", ""),
-                "country": country,
+                "country": channel_country,
                 "source": source,
             }
         elif not line.startswith("#") and pending and line.startswith(("http://", "https://")):
