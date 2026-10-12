@@ -8075,7 +8075,7 @@ async function refreshCinemaDetailResume(item,media){
   if(!btn)return;
   const label=fmtPlaybackClock(resume);
   btn.textContent=window.innerWidth<=600&&!nativeTv
-    ?('▶ '+label)
+    ?('ПРОДОЛ. '+label)
     :(appLang==='hy'?('ՇԱՐՈՒՆԱԿԵԼ '+label):(appLang==='en'?('CONTINUE '+label):('ПРОДОЛЖИТЬ '+label)));
 }
 async function saveCinemaProgress(force=false){
