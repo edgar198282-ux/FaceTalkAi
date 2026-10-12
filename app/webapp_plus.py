@@ -2662,6 +2662,9 @@ async def _edem_subscription_state(uid: int):
 
 def _edem_channel_country(channel):
     import unicodedata
+    explicit = str(channel.get('country') or '').strip().upper()
+    if explicit in {'AM', 'RU', 'GE', 'UA', 'BY', 'KZ', 'UZ', 'MD'}:
+        return explicit
     text = ' '.join(str(channel.get(key) or '') for key in ('group', 'name', 'tvg_id'))
     text = unicodedata.normalize('NFKC', text).lower()
     patterns = (
