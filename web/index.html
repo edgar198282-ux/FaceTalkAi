@@ -3882,7 +3882,7 @@ async function loadAdminEdem(){
       return '<div class="adminRow"><div><b>ID '+esc(x.user_id)+'</b>'+
       '<div class="adminMeta">'+status+' · Срок: '+days+' · Оплата: '+esc(x.payment_status||'none')+' · Каналов: '+esc(x.channel_count)+' · Подключения: '+esc(x.active_connections)+'/'+esc(x.max_connections)+
       (x.last_playlist_refresh?' · Обновлено '+new Date(x.last_playlist_refresh*1000).toLocaleTimeString():'')+
-      '</div></div><div class="limitBox"><input id="days-'+x.user_id+'" type="number" min="365" max="3650" value="'+esc(Math.max(365,Number(x.plan_days||365)))+'" title="Дней продления">'+
+      '</div>'+(Array.isArray(x.playlists)?x.playlists.map(p=>'<div class="adminMeta">'+esc(p.name)+' <button onclick="removeNamedEdem('+Number(x.user_id)+','+JSON.stringify(String(p.name)).replace(/"/g,'&quot;')+')" style="background:#d84b5b">Удалить '+esc(p.name)+'</button></div>').join(''):'')+'</div><div class="limitBox"><input id="days-'+x.user_id+'" type="number" min="365" max="3650" value="'+esc(Math.max(365,Number(x.plan_days||365)))+'" title="Дней продления">'+
       '<button onclick="markEdemPending('+x.user_id+')">Ожидает</button>'+
       '<button onclick="markEdemPaid('+x.user_id+')" style="background:#16a05d">Получил</button>'+
       '<input id="exp-'+x.user_id+'" type="date" value="'+ymd+'">'+
@@ -4042,6 +4042,14 @@ async function assignEdem(){
     document.getElementById('edemExpiry').value='';
     loadAdminEdem();
   }
+}
+async function removeNamedEdem(uid,name){
+  const r=await fetch('/api/admin/iptv/edem/assign',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',...authHeaders()},
+    body:JSON.stringify({user_id:Number(uid),playlist_name:name,playlist_url:''})
+  });
+  if(r.ok)loadAdminEdem();
 }
 async function removeEdem(uid){
   const r=await fetch('/api/admin/iptv/edem/assign',{
