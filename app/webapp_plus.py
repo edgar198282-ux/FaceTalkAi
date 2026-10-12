@@ -2510,6 +2510,8 @@ def _edem_prune_sessions(uid: int, ttl: int = 120):
 
 
 async def _edem_max_connections(uid: int) -> int:
+    if await _edem_has_personal_playlist(uid):
+        return 0
     raw = await get_setting(f'edem_max_connections:{uid}', '3')
     try:
         return max(1, min(10, int(raw)))
@@ -2523,7 +2525,7 @@ async def _edem_touch_session(uid: int, device_id: str):
         device_id = 'unknown'
     sessions = _edem_prune_sessions(uid)
     limit = await _edem_max_connections(uid)
-    if device_id not in sessions and len(sessions) >= limit:
+    if limit > 0 and device_id not in sessions and len(sessions) >= limit:
         return False, limit, len(sessions)
     sessions[device_id] = {'ts': int(time.time())}
     return True, limit, len(sessions)
@@ -2623,6 +2625,22 @@ async def _edem_payment_state(uid: int):
     }
 
 
+async def _edem_has_personal_playlist(uid: int) -> bool:
+    if not uid:
+        return False
+    if str(await get_setting(f'edem_playlist:{uid}', '') or '').strip():
+        return True
+    raw = await get_setting(f'edem_named_playlists:{uid}', '[]')
+    try:
+        entries = json.loads(raw or '[]')
+        return isinstance(entries, list) and any(
+            isinstance(entry, dict) and str(entry.get('url') or '').strip()
+            for entry in entries
+        )
+    except (ValueError, TypeError):
+        return False
+
+
 async def _edem_subscription_state(uid: int):
     raw = await get_setting(f'edem_expires_at:{uid}', '0')
     try:
@@ -2632,8 +2650,9 @@ async def _edem_subscription_state(uid: int):
     now = int(time.time())
     pay = await _edem_payment_state(uid)
     is_admin = bool(ADMIN_ID and int(uid) == int(ADMIN_ID))
-    active = is_admin or (pay.get('status') == 'paid' and expires_at > now)
-    days_left = None if is_admin else (max(0, (expires_at - now + 86399) // 86400) if expires_at else 0)
+    unlimited = is_admin or await _edem_has_personal_playlist(uid)
+    active = unlimited or (pay.get('status') == 'paid' and expires_at > now)
+    days_left = None if unlimited else (max(0, (expires_at - now + 86399) // 86400) if expires_at else 0)
     return {
         'active': active,
         'expires_at': expires_at,
@@ -4007,6 +4026,17 @@ async def api_admin_iptv_edem_assign(request):
         if parsed.scheme not in ('http','https') or not parsed.netloc:
             return web.json_response({'ok':False,'error':'invalid playlist_url'}, status=400)
     playlist_name = str(body.get('playlist_name') or '').strip()[:32]
+    if uid and body.get('delete_all') is True:
+        await set_setting(f'edem_playlist:{uid}', '')
+        await set_setting(f'edem_named_playlists:{uid}', '[]')
+        await set_setting(f'edem_expires_at:{uid}', '0')
+        _edem_cache.pop(uid, None)
+        _edem_sessions.pop(uid, None)
+        for cache_key in list(_edem_named_cache):
+            if cache_key.startswith(f'{uid}:'):
+                _edem_named_cache.pop(cache_key, None)
+        sub = await _edem_subscription_state(uid)
+        return web.json_response({'ok':True,'user_id':uid,'configured':False,**sub})
     if uid == 0 and not playlist_name:
         return web.json_response({'ok':False,'error':'playlist_name_required'}, status=400)
     if playlist_name:

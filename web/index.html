@@ -3883,21 +3883,10 @@ async function loadAdminEdem(){
     const d=await r.json();
     const rows=d.users||[];
     box.innerHTML=rows.length?rows.map(x=>{
-      const expiry=x.expires_at?new Date(x.expires_at*1000):null;
-      const ymd=expiry?(expiry.getFullYear()+'-'+String(expiry.getMonth()+1).padStart(2,'0')+'-'+String(expiry.getDate()).padStart(2,'0')):'';
-      const status=x.active?'Активен':'Отключён';
-      const days=x.days_left==null?'без срока':(x.days_left+' дн.');
       return '<div class="adminRow"><div><b>ID '+esc(x.user_id)+'</b>'+
-      '<div class="adminMeta">'+status+' · Срок: '+days+' · Оплата: '+esc(x.payment_status||'none')+' · Каналов: '+esc(x.channel_count)+' · Подключения: '+esc(x.active_connections)+'/'+esc(x.max_connections)+
-      (x.last_playlist_refresh?' · Обновлено '+new Date(x.last_playlist_refresh*1000).toLocaleTimeString():'')+
-      '</div>'+(Array.isArray(x.playlists)?x.playlists.map(p=>'<div class="adminMeta">'+esc(p.name)+' <button onclick="removeNamedEdem('+Number(x.user_id)+','+JSON.stringify(String(p.name)).replace(/"/g,'&quot;')+')" style="background:#d84b5b">Удалить '+esc(p.name)+'</button></div>').join(''):'')+'</div><div class="limitBox"><input id="days-'+x.user_id+'" type="number" min="365" max="3650" value="'+esc(Math.max(365,Number(x.plan_days||365)))+'" title="Дней продления">'+
-      '<button onclick="markEdemPending('+x.user_id+')">Ожидает</button>'+
-      '<button onclick="markEdemPaid('+x.user_id+')" style="background:#16a05d">Получил</button>'+
-      '<input id="exp-'+x.user_id+'" type="date" value="'+ymd+'">'+
-      '<button onclick="setEdemExpiry('+x.user_id+')">Срок</button>'+
-      '<input id="lim-'+x.user_id+'" type="number" min="1" max="10" value="'+esc(x.max_connections)+'">'+
-      '<button onclick="setEdemLimit('+x.user_id+')">Лимит</button>'+
-      '<button onclick="removeEdem('+x.user_id+')" style="background:#d84b5b">Удалить</button></div></div>';
+        '<div class="adminMeta">Бессрочно · Полный доступ</div>'+
+        (Array.isArray(x.playlists)?x.playlists.map(p=>'<div class="adminMeta">'+esc(p.name)+'</div>').join(''):'')+
+        '</div><div class="limitBox"><button onclick="removeEdem('+Number(x.user_id)+')" style="background:#d84b5b">Удалить</button></div></div>';
     }).join(''):'<div class="adminEmpty">Пока нет назначенных Edem плейлистов</div>';
   }catch(e){box.innerHTML='<div class="adminEmpty">Не удалось загрузить Edem пользователей</div>'}
 }
@@ -4063,7 +4052,7 @@ async function removeEdem(uid){
   const r=await fetch('/api/admin/iptv/edem/assign',{
     method:'POST',
     headers:{'Content-Type':'application/json',...authHeaders()},
-    body:JSON.stringify({user_id:Number(uid),playlist_url:''})
+    body:JSON.stringify({user_id:Number(uid),playlist_url:'',delete_all:true})
   });
   if(r.ok)loadAdminEdem();
 }
