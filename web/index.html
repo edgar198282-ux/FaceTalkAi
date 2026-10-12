@@ -3738,6 +3738,7 @@ async function connectKinoPubFromAdmin(){
   }
 }
 async function disconnectKinoPubFromAdmin(){
+  if(!window.confirm('Подтвердите отключение источника кино.'))return;
   try{
     await fetch('/api/kinopub/disconnect',{method:'POST',headers:authHeaders(),cache:'no-store'});
   }catch(e){}
@@ -3824,6 +3825,7 @@ function renderAdminAccess(){
   }).join(''):'<div class="adminEmpty">Пользователи не найдены</div>';
 }
 async function setUserAccess(uid,action){
+  if((action==='revoke'||action==='delete')&&!window.confirm(action==='delete'?'Подтвердите удаление пользователя ID '+uid+'.':'Подтвердите отключение пользователя ID '+uid+'.'))return;
   const r=await fetch('/api/admin/access/set',{
     method:'POST',
     headers:{'Content-Type':'application/json',...authHeaders()},
@@ -4052,6 +4054,7 @@ async function removeNamedEdem(uid,name){
   if(r.ok)loadAdminEdem();
 }
 async function removeEdem(uid){
+  if(!window.confirm('Подтвердите удаление плейлиста для ID '+uid+'.'))return;
   const r=await fetch('/api/admin/iptv/edem/assign',{
     method:'POST',
     headers:{'Content-Type':'application/json',...authHeaders()},
@@ -15493,12 +15496,14 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
     padding-bottom:0!important;
   }
 }
+#adminPanel #accessSearch,
+#adminPanel #accessGrantUid,
 #adminPanel button[onclick="loadAdminAccess()"],
 #adminPanel button[onclick="grantAccessById()"]{
   box-sizing:border-box!important;
-  height:30px!important;
-  min-height:30px!important;
-  max-height:30px!important;
+  height:42px!important;
+  min-height:42px!important;
+  max-height:42px!important;
   padding-top:0!important;
   padding-bottom:0!important;
   align-self:center!important;
