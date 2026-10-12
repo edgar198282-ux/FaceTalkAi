@@ -4739,6 +4739,7 @@ function chooseIptvPlaylist(value){
   document.querySelectorAll('.chip[data-source]').forEach(x=>x.classList.remove('active'));
   closeIptvPlaylistMenu();
   syncIptvPlaylistToggle();
+  buildQuickCats(visibleChannelGroups());
   focusIndex=0;
   render();
   focusFirstChannelAfterFilter();
@@ -5373,7 +5374,7 @@ function buildQuickCats(groups){
   const icons={General:'⌂',News:'▤',Sports:'⚽',Movies:'🎬',Kids:'★',Music:'♫'};
   const normalized=new Set(groups.map(normalizeCat));
   // Keep category buttons visible when the catalogue is empty.
-  const cats=channels.length ? preferred.filter(x=>normalized.has(x)) : preferred;
+  const cats=preferred;
   document.getElementById('quickCats').innerHTML=
     '<button class="cat active" data-cat="" onclick="setCategory(\'\')"><span class="catIcon">▦</span><span class="catLabel">'+esc(t.allCategories)+'</span></button>'+
     cats.map(x=>'<button class="cat" data-cat="'+esc(x)+'" onclick="setCategory(\''+x+'\')"><span class="catIcon">'+esc(icons[x]||'•')+'</span><span class="catLabel">'+esc(labels[x]||x)+'</span></button>').join('');
