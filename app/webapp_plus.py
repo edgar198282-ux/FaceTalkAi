@@ -2789,19 +2789,28 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
     free_by_name = {}
     for free_channel in iptv._state.get('channels', {}).values():
         tvg_id = str(free_channel.get('tvg_id') or '').split('@', 1)[0].strip().lower()
-        if tvg_id:
-            free_by_id.setdefault(tvg_id, free_channel)
-        normalized = iptv._normalize_name(free_channel.get('name') or '')
-        if normalized:
-            free_by_name.setdefault(normalized, free_channel)
-    for channel in channels:
-        if str(channel.get('logo') or '').strip():
+        logo = str(free_channel.get('logo') or iptv._epg_logo_for_channel(free_channel) or '').strip()
+        if not logo.startswith(('http://', 'https://')):
             continue
+        if tvg_id:
+            free_by_id.setdefault(tvg_id, logo)
+        for variant in iptv._logo_name_variants(free_channel.get('name') or ''):
+            free_by_name.setdefault(variant, set()).add(logo)
+    for channel in channels:
         tvg_id = str(channel.get('tvg_id') or '').split('@', 1)[0].strip().lower()
-        normalized = iptv._normalize_name(channel.get('name') or '')
-        free_channel = (free_by_id.get(tvg_id) if tvg_id else None) or free_by_name.get(normalized)
-        if free_channel:
-            channel['logo'] = str(free_channel.get('logo') or iptv._epg_logo_for_channel(free_channel) or '').strip()
+        fallback = free_by_id.get(tvg_id) if tvg_id else None
+        if not fallback:
+            matches = set()
+            for variant in iptv._logo_name_variants(channel.get('name') or ''):
+                matches.update(free_by_name.get(variant) or ())
+            if len(matches) == 1:
+                fallback = next(iter(matches))
+        if not fallback:
+            fallback = iptv._epg_logo_for_channel(channel)
+        if fallback and fallback != channel.get('logo'):
+            channel['logo_fallback'] = fallback
+        if not str(channel.get('logo') or '').strip() and fallback:
+            channel['logo'] = fallback
     return {**legacy, 'channels': channels, 'configured': bool(labels),
             'playlists': labels}
 
