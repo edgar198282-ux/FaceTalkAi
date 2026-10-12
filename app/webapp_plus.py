@@ -2640,9 +2640,12 @@ async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
             text = await r.text(errors='ignore')
 
     rows = iptv._parse_m3u(text, 'ED', playlist_url)
+    guide = await _edem_xmltv_guide(_playlist_xmltv_url(text))
     out = []
     for row in rows[:2500]:
         item = dict(row)
+        if guide:
+            _edem_guide_channel(item, guide)
         item['status'] = 'ONLINE'
         item['latency_ms'] = 0
         item['backup_count'] = 0
@@ -2654,6 +2657,70 @@ async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
     _edem_cache[uid] = {'url': playlist_url, 'ts': now, 'channels': out}
     return {'configured': True, 'channels': out, 'playlist_url': playlist_url, **sub}
 
+
+_edem_xmltv_cache = {}
+
+def _playlist_xmltv_url(text):
+    header = str(text or '').splitlines()[0:2]
+    for line in header:
+        if not line.lstrip().upper().startswith('#EXTM3U'):
+            continue
+        match = re.search(r"""(?:url-tvg|x-tvg-url)\s*=\s*(["'])(.*?)\1""", line, re.I)
+        if match:
+            url = match.group(2).strip().split(',')[0].strip()
+            if urlparse(url).scheme in ('http', 'https'):
+                return url
+    return ''
+
+async def _edem_xmltv_guide(url):
+    if not url:
+        return None
+    cached = _edem_xmltv_cache.get(url)
+    now = int(time.time())
+    if cached and now - cached['ts'] < 10800:
+        return cached['guide']
+    try:
+        timeout = aiohttp.ClientTimeout(total=18, connect=6, sock_read=12)
+        async with aiohttp.ClientSession(timeout=timeout, headers={'User-Agent': 'AbajTV/1.0'}) as session:
+            async with session.get(url, allow_redirects=True) as response:
+                response.raise_for_status()
+                raw = await response.content.read(8 * 1024 * 1024 + 1)
+                if len(raw) > 8 * 1024 * 1024:
+                    return cached['guide'] if cached else None
+        if urlparse(url).path.lower().endswith('.gz') or raw[:2] == b'\\x1f\\x8b':
+            import gzip
+            raw = gzip.decompress(raw)
+            if len(raw) > 32 * 1024 * 1024:
+                return cached['guide'] if cached else None
+        guide = await asyncio.to_thread(iptv._parse_epg_xml, raw.decode('utf-8', 'ignore'))
+        _edem_xmltv_cache[url] = {'ts': now, 'guide': guide}
+        return guide
+    except (aiohttp.ClientError, TimeoutError, OSError, ValueError):
+        return cached['guide'] if cached else None
+
+def _edem_guide_channel(item, guide):
+    programmes, names, logos, logo_names = guide
+    cid = str(item.get('tvg_id') or '').strip()
+    normalized = iptv._normalize_name(item.get('name') or '')
+    mapped = cid if cid in programmes or cid in logos else cid.split('@', 1)[0]
+    if mapped not in programmes and mapped not in logos:
+        for variant in iptv._epg_name_variants(item.get('name') or ''):
+            match = names.get(variant)
+            if match:
+                mapped = match
+                break
+    if not str(item.get('logo') or '').strip():
+        logo = logos.get(mapped) or logo_names.get(normalized)
+        if logo:
+            item['logo'] = logo
+    rows = programmes.get(mapped) or []
+    now = int(time.time())
+    for row in rows:
+        if row['start'] <= now < row['stop']:
+            item['epg_now'] = row
+        elif row['start'] > now:
+            item['epg_next'] = row
+            break
 
 _edem_named_cache = {}
 
@@ -2700,10 +2767,13 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                             continue
                         body = await response.text(errors='ignore')
                 parsed_rows = iptv._parse_m3u(body, 'ED', url)
+                guide = await _edem_xmltv_guide(_playlist_xmltv_url(body))
                 compiled = []
                 import hashlib
                 for row in parsed_rows[:2500]:
                     item = dict(row)
+                    if guide:
+                        _edem_guide_channel(item, guide)
                     original_id = str(item.get('id') or '')
                     item['id'] = hashlib.sha256((playlist_id + ':' + original_id).encode()).hexdigest()[:20]
                     item.update(status='ONLINE', latency_ms=0, backup_count=0, candidate_count=1,
