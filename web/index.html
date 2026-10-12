@@ -5176,14 +5176,18 @@ function playlistCountry(channel){
 function channelCategory(ch){
   const group=String(ch?.group||'').trim();
   const kind=normalizeCat(group);
-  if(['News','Sports','Kids','Movies','Music','General'].includes(kind))return kind;
+  if(['News','Sports','Kids','Movies','Music'].includes(kind))return kind;
   const name=String(ch?.name||'');
+  // IPTV providers often put channels in language/country groups rather than content groups.
+  // Classify by channel name in that case, preserving an explicit General group.
+  if(kind==='General')return 'General';
   if(/(?:новост|news|вести|информ|լուր|հուր)/i.test(name))return 'News';
   if(/(?:спорт|sport|football|футбол|basketball|хоккей|սպորտ)/i.test(name))return 'Sports';
   if(/(?:мульт|детск|cartoon|kids|nickelodeon|disney|մանկա)/i.test(name))return 'Kids';
   if(/(?:кино|фильм|movie|cinema|сериал|ֆիլմ)/i.test(name))return 'Movies';
   if(/(?:музык|music|музыка|երաժշտ|mtv)/i.test(name))return 'Music';
-  return kind;
+  // Unknown provider group: keep channel in General instead of losing it from all categories.
+  return 'General';
 }
 function localizedCategoryLabel(group){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
