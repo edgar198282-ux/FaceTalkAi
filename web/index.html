@@ -5085,7 +5085,7 @@ function cacheChannels(){
       id:x.id,name:x.name,group:x.group,country:x.country,logo:x.logo,status:x.status,tvg_id:x.tvg_id,
       quality:x.quality,resolution:x.resolution,video_quality:x.video_quality,height:x.height,quality_verified:x.quality_verified===true,
       latency_ms:x.latency_ms,backup_count:x.backup_count,uptime_pct:x.uptime_pct,health_score:x.health_score,health_samples:x.health_samples,unreliable:!!x.unreliable,epg_now:x.epg_now,epg_next:x.epg_next,
-      personal:!!x.personal,provider:x.provider,adult:!!x.adult
+      personal:!!x.personal,provider:x.provider,playlist_id:x.playlist_id,playlist_name:x.playlist_name,public_playlist:!!x.public_playlist,adult:!!x.adult
     }));
     localStorage.setItem(CHANNEL_CACHE_KEY,JSON.stringify({ts:Date.now(),channels:slim}));
   }catch(e){}
@@ -5111,7 +5111,38 @@ function restoreCachedChannels(){
     return true;
   }catch(e){return false}
 }
-async function load(){
+async function deduplicateFreeQuality(rows){
+  const result=[];
+  const freeByName=new Map();
+  const rank={SD:1,HD:2,FHD:3,'4K':4};
+  for(const ch of rows){
+    if(ch.personal){result.push(ch);continue}
+    const name=String(ch.name||'').trim();
+    const normalized=name.toLowerCase()
+      .replace(/\s*\([^)]*(?:2160|1080|720|480|4k|uhd|fhd|hd|sd)[^)]*\)/gi,' ')
+      .replace(/(?:^|\s)(?:4k|uhd|fhd|full\s*hd|hd|sd|2160p|1080p|720p|480p)(?=\s|$)/gi,' ')
+      .replace(/\s+/g,' ').trim();
+    const key=String(ch.country||'')+'|'+normalized;
+    if(!normalized){result.push(ch);continue}
+    const prev=freeByName.get(key);
+    if(!prev){
+      freeByName.set(key,{ch,index:result.length});
+      result.push(ch);
+      continue;
+    }
+    const old=prev.ch;
+    const rankNew=rank[channelQuality(ch)]||1;
+    const rankOld=rank[channelQuality(old)]||1;
+    const goodNew=Number(ch.health_score||0)+(ch.unreliable?-200:0);
+    const goodOld=Number(old.health_score||0)+(old.unreliable?-200:0);
+    if(rankNew>rankOld||(rankNew===rankOld&&goodNew>goodOld)){
+      result[prev.index]=ch;
+      freeByName.set(key,{ch,index:prev.index});
+    }
+  }
+  return result;
+}
+function load(){
   try{
     restoreCachedChannels();
     const edemStatusPromise=fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'})
@@ -5155,7 +5186,7 @@ async function load(){
       const key=(providerKey+'|'+(ch.tvg_id||'')+'|'+(ch.country||'')+'|'+(ch.name||'')).toLowerCase();
       if(!dedup.has(key))dedup.set(key,ch);
     }
-    channels=applyChannelAccessGate([...dedup.values()]);
+    channels=applyChannelAccessGate(deduplicateFreeQuality([...dedup.values()]));
     const groups=visibleChannelGroups();
     const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const sel=document.getElementById('group');
@@ -5186,6 +5217,24 @@ async function load(){
     if(!channels.length)document.getElementById('status').textContent=(UI_TEXT[appLang]||UI_TEXT.ru).loadError;
   }
 }
+const IPTV_DAILY_SYNC_KEY='abajtv_iptv_daily_sync_v1';
+let iptvDailySyncBusy=false;
+async function syncIptvCatalogDaily(){
+  if(iptvDailySyncBusy||document.visibilityState!=='visible')return;
+  let previous=0;
+  try{previous=Number(localStorage.getItem(IPTV_DAILY_SYNC_KEY)||0)}catch(e){}
+  if(Date.now()-previous<86400000)return;
+  iptvDailySyncBusy=true;
+  try{
+    const response=await fetch('/api/iptv/edem/channels?refresh=1',{headers:authHeaders(),cache:'no-store'});
+    if(!response.ok)throw new Error('playlist refresh failed');
+    await load();
+    localStorage.setItem(IPTV_DAILY_SYNC_KEY,String(Date.now()));
+  }catch(e){}finally{iptvDailySyncBusy=false}
+}
+setInterval(syncIptvCatalogDaily,60*60*1000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')syncIptvCatalogDaily()});
+setTimeout(syncIptvCatalogDaily,20000);
 function toggleCountryFilters(){
   const open=!document.body.classList.contains('countryPanelOpen');
   document.body.classList.toggle('countryPanelOpen',open);
