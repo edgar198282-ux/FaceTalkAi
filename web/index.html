@@ -15483,15 +15483,28 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
   body:not(.nativeTv) #tvSettingsModal .settingsAction,
   body:not(.nativeTv) #tvSettingsModal .settingsClose,
   body:not(.nativeTv) #tvSettingsModal .appearanceToggle button,
-  body:not(.nativeTv) #tvSettingsModal .themeReset{
-    min-height:60px!important;
-    height:auto!important;
-    padding-top:13px!important;
-    padding-bottom:13px!important;
-  }
+  body:not(.nativeTv) #tvSettingsModal .themeReset,
   body:not(.nativeTv) #tvSettingsModal #activationBotLink{
-    min-height:60px!important;
+    box-sizing:border-box!important;
+    height:57px!important;
+    min-height:57px!important;
+    max-height:57px!important;
+    padding-top:0!important;
+    padding-bottom:0!important;
   }
+  body:not(.nativeTv) #tvSettingsModal .settingsLang button{
+    height:initial;
+  }
+}
+#adminPanel button[onclick="loadAdminAccess()"],
+#adminPanel button[onclick="grantAccessById()"]{
+  box-sizing:border-box!important;
+  height:42px!important;
+  min-height:42px!important;
+  max-height:42px!important;
+  padding-top:0!important;
+  padding-bottom:0!important;
+  align-self:stretch!important;
 }
 </style>
 </body>
