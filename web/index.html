@@ -7553,6 +7553,13 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
         }catch(e){}
       }
 
+      if(ch.personal && data.type===Hls.ErrorTypes.NETWORK_ERROR && !forceProxy){
+        clearFirstFrameTimer();
+        err.textContent='Пробую совместимое подключение…';
+        startStream(ch,preferBackup,true);
+        return;
+      }
+
       if(nativeTv&&tvPlaybackStable){
         if(data.type===Hls.ErrorTypes.NETWORK_ERROR){
           try{hls.startLoad()}catch(e){}
@@ -7565,12 +7572,6 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
       }
 
       if(String(ch.id||'').startsWith('cinema:external:') && data.type===Hls.ErrorTypes.NETWORK_ERROR && retryCinemaPlayback('direct_hls_network'))return;
-      if(ch.personal && data.type===Hls.ErrorTypes.NETWORK_ERROR && !forceProxy){
-        clearFirstFrameTimer();
-        err.textContent='Пробую совместимое подключение…';
-        startStream(ch,preferBackup,true);
-        return;
-      }
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR && !nativeTv && !forceProxy && !ch.personal && !String(ch.id||'').startsWith('cinema:external:')){
         clearFirstFrameTimer();
         err.textContent='Проверяю совместимый поток…';
