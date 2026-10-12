@@ -1524,7 +1524,8 @@ async def api_cinema_library(request):
     has_personal_kp = bool(personal_tokens.get('access_token') or personal_tokens.get('refresh_token'))
     folder_id = str(request.query.get('folder') or '').strip()
     custom = await _cinema_custom_folders(uid)
-    folders = [{'id':'personal','title':'Моё избранное ABAJ TV',
+    personal_deleted = str(await get_setting(f'cinema_personal_folder_deleted:{uid}', '')) == '1'
+    folders = [] if personal_deleted else [{'id':'personal','title':'Моё избранное ABAJ TV',
                 'count':len(rows),'kind':'bookmark_folder','source':'ABAJ'}]
     for fid, data in custom.items():
         if isinstance(data,dict) and not fid.startswith('kp:'):
@@ -1598,9 +1599,10 @@ async def api_cinema_bookmark_folders(request):
     custom = await _cinema_custom_folders(uid)
     if request.method == 'DELETE':
         folder_id = str(request.query.get('folder_id') or '').strip()
-        if folder_id == 'personal' and request.query.get('clear') == '1':
+        if folder_id == 'personal':
             await _cinema_library_write(uid, 'bookmarks', [])
-            return web.json_response({'ok':True,'cleared':'personal'}, headers={'Cache-Control':'no-store'})
+            await set_setting(f'cinema_personal_folder_deleted:{uid}', '1')
+            return web.json_response({'ok':True,'deleted':'personal'}, headers={'Cache-Control':'no-store'})
         if not folder_id.startswith('local:') or folder_id not in custom:
             return web.json_response({'ok':False,'error':'folder_not_deletable'}, status=403)
         custom.pop(folder_id)
@@ -1610,7 +1612,8 @@ async def api_cinema_bookmark_folders(request):
         return str(item.get('id') or '').strip() or str(item.get('title') or '').strip().casefold()
     if request.method == 'GET':
         item_id = str(request.query.get('item_id') or '').strip()
-        folders = [{'id':'personal','title':'Моё избранное ABAJ TV','count':len(rows),
+        personal_deleted = str(await get_setting(f'cinema_personal_folder_deleted:{uid}', '')) == '1'
+        folders = [] if personal_deleted else [{'id':'personal','title':'Моё избранное ABAJ TV','count':len(rows),
                     'selected':bool(item_id and any(item_key(x) == item_id for x in rows)),
                     'kind':'bookmark_folder'}]
         personal_tokens = await _kinopub_tokens(uid)
@@ -1666,6 +1669,7 @@ async def api_cinema_bookmark_folders(request):
     rows = [x for x in rows if item_key(x) != key]
     if 'personal' in selected:
         rows.insert(0,compact)
+        await set_setting(f'cinema_personal_folder_deleted:{uid}', '0')
     await _cinema_library_write(uid,'bookmarks',rows[:300])
     for fid, data in custom.items():
         if not isinstance(data,dict):
