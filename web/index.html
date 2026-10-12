@@ -5127,6 +5127,31 @@ function restoreCachedChannels(){
     return true;
   }catch(e){return false}
 }
+function deduplicateFreeChannels(rows){
+  const selected=new Map();
+  const keyOf=ch=>{
+    const name=String(ch.name||'').toLowerCase()
+      .replace(/\s*(?:\((?:2160p|1080p|720p|576p|480p|4k|uhd|fhd|hd|sd)\)|\b(?:2160p|1080p|720p|576p|480p|4k|uhd|fhd|hd|sd)\b)\s*$/gi,'')
+      .replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+    return String(ch.country||'')+'|'+name;
+  };
+  const score=ch=>{
+    const height=Number(ch.height||ch.reported_height||0);
+    const quality=channelQuality(ch);
+    const rank=quality==='4K'?4:quality==='FHD'?3:quality==='HD'?2:1;
+    return (ch.status==='ONLINE'?1000000:0)+(ch.unreliable?-500000:0)
+      +rank*10000+Math.min(4000,height)+Math.min(100,Number(ch.uptime_pct||0))*10
+      +Math.min(100,Number(ch.health_score||0))*10;
+  };
+  for(const ch of rows){
+    if(ch.personal)continue;
+    const key=keyOf(ch);
+    if(!key.split('|')[1])continue;
+    const prev=selected.get(key);
+    if(!prev||score(ch)>score(prev))selected.set(key,ch);
+  }
+  return rows.filter(ch=>ch.personal||selected.get(keyOf(ch))===ch);
+}
 async function load(){
   try{
     restoreCachedChannels();
@@ -5155,6 +5180,7 @@ async function load(){
       if(key.includes('shoghakat')||key.includes('շողակաթ'))return false;
       return x.status==='ONLINE'&&(!tvHideUnreliable||!x.unreliable);
     });
+    base=deduplicateFreeChannels(base);
     if(!edemStatus.active){
       const am=base.filter(x=>String(x&&x.country||'').toUpperCase()==='AM').slice(0,3);
       const ru=base.filter(x=>String(x&&x.country||'').toUpperCase()==='RU').slice(0,2);
