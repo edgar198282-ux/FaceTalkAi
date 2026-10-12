@@ -7444,15 +7444,14 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
       abrEwmaDefaultEstimate:teamTvFast?1200000:(mobileFast?1500000:(nativeTv?tvInitialAbrEstimate(ch):500000))
     });
     if(ch.personal){
-      fetch(src,{headers:auth,cache:'no-store'})
-        .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.text()})
-        .then(text=>{
-          const blobUrl=URL.createObjectURL(new Blob([text],{type:'application/vnd.apple.mpegurl'}));
-          hls.loadSource(blobUrl);
-          hls.attachMedia(v);
-          setTimeout(()=>URL.revokeObjectURL(blobUrl),60000);
-        })
-        .catch(()=>scheduleReconnect(ch));
+      const personalHeaders=auth;
+      hls.config.xhrSetup=(xhr,url)=>{
+        if(url.startsWith(location.origin+'/api/iptv/edem/play')||url.startsWith('/api/iptv/edem/play')){
+          Object.entries(personalHeaders).forEach(([key,value])=>xhr.setRequestHeader(key,value));
+        }
+      };
+      hls.loadSource(src);
+      hls.attachMedia(v);
     }else{
       const warmed=getWarmedManifest(ch,preferBackup);
       if(warmed){
