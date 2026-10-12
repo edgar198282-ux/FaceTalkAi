@@ -2853,15 +2853,25 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
         now = int(time.time())
         if force or not cached or cached.get('url') != url or now - cached.get('ts', 0) >= 600:
             try:
-                timeout = aiohttp.ClientTimeout(total=25, connect=8, sock_read=15)
+                body = None
                 async with aiohttp.ClientSession(headers={'User-Agent':'AbajTV/1.0'}) as session:
-                    async with session.get(url, timeout=timeout, allow_redirects=True) as response:
-                        if response.status >= 400:
-                            logging.warning("EDEM_PLAYLIST_FAILED id=%s http_status=%s", playlist_id, response.status)
-                            if cached and cached.get('url') == url and cached.get('channels'):
-                                channels.extend(cached['channels'])
-                            continue
-                        body = await response.text(errors='ignore')
+                    for attempt in range(2):
+                        try:
+                            timeout = aiohttp.ClientTimeout(total=18, connect=10, sock_read=12)
+                            async with session.get(url, timeout=timeout, allow_redirects=True) as response:
+                                if response.status >= 400:
+                                    logging.warning("EDEM_PLAYLIST_FAILED id=%s http_status=%s", playlist_id, response.status)
+                                    break
+                                body = await response.text(errors='ignore')
+                            break
+                        except (aiohttp.ClientError, TimeoutError) as exc:
+                            logging.warning("EDEM_PLAYLIST_RETRY id=%s attempt=%s error_type=%s", playlist_id, attempt + 1, type(exc).__name__)
+                            if attempt == 0:
+                                await asyncio.sleep(1)
+                if body is None:
+                    if cached and cached.get('url') == url and cached.get('channels'):
+                        channels.extend(cached['channels'])
+                    continue
                 parsed_rows = _unique_edem_channel_ids(iptv._parse_m3u(body, 'ED', url))
                 if not parsed_rows:
                     logging.warning("EDEM_PLAYLIST_EMPTY id=%s payload_bytes=%s", playlist_id, len(body))
