@@ -2869,6 +2869,13 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                             if attempt == 0:
                                 await asyncio.sleep(1)
                 if body is None:
+                    try:
+                        import socket
+                        hostname = urlparse(url).hostname or ''
+                        await asyncio.wait_for(asyncio.to_thread(socket.getaddrinfo, hostname, None), timeout=5)
+                        logging.warning("EDEM_PLAYLIST_HOST_CHECK id=%s result=dns_ok", playlist_id)
+                    except (OSError, TimeoutError) as exc:
+                        logging.warning("EDEM_PLAYLIST_HOST_CHECK id=%s result=dns_failed error_type=%s", playlist_id, type(exc).__name__)
                     if cached and cached.get('url') == url and cached.get('channels'):
                         channels.extend(cached['channels'])
                     continue
