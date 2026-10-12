@@ -2826,11 +2826,6 @@ async def api_iptv_edem_channels(request):
     safe = []
     for item in data.get('channels') or []:
         row = dict(item)
-        now_epg, next_epg = iptv._epg_for_channel(row)
-        if now_epg and not row.get('epg_now'):
-            row['epg_now'] = now_epg
-        if next_epg and not row.get('epg_next'):
-            row['epg_next'] = next_epg
         row.pop('url', None)
         row.pop('source', None)
         safe.append(row)
