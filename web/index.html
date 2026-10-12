@@ -4970,11 +4970,11 @@ async function load(){
     const d=await mainPromise;
     edemStatus=await Promise.race([
       edemStatusPromise,
-      new Promise(resolve=>setTimeout(()=>resolve({active:false,configured:false}),2500))
+      new Promise(resolve=>setTimeout(()=>resolve({active:false,configured:false}),12000))
     ]);
     const ed=await Promise.race([
       edemPromise,
-      new Promise(resolve=>setTimeout(()=>resolve({channels:[]}),2500))
+      new Promise(resolve=>setTimeout(()=>resolve({channels:[]}),12000))
     ]);
     let base=(d.channels||[]).filter(x=>{
       const key=(String(x&&x.name||'')+' '+String(x&&x.tvg_id||'')).toLowerCase();
