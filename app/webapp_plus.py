@@ -2631,6 +2631,9 @@ def _edem_channel_country(channel):
     )
     group = str(channel.get('group') or '')
     tvg_id = str(channel.get('tvg_id') or '').lower()
+    group_code = re.search(r'(?<![a-z])(?:AM|RU|GE|UA|BY|KZ|UZ|MD)(?![a-z])', group, re.I)
+    if group_code:
+        return group_code.group(0).upper()
     for code, pattern in patterns:
         if re.search(pattern, group, re.I):
             return code
@@ -2830,8 +2833,32 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
             except (aiohttp.ClientError, TimeoutError, ValueError):
                 continue
         channels.extend(cached.get('channels') or [])
+    free_by_country_id = {}
+    free_by_country_name = {}
+    supported_countries = {'AM', 'RU', 'GE', 'UA', 'BY', 'KZ', 'UZ', 'MD'}
+    for free_channel in iptv._state.get('channels', {}).values():
+        country = str(free_channel.get('country') or '').upper()
+        if country not in supported_countries:
+            continue
+        tvg_id = str(free_channel.get('tvg_id') or '').strip().lower()
+        if tvg_id:
+            free_by_country_id.setdefault(tvg_id, set()).add(country)
+        for variant in iptv._logo_name_variants(free_channel.get('name') or ''):
+            if len(variant) >= 3:
+                free_by_country_name.setdefault(variant, set()).add(country)
     for channel in channels:
-        channel['country'] = _edem_channel_country(channel)
+        country = _edem_channel_country(channel)
+        if country not in supported_countries:
+            tvg_id = str(channel.get('tvg_id') or '').strip().lower()
+            candidates = free_by_country_id.get(tvg_id, set()) if tvg_id else set()
+            if not candidates:
+                candidates = set()
+                for variant in iptv._logo_name_variants(channel.get('name') or ''):
+                    if len(variant) >= 3:
+                        candidates.update(free_by_country_name.get(variant, ()))
+            if len(candidates) == 1:
+                country = next(iter(candidates))
+        channel['country'] = country
     free_by_id = {}
     free_by_name = {}
     for free_channel in iptv._state.get('channels', {}).values():
