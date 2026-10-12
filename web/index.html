@@ -5111,7 +5111,27 @@ function restoreCachedChannels(){
     return true;
   }catch(e){return false}
 }
-async function deduplicateFreeQuality(rows){
+async function enrichPlaylistLogos(playlistRows,freeRows){
+  const byId=new Map(),byName=new Map();
+  const canonical=name=>String(name||'').toLowerCase()
+    .replace(/\s*\([^)]*(?:2160|1080|720|480|4k|uhd|fhd|hd|sd)[^)]*\)/gi,' ')
+    .replace(/\s+(?:4k|uhd|fhd|hd|sd|2160p|1080p|720p)$/i,'')
+    .replace(/\s+/g,' ').trim();
+  for(const channel of freeRows){
+    const logo=String(channel.logo||'');
+    if(!/^https?:\/\//i.test(logo))continue;
+    const tvg=String(channel.tvg_id||'').toLowerCase();
+    if(tvg)byId.set(tvg,logo);
+    const name=canonical(channel.name);
+    if(name)byName.set(name,logo);
+  }
+  return playlistRows.map(row=>{
+    if(/^https?:\/\//i.test(String(row.logo||'')))return row;
+    const found=byId.get(String(row.tvg_id||'').toLowerCase())||byName.get(canonical(row.name));
+    return found?{...row,logo:found}:row;
+  });
+}
+function deduplicateFreeQuality(rows){
   const result=[];
   const freeByName=new Map();
   const rank={SD:1,HD:2,FHD:3,'4K':4};
@@ -5176,7 +5196,7 @@ function load(){
       base=[...am,...ru].slice(0,5);
     }
     if(Array.isArray(ed.channels)&&ed.channels.length){
-      base=base.concat(ed.channels.map(x=>({...x,personal:true,provider:'Edem'})));
+      base=base.concat(enrichPlaylistLogos(ed.channels,base).map(x=>({...x,personal:true,provider:'Edem'})));
       renderNamedPlaylistChips(ed.playlists||[],ed.channels);
     }
     if(!Array.isArray(ed.channels)||!ed.channels.length)renderNamedPlaylistChips(ed.playlists||[],[]);
