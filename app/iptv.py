@@ -3149,7 +3149,30 @@ async def _bootstrap_public_channels():
     ]
     result = dict(_state["channels"])
     original_count = len(result)
+    existing = sorted((row for row in result.values() if row.get("url")), key=lambda row: str(row.get("id")))
+    if existing:
+        daily_batch = min(500, len(existing))
+        offset = (int(time.time()) // REFRESH_SECONDS * daily_batch) % len(existing)
+        sample = [existing[(offset + i) % len(existing)] for i in range(daily_batch)]
+    else:
+        sample = []
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20), headers={"User-Agent": "AbajTV/1.0"}) as session:
+        if sample:
+            sem = asyncio.Semaphore(12)
+            for checked in await asyncio.gather(*[_probe(session, row, sem) for row in sample]):
+                cid = str(checked.get("id") or "")
+                previous = result.get(cid)
+                if not previous:
+                    continue
+                consecutive = int(checked.get("consecutive_failures") or 0)
+                if checked.get("status") == "ONLINE":
+                    result[cid] = {**previous, **checked}
+                elif consecutive >= 3:
+                    result[cid] = {**previous, **checked}
+                else:
+                    result[cid] = {**previous, "last_checked": int(time.time()),
+                                   "consecutive_failures": consecutive}
+
         for country, url in sources:
             try:
                 async with session.get(url, ssl=False) as response:
@@ -3174,10 +3197,12 @@ async def _bootstrap_public_channels():
                     break
             except Exception as exc:
                 logging.warning("IPTV light source failed: %s", type(exc).__name__)
-    if len(result) > original_count:
+    if result:
         _state["channels"] = result
         _state["last_refresh"] = int(time.time())
-        _state["stats"] = {"total": len(result), "online": len(result), "offline": 0}
+        online_count = sum(row.get("status") == "ONLINE" for row in result.values())
+        _state["stats"] = {"total": len(result), "online": online_count, "offline": len(result) - online_count,
+                           "quarantined_streams": sum(_is_quarantined(row.get("url", "")) for row in result.values())}
         _save_json(SNAPSHOT_PATH, {"saved_at": int(time.time()), "state": {
             "channels": list(result.values()), "last_refresh": _state["last_refresh"],
             "stats": _state["stats"], "error": ""}})
