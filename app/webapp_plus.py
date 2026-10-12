@@ -2927,6 +2927,11 @@ async def api_iptv_edem_play(request):
     if not sub['active'] and not item.get('public_playlist'):
         return web.json_response({'ok':False,'error':'subscription_expired','expires_at':sub['expires_at']}, status=403)
     url = item.get('url') or ''
+    if request.query.get('direct') == '1':
+        parsed = urlparse(url)
+        if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+            raise web.HTTPBadGateway(text='Invalid playlist stream')
+        raise web.HTTPFound(location=url, headers={'Cache-Control':'no-store'})
     timeout = aiohttp.ClientTimeout(total=18, connect=6, sock_read=10)
     async with aiohttp.ClientSession(headers={'User-Agent':'AbajTV/1.0'}) as session:
         async with session.get(url, timeout=timeout, allow_redirects=True) as r:
