@@ -13335,8 +13335,8 @@ function updateCinemaNextEpisodeButton(){
   const isSeries=!!(current&&String(current.cinemaProvider||'').toUpperCase()==='KINOPUB'&&cinemaDetailMovie&&cinemaItemLooksSeries(cinemaDetailMovie));
   const hasNext=isSeries&&!!cinemaAdjacentMedia(1);
   const hasPrev=isSeries&&!!cinemaAdjacentMedia(-1);
-  if(next){next.hidden=!hasNext;next.style.display=hasNext?'inline-flex':'none'}
-  if(prev){prev.hidden=!hasPrev;prev.style.display=hasPrev?'inline-flex':'none'}
+  if(next){next.hidden=!isSeries;next.style.display=isSeries?'inline-flex':'none';next.disabled=!hasNext;next.setAttribute('aria-disabled',String(!hasNext))}
+  if(prev){prev.hidden=!isSeries;prev.style.display=isSeries?'inline-flex':'none';prev.disabled=!hasPrev;prev.setAttribute('aria-disabled',String(!hasPrev))}
 }
 async function playAdjacentCinemaEpisode(step=1){
   const next=cinemaAdjacentMedia(step);
