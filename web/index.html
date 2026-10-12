@@ -3504,6 +3504,7 @@ async function checkAdmin(){
     if(!r.ok)return;
     const d=await r.json();
     appIsAdmin=!!d.is_admin;
+    syncIptvPlaylistToggle();
 
     const btn=document.getElementById('settingsAdminBtn');
     if(btn)btn.style.display=appIsAdmin?'':'none';
@@ -4695,7 +4696,7 @@ function syncIptvPlaylistToggle(){
   if(!btn)return;
   const selected=iptvPlaylistMenuOptions.find(x=>x.value===sourceFilter);
   btn.textContent=(selected?selected.name:'Эдем')+' ▾';
-  if(selected&&Number.isFinite(selected.count)){
+  if(appIsAdmin&&selected&&Number.isFinite(selected.count)){
     const count=document.createElement('span');
     count.textContent=' '+selected.count;
     count.style.cssText='font-size:11px;font-weight:600;opacity:.8;margin-left:5px';
@@ -4719,7 +4720,7 @@ function toggleIptvPlaylistMenu(){
     const item=document.createElement('button');
     item.type='button';item.setAttribute('role','menuitem');
     item.textContent=option.name;
-    if(Number.isFinite(option.count)){
+    if(appIsAdmin&&Number.isFinite(option.count)){
       const count=document.createElement('span');
       count.textContent=' · '+option.count;
       count.style.cssText='font-size:11px;opacity:.75';
