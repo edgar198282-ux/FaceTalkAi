@@ -4782,6 +4782,12 @@ function setModeFilter(btn,v){
   const isCountry=COUNTRY_FILTERS.has(v);
   if(!isCountry)activeCategory='';
   if(isCountry){
+    const sourceRows=channels.filter(x=>sourceFilter==='free'?!x.personal:sourceFilter==='edem'?!!x.personal:x.personal&&String(x.playlist_id||'legacy')===sourceFilter.slice(9));
+    if(sourceFilter!=='free'&&!sourceRows.some(x=>String(x.country||'').toUpperCase()===v)
+       &&channels.some(x=>!x.personal&&String(x.country||'').toUpperCase()===v)){
+      sourceFilter='free';
+      localStorage.setItem('abaj_tv_source_filter','free');
+    }
     activeCategory='';
     localStorage.setItem('abaj_tv_category','');
     document.querySelectorAll('#sourceChips .chip').forEach(x=>x.classList.remove('active'));
