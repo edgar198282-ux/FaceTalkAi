@@ -5257,6 +5257,17 @@ async function load(){
 }
 function toggleCountryFilters(){
   const open=!document.body.classList.contains('countryPanelOpen');
+  if(open && !COUNTRY_FILTERS.has(modeFilter)){
+    modeFilter='all';
+    activeCategory='';
+    const search=document.getElementById('search');
+    if(search)search.value='';
+    const group=document.getElementById('group');
+    if(group)group.value='';
+    persistTvBrowseState();
+    applyTvBrowseUi();
+    render();
+  }
   document.body.classList.toggle('countryPanelOpen',open);
   const btn=document.getElementById('countriesBtn');
   if(btn)btn.classList.toggle('active',open);
@@ -5305,7 +5316,7 @@ function getFiltered(){
   if(sourceFilter==='free')rows=rows.filter(x=>!x.personal);
   else if(sourceFilter==='edem')rows=rows.filter(x=>!!x.personal);
   else if(sourceFilter.startsWith('playlist:'))rows=rows.filter(x=>x.personal&&String(x.playlist_id||'legacy')===sourceFilter.slice(9));
-  if(COUNTRY_FILTERS.has(modeFilter))rows=rows.filter(x=>x.country===modeFilter);
+  if(COUNTRY_FILTERS.has(modeFilter))rows=rows.filter(x=>String(x.country||'').trim().toUpperCase()===modeFilter);
   if(modeFilter==='HD')rows=rows.filter(x=>channelQuality(x)==='HD');
   if(modeFilter==='FHD')rows=rows.filter(x=>channelQuality(x)==='FHD');
   if(modeFilter==='4K')rows=rows.filter(x=>channelQuality(x)==='4K');
