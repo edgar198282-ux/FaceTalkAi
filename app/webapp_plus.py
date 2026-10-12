@@ -2615,6 +2615,34 @@ async def _edem_subscription_state(uid: int):
     }
 
 
+def _edem_channel_country(channel):
+    import unicodedata
+    text = ' '.join(str(channel.get(key) or '') for key in ('group', 'name', 'tvg_id'))
+    text = unicodedata.normalize('NFKC', text).lower()
+    patterns = (
+        ('AM', r'(?<![a-zа-я])(?:armenia|armenian|армения|армянские|հայաստան|հայկական|arm)(?![a-zа-я])'),
+        ('RU', r'(?<![a-zа-я])(?:russia|russian|россия|российские|русские|rus)(?![a-zа-я])'),
+        ('GE', r'(?<![a-zа-я])(?:georgia|грузия|ქართული|საქართველო)(?![a-zа-я])'),
+        ('UA', r'(?<![a-zа-я])(?:ukraine|украина|україн|украинские)(?![a-zа-я])'),
+        ('BY', r'(?<![a-zа-я])(?:belarus|беларусь|белорус|беларус)(?![a-zа-я])'),
+        ('KZ', r'(?<![a-zа-я])(?:kazakhstan|казахстан|қазақстан)(?![a-zа-я])'),
+        ('UZ', r'(?<![a-zа-я])(?:uzbekistan|узбекистан|oʻzbekiston)(?![a-zа-я])'),
+        ('MD', r'(?<![a-zа-я])(?:moldova|молдова|молдав)(?![a-zа-я])'),
+    )
+    group = str(channel.get('group') or '')
+    tvg_id = str(channel.get('tvg_id') or '').lower()
+    for code, pattern in patterns:
+        if re.search(pattern, group, re.I):
+            return code
+    suffix = re.search(r'\.(am|ru|ge|ua|by|kz|uz|md)(?:@|$)', tvg_id)
+    if suffix:
+        return suffix.group(1).upper()
+    for code, pattern in patterns:
+        if re.search(pattern, text, re.I):
+            return code
+    return str(channel.get('country') or 'ED')
+
+
 def _unique_edem_channel_ids(rows):
     seen = set()
     for row in rows:
@@ -2802,6 +2830,8 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
             except (aiohttp.ClientError, TimeoutError, ValueError):
                 continue
         channels.extend(cached.get('channels') or [])
+    for channel in channels:
+        channel['country'] = _edem_channel_country(channel)
     free_by_id = {}
     free_by_name = {}
     for free_channel in iptv._state.get('channels', {}).values():
