@@ -4825,7 +4825,8 @@ function installPlayerTouchGestures(){
   wrap.dataset.gestureReady='1';
   let sx=0,sy=0,lx=0,ly=0,mode='',active=false,startedAt=0,gestureSide='right',videoBrightness=1;
   wrap.addEventListener('touchstart',e=>{
-    if(nativeTv||e.touches.length!==1)return;
+    if(nativeTv||e.touches.length!==1||!document.getElementById('playerView')?.classList.contains('open'))return;
+    if(e.target.closest?.('button,input,select,.channelRail,.playerPrimaryControls,.playerTimelineWrap'))return;
     const p=e.touches[0]; sx=lx=p.clientX; sy=ly=p.clientY; mode=''; active=true; startedAt=Date.now();
     const bounds=wrap.getBoundingClientRect();
     gestureSide=p.clientX<bounds.left+bounds.width/2?'left':'right';
