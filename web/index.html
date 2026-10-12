@@ -2737,7 +2737,7 @@ body:not(.cinemaMode) .cinemaShellSide{
     <div id="cinemaEpisodePrompt" style="display:none;text-align:center;padding:9px;border-radius:12px;background:rgba(8,29,49,.92);color:#fff;margin-top:6px">
       <span id="cinemaEpisodePromptText">Серия заканчивается</span>
       <button type="button" onclick="playAdjacentCinemaEpisode(1)" style="margin-left:10px;padding:8px 12px;border:1px solid #55c9ff;border-radius:9px;background:#07558b;color:#fff;font-weight:800">Следующая серия ▶</button>
-      <button type="button" onclick="document.getElementById('cinemaEpisodePrompt').style.display='none'" style="margin-left:6px;background:transparent;border:0;color:#fff">✕</button>
+      <button type="button" onclick="cancelCinemaEpisodeCountdown()" style="margin-left:6px;background:transparent;border:0;color:#fff">✕</button>
     </div>
     <div id="playerError" style="color:#ff7680;text-align:center;font-size:13px;margin-top:10px"></div>
   </div>
@@ -13286,6 +13286,22 @@ async function resolveKinoPubInternalStream(item,media=null){
   return null;
 }
 
+let cinemaEpisodeCountdownTimer=null;
+let cinemaEpisodeCountdownCancelledFor='';
+function cinemaEpisodePlaybackKey(){
+  return current?String(current.cinemaItemId||'')+':'+String(current.cinemaMediaId||''):'';
+}
+function cancelCinemaEpisodeCountdown(hide=true){
+  if(cinemaEpisodeCountdownTimer!==null){
+    clearInterval(cinemaEpisodeCountdownTimer);
+    cinemaEpisodeCountdownTimer=null;
+  }
+  cinemaEpisodeCountdownCancelledFor=cinemaEpisodePlaybackKey();
+  if(hide){
+    const prompt=document.getElementById('cinemaEpisodePrompt');
+    if(prompt)prompt.style.display='none';
+  }
+}
 function cinemaAdjacentMedia(step){
   if(!current||String(current.cinemaProvider||'').toUpperCase()!=='KINOPUB'||!cinemaDetailMovie)return null;
   if(String(current.cinemaItemId||'')!==String(cinemaDetailMovie.id||''))return null;
@@ -13301,31 +13317,63 @@ function updateCinemaNextEpisodeButton(){
 async function playAdjacentCinemaEpisode(step=1){
   const next=cinemaAdjacentMedia(step);
   if(!next)return;
+  cancelCinemaEpisodeCountdown();
   cinemaSelectedKinoMedia=next;
-  const prompt=document.getElementById('cinemaEpisodePrompt');
-  if(prompt)prompt.style.display='none';
   await watchCinemaDetail();
+  cinemaEpisodeCountdownCancelledFor='';
+}
+function startCinemaEpisodeCountdown(){
+  const prompt=document.getElementById('cinemaEpisodePrompt');
+  if(!prompt||!cinemaAdjacentMedia(1)||cinemaEpisodeCountdownTimer!==null)return;
+  const key=cinemaEpisodePlaybackKey();
+  if(cinemaEpisodeCountdownCancelledFor===key)return;
+  let seconds=10;
+  const label=document.getElementById('cinemaEpisodePromptText');
+  const paint=()=>{
+    if(label)label.textContent='Следующая серия через '+seconds+' сек.';
+    prompt.style.display='block';
+  };
+  paint();
+  showTvPlayerUi(true);
+  cinemaEpisodeCountdownTimer=setInterval(()=>{
+    if(cinemaEpisodePlaybackKey()!==key||!cinemaAdjacentMedia(1)){
+      cancelCinemaEpisodeCountdown();
+      return;
+    }
+    seconds--;
+    if(seconds<=0){
+      clearInterval(cinemaEpisodeCountdownTimer);
+      cinemaEpisodeCountdownTimer=null;
+      prompt.style.display='none';
+      cinemaEpisodeCountdownCancelledFor=key;
+      playAdjacentCinemaEpisode(1);
+      return;
+    }
+    paint();
+  },1000);
 }
 document.addEventListener('timeupdate',e=>{
   if(e.target?.id!=='video')return;
   const video=e.target, next=cinemaAdjacentMedia(1);
   const prompt=document.getElementById('cinemaEpisodePrompt');
   updateCinemaNextEpisodeButton();
-  if(!prompt||!next){if(prompt)prompt.style.display='none';return}
+  if(!next){
+    if(cinemaEpisodeCountdownTimer!==null)cancelCinemaEpisodeCountdown();
+    if(prompt)prompt.style.display='none';
+    return;
+  }
+  if(cinemaEpisodeCountdownTimer!==null)return;
   const remaining=Number(video.duration)-Number(video.currentTime);
   if(Number.isFinite(remaining)&&video.duration>120&&remaining>=0&&remaining<=60){
-    document.getElementById('cinemaEpisodePromptText').textContent='До следующей серии '+Math.ceil(remaining)+' сек.';
-    prompt.style.display='block';
-  }else prompt.style.display='none';
+    if(prompt&&cinemaEpisodeCountdownCancelledFor!==cinemaEpisodePlaybackKey()){
+      document.getElementById('cinemaEpisodePromptText').textContent='До следующей серии '+Math.ceil(remaining)+' сек.';
+      prompt.style.display='block';
+    }
+  }else if(prompt)prompt.style.display='none';
 },true);
 document.addEventListener('ended',e=>{
   if(e.target?.id!=='video'||!cinemaAdjacentMedia(1))return;
-  const prompt=document.getElementById('cinemaEpisodePrompt');
-  if(prompt){
-    document.getElementById('cinemaEpisodePromptText').textContent='Серия закончилась';
-    prompt.style.display='block';
-    showTvPlayerUi(true);
-  }
+  startCinemaEpisodeCountdown();
 },true);
 async function watchCinemaDetail(){
   const item=cinemaDetailMovie;
