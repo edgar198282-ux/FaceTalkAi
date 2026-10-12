@@ -5610,6 +5610,7 @@ function closePlayer(){
   toggleTvRail(false);
   current=null;currentIndex=-1;
   if(closingCinemaExternal){
+    cinemaActiveEpisode=null;
     cinemaExternalChannel=null;
     if(cinemaMode&&cinemaDetailMovie){
       setTimeout(()=>renderCinemaDetail(cinemaDetailMovie),80);
@@ -7535,6 +7536,66 @@ function cinemaUniqueResolved(values,keyFn){
   }
   return out;
 }
+
+const cinemaEpisodeProgressKey='abaj_tv_episode_progress_v1';
+let cinemaActiveEpisode=null;
+function cinemaProgressId(item){
+  return String(item?.id||item?.intent||item?.title||'').trim();
+}
+function cinemaReadEpisodeProgress(item){
+  const id=cinemaProgressId(item);
+  if(!id)return {last:null,watched:{}};
+  try{
+    const data=JSON.parse(localStorage.getItem(cinemaEpisodeProgressKey)||'{}');
+    const entry=data[id];
+    return entry&&typeof entry==='object'?{last:entry.last||null,watched:entry.watched||{}}:{last:null,watched:{}};
+  }catch(_){return {last:null,watched:{}}}
+}
+function cinemaSaveEpisodeProgress(item,season,episode,completed=false){
+  const id=cinemaProgressId(item);
+  season=Number(season);episode=Number(episode);
+  if(!id||!Number.isInteger(season)||season<1||!Number.isInteger(episode)||episode<1)return;
+  try{
+    const data=JSON.parse(localStorage.getItem(cinemaEpisodeProgressKey)||'{}');
+    const entry=data[id]&&typeof data[id]==='object'?data[id]:{last:null,watched:{}};
+    if(!entry.watched||typeof entry.watched!=='object')entry.watched={};
+    entry.last={season,episode};
+    if(completed)entry.watched[season+':'+episode]=true;
+    data[id]=entry;
+    localStorage.setItem(cinemaEpisodeProgressKey,JSON.stringify(data));
+    const btn=document.getElementById('cinemaDetailWatch');
+    if(btn&&cinemaDetailMovie&&cinemaProgressId(cinemaDetailMovie)===id)cinemaUpdateResumeButton(cinemaDetailMovie);
+  }catch(_){}
+}
+function cinemaUpdateResumeButton(item){
+  const btn=document.getElementById('cinemaDetailWatch');
+  if(!btn)return;
+  const progress=cinemaReadEpisodeProgress(item);
+  if(progress.last){
+    btn.textContent='▶ ПРОДОЛЖИТЬ · СЕЗОН '+progress.last.season+', СЕРИЯ '+progress.last.episode;
+  }else{
+    btn.textContent=cinemaItemLooksSeries(item)?'СМОТРЕТЬ СЕРИАЛ':'СМОТРЕТЬ ФИЛЬМ';
+  }
+}
+function cinemaTrackEpisodePlayback(item,season,episode){
+  if(!season||!episode)return;
+  cinemaActiveEpisode={item,season:Number(season),episode:Number(episode)};
+  cinemaSaveEpisodeProgress(item,season,episode,false);
+}
+(function installCinemaEpisodeCompletionTracking(){
+  const video=document.getElementById('video');
+  if(!video)return;
+  const finished=()=>{
+    const ep=cinemaActiveEpisode;
+    if(!ep||!cinemaExternalChannel)return;
+    cinemaSaveEpisodeProgress(ep.item,ep.season,ep.episode,true);
+  };
+  video.addEventListener('ended',finished);
+  video.addEventListener('timeupdate',()=>{
+    if(cinemaActiveEpisode&&Number.isFinite(video.duration)&&video.duration>=60&&video.currentTime/video.duration>=0.95)finished();
+  });
+})();
+
 function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
   const list=document.getElementById('cinemaSourceList');
   const title=document.getElementById('cinemaSourceTitle');
@@ -7575,7 +7636,9 @@ function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
       label.textContent='Сезон '+season;
       const meta=document.createElement('small');
       const count=new Set(filtered.filter(x=>x.season===season).map(x=>x.episode).filter(Boolean)).size;
-      meta.textContent=count?count+' серий':'Открыть';
+      const progress=cinemaReadEpisodeProgress(cinemaSourcePickerMovie);
+      const watched=new Set(filtered.filter(x=>x.season===season&&x.episode>0&&progress.watched[season+':'+x.episode]).map(x=>x.episode));
+      meta.textContent=count?'Просмотрено '+watched.size+' из '+count+' серий':'Открыть';
       btn.append(label,meta);
       btn.onclick=()=>cinemaRenderResolvedRows(group,infos,'season',{...selection,season});
       list.appendChild(btn);
@@ -7617,7 +7680,10 @@ function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
       label.textContent='Серия '+episode;
       const meta=document.createElement('small');
       const epRows=filtered.filter(x=>x.episode===episode);
-      meta.textContent=cinemaQualitySummary(epRows.map(x=>x.row))||'Открыть';
+      const progress=cinemaReadEpisodeProgress(cinemaSourcePickerMovie);
+      const episodeSeason=Number(selection.season||epRows.find(x=>x.season>0)?.season||0);
+      const complete=!!progress.watched[episodeSeason+':'+episode];
+      meta.textContent=(complete?'✓ Просмотрено · ':'')+(cinemaQualitySummary(epRows.map(x=>x.row))||'Открыть');
       btn.append(label,meta);
       btn.onclick=()=>cinemaRenderResolvedRows(group,infos,'episode',{...selection,episode});
       list.appendChild(btn);
@@ -7674,6 +7740,8 @@ function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
           quality:String(x.quality||''),
           format:String(x.format||'')
         }));
+      if(isSeries&&selection.episode)cinemaTrackEpisodePlayback(cinemaSourcePickerMovie,selection.season||info.season,selection.episode);
+      else cinemaActiveEpisode=null;
       closeCinemaSourcePicker(false);
       window.__abajOpenExternalMedia(realUrl,playTitle,provider,row?.headers||{},fallbacks);
     };
@@ -8583,6 +8651,7 @@ function renderCinemaDetail(item){
     cinemaDetailFact('В ролях',cast);
 
   syncCinemaBookmarkButton();
+  cinemaUpdateResumeButton(item);
   detail.classList.add('open');
   document.getElementById('cinemaScreen')?.style.setProperty('display','none');
   requestAnimationFrame(()=>{
@@ -8631,7 +8700,7 @@ async function watchCinemaDetail(){
   const groups=await cinemaV2FindSources(item);
   if(watchBtn){
     watchBtn.disabled=false;
-    watchBtn.textContent='СМОТРЕТЬ ФИЛЬМ';
+    cinemaUpdateResumeButton(item);
   }
   cinemaV2RenderSources(item,groups);
 }
