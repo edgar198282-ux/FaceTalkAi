@@ -2757,13 +2757,14 @@ async def api_iptv_edem_status(request):
     if not await _tv_binding_allowed(request, uid):
         return web.json_response({'ok':False,'error':'tv_disconnected'}, status=403)
     raw = await get_setting(f'edem_playlist:{uid}', '')
+    named = await get_setting(f'edem_named_playlists:{uid}', '[]')
     sub = await _edem_subscription_state(uid)
     pay = await _edem_payment_state(uid)
     device_count, _ = await _tv_device_usage(uid)
     device_limit = 0 if (ADMIN_ID and uid == int(ADMIN_ID)) else 3
     return web.json_response({
         'ok': True,
-        'configured': bool((raw or '').strip()),
+        'configured': bool((raw or '').strip() or (named and named.strip() not in ('', '[]'))),
         **sub,
         'payment': pay,
         'device_count': device_count,
@@ -2844,6 +2845,17 @@ async def api_admin_iptv_edem_list(request):
     if not user or not _is_admin_user(user):
         return web.json_response({'ok':False,'error':'forbidden'}, status=403)
     rows = await list_settings_prefix('edem_playlist:')
+    named_rows = await list_settings_prefix('edem_named_playlists:')
+    entries_by_user = {}
+    for row in named_rows:
+        try:
+            user_id = int(str(row.get('key') or '').split(':',1)[1])
+            entries_by_user[user_id] = json.loads(row.get('value') or '[]')
+        except (TypeError, ValueError):
+            continue
+    for user_id in entries_by_user:
+        if not any(str(r.get('key') or '') == f'edem_playlist:{user_id}' for r in rows):
+            rows.append({'key':f'edem_playlist:{user_id}', 'value':''})
     users = []
     for row in rows:
         key = row.get('key') or ''
@@ -2852,7 +2864,8 @@ async def api_admin_iptv_edem_list(request):
         except Exception:
             continue
         playlist = str(row.get('value') or '').strip()
-        if not playlist:
+        entries = entries_by_user.get(uid) or []
+        if not playlist and not entries:
             continue
         sessions = _edem_prune_sessions(uid)
         limit = await _edem_max_connections(uid)
@@ -2862,7 +2875,8 @@ async def api_admin_iptv_edem_list(request):
         users.append({
             'user_id': uid,
             'configured': True,
-            'channel_count': len(cache.get('channels') or []),
+            'playlists': [{'id':x.get('id'),'name':x.get('name')} for x in entries if isinstance(x,dict)],
+            'channel_count': len(cache.get('channels') or []) + sum(len((_edem_named_cache.get(f"{uid}:{x.get('id')}") or {}).get('channels') or []) for x in entries if isinstance(x,dict)),
             'active_connections': len(sessions),
             'max_connections': limit,
             'last_playlist_refresh': int(cache.get('ts') or 0),
@@ -3802,7 +3816,7 @@ async def api_admin_iptv_edem_assign(request):
         _edem_named_cache.pop(f'{uid}:{playlist_id}', None)
     else:
         await set_setting(f'edem_playlist:{uid}', playlist_url)
-    if 'expires_at' in body:
+    if 'expires_at' in body and (not playlist_name or int(body.get('expires_at') or 0) > 0):
         try:
             expires_at = max(0, int(body.get('expires_at') or 0))
         except Exception:
