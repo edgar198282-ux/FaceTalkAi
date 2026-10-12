@@ -2609,7 +2609,7 @@ body:not(.cinemaMode) .cinemaShellSide{
 <div class="adminPanel" id="adminPanel" onclick="if(event.target===this)closeAdmin()">
   <div class="adminCard">
     <div class="adminHead">
-      <div class="adminTitle">Edem · Управление</div>
+      
       <div class="adminHeadActions">
         <button class="adminBack" onclick="backFromAdmin()">← Назад</button>
         <button class="adminClose" onclick="closeAdmin()">Закрыть</button>
@@ -2633,7 +2633,7 @@ body:not(.cinemaMode) .cinemaShellSide{
     <div class="adminRow" style="display:block">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
         <b>Источник кино</b>
-        <span id="kinoPubAdminStatus" class="adminMeta">Проверка…</span>
+        <span id="kinoPubAdminStatus" class="adminMeta" hidden>Проверка…</span>
       </div>
       <div class="adminMeta" id="kinoPubAdminMeta" style="margin-top:6px">Если источник кино уже доступен на этом устройстве, Abaj TV подключит его без новой регистрации.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
@@ -3643,12 +3643,12 @@ async function refreshKinoPubAdminStatus(){
   const st=document.getElementById('kinoPubAdminStatus');
   const meta=document.getElementById('kinoPubAdminMeta');
   const connectBtn=document.getElementById('kinoPubAdminConnectBtn');
-  if(connectBtn)connectBtn.disabled=true;
+  if(connectBtn){connectBtn.disabled=true;connectBtn.textContent='Проверка…'}
   if(st){st.textContent='Проверка…';st.style.color='#6f8798'}
   try{
     const r=await fetch('/api/kinopub/status',{headers:authHeaders(),cache:'no-store'});
     const d=r.ok?await r.json():null;
-    if(connectBtn)connectBtn.disabled=!!(d&&d.authenticated)||!!(d&&d.pending);
+    if(connectBtn){connectBtn.disabled=!!(d&&d.authenticated)||!!(d&&d.pending);connectBtn.textContent=d&&d.authenticated?'Подключено':d&&d.pending?'Подключение…':'Подключить'}
     if(d&&d.authenticated){
       if(st){st.textContent='Подключено';st.style.color='#16c784';st.style.fontWeight='900';st.style.background='rgba(22,160,93,.20)';st.style.border='1px solid #16a05d';st.style.borderRadius='10px';st.style.padding='5px 10px'}
       if(meta)meta.textContent='Аккаунт KinoPub привязан к Abaj TV. Подключение проверено на сервере.';
@@ -3667,7 +3667,7 @@ async function refreshKinoPubAdminStatus(){
     if(st){st.textContent='Не подключено';st.style.color='#a33'}
     if(meta)meta.textContent='Нажмите «Подключить», затем подтвердите устройство в KinoPub.';
   }catch(e){
-    if(connectBtn)connectBtn.disabled=true;
+    if(connectBtn){connectBtn.disabled=true;connectBtn.textContent='Проверка…'}
     if(st){st.textContent='Ошибка проверки';st.style.color='#a33'}
     if(meta)meta.textContent='Не удалось проверить подключение KinoPub.';
   }
@@ -3728,11 +3728,11 @@ async function connectKinoPubFromAdmin(){
       if(pd&&pd.expired)break;
       if(!p.ok&&!pd.pending)throw new Error(pd.error||'auth_poll_failed');
     }
-    if(connectBtn)connectBtn.disabled=false;
+    if(connectBtn){connectBtn.disabled=false;connectBtn.textContent='Подключить'}
     if(st){st.textContent='Код истёк';st.style.color='#a33'}
     if(meta)meta.textContent='Код авторизации истёк. Нажмите «Подключить» ещё раз.';
   }catch(e){
-    if(connectBtn)connectBtn.disabled=false;
+    if(connectBtn){connectBtn.disabled=false;connectBtn.textContent='Подключить'}
     if(st){st.textContent='Не подключено';st.style.color='#a33'}
     if(meta)meta.textContent='Не удалось подключить KinoPub. Нажмите «Подключить» и повторите подтверждение.';
   }
