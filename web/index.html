@@ -12789,7 +12789,7 @@ function openCinemaSeasons(){
     const watched=row.items.filter(cinemaEpisodeWatched).length;
     const btn=document.createElement('button');
     btn.className='cinemaSeasonRow';
-    btn.innerHTML='<span>'+(index+1)+'. '+cinemaT().season+'</span><span class="cinemaSeasonCount">'+watched+'/'+row.items.length+'</span>';
+    btn.innerHTML='<span>'+(index+1)+'. '+cinemaT().season+'</span><span class="cinemaSeasonCount">'+(appLang==='hy'?'Դիտված ':appLang==='en'?'Watched ':'Просмотрено ')+watched+' / '+row.items.length+'</span>';
     btn.onclick=()=>renderCinemaSeasonEpisodes(row);
     list.appendChild(btn);
   });
@@ -13410,6 +13410,7 @@ async function watchCinemaDetail(){
     if(watchBtn){watchBtn.disabled=false;watchBtn.textContent=cinemaItemLooksSeries(item)?('СМОТРЕТЬ '+(cinemaSelectedKinoMedia?kinoMediaLabel(cinemaSelectedKinoMedia,0):'S1E1')):'СМОТРЕТЬ'}
     if(resolved&&resolved.url){
       await rememberCinemaWatch(item,media);
+      rememberCinemaLastEpisode(item,media);
       const detail=document.getElementById('cinemaDetail');
       if(detail)detail.classList.remove('open');
       const isSeries=cinemaItemLooksSeries(item);
@@ -13683,13 +13684,29 @@ window.addEventListener('popstate',()=>{
     setTimeout(()=>{cinemaHistoryPop=false},0);
   }
 });
+function cinemaEpisodeStorageKey(item){
+  const identity=JSON.stringify(authHeaders());
+  let hash=0;
+  for(let i=0;i<identity.length;i++)hash=(Math.imul(hash,31)+identity.charCodeAt(i))|0;
+  return 'abaj_last_series_v1_'+(hash>>>0)+'_'+String(item?.id||'');
+}
+function rememberCinemaLastEpisode(item,media){
+  if(!item?.id||!media||!cinemaItemLooksSeries(item))return;
+  try{localStorage.setItem(cinemaEpisodeStorageKey(item),JSON.stringify({
+    id:kinoMediaId(media),season:Number(media.season||0),episode:Number(media.number||0)
+  }))}catch(e){}
+}
+function cinemaLastEpisode(item){
+  try{return JSON.parse(localStorage.getItem(cinemaEpisodeStorageKey(item))||'null')}catch(e){return null}
+}
 function restoreCinemaSavedMedia(item){
   const rows=cinemaSeasonRows(item);
   if(!rows.length)return null;
 
-  const savedId=String(item?.media_id||'').trim();
-  const savedSeason=Number(item?.season||0);
-  const savedEpisode=Number(item?.episode||0);
+  const local=cinemaLastEpisode(item);
+  const savedId=String(local?.id||item?.media_id||'').trim();
+  const savedSeason=Number(local?.season||item?.season||0);
+  const savedEpisode=Number(local?.episode||item?.episode||0);
 
   for(const row of rows){
     const seasonNo=Number(row?.season||0);
