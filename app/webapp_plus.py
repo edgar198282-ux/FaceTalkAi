@@ -9,7 +9,7 @@ import re
 import secrets
 import html
 import time
-from urllib.parse import quote, urlencode, urlparse, parse_qs, urljoin
+from urllib.parse import quote, urlencode, urlparse, parse_qs
 
 import aiohttp
 from aiohttp import web
@@ -2643,9 +2643,6 @@ async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
     out = []
     for row in rows[:2500]:
         item = dict(row)
-        logo = str(item.get('logo') or '').strip()
-        if logo:
-            item['logo'] = urljoin(playlist_url, logo) if not logo.startswith(('data:', 'http://', 'https://')) else logo
         item['status'] = 'ONLINE'
         item['latency_ms'] = 0
         item['backup_count'] = 0
@@ -2663,38 +2660,31 @@ _edem_named_cache = {}
 async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
     legacy = await _load_edem_legacy_for_uid(uid, force)
     raw = await get_setting(f'edem_named_playlists:{uid}', '[]')
-    global_raw = await get_setting('edem_named_playlists:0', '[]')
-    try:
-        global_entries = json.loads(global_raw or '[]')
-        if not isinstance(global_entries, list): global_entries = []
-    except (ValueError, TypeError):
-        global_entries = []
     try:
         playlists = json.loads(raw or '[]')
         if not isinstance(playlists, list):
             playlists = []
     except (ValueError, TypeError):
         playlists = []
-    playlists = [(entry, uid, False) for entry in playlists] + [(entry, 0, True) for entry in global_entries]
     channels = [dict(row, playlist_name='Edem', playlist_id='legacy') for row in legacy.get('channels', [])]
     labels = [{'id': 'legacy', 'name': 'Edem'}] if legacy.get('configured') else []
     active = bool(legacy.get('active'))
-    for index, (entry, owner_uid, shared) in enumerate(playlists[:40]):
+    for index, entry in enumerate(playlists[:20]):
         name = str(entry.get('name') or '').strip()[:32]
         url = str(entry.get('url') or '').strip()
         if not name or not url:
             continue
-        playlist_id = ('global:' if shared else '') + str(entry.get('id') or index)
+        playlist_id = str(entry.get('id') or index)
         labels.append({'id': playlist_id, 'name': name})
-        if not active and not shared:
+        if not active:
             continue
         parsed = urlparse(url)
         if parsed.scheme not in ('http', 'https') or not parsed.netloc:
             continue
-        key = f'{owner_uid}:{playlist_id}'
+        key = f'{uid}:{playlist_id}'
         cached = _edem_named_cache.get(key)
         now = int(time.time())
-        if (force and not shared) or not cached or cached.get('url') != url or now - cached.get('ts', 0) >= 86400:
+        if force or not cached or cached.get('url') != url or now - cached.get('ts', 0) >= 600:
             try:
                 timeout = aiohttp.ClientTimeout(total=25, connect=8, sock_read=15)
                 async with aiohttp.ClientSession(headers={'User-Agent':'AbajTV/1.0'}) as session:
@@ -2707,15 +2697,11 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                 import hashlib
                 for row in parsed_rows[:2500]:
                     item = dict(row)
-                    logo = str(item.get('logo') or '').strip()
-                    if logo:
-                        item['logo'] = urljoin(url, logo) if not logo.startswith(('data:', 'http://', 'https://')) else logo
                     original_id = str(item.get('id') or '')
                     item['id'] = hashlib.sha256((playlist_id + ':' + original_id).encode()).hexdigest()[:20]
                     item.update(status='ONLINE', latency_ms=0, backup_count=0, candidate_count=1,
                                 personal=True, provider='Edem', playlist_id=playlist_id,
-                                playlist_name=name, public_playlist=shared,
-                                adult=bool(iptv._is_adult_channel(item)))
+                                playlist_name=name, adult=bool(iptv._is_adult_channel(item)))
                     compiled.append(item)
                 cached = {'url': url, 'ts': now, 'channels': compiled}
                 _edem_named_cache[key] = cached
@@ -2724,34 +2710,6 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
         channels.extend(cached.get('channels') or [])
     return {**legacy, 'channels': channels, 'configured': bool(labels),
             'playlists': labels}
-
-
-async def _refresh_named_playlists_daily():
-    await asyncio.sleep(90)
-    while True:
-        try:
-            rows = await list_settings_prefix('edem_named_playlists:')
-            owners = set()
-            for entry in rows:
-                try:
-                    uid = int(str(entry.get('key') or '').split(':', 1)[1])
-                    if str(entry.get('value') or '').strip() not in ('', '[]'):
-                        owners.add(uid)
-                except (ValueError, TypeError):
-                    continue
-            for uid in sorted(owners):
-                if uid and not (await _edem_subscription_state(uid))['active']:
-                    continue
-                try:
-                    await _load_edem_playlist_for_uid(uid, force=True)
-                except (aiohttp.ClientError, TimeoutError, ValueError):
-                    pass
-                await asyncio.sleep(1)
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            pass
-        await asyncio.sleep(86400)
 
 
 async def _tv_device_usage(uid: int, current_device_id: str = '') -> tuple[int, bool]:
@@ -2800,14 +2758,13 @@ async def api_iptv_edem_status(request):
         return web.json_response({'ok':False,'error':'tv_disconnected'}, status=403)
     raw = await get_setting(f'edem_playlist:{uid}', '')
     named = await get_setting(f'edem_named_playlists:{uid}', '[]')
-    shared = await get_setting('edem_named_playlists:0', '[]')
     sub = await _edem_subscription_state(uid)
     pay = await _edem_payment_state(uid)
     device_count, _ = await _tv_device_usage(uid)
     device_limit = 0 if (ADMIN_ID and uid == int(ADMIN_ID)) else 3
     return web.json_response({
         'ok': True,
-        'configured': bool((raw or '').strip() or (named and named.strip() not in ('', '[]')) or (shared and shared.strip() not in ('', '[]'))),
+        'configured': bool((raw or '').strip() or (named and named.strip() not in ('', '[]'))),
         **sub,
         'payment': pay,
         'device_count': device_count,
@@ -2849,6 +2806,8 @@ async def api_iptv_edem_play(request):
     if not await _tv_binding_allowed(request, uid):
         return web.json_response({'ok':False,'error':'tv_disconnected'}, status=403)
     sub = await _edem_subscription_state(uid)
+    if not sub['active']:
+        return web.json_response({'ok':False,'error':'subscription_expired','expires_at':sub['expires_at']}, status=403)
     device_id = (request.headers.get('X-Abaj-Device-Id') or '').strip()[:120] or 'unknown'
     ok, limit, active = await _edem_touch_session(uid, device_id)
     if not ok:
@@ -2863,8 +2822,6 @@ async def api_iptv_edem_play(request):
     item = next((x for x in (data.get('channels') or []) if x.get('id') == cid), None)
     if not item:
         raise web.HTTPNotFound(text='Channel unavailable')
-    if not sub['active'] and not item.get('public_playlist'):
-        return web.json_response({'ok':False,'error':'subscription_expired','expires_at':sub['expires_at']}, status=403)
     url = item.get('url') or ''
     timeout = aiohttp.ClientTimeout(total=18, connect=6, sock_read=10)
     async with aiohttp.ClientSession(headers={'User-Agent':'AbajTV/1.0'}) as session:
@@ -3831,8 +3788,7 @@ async def api_admin_iptv_edem_assign(request):
         return web.json_response({'ok':False,'error':'forbidden'}, status=403)
     body = await request.json()
     try:
-        uid = int(body.get('user_id') or 0)
-        if uid < 0: raise ValueError('invalid uid')
+        uid = int(body.get('user_id'))
     except Exception:
         return web.json_response({'ok':False,'error':'bad user_id'}, status=400)
     playlist_url = str(body.get('playlist_url') or '').strip()
@@ -3860,16 +3816,16 @@ async def api_admin_iptv_edem_assign(request):
         _edem_named_cache.pop(f'{uid}:{playlist_id}', None)
     else:
         await set_setting(f'edem_playlist:{uid}', playlist_url)
-    if uid and 'expires_at' in body and (not playlist_name or int(body.get('expires_at') or 0) > 0):
+    if 'expires_at' in body and (not playlist_name or int(body.get('expires_at') or 0) > 0):
         try:
             expires_at = max(0, int(body.get('expires_at') or 0))
         except Exception:
             return web.json_response({'ok':False,'error':'bad expires_at'}, status=400)
         await set_setting(f'edem_expires_at:{uid}', str(expires_at))
-    elif uid and not playlist_url and not playlist_name:
+    elif not playlist_url and not playlist_name:
         await set_setting(f'edem_expires_at:{uid}', '0')
     _edem_cache.pop(uid, None)
-    if uid and not playlist_url and not playlist_name:
+    if not playlist_url and not playlist_name:
         _edem_sessions.pop(uid, None)
     sub = await _edem_subscription_state(uid)
     return web.json_response({'ok':True,'user_id':uid,'configured':bool(playlist_url),**sub})
@@ -4472,5 +4428,4 @@ async def start_webapp(bot):
     app.router.add_static('/generated/', GEN_DIR, show_index=False); app.router.add_static('/static/', WEB_DIR, show_index=False)
     runner=web.AppRunner(app); await runner.setup(); site=web.TCPSite(runner,'0.0.0.0',PORT); await site.start()
     print('IPTV Player web endpoints active')
-    app['named_iptv_refresh_task']=asyncio.create_task(_refresh_named_playlists_daily())
     app['cleanup_task']=__import__('asyncio').create_task(cleanup_generated(app)); return runner
