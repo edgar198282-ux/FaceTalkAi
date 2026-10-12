@@ -2690,6 +2690,7 @@ body:not(.cinemaMode) .cinemaShellSide{
   <div class="videoWrap" onclick="handlePlayerSurfaceClick(event)">
     <div class="playerBrand" onclick="dismissMobilePlayerLoading(event)"><img class="playerLoadingLogo" src="/static/abaj_tv_logo.jpg" alt="ABAJ TV"></div>
     <video id="video" preload="auto" playsinline webkit-playsinline disablepictureinpicture controlslist="nofullscreen nodownload noremoteplayback"></video>
+    <div id="playerGestureLevel" style="display:none;position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);z-index:21;pointer-events:none;padding:10px 16px;border-radius:12px;background:rgba(0,0,0,.7);color:#fff;font-size:17px;font-weight:800"></div>
     <div id="freeAdOverlay" style="display:none;position:absolute;inset:0;z-index:12;background:#020817 url('/static/abaj_tv_ad_banner.svg') center center/contain no-repeat;align-items:center;justify-content:center;text-align:center;color:white;padding:4%;box-sizing:border-box;pointer-events:none;overflow:hidden"></div>
     <div id="playerChannelHud" class="playerChannelHud">
       <img id="playerChannelHudLogo" class="playerChannelHudLogo" alt="">
@@ -8292,7 +8293,65 @@ async function exitPureFullscreen(){
   }
   showTvPlayerUi(true);
 }
-async function toggleFullscreen(){
+async // Mobile cinema gestures: left half controls video brightness, right half volume.
+function initPlayerVerticalGestures(){
+  const wrap=document.querySelector('#playerView .videoWrap');
+  const video=document.getElementById('video');
+  const level=document.getElementById('playerGestureLevel');
+  if(!wrap||!video||wrap.dataset.verticalGestures)return;
+  wrap.dataset.verticalGestures='1';
+  let startY=0,initial=0,side='',active=false,moved=false,lastVolumeStep=0;
+  let brightness=1,hideTimer=null;
+  const clamp=n=>Math.max(0,Math.min(1,n));
+  const display=(label,value)=>{
+    if(!level)return;
+    level.textContent=label+' '+Math.round(value*100)+'%';
+    level.style.display='block';
+    if(hideTimer)clearTimeout(hideTimer);
+    hideTimer=setTimeout(()=>{level.style.display='none'},850);
+  };
+  wrap.addEventListener('touchstart',e=>{
+    if(nativeTv||e.touches.length!==1||!document.getElementById('playerView')?.classList.contains('open'))return;
+    if(e.target.closest('button,input,select,.playerPrimaryControls,.playerTimelineWrap'))return;
+    const t=e.touches[0],r=wrap.getBoundingClientRect();
+    if(!r.height)return;
+    side=t.clientX<r.left+r.width/2?'brightness':'volume';
+    startY=t.clientY;active=true;moved=false;
+    initial=side==='brightness'?brightness:video.volume;
+    lastVolumeStep=0;
+  },{passive:true});
+  wrap.addEventListener('touchmove',e=>{
+    if(!active||e.touches.length!==1)return;
+    const t=e.touches[0],r=wrap.getBoundingClientRect();
+    const delta=(startY-t.clientY)/Math.max(r.height,180);
+    if(Math.abs(startY-t.clientY)<10&&!moved)return;
+    moved=true;
+    if(e.cancelable)e.preventDefault();
+    const value=clamp(initial+delta);
+    if(side==='brightness'){
+      brightness=value;
+      video.style.filter='brightness('+Math.max(.18,value)+')';
+      display('☀ Яркость',value);
+    }else{
+      const native=window.AbajNative&&typeof AbajNative.adjustVolume==='function';
+      if(native){
+        const steps=Math.trunc(delta*18);
+        const diff=steps-lastVolumeStep;
+        if(diff){try{window.AbajNative.adjustVolume(diff)}catch(_){} lastVolumeStep=steps}
+        display('🔊 Громкость',clamp(initial+delta));
+      }else{
+        video.muted=false;
+        video.volume=value;
+        display('🔊 Громкость',value);
+      }
+    }
+  },{passive:false});
+  const finish=()=>{active=false};
+  wrap.addEventListener('touchend',finish,{passive:true});
+  wrap.addEventListener('touchcancel',finish,{passive:true});
+}
+document.addEventListener('DOMContentLoaded',initPlayerVerticalGestures);
+function toggleFullscreen(){
   const player=document.getElementById('playerView');
   if(!player)return;
   if(player.classList.contains('pureFullscreen')){
