@@ -2732,8 +2732,8 @@ body:not(.cinemaMode) .cinemaShellSide{
       <button class="ctrl playerCircleCtrl cinemaSeekCtrl" onclick="seekPlayerBy(10)" title="Вперёд 10 секунд"><span class="playerCtrlIcon">↷</span><small>+10 сек</small></button>
       <button class="ctrl playerCircleCtrl" onclick="toggleFullscreen()" title="На весь экран"><span class="playerCtrlIcon">⛶</span><small>Экран</small></button>
       <button class="ctrl playerCircleCtrl tvChannelCtrl" onclick="playNext()" title="Следующий канал"><span class="playerCtrlIcon">|▶</span><small>След. канал</small></button>
-      <button id="cinemaPrevEpisodeBtn" class="ctrl playerCircleCtrl cinemaEpisodeCtrl" style="display:none" onclick="playAdjacentCinemaEpisode(-1)" title="Предыдущая серия"><span class="playerCtrlIcon">|◀</span><small>Пред. серия</small></button>
-      <button id="cinemaNextEpisodeBtn" class="ctrl playerCircleCtrl cinemaEpisodeCtrl" style="display:none" onclick="playAdjacentCinemaEpisode(1)" title="Следующая серия"><span class="playerCtrlIcon">▶|</span><small>След. серия</small></button>
+      <button id="cinemaPrevEpisodeBtn" class="ctrl playerCircleCtrl cinemaEpisodeCtrl" hidden style="display:none" onclick="playAdjacentCinemaEpisode(-1)" title="Предыдущая серия"><span class="playerCtrlIcon">|◀</span><small>Пред. серия</small></button>
+      <button id="cinemaNextEpisodeBtn" class="ctrl playerCircleCtrl cinemaEpisodeCtrl" hidden style="display:none" onclick="playAdjacentCinemaEpisode(1)" title="Следующая серия"><span class="playerCtrlIcon">▶|</span><small>След. серия</small></button>
     </div>
     <div id="cinemaEpisodePrompt" style="display:none;text-align:center;padding:9px;border-radius:12px;background:rgba(8,29,49,.92);color:#fff;margin-top:6px">
       <span id="cinemaEpisodePromptText">Серия заканчивается</span>
@@ -13333,8 +13333,10 @@ function updateCinemaNextEpisodeButton(){
   const next=document.getElementById('cinemaNextEpisodeBtn');
   const prev=document.getElementById('cinemaPrevEpisodeBtn');
   const isSeries=!!(current&&String(current.cinemaProvider||'').toUpperCase()==='KINOPUB'&&cinemaDetailMovie&&cinemaItemLooksSeries(cinemaDetailMovie));
-  if(next)next.style.display=isSeries&&cinemaAdjacentMedia(1)?'inline-flex':'none';
-  if(prev)prev.style.display=isSeries&&cinemaAdjacentMedia(-1)?'inline-flex':'none';
+  const hasNext=isSeries&&!!cinemaAdjacentMedia(1);
+  const hasPrev=isSeries&&!!cinemaAdjacentMedia(-1);
+  if(next){next.hidden=!hasNext;next.style.display=hasNext?'inline-flex':'none'}
+  if(prev){prev.hidden=!hasPrev;prev.style.display=hasPrev?'inline-flex':'none'}
 }
 async function playAdjacentCinemaEpisode(step=1){
   const next=cinemaAdjacentMedia(step);
@@ -14581,6 +14583,7 @@ body.nativeTv .playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtr
 </style>
 
 <style id="abaj-cinema-episode-controls-row-v1">
+#playerView .playerPrimaryControls>.cinemaEpisodeCtrl[hidden]{display:none!important}
 #playerView.cinemaPlayback .playerPrimaryControls{
   display:flex!important;
   flex-flow:row nowrap!important;
