@@ -9,7 +9,7 @@ import re
 import secrets
 import html
 import time
-from urllib.parse import quote, urlencode, urlparse, parse_qs
+from urllib.parse import quote, urlencode, urlparse, parse_qs, urljoin
 
 import aiohttp
 from aiohttp import web
@@ -2643,6 +2643,9 @@ async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
     out = []
     for row in rows[:2500]:
         item = dict(row)
+        logo = str(item.get('logo') or '').strip()
+        if logo:
+            item['logo'] = urljoin(playlist_url, logo) if not logo.startswith(('data:', 'http://', 'https://')) else logo
         item['status'] = 'ONLINE'
         item['latency_ms'] = 0
         item['backup_count'] = 0
@@ -2704,6 +2707,9 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                 import hashlib
                 for row in parsed_rows[:2500]:
                     item = dict(row)
+                    logo = str(item.get('logo') or '').strip()
+                    if logo:
+                        item['logo'] = urljoin(url, logo) if not logo.startswith(('data:', 'http://', 'https://')) else logo
                     original_id = str(item.get('id') or '')
                     item['id'] = hashlib.sha256((playlist_id + ':' + original_id).encode()).hexdigest()[:20]
                     item.update(status='ONLINE', latency_ms=0, backup_count=0, candidate_count=1,
