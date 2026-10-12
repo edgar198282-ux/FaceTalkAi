@@ -6100,12 +6100,12 @@ function handleAppBack(){
     toggleCinemaSideMenu();
     return true;
   }
-  if(tvSettingPickerOpen()){closeTvSettingPicker(false);return true}
-  if(tvSettingsOpen()){closeTvSettings();return true}
-  const admin=document.getElementById('adminPanel');
-  if(admin&&admin.classList.contains('open')){closeAdmin();return true}
   const settings=document.getElementById('settingsModal');
   if(settings&&settings.classList.contains('open')){closeSettings();return true}
+  const admin=document.getElementById('adminPanel');
+  if(admin&&admin.classList.contains('open')){backFromAdmin();return true}
+  if(tvSettingPickerOpen()){closeTvSettingPicker(false);return true}
+  if(tvSettingsOpen()){closeTvSettings();return true}
   return false;
 }
 function handleTvBack(){
@@ -6182,7 +6182,7 @@ function handleTvBack(){
     return true;
   }
   const admin=document.getElementById('adminPanel');
-  if(admin&&admin.classList.contains('open')){closeAdmin();return true}
+  if(admin&&admin.classList.contains('open')){backFromAdmin();return true}
   if(tvSettingsOpen()){closeTvSettings();return true}
   if(tvSearchOpen()){closeTvSearch(false);return true}
   if(tvGuideOpen()){toggleTvGuide(false);return true}
