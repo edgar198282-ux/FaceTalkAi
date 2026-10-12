@@ -3159,11 +3159,16 @@ async def _bootstrap_public_channels():
                     if len(raw) > 5 * 1048576 or not raw.startswith(b"#EXTM3U"):
                         continue
                 parsed = _parse_m3u(raw.decode("utf-8", "ignore"), country, url)
-                for row in parsed:
-                    if not _is_adult_channel(row):
-                        row["status"] = "ONLINE"  # Playlist candidate; playback has not been probed yet.
+                candidates = [row for row in parsed if not _is_adult_channel(row)
+                              and not _looks_junk(row) and not _is_quarantined(row.get("url", ""))
+                              and str(row.get("id")) not in result]
+                sem = asyncio.Semaphore(12)
+                checked = await asyncio.gather(*[_probe(session, row, sem) for row in candidates[:60]])
+                for row in checked:
+                    if row.get("status") == "ONLINE":
                         result.setdefault(str(row["id"]), row)
-                logging.info("IPTV light source %s: %d candidates, total %d", country, len(parsed), len(result))
+                logging.info("IPTV light source %s: %d candidates, %d verified, total %d",
+                             country, len(parsed), sum(row.get("status") == "ONLINE" for row in checked), len(result))
                 del raw, parsed
                 if len(result) >= 3500:
                     break
@@ -3259,7 +3264,14 @@ async def start_background(app):
     if worker_mode:
         # The full scanner is deliberately off on small instances. Restore
         # only public channel catalogue in a bounded one-time background task.
-        app["iptv_task"] = asyncio.create_task(_bootstrap_public_channels())
+        async def public_refresh_loop():
+            while True:
+                try:
+                    await _bootstrap_public_channels()
+                except Exception:
+                    logging.exception("IPTV Free daily verification failed")
+                await asyncio.sleep(REFRESH_SECONDS)
+        app["iptv_task"] = asyncio.create_task(public_refresh_loop())
         return
 
     async def loop():
