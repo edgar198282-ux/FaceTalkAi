@@ -5171,6 +5171,10 @@ function playlistCountry(channel){
   const id=String(channel.tvg_id||'').toLowerCase();
   const suffix=id.match(/(?:^|[.@_-])(am|ru|ge|ua|by|kz|uz|md)(?:$|[.@_-])/);
   if(suffix)return suffix[1].toUpperCase();
+  // Armenian channels often arrive with generic "International" or "Other" M3U groups.
+  // Match their distinctive brands, rather than assigning all Armenian-language content blindly.
+  if(/(?:^|[^a-zа-яё])(shant|kentron|h2|h1|yerkir(?:\s*media)?|shoghakat|armnews|armenia\s*(?:premium|tv|1)|atv\s*armenia|azatutyun|freenews\s*arm|civic\s*am|a1plus|5\s*tv\s*arm)(?:$|[^a-zа-яё])/i.test(title))return 'AM';
+  if(/[\u0531-\u058F]/.test(title)&&!/(?:russia|росси|россий|русск|ukraine|украин)/i.test(group))return 'AM';
   return existing;
 }
 function channelCategory(ch){
