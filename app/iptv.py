@@ -1106,7 +1106,7 @@ _restore_saved_snapshot()
 
 
 def _attrs(line: str) -> dict[str, str]:
-    return {k.lower(): v for k, v in re.findall(r'([\w-]+)="([^"]*)"', line)}
+    return {m.group(1).lower(): m.group(3) for m in re.finditer(r"""([\w-]+)\s*=\s*(["\'])(.*?)\2""", line)}
 
 
 def _normalize_name(name: str) -> str:
