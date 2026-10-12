@@ -2857,9 +2857,17 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                 async with aiohttp.ClientSession(headers={'User-Agent':'AbajTV/1.0'}) as session:
                     async with session.get(url, timeout=timeout, allow_redirects=True) as response:
                         if response.status >= 400:
+                            logging.warning("EDEM_PLAYLIST_FAILED id=%s http_status=%s", playlist_id, response.status)
+                            if cached and cached.get('url') == url and cached.get('channels'):
+                                channels.extend(cached['channels'])
                             continue
                         body = await response.text(errors='ignore')
                 parsed_rows = _unique_edem_channel_ids(iptv._parse_m3u(body, 'ED', url))
+                if not parsed_rows:
+                    logging.warning("EDEM_PLAYLIST_EMPTY id=%s payload_bytes=%s", playlist_id, len(body))
+                    if cached and cached.get('url') == url and cached.get('channels'):
+                        channels.extend(cached['channels'])
+                    continue
                 guide = await _edem_xmltv_guide(_playlist_xmltv_url(body))
                 compiled = []
                 import hashlib
@@ -2875,7 +2883,10 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                     compiled.append(item)
                 cached = {'url': url, 'ts': now, 'channels': compiled}
                 _edem_named_cache[key] = cached
-            except (aiohttp.ClientError, TimeoutError, ValueError):
+            except (aiohttp.ClientError, TimeoutError, ValueError) as exc:
+                logging.warning("EDEM_PLAYLIST_ERROR id=%s error_type=%s", playlist_id, type(exc).__name__)
+                if cached and cached.get('url') == url and cached.get('channels'):
+                    channels.extend(cached['channels'])
                 continue
         channels.extend(cached.get('channels') or [])
     free_by_country_id = {}
