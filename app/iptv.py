@@ -1210,14 +1210,14 @@ def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
                 group_text = str(attrs.get("group-title") or "").strip()
                 # Country-prefixed provider groups: "RU | Sport", "Россия: Кино", "🇦🇲 Armenia".
                 country_markers = (
-                    ("AM", r"^(?:🇦🇲\\s*)?(?:AM|ARM|ARMENIA|АРМЕНИЯ|ՀԱՅԱՍՏԱՆ)(?=$|[\\s:|/\\-])"),
-                    ("RU", r"^(?:🇷🇺\\s*)?(?:RU|RUS|RUSSIA|РОССИЯ|РУССКИЕ)(?=$|[\\s:|/\\-])"),
-                    ("GE", r"^(?:🇬🇪\\s*)?(?:GE|GEO|GEORGIA|ГРУЗИЯ)(?=$|[\\s:|/\\-])"),
-                    ("UA", r"^(?:🇺🇦\\s*)?(?:UA|UKR|UKRAINE|УКРАИНА)(?=$|[\\s:|/\\-])"),
-                    ("BY", r"^(?:🇧🇾\\s*)?(?:BY|BLR|BELARUS|БЕЛАРУСЬ)(?=$|[\\s:|/\\-])"),
-                    ("KZ", r"^(?:🇰🇿\\s*)?(?:KZ|KAZ|KAZAKHSTAN|КАЗАХСТАН)(?=$|[\\s:|/\\-])"),
-                    ("UZ", r"^(?:🇺🇿\\s*)?(?:UZ|UZB|UZBEKISTAN|УЗБЕКИСТАН)(?=$|[\\s:|/\\-])"),
-                    ("MD", r"^(?:🇲🇩\\s*)?(?:MD|MDA|MOLDOVA|МОЛДОВА)(?=$|[\\s:|/\\-])"),
+                    ("AM", r"^(?:🇦🇲\s*)?(?:AM|ARM|ARMENIA|АРМЕНИЯ|ՀԱՅԱՍՏԱՆ)(?=$|[\s:|/\-])"),
+                    ("RU", r"^(?:🇷🇺\s*)?(?:RU|RUS|RUSSIA|РОССИЯ|РУССКИЕ)(?=$|[\s:|/\-])"),
+                    ("GE", r"^(?:🇬🇪\s*)?(?:GE|GEO|GEORGIA|ГРУЗИЯ)(?=$|[\s:|/\-])"),
+                    ("UA", r"^(?:🇺🇦\s*)?(?:UA|UKR|UKRAINE|УКРАИНА)(?=$|[\s:|/\-])"),
+                    ("BY", r"^(?:🇧🇾\s*)?(?:BY|BLR|BELARUS|БЕЛАРУСЬ)(?=$|[\s:|/\-])"),
+                    ("KZ", r"^(?:🇰🇿\s*)?(?:KZ|KAZ|KAZAKHSTAN|КАЗАХСТАН)(?=$|[\s:|/\-])"),
+                    ("UZ", r"^(?:🇺🇿\s*)?(?:UZ|UZB|UZBEKISTAN|УЗБЕКИСТАН)(?=$|[\s:|/\-])"),
+                    ("MD", r"^(?:🇲🇩\s*)?(?:MD|MDA|MOLDOVA|МОЛДОВА)(?=$|[\s:|/\-])"),
                 )
                 for detected_code, pattern in country_markers:
                     if re.search(pattern, group_text, flags=re.I):
