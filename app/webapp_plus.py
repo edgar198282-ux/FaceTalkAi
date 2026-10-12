@@ -2687,7 +2687,7 @@ async def _edem_xmltv_guide(url):
                 raw = await response.content.read(8 * 1024 * 1024 + 1)
                 if len(raw) > 8 * 1024 * 1024:
                     return cached['guide'] if cached else None
-        if urlparse(url).path.lower().endswith('.gz') or raw[:2] == b'\\x1f\\x8b':
+        if urlparse(url).path.lower().endswith('.gz') or raw[:2] == b'\x1f\x8b':
             import gzip
             raw = gzip.decompress(raw)
             if len(raw) > 32 * 1024 * 1024:
