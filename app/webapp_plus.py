@@ -1619,14 +1619,19 @@ async def api_cinema_bookmark_folders(request):
         personal_tokens = await _kinopub_tokens(uid)
         if personal_tokens.get('access_token') or personal_tokens.get('refresh_token'):
             try:
-                _, kp_folders = await _kinopub_bookmark_folders(uid)
+                kp_token, kp_folders = await _kinopub_bookmark_folders(uid)
+                selected_kp = set()
+                if item_id and kp_token:
+                    st, item_folders = await _kinopub_api('GET', '/v1/bookmarks/get-item-folders',
+                        params={'access_token':kp_token,'item':item_id})
+                    if st < 400 and isinstance(item_folders,dict):
+                        selected_kp = {'kp:'+str(x.get('id')) for x in
+                            (item_folders.get('folders') or []) if isinstance(x,dict)}
                 for folder in kp_folders:
                     fid = 'kp:' + str(folder['id'])
-                    overlay = custom.get(fid) or {}
-                    local_items = overlay.get('items') if isinstance(overlay.get('items'),list) else []
                     folders.append({'id':fid,'title':folder['title'],
                                     'count':max(0,int(folder.get('count') or 0)),
-                                    'selected':bool(item_id and any(item_key(x) == item_id for x in local_items)),
+                                    'selected':fid in selected_kp,
                                     'kind':'bookmark_folder'})
             except Exception:
                 logging.exception('KinoPub bookmark folder picker failed')
