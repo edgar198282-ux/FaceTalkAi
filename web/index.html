@@ -8074,9 +8074,9 @@ async function refreshCinemaDetailResume(item,media){
   const btn=document.getElementById('cinemaDetailWatch');
   if(!btn)return;
   const label=fmtPlaybackClock(resume);
-  btn.textContent=appLang==='hy'
-    ?('ՇԱՐՈՒՆԱԿԵԼ '+label)
-    :(appLang==='en'?('CONTINUE '+label):('ПРОДОЛЖИТЬ '+label));
+  btn.textContent=window.innerWidth<=600&&!nativeTv
+    ?('▶ '+label)
+    :(appLang==='hy'?('ՇԱՐՈՒՆԱԿԵԼ '+label):(appLang==='en'?('CONTINUE '+label):('ПРОДОЛЖИТЬ '+label)));
 }
 async function saveCinemaProgress(force=false){
   if(!current||!String(current.id||'').startsWith('cinema:external:')||!current.cinemaItemId)return;
@@ -13316,8 +13316,16 @@ function cancelCinemaEpisodeCountdown(hide=true){
 function cinemaAdjacentMedia(step){
   if(!current||String(current.cinemaProvider||'').toUpperCase()!=='KINOPUB'||!cinemaDetailMovie)return null;
   if(String(current.cinemaItemId||'')!==String(cinemaDetailMovie.id||''))return null;
-  if(!cinemaItemLooksSeries(cinemaDetailMovie))return null;
-  const media=cinemaSeasonRows(cinemaDetailMovie).flatMap(r=>r.items||[]);
+  const item=cinemaDetailMovie;
+  const kind=String(item.kind||'').toLowerCase();
+  const type=String(item.type||item.content_type||'').toLowerCase();
+  if(/^(movie|movies|film|films)$/.test(kind)||/^(movie|movies|film|films)$/.test(type))return null;
+  const rows=cinemaSeasonRows(item);
+  const media=rows.flatMap(r=>r.items||[]);
+  const explicitlySeries=/(series|serial|tv[\s_-]*series)/i.test(kind+' '+type);
+  const episodes=media.filter(m=>Number(m?.number||m?.episode||0)>0);
+  if(!explicitlySeries&&(!cinemaItemLooksSeries(item)||episodes.length<2))return null;
+  if(media.length<2)return null;
   const idx=media.findIndex(x=>kinoMediaId(x)===String(current.cinemaMediaId||''));
   return idx<0?null:(media[idx+step]||null);
 }
