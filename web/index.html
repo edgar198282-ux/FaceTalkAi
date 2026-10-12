@@ -5020,13 +5020,8 @@ function installPlayerTouchGestures(){
 }
 function dismissMobilePlayerLoading(event){
   if(event){event.preventDefault();event.stopPropagation()}
-  if(nativeTv)return;
-  const brand=document.querySelector('#playerView .playerBrand');
-  if(brand)brand.style.display='none';
-  const player=document.getElementById('playerView');
-  if(player)player.classList.remove('appFullscreen');
-  document.body.classList.remove('playerFullscreenActive','playerClean');
-  showTvPlayerUi(true);
+  if(nativeTv||Date.now()-pureTapHandledAt<450)return;
+  toggleMobileTvPlayerControls();
 }
 function handlePlayerSurfaceClick(event){
   if(Date.now()<playerGestureSuppressClickUntil)return;
@@ -8371,6 +8366,20 @@ function toggleMobileTvPlayerControls(){
   if(nativeTv)return;
   const player=document.getElementById('playerView');
   if(!player||!player.classList.contains('open')||player.classList.contains('cinemaPlayback'))return;
+  const loadingWrap=player.querySelector('.videoWrap');
+  const loadingBrand=player.querySelector('.playerBrand');
+  if(loadingBrand&&loadingWrap&&!loadingWrap.classList.contains('frameReady')){
+    if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
+    if(loadingBrand.style.display!=='none'){
+      loadingBrand.style.display='none';
+      document.body.classList.remove('playerClean');
+      showTvPlayerUi(true);
+    }else{
+      loadingBrand.style.display='flex';
+      document.body.classList.add('playerClean');
+    }
+    return;
+  }
   if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
   if(document.body.classList.contains('playerClean')){
     document.body.classList.remove('playerClean');
