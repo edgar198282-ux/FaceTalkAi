@@ -1206,6 +1206,23 @@ def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
                                "BLR":"BY", "KAZ":"KZ", "UZB":"UZ", "MDA":"MD"}
             m3u_country = country_aliases.get(m3u_country, m3u_country)
             channel_country = m3u_country if country == "ED" and m3u_country in COUNTRY_CODES else country
+            if country == "ED" and channel_country == "ED":
+                group_text = str(attrs.get("group-title") or "").strip()
+                # Country-prefixed provider groups: "RU | Sport", "Россия: Кино", "🇦🇲 Armenia".
+                country_markers = (
+                    ("AM", r"^(?:🇦🇲\\s*)?(?:AM|ARM|ARMENIA|АРМЕНИЯ|ՀԱՅԱՍՏԱՆ)(?=$|[\\s:|/\\-])"),
+                    ("RU", r"^(?:🇷🇺\\s*)?(?:RU|RUS|RUSSIA|РОССИЯ|РУССКИЕ)(?=$|[\\s:|/\\-])"),
+                    ("GE", r"^(?:🇬🇪\\s*)?(?:GE|GEO|GEORGIA|ГРУЗИЯ)(?=$|[\\s:|/\\-])"),
+                    ("UA", r"^(?:🇺🇦\\s*)?(?:UA|UKR|UKRAINE|УКРАИНА)(?=$|[\\s:|/\\-])"),
+                    ("BY", r"^(?:🇧🇾\\s*)?(?:BY|BLR|BELARUS|БЕЛАРУСЬ)(?=$|[\\s:|/\\-])"),
+                    ("KZ", r"^(?:🇰🇿\\s*)?(?:KZ|KAZ|KAZAKHSTAN|КАЗАХСТАН)(?=$|[\\s:|/\\-])"),
+                    ("UZ", r"^(?:🇺🇿\\s*)?(?:UZ|UZB|UZBEKISTAN|УЗБЕКИСТАН)(?=$|[\\s:|/\\-])"),
+                    ("MD", r"^(?:🇲🇩\\s*)?(?:MD|MDA|MOLDOVA|МОЛДОВА)(?=$|[\\s:|/\\-])"),
+                )
+                for detected_code, pattern in country_markers:
+                    if re.search(pattern, group_text, flags=re.I):
+                        channel_country = detected_code
+                        break
             pending = {
                 "name": name or "Channel",
                 "group": attrs.get("group-title", "") or "Other",
