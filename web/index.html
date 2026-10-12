@@ -2922,9 +2922,23 @@ function applyChannelAccessGate(rows){
   const list=Array.isArray(rows)?rows:[];
   if(hasFullChannelAccess())return list;
   const shared=list.filter(ch=>ch.public_playlist);
-  const preview=list.filter(ch=>!ch.personal&&isFreePreviewChannel(ch));
-  if(preview.length)return [...preview,...shared];
-  return [...list.filter(ch=>!ch.personal&&['AM','RU'].includes(String(ch.country||''))).slice(0,8),...shared];
+  const free=list.filter(ch=>!ch.personal&&ch.status==='ONLINE'&&!ch.unreliable);
+  const qualityScore=ch=>({SD:0,HD:10,FHD:20,'4K':30}[channelQuality(ch)]||0)+
+    (ch.quality_verified?15:0)+Math.min(20,Number(ch.health_score||0)/5);
+  const ordered=free.sort((a,b)=>Number(isFreePreviewChannel(b))-Number(isFreePreviewChannel(a))||qualityScore(b)-qualityScore(a));
+  const chosen=[],seen=new Set();
+  const take=(country,max)=>{
+    for(const ch of ordered){
+      if(chosen.filter(c=>c.country===country).length>=max)break;
+      if(ch.country!==country)continue;
+      const key=String(ch.tvg_id||ch.name||ch.id).toLowerCase().replace(/\s*\((?:2160|1080|720|480)[^)]*\)/g,'').trim();
+      if(seen.has(country+'|'+key))continue;
+      seen.add(country+'|'+key);
+      chosen.push(ch);
+    }
+  };
+  take('AM',3);take('RU',2);
+  return [...chosen,...shared];
 }
 const deviceId=localStorage.getItem('abaj_device_id')||(
   (crypto&&crypto.randomUUID)?crypto.randomUUID():('abaj-'+Date.now()+'-'+Math.random().toString(36).slice(2))
