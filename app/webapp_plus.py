@@ -2615,6 +2615,23 @@ async def _edem_subscription_state(uid: int):
     }
 
 
+def _unique_edem_channel_ids(rows):
+    seen = set()
+    for row in rows:
+        original_id = str(row.get('id') or '')
+        candidate = original_id
+        if candidate in seen:
+            seed = original_id + '|' + str(row.get('name') or '') + '|' + str(row.get('url') or '')
+            candidate = hashlib.sha256(seed.encode('utf-8')).hexdigest()[:20]
+            suffix = 1
+            while candidate in seen:
+                candidate = hashlib.sha256((seed + '|' + str(suffix)).encode('utf-8')).hexdigest()[:20]
+                suffix += 1
+            row['id'] = candidate
+        seen.add(candidate)
+    return rows
+
+
 async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
     sub = await _edem_subscription_state(uid)
     raw = await get_setting(f'edem_playlist:{uid}', '')
@@ -2639,7 +2656,7 @@ async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
                 raise web.HTTPBadGateway(text=f'Edem playlist HTTP {r.status}')
             text = await r.text(errors='ignore')
 
-    rows = iptv._parse_m3u(text, 'ED', playlist_url)
+    rows = _unique_edem_channel_ids(iptv._parse_m3u(text, 'ED', playlist_url))
     guide = await _edem_xmltv_guide(_playlist_xmltv_url(text))
     out = []
     for row in rows[:2500]:
@@ -2766,7 +2783,7 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                         if response.status >= 400:
                             continue
                         body = await response.text(errors='ignore')
-                parsed_rows = iptv._parse_m3u(body, 'ED', url)
+                parsed_rows = _unique_edem_channel_ids(iptv._parse_m3u(body, 'ED', url))
                 guide = await _edem_xmltv_guide(_playlist_xmltv_url(body))
                 compiled = []
                 import hashlib
