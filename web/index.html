@@ -14575,39 +14575,56 @@ body.nativeTv .playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtr
 <style id="abaj-cinema-episode-controls-row-v1">
 #playerView.cinemaPlayback .playerPrimaryControls{
   display:flex!important;
-  flex-wrap:nowrap!important;
-  justify-content:center!important;
-  align-items:flex-start!important;
-  gap:clamp(4px,1vw,14px)!important;
-  max-width:none!important;
+  flex-flow:row nowrap!important;
   width:100%!important;
-  overflow-x:auto!important;
-  overflow-y:hidden!important;
+  max-width:940px!important;
   margin:8px auto 0!important;
-  scrollbar-width:none;
+  padding:0 8px!important;
+  gap:clamp(3px,1vw,12px)!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  overflow:visible!important;
+  box-sizing:border-box!important;
 }
-#playerView.cinemaPlayback .playerPrimaryControls::-webkit-scrollbar{display:none}
-#playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtrl{
-  flex:0 0 auto!important;
+#playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtrl:not(.tvChannelCtrl){
+  flex:1 1 0!important;
   min-width:0!important;
+  width:auto!important;
+  max-width:120px!important;
 }
-#playerView.cinemaPlayback .playerPrimaryControls>.cinemaEpisodeCtrl{
-  display:none;
+#playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtrl .playerCtrlIcon{
+  width:clamp(34px,6.5vw,82px)!important;
+  height:clamp(34px,6.5vw,82px)!important;
+  max-width:100%!important;
+  margin-inline:auto!important;
 }
-body.nativeTv #playerView.cinemaPlayback .playerPrimaryControls{
-  max-width:920px!important;
+#playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtrl small{
+  white-space:nowrap!important;
+  font-size:clamp(9px,1.3vw,16px)!important;
 }
+#playerView.cinemaPlayback .playerPrimaryControls>.tvChannelCtrl{display:none!important}
 @media (max-width:600px){
   body:not(.nativeTv) #playerView.cinemaPlayback .playerPrimaryControls{
-    justify-content:flex-start!important;
+    gap:3px!important;
+    padding:0 3px!important;
   }
-  body:not(.nativeTv) #playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtrl{
-    flex:0 0 68px!important;
-    width:68px!important;
+  body:not(.nativeTv) #playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtrl .playerCtrlIcon{
+    width:clamp(30px,11vw,60px)!important;
+    height:clamp(30px,11vw,60px)!important;
   }
-  body:not(.nativeTv) #playerView.cinemaPlayback .playerPrimaryControls .playerCtrlIcon{
-    max-width:62px!important;
-    max-height:62px!important;
+}
+@media (max-width:600px){
+  body:not(.nativeTv) #cinemaDetail .cinemaDetailActions.hasSeasons #cinemaDetailWatch{
+    min-width:0!important;
+    flex:1 1 0!important;
+    padding:0 5px!important;
+    font-size:clamp(10px,2.7vw,13px)!important;
+    letter-spacing:-.25px!important;
+    white-space:nowrap!important;
+  }
+  body:not(.nativeTv) #cinemaDetail .cinemaDetailActions.hasSeasons #cinemaDetailSeasons{
+    min-width:0!important;
+    flex:1 1 0!important;
   }
 }
 </style>
