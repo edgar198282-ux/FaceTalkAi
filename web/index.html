@@ -5200,7 +5200,7 @@ function deduplicateFreeQuality(rows){
   }
   return result;
 }
-function load(){
+async function load(){
   try{
     restoreCachedChannels();
     const edemStatusPromise=fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'})
