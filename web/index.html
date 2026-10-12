@@ -5145,30 +5145,6 @@ async function enrichPlaylistLogos(playlistRows,freeRows){
     return found?{...row,logo:found}:row;
   });
 }
-function enrichFreeFromPlaylists(freeRows,playlistRows){
-  const byId=new Map(),byName=new Map();
-  const normalized=name=>String(name||'').toLowerCase()
-    .replace(/\s*\([^)]*(?:2160|1080|720|480|4k|uhd|fhd|hd|sd)[^)]*\)/gi,' ')
-    .replace(/(?:^|\s)(?:4k|uhd|fhd|full\s*hd|hd|sd|2160p|1080p|720p|480p)(?=\s|$)/gi,' ')
-    .replace(/\s+/g,' ').trim();
-  for(const channel of playlistRows||[]){
-    const tvg=String(channel.tvg_id||'').trim().toLowerCase();
-    if(tvg&&!byId.has(tvg))byId.set(tvg,channel);
-    const name=normalized(channel.name);
-    if(name&&!byName.has(name))byName.set(name,channel);
-  }
-  return freeRows.map(ch=>{
-    const tvg=String(ch.tvg_id||'').trim().toLowerCase();
-    const name=normalized(ch.name);
-    const match=(tvg&&byId.get(tvg))||(name&&byName.get(name));
-    if(!match)return ch;
-    const updated={...ch};
-    if(/^https?:\/\//i.test(String(match.logo||'')))updated.logo=match.logo;
-    if(match.epg_now&&match.epg_now.title)updated.epg_now=match.epg_now;
-    if(match.epg_next&&match.epg_next.title)updated.epg_next=match.epg_next;
-    return updated;
-  });
-}
 function deduplicateFreeQuality(rows){
   const result=[];
   const freeByName=new Map();
@@ -5200,7 +5176,7 @@ function deduplicateFreeQuality(rows){
   }
   return result;
 }
-async function load(){
+function load(){
   try{
     restoreCachedChannels();
     const edemStatusPromise=fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'})
@@ -5234,7 +5210,6 @@ async function load(){
       base=[...am,...ru].slice(0,5);
     }
     if(Array.isArray(ed.channels)&&ed.channels.length){
-      base=enrichFreeFromPlaylists(base,ed.channels);
       base=base.concat(enrichPlaylistLogos(ed.channels,base).map(x=>({...x,personal:true,provider:'Edem'})));
       renderNamedPlaylistChips(ed.playlists||[],ed.channels);
     }
