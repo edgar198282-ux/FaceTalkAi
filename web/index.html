@@ -9868,7 +9868,7 @@ function renderCinemaBookmarkFolders(folders){
     menu.style.cssText='display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:3;min-height:40px;padding:6px 12px;border-radius:8px;background:#363636;color:#fff;border:1px solid #777;font-size:15px';
     const canDelete=String(folder?.id||'').startsWith('local:')||String(folder?.id||'')==='personal';
     const isPersonal=String(folder?.id||'')==='personal';
-    menu.textContent=isPersonal?'Очистить избранное':'Удалить папку';
+    menu.textContent='Удалить папку';
     const hideMenu=()=>{menu.style.display='none'};
     const cancelHold=()=>{if(holdTimer!==null){clearTimeout(holdTimer);holdTimer=null}};
     btn.onclick=e=>{
@@ -9900,7 +9900,7 @@ function renderCinemaBookmarkFolders(folders){
       btn.addEventListener('keyup',cancelHold);
       menu.onclick=async e=>{
         e.stopPropagation();
-        if(!confirm(isPersonal?'Очистить личное избранное ABAJ TV? Фильмы в KinoPub не удалятся.':'Удалить папку «'+String(folder?.title||'Папка')+'»?\nФильмы в KinoPub не удалятся.'))return;
+        if(!confirm('Полностью удалить папку «'+String(folder?.title||'Папка')+'» из ABAJ TV?\nФильмы в KinoPub не удалятся.'))return;
         menu.disabled=true;
         try{
           const response=await fetch('/api/cinema/bookmark-folders?folder_id='+encodeURIComponent(String(folder.id))+(isPersonal?'&clear=1':''),{
