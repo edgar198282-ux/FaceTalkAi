@@ -5021,12 +5021,12 @@ function installPlayerTouchGestures(){
 function dismissMobilePlayerLoading(event){
   if(event){event.preventDefault();event.stopPropagation()}
   if(nativeTv)return;
-  const brand=document.querySelector('#playerView .playerBrand');
-  if(brand)brand.style.display='none';
   const player=document.getElementById('playerView');
-  if(player)player.classList.remove('appFullscreen');
-  document.body.classList.remove('playerFullscreenActive','playerClean');
-  showTvPlayerUi(true);
+  if(!player||!player.classList.contains('open'))return;
+  if(player.classList.contains('cinemaPlayback')){showTvPlayerUi(true);return}
+  if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
+  const showing=player.classList.toggle('loadingControlsVisible');
+  document.body.classList.toggle('playerClean',!showing);
 }
 function handlePlayerSurfaceClick(event){
   if(Date.now()<playerGestureSuppressClickUntil)return;
@@ -14680,6 +14680,19 @@ body.nativeTv .playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtr
 }
 </style>
 
+<style id="abaj-loading-touch-controls-v1">
+body:not(.nativeTv) #playerView.open.loadingControlsVisible .playerBottom{
+  position:relative!important;
+  z-index:121!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+body:not(.nativeTv) #playerView.open.loadingControlsVisible .playerTop{
+  z-index:121!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+</style>
 <style id="abaj-cinema-episode-controls-row-v1">
 #playerView .playerPrimaryControls>.cinemaEpisodeCtrl[hidden]{display:none!important}
 #playerView.cinemaPlayback .playerPrimaryControls{
