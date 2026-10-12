@@ -3650,7 +3650,7 @@ async function refreshKinoPubAdminStatus(){
     const d=r.ok?await r.json():null;
     if(connectBtn)connectBtn.disabled=!!(d&&d.authenticated)||!!(d&&d.pending);
     if(d&&d.authenticated){
-      if(st){st.textContent='Подключено';st.style.color='#16865b'}
+      if(st){st.textContent='Подключено';st.style.color='#16c784';st.style.fontWeight='900';st.style.background='rgba(22,160,93,.20)';st.style.border='1px solid #16a05d';st.style.borderRadius='10px';st.style.padding='5px 10px'}
       if(meta)meta.textContent='Аккаунт KinoPub привязан к Abaj TV. Подключение проверено на сервере.';
       return;
     }
