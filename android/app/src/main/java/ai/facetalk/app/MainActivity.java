@@ -1930,6 +1930,18 @@ public class MainActivity extends Activity {
                 }catch(Exception ignored){return "{\"installed\":false}";}
             }
         }
+        @JavascriptInterface public String kinodaranInfo(){
+            try{
+                android.content.pm.PackageInfo pi=getPackageManager().getPackageInfo("com.techcraeft.kinodaran",0);
+                JSONObject o=new JSONObject();
+                o.put("installed",true);
+                o.put("version",pi.versionName==null?"":pi.versionName);
+                o.put("integrationAvailable",false);
+                return o.toString();
+            }catch(Exception e){
+                return "{\"installed\":false,\"integrationAvailable\":false}";
+            }
+        }
         @JavascriptInterface public String kinoPubInfo(){
             try{
                 android.content.pm.PackageInfo pi=getPackageManager().getPackageInfo("com.kinopub",0);
