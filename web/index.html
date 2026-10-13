@@ -4786,8 +4786,44 @@ function toggleIptvPlaylistMenu(){
   }
   document.body.appendChild(menu);
   anchor.setAttribute('aria-expanded','true');
-  if(nativeTv)menu.querySelector('button')?.focus();
+  if(nativeTv){
+    const selected=Array.from(menu.querySelectorAll('button'))[Math.max(0,iptvPlaylistMenuOptions.findIndex(x=>x.value===sourceFilter))];
+    (selected||menu.querySelector('button'))?.focus({preventScroll:true});
+  }
 }
+// Handle this popover before the global TV grid controls (which would otherwise
+// move the channels underneath the open menu).
+document.addEventListener('keydown',function(event){
+  if(!nativeTv)return;
+  const menu=document.getElementById('iptvPlaylistMenu');
+  if(!menu)return;
+  const buttons=Array.from(menu.querySelectorAll('button'));
+  if(!buttons.length)return;
+  const code=event.keyCode||event.which;
+  const up=event.key==='ArrowUp'||code===19||code===38;
+  const down=event.key==='ArrowDown'||code===20||code===40;
+  const ok=event.key==='Enter'||event.key==='NumpadEnter'||event.key===' '||code===23||code===66;
+  const back=event.key==='Escape'||event.key==='Backspace'||event.key==='BrowserBack'||code===4;
+  const leftRight=event.key==='ArrowLeft'||event.key==='ArrowRight'||code===21||code===22||code===37||code===39;
+  if(!up&&!down&&!ok&&!back&&!leftRight)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if(back){
+    closeIptvPlaylistMenu();
+    document.getElementById('iptvPlaylistToggle')?.focus({preventScroll:true});
+    return;
+  }
+  if(leftRight)return;
+  let index=buttons.indexOf(document.activeElement);
+  if(index<0)index=Math.max(0,iptvPlaylistMenuOptions.findIndex(x=>x.value===sourceFilter));
+  if(up||down){
+    index=(index+(down?1:-1)+buttons.length)%buttons.length;
+    buttons[index].focus({preventScroll:true});
+    buttons[index].scrollIntoView({block:'nearest'});
+  }else if(ok){
+    buttons[index].click();
+  }
+},true);
 document.addEventListener('pointerdown',e=>{
   if(!e.target.closest('#iptvPlaylistMenu,#iptvPlaylistToggle'))closeIptvPlaylistMenu();
 });
