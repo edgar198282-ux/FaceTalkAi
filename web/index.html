@@ -5423,7 +5423,7 @@ function cacheChannels(){
       latency_ms:x.latency_ms,backup_count:x.backup_count,uptime_pct:x.uptime_pct,health_score:x.health_score,health_samples:x.health_samples,unreliable:!!x.unreliable,epg_now:x.epg_now,epg_next:x.epg_next,
       personal:!!x.personal,provider:x.provider,playlist_id:x.playlist_id,playlist_name:x.playlist_name,adult:!!x.adult,logo_fallback:x.logo_fallback
     }));
-    localStorage.setItem(CHANNEL_CACHE_KEY,JSON.stringify({ts:Date.now(),channels:slim,playlists:iptvPlaylistMenuOptions.filter(x=>x.value.startsWith('playlist:')).map(x=>({id:x.value.slice(9),name:x.name}))}));
+    localStorage.setItem(CHANNEL_CACHE_KEY,JSON.stringify({ts:Date.now(),channels:slim,accessActive:!!edemStatus?.active,playlists:iptvPlaylistMenuOptions.filter(x=>x.value.startsWith('playlist:')).map(x=>({id:x.value.slice(9),name:x.name}))}));
   }catch(e){}
 }
 function restoreCachedChannels(){
@@ -5431,11 +5431,13 @@ function restoreCachedChannels(){
     const cached=JSON.parse(localStorage.getItem(CHANNEL_CACHE_KEY)||'null');
     if(!cached||!Array.isArray(cached.channels)||!cached.channels.length)return false;
     if(Date.now()-Number(cached.ts||0)>12*60*60*1000)return false;
-    channels=applyChannelAccessGate(cached.channels.filter(x=>{
+    const cachedRows=cached.channels.filter(x=>{
       const key=(String(x&&x.name||'')+' '+String(x&&x.tvg_id||'')).toLowerCase();
       if(key.includes('shoghakat')||key.includes('շողակաթ'))return false;
       return !tvHideUnreliable||!x.unreliable||x.personal;
-    }));
+    });
+    channels=cached.accessActive===true?cachedRows:applyChannelAccessGate(cachedRows);
+    renderNamedPlaylistChips(cached.playlists||[],channels.filter(x=>x.personal));
     const groups=visibleChannelGroups();
     const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const sel=document.getElementById('group');
