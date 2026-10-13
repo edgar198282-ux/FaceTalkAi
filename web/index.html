@@ -16058,6 +16058,11 @@ body:not(.nativeTv) .cinemaShellBar:is(:focus,:focus-visible,:focus-within,:acti
   animation:none!important;
 }
 </style>
+<style id="abaj-tv-dark-settings-backdrop-fix">
+body.nativeTv.darkMode #tvSettingsModal.open{
+  background:rgba(0,10,20,.50)!important;
+}
+</style>
 <style id="abaj-tv-cast-remote-focus">
 body.nativeTv #cinemaDetail .cinemaCastCard{pointer-events:auto!important;cursor:pointer!important}
 body.nativeTv #cinemaDetail .cinemaCastCard:focus-visible{outline:none!important}
