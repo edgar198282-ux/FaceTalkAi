@@ -15994,9 +15994,12 @@ body.nativeTv #cinemaDetail #cinemaDetailWatch{
   box-shadow:0 3px 13px rgba(5,27,49,.35)!important;
   opacity:1!important;
 }
-#cinemaDetail #cinemaDetailWatch:focus-visible{
-  outline:2px solid #81d9ff!important;
-  outline-offset:2px!important;
+#cinemaDetail #cinemaDetailWatch:is(:focus,:focus-visible,.focused),
+#cinemaDetail #cinemaDetailSeasons:is(:focus,:focus-visible,.focused){
+  outline:none!important;
+  outline-offset:0!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
 }
 #cinemaDetail #cinemaDetailWatch:disabled{opacity:.65!important}
 </style>
