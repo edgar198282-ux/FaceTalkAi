@@ -2758,6 +2758,59 @@ def _fill_edem_logos_from_catalog(rows):
     return rows
 
 
+_edem_external_logo_catalog = {'ts': 0, 'by_id': {}, 'by_name': {}}
+
+async def _edem_logo_catalog():
+    """Small cached, read-only artwork lookup; never alters playlist streams."""
+    now = int(time.time())
+    cache = _edem_external_logo_catalog
+    if now - cache['ts'] < 21600:
+        return cache
+    cache['ts'] = now
+    by_id, by_name = {}, {}
+    urls = (iptv.RU_LOGO_ID_CATALOG_URL, iptv.RU_LOGO_CATALOG_URL)
+    try:
+        timeout = aiohttp.ClientTimeout(total=7, connect=3)
+        async with aiohttp.ClientSession(timeout=timeout, headers={'User-Agent':'AbajTV/1.0'}) as session:
+            async def fetch(url):
+                try:
+                    async with session.get(url, allow_redirects=True) as response:
+                        if response.status != 200:
+                            return ''
+                        return await response.text(errors='ignore')
+                except (aiohttp.ClientError, TimeoutError, UnicodeError):
+                    return ''
+            bodies = await asyncio.gather(*(fetch(url) for url in urls))
+        for body in bodies:
+            if not body:
+                continue
+            ids, names = iptv._parse_logo_id_catalog_m3u(body)
+            for key, logo in ids.items():
+                if logo.startswith(('http://','https://')):
+                    by_id.setdefault(key, set()).add(logo)
+            for key, logo in names.items():
+                if logo.startswith(('http://','https://')):
+                    by_name.setdefault(key, set()).add(logo)
+    except Exception as exc:
+        logging.warning('EDEM_LOGO_CATALOG_FAILED error_type=%s', type(exc).__name__)
+    cache['by_id'], cache['by_name'] = by_id, by_name
+    return cache
+
+def _match_edem_catalog_logos(channels, catalog):
+    ids, names = catalog.get('by_id') or {}, catalog.get('by_name') or {}
+    for item in channels:
+        if str(item.get('logo') or '').strip():
+            continue
+        cid = str(item.get('tvg_id') or '').strip().lower().split('@',1)[0]
+        matches = ids.get(cid, set()) if cid else set()
+        if len(matches) != 1:
+            matches = set()
+            for variant in iptv._logo_name_variants(item.get('name') or ''):
+                if len(variant) >= 4:
+                    matches.update(names.get(variant, ()))
+        if len(matches) == 1:
+            item['logo'] = next(iter(matches))
+
 def _keep_edem_logos(rows, previous):
     """Keep channel artwork across temporary M3U/EPG metadata gaps."""
     by_id = {}
@@ -3016,6 +3069,9 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
             if len(candidates) == 1:
                 country = next(iter(candidates))
         channel['country'] = country
+    # Resolve missing artwork using cached public IPTV logo catalogs, without changing streams.
+    if any(not str(ch.get('logo') or '').strip() for ch in channels):
+        _match_edem_catalog_logos(channels, await _edem_logo_catalog())
     # Share artwork between playlists only for unambiguous channel identities.
     # This does not change stream URLs, names, country filters or ownership.
     playlist_logo_by_id = {}
