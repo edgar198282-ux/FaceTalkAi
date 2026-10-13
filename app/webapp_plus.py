@@ -2711,6 +2711,21 @@ def _unique_edem_channel_ids(rows):
     return rows
 
 
+def _normalize_edem_logo_urls(rows, playlist_url):
+    """Resolve M3U logo paths against their playlist without altering channel streams."""
+    for row in rows:
+        raw = str(row.get('logo') or '').strip()
+        if not raw:
+            continue
+        if raw.startswith('//'):
+            row['logo'] = ('https:' if urlparse(playlist_url).scheme == 'https' else 'http:') + raw
+        elif not urlparse(raw).scheme and not raw.startswith(('data:', 'blob:')):
+            resolved = urljoin(playlist_url, raw)
+            if urlparse(resolved).scheme in ('http', 'https'):
+                row['logo'] = resolved
+    return rows
+
+
 def _keep_edem_logos(rows, previous):
     """Keep channel artwork across temporary M3U/EPG metadata gaps."""
     by_id = {}
@@ -2763,7 +2778,7 @@ async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
                 raise web.HTTPBadGateway(text=f'Edem playlist HTTP {r.status}')
             text = await r.text(errors='ignore')
 
-    rows = _unique_edem_channel_ids(iptv._parse_m3u(text, 'ED', playlist_url))
+    rows = _normalize_edem_logo_urls(_unique_edem_channel_ids(iptv._parse_m3u(text, 'ED', playlist_url)), playlist_url)
     guide = await _edem_xmltv_guide(_playlist_xmltv_url(text))
     out = []
     for row in rows:
@@ -2912,7 +2927,7 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                     if cached and cached.get('url') == url and cached.get('channels'):
                         channels.extend(cached['channels'])
                     continue
-                parsed_rows = _unique_edem_channel_ids(iptv._parse_m3u(body, 'ED', url))
+                parsed_rows = _normalize_edem_logo_urls(_unique_edem_channel_ids(iptv._parse_m3u(body, 'ED', url)), url)
                 if not parsed_rows:
                     logging.warning("EDEM_PLAYLIST_EMPTY id=%s payload_bytes=%s", playlist_id, len(body))
                     if cached and cached.get('url') == url and cached.get('channels'):
