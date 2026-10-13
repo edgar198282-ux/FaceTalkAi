@@ -386,12 +386,67 @@ def _kinopub_normalize(item):
         'source': 'KINOPUB',
     }
 
+
+async def _abaj_sources(uid):
+    if ADMIN_ID and int(uid) == int(ADMIN_ID):
+        return None
+    raw = await get_setting(f'abaj_source_permissions:{uid}', '')
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+        return set(str(x) for x in parsed) if isinstance(parsed, list) else None
+    except (ValueError, TypeError):
+        return None
+
+
+async def _abaj_source_options(uid):
+    options = [{'id':'free','name':'Free TV'}, {'id':'kinopub','name':'KinoPub'}]
+    for owner, prefix in ((0,'public:'),(uid,'')):
+        raw = await get_setting(f'edem_named_playlists:{owner}', '[]')
+        try:
+            items = json.loads(raw or '[]')
+        except (ValueError, TypeError):
+            items = []
+        for entry in items if isinstance(items,list) else []:
+            if isinstance(entry,dict) and entry.get('url') and entry.get('name'):
+                options.append({'id':prefix+str(entry.get('id')),'name':str(entry.get('name'))})
+    if str(await get_setting(f'edem_playlist:{uid}', '') or '').strip():
+        options.append({'id':'legacy','name':'Edem'})
+    return options
+
+
+async def api_admin_access_sources(request):
+    user = await _user_from_request(request)
+    if not user or not _is_admin_user(user):
+        return web.json_response({'ok':False,'error':'forbidden'},status=403)
+    try:
+        data = await request.json() if request.method == 'POST' else request.query
+        uid = int(data.get('user_id'))
+    except (ValueError,TypeError):
+        return web.json_response({'ok':False,'error':'bad_user_id'},status=400)
+    if uid <= 0 or (ADMIN_ID and uid == int(ADMIN_ID)):
+        return web.json_response({'ok':False,'error':'invalid_user'},status=400)
+    options = await _abaj_source_options(uid)
+    allowed = {x['id'] for x in options}
+    if request.method == 'POST':
+        selected = data.get('selected')
+        if not isinstance(selected,list) or len(selected)>100 or any(not isinstance(x,str) or x not in allowed for x in selected):
+            return web.json_response({'ok':False,'error':'bad_selection'},status=400)
+        await set_setting(f'abaj_source_permissions:{uid}', json.dumps(list(dict.fromkeys(selected))))
+    permissions = await _abaj_sources(uid)
+    return web.json_response({'ok':True,'sources':options,'selected':[x['id'] for x in options if permissions is None or x['id'] in permissions]},headers={'Cache-Control':'no-store'})
+
+
 async def _cinema_access_allowed(uid: int) -> bool:
     return bool(int(uid))
 
 async def _cinema_playback_allowed(uid: int) -> bool:
     if ADMIN_ID and int(uid) == int(ADMIN_ID):
         return True
+    permissions = await _abaj_sources(uid)
+    if permissions is not None and 'kinopub' not in permissions:
+        return False
     sub = await _edem_subscription_state(int(uid))
     return bool(sub.get('active'))
 
@@ -2993,8 +3048,9 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
     except (ValueError, TypeError):
         playlists = []
     playlists = [(x, uid, False) for x in playlists] + [(x, 0, True) for x in shared_entries]
-    channels = [dict(row, playlist_name='Edem', playlist_id='legacy') for row in legacy.get('channels', [])]
-    labels = [{'id': 'legacy', 'name': 'Edem'}] if legacy.get('configured') else []
+    permissions = await _abaj_sources(uid)
+    channels = [dict(row, playlist_name='Edem', playlist_id='legacy') for row in legacy.get('channels', [])] if permissions is None or 'legacy' in permissions else []
+    labels = [{'id': 'legacy', 'name': 'Edem'}] if legacy.get('configured') and (permissions is None or 'legacy' in permissions) else []
     active = bool(legacy.get('active'))
     for index, (entry, owner, public) in enumerate(playlists[:40]):
         name = str(entry.get('name') or '').strip()[:32]
@@ -3002,6 +3058,8 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
         if not name or not url:
             continue
         playlist_id = ('public:' if public else '') + str(entry.get('id') or index)
+        if permissions is not None and playlist_id not in permissions:
+            continue
         labels.append({'id': playlist_id, 'name': name})
         if not active and not public:
             continue
@@ -4880,7 +4938,7 @@ async def start_webapp(bot):
     app.router.add_post('/api/cinema/resolve', api_cinema_resolve)
     app.router.add_get('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider); app.router.add_post('/api/admin/cinema/playback-provider', api_admin_cinema_playback_provider)
     app.router.add_post('/api/support/message', api_support_message)
-    app.router.add_get('/api/admin/iptv/edem', api_admin_iptv_edem_list); app.router.add_post('/api/admin/iptv/edem/assign', api_admin_iptv_edem_assign); app.router.add_post('/api/admin/iptv/edem/limit', api_admin_iptv_edem_limit); app.router.add_post('/api/admin/iptv/edem/subscription', api_admin_iptv_edem_subscription); app.router.add_post('/api/admin/iptv/edem/payment', api_admin_iptv_edem_payment); app.router.add_get('/api/admin/access/users', api_admin_access_users); app.router.add_post('/api/admin/access/set', api_admin_access_set)
+    app.router.add_get('/api/admin/iptv/edem', api_admin_iptv_edem_list); app.router.add_post('/api/admin/iptv/edem/assign', api_admin_iptv_edem_assign); app.router.add_post('/api/admin/iptv/edem/limit', api_admin_iptv_edem_limit); app.router.add_post('/api/admin/iptv/edem/subscription', api_admin_iptv_edem_subscription); app.router.add_post('/api/admin/iptv/edem/payment', api_admin_iptv_edem_payment); app.router.add_get('/api/admin/access/users', api_admin_access_users); app.router.add_post('/api/admin/access/set', api_admin_access_set); app.router.add_get('/api/admin/access/sources', api_admin_access_sources); app.router.add_post('/api/admin/access/sources', api_admin_access_sources)
     app.router.add_get('/api/me', api_me); app.router.add_get('/api/admin/stats', api_admin_stats); app.router.add_get('/api/admin/keys', api_admin_keys); app.router.add_post('/api/admin/keys', api_admin_keys)
     app.router.add_get('/api/admin/gpu-health', api_admin_gpu_health); app.router.add_post('/api/admin/video-limit', api_admin_video_limit)
     app.router.add_get('/api/photo', api_photo); app.router.add_get('/api/profile-photo', api_profile_photo); app.router.add_post('/api/role', api_role); app.router.add_post('/api/mode', api_mode); app.router.add_post('/api/reset', api_reset)
