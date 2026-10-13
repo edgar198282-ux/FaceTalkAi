@@ -2649,8 +2649,8 @@ body:not(.cinemaMode) .cinemaShellSide{
       </div>
       <div class="adminMeta" style="margin-top:6px">Для просмотра в плеере Abaj TV необходим официальный доступ Kinodaran к авторизации, каталогу и видеопотокам.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-        <button type="button" disabled title="Ожидается официальный API Kinodaran" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900;opacity:.65">Подключить</button>
-        <button type="button" disabled title="Источник не подключён" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900;opacity:.65">Отключить</button>
+        <button type="button" aria-disabled="true" onclick="showKinodaranIntegrationStatus()" title="Ожидается официальный API Kinodaran" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Подключить</button>
+        <button type="button" aria-disabled="true" onclick="showKinodaranIntegrationStatus()" title="Источник не подключён" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Отключить</button>
       </div>
     </div>
 
@@ -3611,6 +3611,10 @@ function openAdmin(){
 function closeAdmin(){
   const panel=document.getElementById('adminPanel');
   if(panel)panel.classList.remove('open');
+}
+function showKinodaranIntegrationStatus(){
+  const status=document.getElementById('kinodaranAdminStatus');
+  if(status)status.textContent='Ожидается API для воспроизведения в Abaj TV';
 }
 function refreshKinodaranAdminStatus(){
   const status=document.getElementById('kinodaranAdminStatus');
