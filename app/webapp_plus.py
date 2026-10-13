@@ -2726,6 +2726,38 @@ def _normalize_edem_logo_urls(rows, playlist_url):
     return rows
 
 
+def _fill_edem_logos_from_catalog(rows):
+    """Reuse logos already verified by our Free IPTV catalogue, never touch streams."""
+    catalog = iptv._state.get('channels') or {}
+    candidates = catalog.values() if isinstance(catalog, dict) else catalog
+    by_id, by_name = {}, {}
+    for item in candidates:
+        if not isinstance(item, dict):
+            continue
+        logo = str(item.get('logo') or '').strip()
+        if not logo.startswith(('https://', 'http://')):
+            continue
+        cid = str(item.get('tvg_id') or '').strip().lower().split('@', 1)[0]
+        if cid:
+            by_id.setdefault(cid, set()).add(logo)
+        for key in iptv._logo_name_variants(item.get('name') or ''):
+            if len(key) >= 4:
+                by_name.setdefault(key, set()).add(logo)
+    for row in rows:
+        if str(row.get('logo') or '').strip():
+            continue
+        cid = str(row.get('tvg_id') or '').strip().lower().split('@', 1)[0]
+        matches = by_id.get(cid, set()) if cid else set()
+        if len(matches) != 1:
+            matches = set()
+            for key in iptv._logo_name_variants(row.get('name') or ''):
+                if len(key) >= 4:
+                    matches.update(by_name.get(key, set()))
+        if len(matches) == 1:
+            row['logo'] = next(iter(matches))
+    return rows
+
+
 def _keep_edem_logos(rows, previous):
     """Keep channel artwork across temporary M3U/EPG metadata gaps."""
     by_id = {}
@@ -2779,6 +2811,7 @@ async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
             text = await r.text(errors='ignore')
 
     rows = _normalize_edem_logo_urls(_unique_edem_channel_ids(iptv._parse_m3u(text, 'ED', playlist_url)), playlist_url)
+    _fill_edem_logos_from_catalog(rows)
     guide = await _edem_xmltv_guide(_playlist_xmltv_url(text))
     out = []
     for row in rows:
@@ -2928,6 +2961,7 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                         channels.extend(cached['channels'])
                     continue
                 parsed_rows = _normalize_edem_logo_urls(_unique_edem_channel_ids(iptv._parse_m3u(body, 'ED', url)), url)
+                _fill_edem_logos_from_catalog(parsed_rows)
                 if not parsed_rows:
                     logging.warning("EDEM_PLAYLIST_EMPTY id=%s payload_bytes=%s", playlist_id, len(body))
                     if cached and cached.get('url') == url and cached.get('channels'):
