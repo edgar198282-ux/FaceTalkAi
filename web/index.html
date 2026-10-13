@@ -3849,13 +3849,53 @@ function renderAdminAccess(){
     const status=x.is_admin?'👑 Администратор':(x.active?'✅ Активен':'⛔ Нет доступа');
     const days=x.is_admin?'без срока':(x.days_left==null?'—':(x.days_left+' дн.'));
     const pending=x.payment_status==='pending'?' · 💳 ожидает проверки':'';
-    const action=x.is_admin?'':(x.active
+    const action=x.is_admin?'':('<button onclick="editUserSources('+x.user_id+')" style="background:#1687dc">Изменить</button>'+(x.active
       ?'<button onclick="setUserAccess('+x.user_id+',\'revoke\')" style="background:#d84b5b">Отключить</button><button onclick="setUserAccess('+x.user_id+',\'delete\')" style="background:#9f2f3d">Удалить</button>'
-      :'<button onclick="setUserAccess('+x.user_id+',\'grant\')" style="background:#16a05d">Дать 12 мес.</button><button onclick="setUserAccess('+x.user_id+',\''+(x.payment_status==='pending'?'reject':'delete')+'\')" style="background:#d84b5b">'+(x.payment_status==='pending'?'Отклонить':'Удалить')+'</button>');
+      :'<button onclick="setUserAccess('+x.user_id+',\'grant\')" style="background:#16a05d">Дать 12 мес.</button><button onclick="setUserAccess('+x.user_id+',\''+(x.payment_status==='pending'?'reject':'delete')+'\')" style="background:#d84b5b">'+(x.payment_status==='pending'?'Отклонить':'Удалить')+'</button>'));
     const devices=' · Устройства: '+Number(x.device_count||0)+(x.is_admin?'':(' из '+Number(x.device_limit||3)));
     return '<div class="adminRow"><div><b>'+who+'</b><div class="adminMeta">ID '+esc(x.user_id)+' · '+status+' · '+days+devices+pending+'</div></div><div class="limitBox">'+action+'</div></div>';
   }).join(''):'<div class="adminEmpty">Пользователи не найдены</div>';
 }
+
+async function editUserSources(uid){
+  const row=document.getElementById('accessSourceEditor-'+uid);
+  if(row){row.remove();return}
+  const button=[...document.querySelectorAll('#accessRows button')].find(el=>el.getAttribute('onclick')==='editUserSources('+uid+')');
+  const card=button?.closest('.adminRow');
+  if(!card)return;
+  const area=document.createElement('div');
+  area.id='accessSourceEditor-'+uid;
+  area.style.cssText='width:100%;padding:12px 0 4px;box-sizing:border-box';
+  area.innerHTML='<div class="adminMeta">Загрузка источников…</div>';
+  card.appendChild(area);
+  try{
+    const r=await fetch('/api/admin/access/sources?user_id='+encodeURIComponent(uid),{headers:authHeaders(),cache:'no-store'});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data.error||'HTTP '+r.status);
+    area.innerHTML='<div style="font-weight:900;margin-bottom:10px">Доступные источники</div>'+
+      data.sources.map(x=>'<label style="display:flex;align-items:center;gap:12px;margin:7px 0;padding:10px;border:1px solid #c8e1eb;border-radius:10px;cursor:pointer"><input type="checkbox" data-source-id="'+esc(x.id)+'" '+(data.selected.includes(x.id)?'checked':'')+' style="width:22px;height:22px;flex-shrink:0"><span>'+esc(x.name)+'</span></label>').join('')+
+      '<button type="button" onclick="saveUserSources('+uid+')" style="width:100%;margin-top:12px;background:#16a05d">Сохранить</button><div class="adminMeta" id="accessSourceStatus-'+uid+'" aria-live="polite"></div>';
+    if(nativeTv)setTimeout(()=>focusAdminControl(area.querySelector('input')),50);
+  }catch(e){area.textContent='Не удалось загрузить источники: '+String(e.message||e)}
+}
+async function saveUserSources(uid){
+  const area=document.getElementById('accessSourceEditor-'+uid);
+  if(!area)return;
+  const selected=[...area.querySelectorAll('input[data-source-id]:checked')].map(el=>el.dataset.sourceId);
+  const status=document.getElementById('accessSourceStatus-'+uid);
+  const save=area.querySelector('button');
+  if(save)save.disabled=true;
+  if(status)status.textContent='Сохранение…';
+  try{
+    const r=await fetch('/api/admin/access/sources',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({user_id:uid,selected})});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data.error||'HTTP '+r.status);
+    if(status)status.textContent='Сохранено';
+    setTimeout(()=>{if(area.isConnected)area.remove()},900);
+  }catch(e){if(status)status.textContent='Ошибка: '+String(e.message||e)}
+  finally{if(save)save.disabled=false}
+}
+
 async function setUserAccess(uid,action){
   if((action==='revoke'||action==='delete')&&!await abajConfirmAction(action==='delete'?'Удалить пользователя ID '+uid+'?':'Отключить пользователя ID '+uid+'?',action==='delete'?'Удалить':'Отключить'))return;
   const r=await fetch('/api/admin/access/set',{
