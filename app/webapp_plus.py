@@ -1674,7 +1674,8 @@ async def api_cinema_bookmark_folders(request):
     personal_tokens = await _kinopub_tokens(uid)
     if personal_tokens.get('access_token') or personal_tokens.get('refresh_token'):
         kp_selected = [fid for fid in selected if fid.startswith('kp:')]
-        if kp_selected:
+        kp_original = [str(fid) for fid in body.get('original', []) if isinstance(fid, (str, int)) and str(fid).startswith('kp:')] if isinstance(body.get('original'), list) else []
+        if kp_selected or kp_original:
             _, available_folders = await _kinopub_bookmark_folders(uid)
             allowed = {'kp:' + str(folder['id']):folder for folder in available_folders}
             selected = [fid for fid in selected if not fid.startswith('kp:') or fid in allowed]
@@ -1720,7 +1721,7 @@ async def api_cinema_bookmark_folders(request):
             filtered.insert(0,dict(compact))
         data['items'] = filtered[:300]
     await set_setting(f'cinema_custom_folders:{uid}',json.dumps(custom,ensure_ascii=False))
-    added = any(x in selected for x in ['personal',*custom.keys()])
+    added = any(x in selected for x in ['personal', *custom.keys()]) or any(fid.startswith('kp:') for fid in selected)
     return web.json_response({'ok':True,'added':added,'selected':selected,'created':new_folder},
                              headers={'Cache-Control':'no-store'})
 
