@@ -2336,6 +2336,32 @@ body.darkMode #tvSettingsModal #settingsCloseBtn{background:#162b40!important;co
   }
 }
 </style>
+<style id="abaj-mobile-cinema-controls-icons-only-v1">
+/* Cinema controls on phones: icons only, aligned to bottom safe area. */
+@media (orientation:landscape) and (max-height:700px){
+  body:not(.nativeTv) .playerView.cinemaPlayback.pureFullscreen.showPureControls .playerBottom,
+  body:not(.nativeTv) .playerView.cinemaPlayback.appFullscreen.showPureControls .playerBottom{
+    bottom:0!important;
+    padding-bottom:env(safe-area-inset-bottom,0px)!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerPrimaryControls{
+    margin-top:2px!important;
+    margin-bottom:0!important;
+    align-items:end!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerPrimaryControls .playerCircleCtrl:not(.tvChannelCtrl) small{
+    display:none!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerPrimaryControls .playerCircleCtrl:not(.tvChannelCtrl){
+    min-height:46px!important;
+    padding-bottom:0!important;
+    gap:0!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
+    margin-bottom:6px!important;
+  }
+}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
