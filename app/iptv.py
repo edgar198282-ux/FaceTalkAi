@@ -1200,6 +1200,12 @@ def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
             continue
         if line.startswith("#EXTINF"):
             attrs = _attrs(line)
+            # Some supplied M3U playlists use unquoted tvg-logo values.
+            # Preserve the exact source artwork URL instead of losing it.
+            if not attrs.get("tvg-logo"):
+                logo_match = re.search(r'(?<![\\w-])tvg-logo\\s*=\\s*([^\\s,]+)', line, re.I)
+                if logo_match:
+                    attrs["tvg-logo"] = logo_match.group(1).strip('"\\'')
             name = _extinf_name(line, attrs.get("tvg-name", "Channel"))
             m3u_country = str(attrs.get("tvg-country") or attrs.get("country") or "").strip().upper()
             country_aliases = {"ARM":"AM", "RUS":"RU", "GEO":"GE", "UKR":"UA",
