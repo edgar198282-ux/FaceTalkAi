@@ -2982,6 +2982,20 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
             if len(candidates) == 1:
                 country = next(iter(candidates))
         channel['country'] = country
+    # Share artwork between playlists only for unambiguous channel identities.
+    # This does not change stream URLs, names, country filters or ownership.
+    playlist_logo_by_id = {}
+    playlist_logo_by_name = {}
+    for source_channel in channels:
+        logo = str(source_channel.get('logo') or '').strip()
+        if not logo.startswith(('https://', 'http://')):
+            continue
+        cid = str(source_channel.get('tvg_id') or '').split('@', 1)[0].strip().lower()
+        if cid:
+            playlist_logo_by_id.setdefault(cid, set()).add(logo)
+        for variant in iptv._logo_name_variants(source_channel.get('name') or ''):
+            if len(variant) >= 4:
+                playlist_logo_by_name.setdefault(variant, set()).add(logo)
     free_by_id = {}
     free_by_name = {}
     for free_channel in iptv._state.get('channels', {}).values():
@@ -3002,6 +3016,15 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                 matches.update(free_by_name.get(variant) or ())
             if len(matches) == 1:
                 fallback = next(iter(matches))
+        if not fallback:
+            candidates = playlist_logo_by_id.get(tvg_id, set()) if tvg_id else set()
+            if not candidates:
+                candidates = set()
+                for variant in iptv._logo_name_variants(channel.get('name') or ''):
+                    if len(variant) >= 4:
+                        candidates.update(playlist_logo_by_name.get(variant) or ())
+            if len(candidates) == 1:
+                fallback = next(iter(candidates))
         if not fallback:
             fallback = iptv._epg_logo_for_channel(channel)
         if fallback and fallback != channel.get('logo'):
