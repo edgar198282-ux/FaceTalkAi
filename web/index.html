@@ -4406,8 +4406,13 @@ function closeTvSettings(){
   if(modal)modal.classList.remove('open');
   if(nativeTv){
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      const settingsBtn=document.getElementById('tvSettingsBtn');
-      if(settingsBtn)focusTvTopElement(settingsBtn);
+      const settingsBtn=cinemaMode
+        ?document.getElementById('cinemaSettingsBtn')
+        :document.getElementById('tvSettingsBtn');
+      if(settingsBtn){
+        if(cinemaMode)focusCinemaElement(settingsBtn);
+        else focusTvTopElement(settingsBtn);
+      }
     }));
   }
 }
