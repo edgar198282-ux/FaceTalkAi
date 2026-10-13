@@ -15729,6 +15729,10 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
             const current=document.querySelector('#cinemaSideMenu .cinemaMenuItem.active')?.dataset.cinemaAction;
             await loadCinemaLibrary(['bookmarks','watching','history'].includes(current)?current:'bookmarks');
           }
+        }else if(cinemaSource==='kinopub'&&typeof kinopubCurrentSection==='string'&&kinopubCurrentSection){
+          await loadKinoPubSection(kinopubCurrentSection,{...kinopubCurrentSectionOptions});
+        }else if(typeof cinemaShellCategory==='string'&&cinemaShellCategory){
+          await setCinemaShellCategory(cinemaShellCategory);
         }else{
           await loadCinemaCatalog(true);
         }
