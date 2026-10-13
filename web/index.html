@@ -4934,12 +4934,6 @@ function syncIptvPlaylistToggle(){
   if(!btn)return;
   const selected=iptvPlaylistMenuOptions.find(x=>x.value===sourceFilter);
   btn.textContent=(selected?selected.name:'Эдем')+' ▾';
-  if(appIsAdmin&&selected&&Number.isFinite(selected.count)){
-    const count=document.createElement('span');
-    count.textContent=' '+selected.count;
-    count.style.cssText='font-size:11px;font-weight:600;opacity:.8;margin-left:5px';
-    btn.appendChild(count);
-  }
   btn.classList.toggle('active',!!selected);
 }
 function handleIptvPlaylistRemote(action){
