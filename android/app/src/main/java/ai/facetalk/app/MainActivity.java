@@ -1942,6 +1942,7 @@ public class MainActivity extends Activity {
             if(id==null||secret==null||id.length()<8||secret.length()<8||id.length()>160||secret.length()>160)return;
             prefs.edit().putString("abaj_persist_tv_device_id",id).putString("abaj_persist_tv_device_secret",secret).apply();
         }
+        // Public Android app capabilities only; playback authorization remains provider-controlled.
         @JavascriptInterface public String kinodaranCapabilities(){
             JSONObject out=new JSONObject();
             try{
