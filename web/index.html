@@ -16025,6 +16025,23 @@ body.nativeTv :is(#modeChips .chip,#quickCats .cat,#cinemaDetail .cinemaCastCard
   animation:abajNeonRotate 2.16s linear infinite!important;
 }
 </style>
+<style id="abaj-description-focus-and-mobile-favorite-v1">
+body:not(.nativeTv) #modeChips .favOnly::before{
+  content:none!important;
+  display:none!important;
+}
+body.nativeTv #cinemaDescriptionMore{
+  padding:2px 5px!important;
+  min-height:0!important;
+  height:auto!important;
+  line-height:1.1!important;
+}
+body.nativeTv #cinemaDescriptionMore:is(:focus,:focus-visible,.focused)::after{
+  inset:0!important;
+  border-width:1.5px!important;
+  border-radius:5px!important;
+}
+</style>
 <style id="abaj-tv-cast-remote-focus">
 body.nativeTv #cinemaDetail .cinemaCastCard{pointer-events:auto!important;cursor:pointer!important}
 body.nativeTv #cinemaDetail .cinemaCastCard:focus-visible{outline:none!important}
