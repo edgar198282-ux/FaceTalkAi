@@ -1,11 +1,5 @@
 name: Build Abaj TV New Server APK
 on:
-  push:
-    branches:
-      - abajtv-new-railway
-    paths:
-      - 'android/**'
-      - '.github/workflows/abajtv-new-apk.yml'
   workflow_dispatch:
 permissions:
   contents: write
