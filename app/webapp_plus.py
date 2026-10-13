@@ -2914,10 +2914,10 @@ def _playlist_xmltv_url(text):
         if not line.lstrip().upper().startswith('#EXTM3U'):
             continue
         for key in ('url-tvg', 'x-tvg-url', 'tvg-url'):
-            match = re.search(r'(?<![\\w-])' + key + r'\\s*=\\s*(?:"([^"]+)"|\\'([^\\']+)\\'|([^\\s]+))', line, re.I)
+            match = re.search(r'(?<![\\w-])' + key + r'\\s*=\\s*(?:"([^"]+)"|([^\\s]+))', line, re.I)
             if not match:
                 continue
-            url = (match.group(1) or match.group(2) or match.group(3) or '').strip().split(',')[0].strip()
+            url = (match.group(1) or match.group(2) or '').strip().strip(chr(39)).split(',')[0].strip()
             if urlparse(url).scheme in ('http', 'https'):
                 return url
     return ''
