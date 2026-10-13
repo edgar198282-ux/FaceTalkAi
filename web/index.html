@@ -4565,7 +4565,39 @@ function refreshGroupFilters(){
   }
   buildQuickCats(groups);
 }
-function toggleAdultSetting(){
+function requestAdultPin(){
+  return new Promise(resolve=>{
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;z-index:100010;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
+    const dark=document.body.classList.contains('darkMode');
+    const card=document.createElement('div');
+    card.style.cssText='width:min(100%,320px);padding:20px;border-radius:16px;background:'+(dark?'#152637':'#fff')+';color:'+(dark?'#f2f7fc':'#132d40')+';box-shadow:0 12px 36px #0005';
+    const title=document.createElement('div');
+    title.textContent='PIN 18+';
+    title.style.cssText='font-size:21px;font-weight:800;margin-bottom:14px;text-align:center';
+    const field=document.createElement('input');
+    field.type='password';field.inputMode='numeric';field.maxLength=4;field.autocomplete='off';field.placeholder='••••';
+    field.setAttribute('aria-label','PIN 18+');
+    field.style.cssText='width:100%;height:50px;text-align:center;font-size:23px;letter-spacing:7px;border:1px solid #65849c;border-radius:10px;background:'+(dark?'#0c1926':'#fff')+';color:'+(dark?'#fff':'#132d40');
+    const buttons=document.createElement('div');
+    buttons.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px';
+    let finished=false;
+    const done=value=>{if(finished)return;finished=true;document.removeEventListener('keydown',onKey,true);overlay.remove();resolve(value)};
+    const onKey=e=>{if(e.key==='Escape'){e.preventDefault();done(null)}};
+    document.addEventListener('keydown',onKey,true);
+    const cancel=document.createElement('button');
+    cancel.textContent=appLang==='hy'?'Չեղարկել':appLang==='en'?'Cancel':'Отмена';
+    const ok=document.createElement('button');ok.textContent='OK';
+    for(const button of [cancel,ok])button.style.cssText='height:44px;border:0;border-radius:10px;font-weight:800;color:white;background:#1687dc';
+    cancel.style.background='#607a8e';
+    cancel.onclick=()=>done(null);ok.onclick=()=>done(field.value);
+    field.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();done(field.value)}};
+    overlay.onclick=e=>{if(e.target===overlay)done(null)};
+    buttons.append(cancel,ok);card.append(title,field,buttons);overlay.appendChild(card);document.body.appendChild(overlay);
+    setTimeout(()=>field.focus(),30);
+  });
+}
+async function toggleAdultSetting(){
   if(adultEnabled){
     if(current&&isAdultChannel(current))closePlayer();
     adultEnabled=false;
@@ -4579,7 +4611,7 @@ function toggleAdultSetting(){
     render();
     return;
   }
-  const pin=window.prompt(appLang==='hy'?'Մուտքագրեք 18+ PIN կոդը':(appLang==='en'?'Enter 18+ PIN':'Введите пароль 18+'));
+  const pin=await requestAdultPin();
   if(pin===null)return;
   if(String(pin).trim()!=='2828'){
     alert(appLang==='hy'?'Սխալ PIN կոդ':(appLang==='en'?'Wrong PIN':'Неверный пароль'));
