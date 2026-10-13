@@ -16143,6 +16143,29 @@ body:not(.nativeTv) #cinemaScreen #cinemaTvQuickBtn:is(:focus,:focus-visible,:ac
   border-radius:9px!important;
 }
 </style>
+<style id="abaj-mobile-cinema-category-no-brand-overlap-v1">
+@media(max-width:760px){
+  body:not(.nativeTv) #cinemaScreen .cinemaShellBar .cinemaShellTitle{
+    max-width:78px!important;
+    flex:0 1 78px!important;
+  }
+  body:not(.nativeTv) #cinemaScreen #cinemaCategoryBtn{
+    width:24px!important;
+    min-width:24px!important;
+    height:24px!important;
+    min-height:24px!important;
+    margin-left:-5px!important;
+    padding:0!important;
+    flex:0 0 24px!important;
+    border-radius:50%!important;
+    position:relative!important;
+  }
+  body:not(.nativeTv) #cinemaScreen #cinemaCategoryBtn:is(:focus,:focus-visible,:active,.focused,.abajTouchSelected)::after{
+    inset:0!important;
+    border-radius:50%!important;
+  }
+}
+</style>
 <style id="abaj-tv-cinema-header-focus-no-fill-v1">
 body.nativeTv #cinemaScreen :is(#cinemaSearchBtn,#cinemaSettingsBtn):is(:focus,:focus-visible,.focused){
   background:transparent!important;
