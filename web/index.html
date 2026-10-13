@@ -13002,8 +13002,15 @@ function cinemaSeriesInfo(item){
   return 'S'+season+'E'+episode+(minutes?' · '+minutes+' '+unit:'');
 }
 function updateCinemaSelectedEpisodeInfo(){
+  if(!cinemaDetailMovie)return;
+  const info=cinemaSeriesInfo(cinemaDetailMovie);
   const value=document.getElementById('cinemaSelectedEpisodeInfo');
-  if(value&&cinemaDetailMovie)value.textContent=cinemaSeriesInfo(cinemaDetailMovie);
+  if(value)value.textContent=info;
+  const duration=document.getElementById('cinemaSelectedEpisodeDuration');
+  if(duration){
+    const match=info.match(/ · (\d+)\s+(.+)$/);
+    if(match)duration.textContent=match[1]+' '+match[2];
+  }
 }
 function kinoMediaId(media){
   return String(media?.id??media?.media_id??media?.mid??'');
@@ -13573,7 +13580,7 @@ function renderCinemaDetail(item){
   facts.innerHTML=
     cinemaRatingFact(rating,kpRating,item)+
     cinemaDetailFact(cinemaT().year,year)+
-    cinemaDetailFact(appLang==='en'?'Time':appLang==='hy'?'Տևողություն':'Время',duration||'—')+
+    cinemaDetailFact(appLang==='en'?'Time':appLang==='hy'?'Տևողություն':'Время',duration||'—').replace('<div class="v">','<div class="v" id="cinemaSelectedEpisodeDuration">')+
     cinemaDetailFact(appLang==='en'?'Episode':appLang==='hy'?'Սերիա':'Серия',seriesInfo).replace('<div class="v">','<div class="v" id="cinemaSelectedEpisodeInfo">')+
     cinemaDetailFact(cinemaT().country,country)+
     cinemaDetailFact(cinemaT().genre,genre)+
