@@ -1455,6 +1455,26 @@ async def api_cinema_progress(request):
         'updated_at':int(time.time()),
     }
     await set_setting(f'cinema_progress:{uid}:{item_id}:{media_id}', json.dumps(data,separators=(',',':')))
+    # Write playback position only to the viewer's own KinoPub account.
+    # Never use the shared catalog owner's token for personal history.
+    credentials = await _kinopub_tokens(uid)
+    if (credentials.get('access_token') or credentials.get('refresh_token')) and item_id.isdigit():
+        try:
+            video_number = int(episode or 1)
+            season_number = int(season or 0)
+            if video_number > 0 and season_number >= 0:
+                token = await _kinopub_access_token(uid)
+                if token:
+                    params = {'access_token': token, 'id': item_id,
+                              'time': int(position), 'video': video_number}
+                    if season_number:
+                        params['season'] = season_number
+                    status, response = await _kinopub_api(
+                        'GET', '/v1/watching/marktime', params=params, timeout=12)
+                    if status >= 400 or (isinstance(response, dict) and response.get('status', 200) != 200):
+                        logging.warning('KinoPub marktime rejected for user %s: HTTP %s', uid, status)
+        except Exception:
+            logging.exception('KinoPub personal watch position sync failed for user %s', uid)
 
     watching = await _cinema_library_read(uid, 'watching')
     changed = False
@@ -1576,11 +1596,11 @@ async def _cinema_history_merge_remote(uid, rows):
         if not token:
             return rows
         status, payload = await _kinopub_api('GET', '/v1/history', params={
-            'access_token': token, 'page': 1, 'perpage': 100,
+            'access_token': token, 'page': 1, 'perpage': 50,
         }, timeout=12)
         if status >= 400:
             return rows
-        remote = _kinopub_extract_items(payload)
+        remote = payload.get('history', []) if isinstance(payload, dict) else []
         merged = {str(row.get('id')): row for row in rows if row.get('id')}
         for entry in remote:
             item = entry.get('item') if isinstance(entry.get('item'), dict) else entry
@@ -1596,7 +1616,7 @@ async def _cinema_history_merge_remote(uid, rows):
             compact['title'] = title
             compact['source'] = 'kinopub'
             try:
-                compact['watched_at'] = int(entry.get('watched_at') or entry.get('updated_at') or 0)
+                compact['watched_at'] = int(entry.get('last_seen') or entry.get('watched_at') or entry.get('updated_at') or 0)
             except (ValueError, TypeError):
                 compact['watched_at'] = 0
             if item_id not in merged or compact['watched_at'] > int(merged[item_id].get('watched_at') or 0):
