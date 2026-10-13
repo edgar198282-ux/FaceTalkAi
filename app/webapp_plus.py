@@ -1605,22 +1605,65 @@ async def _kinopub_sync_bookmarks(uid: int):
 
 
 async def _cinema_history_merge_remote(uid, rows):
-    """Merge the user's own KinoPub history; never use the shared owner token."""
+    """Persist personal KinoPub history so temporary API failures cannot erase cards."""
+    cache_key = f'cinema_kinopub_history_cache:{uid}'
+    raw = await get_setting(cache_key, '[]')
+    try:
+        cached = json.loads(raw or '[]')
+        if not isinstance(cached, list):
+            cached = []
+    except Exception:
+        cached = []
+
+    def merge(local, remote):
+        result = {}
+        for row in local + remote:
+            if not isinstance(row, dict):
+                continue
+            key = str(row.get('id') or '').strip()
+            if not key:
+                continue
+            previous = result.get(key)
+            if previous:
+                # Keep the best available artwork and metadata across refreshes.
+                combined = dict(previous)
+                for field, value in row.items():
+                    if value not in (None, '', [], {}):
+                        combined[field] = value
+                combined['watched_at'] = max(
+                    int(previous.get('watched_at') or 0),
+                    int(row.get('watched_at') or 0))
+                result[key] = combined
+            else:
+                result[key] = dict(row)
+        return sorted(result.values(),
+                      key=lambda r: int(r.get('watched_at') or r.get('updated_at') or 0),
+                      reverse=True)[:200]
+
+    merged = merge(rows, cached)
     credentials = await _kinopub_tokens(uid)
     if not (credentials.get('access_token') or credentials.get('refresh_token')):
         return rows
     try:
         token = await _kinopub_access_token(uid)
         if not token:
-            return rows
-        status, payload = await _kinopub_api('GET', '/v1/history', params={
-            'access_token': token, 'page': 1, 'perpage': 50,
-        }, timeout=12)
+            return merged
+        status, payload = await _kinopub_api(
+            'GET', '/v1/history',
+            params={'access_token': token, 'page': 1, 'perpage': 100},
+            timeout=12)
         if status >= 400:
-            return rows
-        remote = payload.get('history', []) if isinstance(payload, dict) else []
-        merged = {str(row.get('id')): row for row in rows if row.get('id')}
+            logging.warning('KinoPub history fetch failed for user %s: HTTP %s', uid, status)
+            return merged
+        remote = _kinopub_extract_items(payload)
+        if not remote and isinstance(payload, dict):
+            remote = payload.get('history') or []
+        if not isinstance(remote, list):
+            remote = []
+        fresh = []
         for entry in remote:
+            if not isinstance(entry, dict):
+                continue
             item = entry.get('item') if isinstance(entry.get('item'), dict) else entry
             item_id = str(item.get('id') or '').strip()
             if not item_id:
@@ -1628,21 +1671,37 @@ async def _cinema_history_merge_remote(uid, rows):
             title = str(item.get('title') or item.get('name') or '').strip()
             if not title:
                 continue
-            compact = {k: item[k] for k in ('id', 'title', 'original_title',
-                'year', 'poster', 'description', 'rating', 'kind') if k in item}
-            compact['id'] = item_id
-            compact['title'] = title
-            compact['source'] = 'kinopub'
+            card = {k: item[k] for k in ('id', 'title', 'original_title',
+                    'year', 'poster', 'posters', 'cover', 'description',
+                    'rating', 'kind', 'type') if k in item}
+            card.update({'id': item_id, 'title': title, 'source': 'kinopub'})
+            for candidate in (item.get('poster'), item.get('posters'), item.get('cover')):
+                if isinstance(candidate, str) and candidate.startswith(('http://', 'https://')):
+                    card['poster'] = candidate
+                    break
+                if isinstance(candidate, dict):
+                    for size in ('big', 'medium', 'small', 'url', 'poster'):
+                        value = candidate.get(size)
+                        if isinstance(value, str) and value.startswith(('http://', 'https://')):
+                            card['poster'] = value
+                            break
+                    if card.get('poster') and isinstance(card['poster'], str):
+                        break
             try:
-                compact['watched_at'] = int(entry.get('last_seen') or entry.get('watched_at') or entry.get('updated_at') or 0)
+                card['watched_at'] = int(entry.get('last_seen') or
+                    entry.get('watched_at') or entry.get('updated_at') or 0)
             except (ValueError, TypeError):
-                compact['watched_at'] = 0
-            if item_id not in merged or compact['watched_at'] > int(merged[item_id].get('watched_at') or 0):
-                merged[item_id] = compact
-        return sorted(merged.values(), key=lambda row: int(row.get('watched_at') or 0), reverse=True)[:200]
+                card['watched_at'] = 0
+            fresh.append(card)
+        if fresh:
+            updated_cache = merge(cached, fresh)
+            await set_setting(cache_key, json.dumps(
+                updated_cache, ensure_ascii=False, separators=(',', ':')))
+            merged = merge(rows, updated_cache)
+        return merged
     except Exception:
         logging.exception('Personal KinoPub history sync failed for user %s', uid)
-        return rows
+        return merged
 
 async def api_cinema_library(request):
     user = await _user_from_request(request)
