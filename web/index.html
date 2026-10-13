@@ -15670,6 +15670,92 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
 #abajConfirmCancel{background:#30465c;color:#fff}
 #abajConfirmAccept{background:#d84b5b;color:#fff}
 </style>
+<style>
+#abajPullRefresh{position:fixed;top:env(safe-area-inset-top,0px);left:50%;transform:translate(-50%,-120%);z-index:2147483000;pointer-events:none;background:#153c64;color:#fff;border-radius:0 0 18px 18px;padding:10px 20px;font:700 14px system-ui,sans-serif;box-shadow:0 4px 18px #0003;transition:transform .18s ease}
+#abajPullRefresh.visible{transform:translate(-50%,0)}
+</style>
+<div id="abajPullRefresh" role="status" aria-live="polite">↓ Потяните для обновления</div>
+<script>
+(function(){
+  if(typeof window==='undefined'||!('ontouchstart' in window))return;
+  let startY=0,startX=0,armed=false,pulling=false,busy=false,scrollParent=null,hideTimer=0;
+  const indicator=document.getElementById('abajPullRefresh');
+  const blocked='input,textarea,select,[contenteditable="true"],.cinemaShellSide,.cinemaBookmarkPickerCard,.player,.videoPlayer,video,#adminPanel,#tvSettingsModal,.settingsModal,.cinemaDetailModal,.cinemaPlayer,.modal';
+  function canStart(target){
+    if(!target||target.closest(blocked))return false;
+    if(document.querySelector('.cinemaBookmarkPicker.open'))return false;
+    if(document.querySelector('#tvSettingsModal.open,#adminPanel.open'))return false;
+    return true;
+  }
+  function scrollingAncestor(target){
+    for(let el=target;el&&el!==document.body;el=el.parentElement){
+      if(el.scrollHeight>el.clientHeight+2&&/auto|scroll/.test(getComputedStyle(el).overflowY))return el;
+    }
+    return document.scrollingElement||document.documentElement;
+  }
+  function topReached(){
+    return (!scrollParent||scrollParent.scrollTop<=2)&&
+      ((scrollParent!==document.scrollingElement&&scrollParent!==document.documentElement)||window.scrollY<=2);
+  }
+  function show(text){
+    indicator.textContent=text;indicator.classList.add('visible');
+    clearTimeout(hideTimer);
+  }
+  function hide(delay=650){
+    clearTimeout(hideTimer);
+    hideTimer=setTimeout(()=>indicator.classList.remove('visible'),delay);
+  }
+  async function refreshCurrent(){
+    if(busy)return;
+    busy=true;show('↻ Обновление…');
+    try{
+      if(typeof cinemaMode!=='undefined'&&cinemaMode){
+        if(typeof cinemaLibraryMode!=='undefined'&&cinemaLibraryMode){
+          if(typeof cinemaBookmarkFolderActive!=='undefined'&&cinemaBookmarkFolderActive){
+            await loadCinemaBookmarkFolder(cinemaBookmarkFolderActive);
+          }else{
+            const current=document.querySelector('#cinemaSideMenu .cinemaMenuItem.active')?.dataset.cinemaAction;
+            await loadCinemaLibrary(['bookmarks','watching','history'].includes(current)?current:'bookmarks');
+          }
+        }else{
+          await loadCinemaCatalog(true);
+        }
+        if(typeof refreshCinemaLibraryCounts==='function')await refreshCinemaLibraryCounts();
+      }else if(typeof load==='function'){
+        await load();
+      }
+      show('✓ Обновлено');
+    }catch(e){
+      show('Не удалось обновить');
+    }finally{busy=false;hide(950);}
+  }
+  document.addEventListener('touchstart',e=>{
+    armed=false;pulling=false;
+    if(busy||e.touches.length!==1||!canStart(e.target))return;
+    const t=e.touches[0];startX=t.clientX;startY=t.clientY;
+    scrollParent=scrollingAncestor(e.target);
+    armed=topReached();
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!armed||e.touches.length!==1)return;
+    const t=e.touches[0],dy=t.clientY-startY,dx=t.clientX-startX;
+    if(Math.abs(dx)>Math.abs(dy)*.8){armed=false;return;}
+    if(dy<0){armed=false;return;}
+    if(!topReached()){armed=false;return;}
+    if(dy>18){
+      pulling=true;
+      if(e.cancelable)e.preventDefault();
+      show(dy>=85?'↑ Отпустите для обновления':'↓ Потяните для обновления');
+    }
+  },{passive:false});
+  document.addEventListener('touchend',e=>{
+    if(armed&&pulling&&e.changedTouches.length===1&&e.changedTouches[0].clientY-startY>=85)refreshCurrent();
+    else if(pulling)hide();
+    armed=false;pulling=false;
+  },{passive:true});
+  document.addEventListener('touchcancel',()=>{armed=false;pulling=false;hide()},{passive:true});
+})();
+</script>
 </body>
 </html>
 
