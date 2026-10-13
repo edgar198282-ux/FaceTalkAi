@@ -3919,7 +3919,11 @@ async function loadAdminEdem(){
       return '<div class="adminRow"><div><b>ID '+esc(x.user_id)+'</b>'+
         '<div class="adminMeta">Бессрочно · Полный доступ</div>'+
         (Array.isArray(x.playlists)?x.playlists.map(p=>'<div class="adminMeta">'+esc(p.name)+'</div>').join(''):'')+
-        '</div><div class="limitBox"><button onclick="removeEdem('+Number(x.user_id)+')" style="background:#d84b5b">Удалить</button></div></div>';
+        '</div><div class="limitBox"><button type="button" onclick="toggleEdemPlaylistEditor('+Number(x.user_id)+')" style="background:#1687dc">Изменить</button></div>'+ 
+        '<div id="edemPlaylistEditor-'+Number(x.user_id)+'" hidden style="width:100%;padding-top:10px">'+
+        '<select id="edemPlaylistSelection-'+Number(x.user_id)+'" aria-label="Выберите плейлист" style="width:100%;min-height:42px;border-radius:10px;padding:8px">'+
+        (Array.isArray(x.playlists)?x.playlists.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>').join(''):'')+
+        '</select><button type="button" onclick="deleteSelectedEdemPlaylist('+Number(x.user_id)+')" style="background:#d84b5b;margin-top:10px">Удалить выбранный плейлист</button></div></div>';
     }).join(''):'<div class="adminEmpty">Пока нет назначенных Edem плейлистов</div>';
   }catch(e){box.innerHTML='<div class="adminEmpty">Не удалось загрузить Edem пользователей</div>'}
 }
@@ -4094,6 +4098,28 @@ function showEdemSavedNotice(){
   notice.hidden=false;
   clearTimeout(showEdemSavedNotice.timeoutId);
   showEdemSavedNotice.timeoutId=setTimeout(()=>{notice.hidden=true},2200);
+}
+function toggleEdemPlaylistEditor(uid){
+  const editor=document.getElementById('edemPlaylistEditor-'+Number(uid));
+  if(editor)editor.hidden=!editor.hidden;
+}
+async function deleteSelectedEdemPlaylist(uid){
+  const select=document.getElementById('edemPlaylistSelection-'+Number(uid));
+  if(!select||!select.options.length)return;
+  const name=select.value;
+  if(!await abajConfirmAction('Удалить плейлист «'+name+'»?','Удалить'))return;
+  const r=await fetch('/api/admin/iptv/edem/assign',{
+    method:'POST',
+    headers:{'Content-Type':'application/json',...authHeaders()},
+    body:JSON.stringify({user_id:Number(uid),playlist_name:name,playlist_url:''})
+  });
+  if(!r.ok){
+    const data=await r.json().catch(()=>({}));
+    alert('Ошибка удаления: '+(data.error||('HTTP '+r.status)));
+    return;
+  }
+  await loadAdminEdem();
+  await load();
 }
 async function removeNamedEdem(uid,name){
   const r=await fetch('/api/admin/iptv/edem/assign',{
