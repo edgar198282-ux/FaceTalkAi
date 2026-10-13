@@ -3197,6 +3197,20 @@ async def api_iptv_edem_channels(request):
     if not await _tv_binding_allowed(request, uid):
         return web.json_response({'ok':False,'error':'tv_disconnected'}, status=403)
     data = await _load_edem_playlist_for_uid(uid, force=request.query.get('refresh') == '1')
+    if _is_admin_user(user):
+        source_rows = data.get('channels') or []
+        per_playlist = {}
+        for ch in source_rows:
+            label = str(ch.get('playlist_name') or ch.get('playlist_id') or 'unknown')
+            d = per_playlist.setdefault(label, {'channels':0,'original_or_resolved_logo':0,'fallback_logo':0,'missing_logo':0})
+            d['channels'] += 1
+            if str(ch.get('logo') or '').strip():
+                d['original_or_resolved_logo'] += 1
+            else:
+                d['missing_logo'] += 1
+            if str(ch.get('logo_fallback') or '').strip():
+                d['fallback_logo'] += 1
+        logging.info('EDEM_LOGO_DIAGNOSTICS %s', json.dumps(per_playlist, ensure_ascii=False))
     safe = []
     for item in data.get('channels') or []:
         row = dict(item)
