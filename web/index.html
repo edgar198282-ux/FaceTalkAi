@@ -4473,7 +4473,8 @@ async function refreshAppUpdateState(){
   ver.style.display=inApk?'block':'none';
   if(!inApk)return;
   const current=tvAppVersion||String(tvAppVersionCode);
-  ver.textContent=(appLang==='hy'?'Տարբերակ՝ v':(appLang==='en'?'Version: v':'Версия: v'))+current;
+  const displayVersion=/^\d+\.\d+\.\d{5,}$/.test(current)?current.replace(/^(\d+\.\d+\.)(\d).*$/,'$1$2'):current;
+  ver.textContent=(appLang==='hy'?'Տարբերակ՝ v':(appLang==='en'?'Version: v':'Версия: v'))+displayVersion;
   btn.textContent=appLang==='hy'?'🔄 Ստուգել թարմացումը':(appLang==='en'?'🔄 Check for update':'🔄 Проверить обновление');
   try{
     const r=await fetch('/api/app-release?ts='+Date.now(),{cache:'no-store'});
