@@ -1930,6 +1930,18 @@ public class MainActivity extends Activity {
                 }catch(Exception ignored){return "{\"installed\":false}";}
             }
         }
+        @JavascriptInterface public String getTvDeviceIdentity(){
+            try{
+                JSONObject o=new JSONObject();
+                o.put("id",prefs.getString("abaj_persist_tv_device_id",""));
+                o.put("secret",prefs.getString("abaj_persist_tv_device_secret",""));
+                return o.toString();
+            }catch(Exception e){return "{}";}
+        }
+        @JavascriptInterface public void saveTvDeviceIdentity(String id,String secret){
+            if(id==null||secret==null||id.length()<8||secret.length()<8||id.length()>160||secret.length()>160)return;
+            prefs.edit().putString("abaj_persist_tv_device_id",id).putString("abaj_persist_tv_device_secret",secret).apply();
+        }
         @JavascriptInterface public String kinodaranInfo(){
             try{
                 android.content.pm.PackageInfo pi=getPackageManager().getPackageInfo("com.techcraeft.kinodaran",0);
