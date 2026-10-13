@@ -2908,13 +2908,16 @@ async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
 _edem_xmltv_cache = {}
 
 def _playlist_xmltv_url(text):
-    header = str(text or '').splitlines()[0:2]
+    """Read provider XMLTV address from quoted or unquoted M3U header."""
+    header = str(text or '').splitlines()[:2]
     for line in header:
         if not line.lstrip().upper().startswith('#EXTM3U'):
             continue
-        match = re.search(r"""(?:url-tvg|x-tvg-url)\s*=\s*(["'])(.*?)\1""", line, re.I)
-        if match:
-            url = match.group(2).strip().split(',')[0].strip()
+        for key in ('url-tvg', 'x-tvg-url', 'tvg-url'):
+            match = re.search(r'(?<![\\w-])' + key + r'\\s*=\\s*(?:"([^"]+)"|\\'([^\\']+)\\'|([^\\s]+))', line, re.I)
+            if not match:
+                continue
+            url = (match.group(1) or match.group(2) or match.group(3) or '').strip().split(',')[0].strip()
             if urlparse(url).scheme in ('http', 'https'):
                 return url
     return ''
@@ -3034,6 +3037,10 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                         channels.extend(cached['channels'])
                     continue
                 parsed_rows = _normalize_edem_logo_urls(_unique_edem_channel_ids(iptv._parse_m3u(body, 'ED', url)), url)
+                logo_count = sum(bool(str(ch.get('logo') or '').strip()) for ch in parsed_rows)
+                epg_url = _playlist_xmltv_url(body)
+                logging.info('EDEM_SOURCE_LOGO_COUNTS playlist_id=%s channels=%s m3u_logos=%s epg_header_present=%s',
+                             playlist_id, len(parsed_rows), logo_count, bool(epg_url))
                 if not parsed_rows:
                     logging.warning("EDEM_PLAYLIST_EMPTY id=%s payload_bytes=%s", playlist_id, len(body))
                     if cached and cached.get('url') == url and cached.get('channels'):
