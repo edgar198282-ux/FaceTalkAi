@@ -10866,7 +10866,8 @@ function moveCinemaFocus(direction){
     document.getElementById('cinemaMenuBtn'),
     document.getElementById('cinemaCategoryBtn'),
     document.getElementById('cinemaTvQuickBtn'),
-    document.getElementById('cinemaSearchBtn')
+    document.getElementById('cinemaSearchBtn'),
+    document.getElementById('cinemaSettingsBtn')
   ].filter(el=>el&&el.offsetParent!==null);
   const topIndex=topBar.indexOf(current);
   if(topIndex>=0&&(direction==='left'||direction==='right')){
@@ -16105,6 +16106,20 @@ body:not(.nativeTv) #cinemaScreen .cinemaShellBar > .cinemaShellBtn:is(:focus,:f
 }
 body:not(.nativeTv) #cinemaScreen .cinemaShellBar > #cinemaCategoryBtn:is(:focus,:focus-visible,:active,.focused,.abajTouchSelected)::after{
   border-radius:50%!important;
+}
+</style>
+<style id="abaj-tv-cinema-header-focus-no-fill-v1">
+body.nativeTv #cinemaScreen :is(#cinemaSearchBtn,#cinemaSettingsBtn):is(:focus,:focus-visible,.focused){
+  background:transparent!important;
+  background-color:transparent!important;
+  background-image:none!important;
+  box-shadow:none!important;
+  outline:none!important;
+  border-color:transparent!important;
+}
+body.nativeTv #cinemaScreen :is(#cinemaSearchBtn,#cinemaSettingsBtn):is(:focus,:focus-visible,.focused)::before{
+  content:none!important;
+  display:none!important;
 }
 </style>
 <style id="abaj-tv-cast-remote-focus">
