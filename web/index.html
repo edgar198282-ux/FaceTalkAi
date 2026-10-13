@@ -15671,10 +15671,17 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
 #abajConfirmAccept{background:#d84b5b;color:#fff}
 </style>
 <style>
-#abajPullRefresh{position:fixed;top:env(safe-area-inset-top,0px);left:50%;transform:translate(-50%,-120%);z-index:2147483000;pointer-events:none;background:#153c64;color:#fff;border-radius:0 0 18px 18px;padding:10px 20px;font:700 14px system-ui,sans-serif;box-shadow:0 4px 18px #0003;transition:transform .18s ease}
-#abajPullRefresh.visible{transform:translate(-50%,0)}
+#abajPullRefresh{position:fixed;top:calc(env(safe-area-inset-top,0px) + 9px);left:50%;width:39px;height:39px;display:grid;place-items:center;transform:translate(-50%,-95px) scale(.7);opacity:0;z-index:2147483000;pointer-events:none;border-radius:50%;background:rgba(17,65,110,.82);box-shadow:0 3px 15px #0002;transition:transform .22s ease,opacity .22s ease}
+#abajPullRefresh.visible{transform:translate(-50%,0) scale(1);opacity:1}
+#abajPullRefreshRing{width:22px;height:22px;border:3px solid rgba(255,255,255,.23);border-top-color:#fff;border-radius:50%;transform:rotate(0deg)}
+#abajPullRefresh.loading #abajPullRefreshRing{animation:abajPullSpin .65s linear infinite}
+#abajPullRefresh.done #abajPullRefreshRing{animation:none;border-color:#73ffc2;border-top-color:#73ffc2;position:relative}
+#abajPullRefresh.done #abajPullRefreshRing:after{content:'';position:absolute;left:5px;top:1px;width:7px;height:12px;border:solid #73ffc2;border-width:0 2px 2px 0;transform:rotate(45deg)}
+#abajPullRefresh.done #abajPullRefreshRing{border-color:transparent}
+#abajPullRefresh.error #abajPullRefreshRing{border-color:#ffa7a7;border-top-color:#ff5656;animation:none}
+@keyframes abajPullSpin{to{transform:rotate(360deg)}}
 </style>
-<div id="abajPullRefresh" role="status" aria-live="polite">↓ Потяните для обновления</div>
+<div id="abajPullRefresh" aria-hidden="true"><span id="abajPullRefreshRing"></span></div>
 <script>
 (function(){
   if(typeof window==='undefined'||!('ontouchstart' in window))return;
@@ -15697,17 +15704,22 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
     return (!scrollParent||scrollParent.scrollTop<=2)&&
       ((scrollParent!==document.scrollingElement&&scrollParent!==document.documentElement)||window.scrollY<=2);
   }
-  function show(text){
-    indicator.textContent=text;indicator.classList.add('visible');
+  function show(state='pull',progress=0){
+    indicator.classList.add('visible');
+    indicator.classList.toggle('loading',state==='loading');
+    indicator.classList.toggle('done',state==='done');
+    indicator.classList.toggle('error',state==='error');
+    if(state==='pull')indicator.firstElementChild.style.transform='rotate('+Math.round(Math.max(0,Math.min(1,progress))*270)+'deg)';
+    else indicator.firstElementChild.style.transform='';
     clearTimeout(hideTimer);
   }
   function hide(delay=650){
     clearTimeout(hideTimer);
-    hideTimer=setTimeout(()=>indicator.classList.remove('visible'),delay);
+    hideTimer=setTimeout(()=>{indicator.classList.remove('visible','loading','done','error');indicator.firstElementChild.style.transform='';},delay);
   }
   async function refreshCurrent(){
     if(busy)return;
-    busy=true;show('↻ Обновление…');
+    busy=true;show('loading');
     try{
       if(typeof cinemaMode!=='undefined'&&cinemaMode){
         if(typeof cinemaLibraryMode!=='undefined'&&cinemaLibraryMode){
@@ -15724,9 +15736,9 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
       }else if(typeof load==='function'){
         await load();
       }
-      show('✓ Обновлено');
+      show('done');
     }catch(e){
-      show('Не удалось обновить');
+      show('error');
     }finally{busy=false;hide(950);}
   }
   document.addEventListener('touchstart',e=>{
@@ -15745,7 +15757,7 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
     if(dy>18){
       pulling=true;
       if(e.cancelable)e.preventDefault();
-      show(dy>=85?'↑ Отпустите для обновления':'↓ Потяните для обновления');
+      show('pull',(dy-18)/67);
     }
   },{passive:false});
   document.addEventListener('touchend',e=>{
