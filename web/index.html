@@ -5323,7 +5323,26 @@ async function load(){
         return {...item,logo:String(matched.logo||'').trim()||item.logo,
           epg_now:matched.epg_now||item.epg_now,epg_next:matched.epg_next||item.epg_next};
       });
-      base=base.concat(ed.channels.map(x=>({...x,country:playlistCountry(x),personal:true,provider:'Edem'})));
+      // Fill missing artwork in personal playlists using already available channel logos.
+      // Do not change stream URLs, source lists, or existing provider artwork.
+      const knownLogosById=new Map(),knownLogosByName=new Map();
+      for(const item of [...base,...ed.channels]){
+        const logo=String(item.logo||'').trim();
+        if(!/^https?:\/\//i.test(logo))continue;
+        const id=String(item.tvg_id||'').split('@')[0].trim().toLowerCase();
+        const name=normalizePlaylistChannelName(item.name);
+        if(id&&!knownLogosById.has(id))knownLogosById.set(id,logo);
+        if(name&&name.length>=3&&!knownLogosByName.has(name))knownLogosByName.set(name,logo);
+      }
+      base=base.concat(ed.channels.map(x=>{
+        const item={...x,country:playlistCountry(x),personal:true,provider:'Edem'};
+        const id=String(item.tvg_id||'').split('@')[0].trim().toLowerCase();
+        const name=normalizePlaylistChannelName(item.name);
+        const matched=(id&&knownLogosById.get(id))||knownLogosByName.get(name);
+        if(!String(item.logo||'').trim()&&matched)item.logo=matched;
+        else if(matched&&matched!==item.logo&&!String(item.logo_fallback||'').trim())item.logo_fallback=matched;
+        return item;
+      }));
       renderNamedPlaylistChips(ed.playlists||[],ed.channels);
     }
     if(!Array.isArray(ed.channels)||!ed.channels.length)renderNamedPlaylistChips(ed.playlists||[],[]);
