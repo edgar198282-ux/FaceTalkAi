@@ -2648,7 +2648,7 @@ body:not(.cinemaMode) .cinemaShellSide{
         <span class="adminMeta" id="kinodaranAdminStatus">Проверка устройства…</span>
       </div>
       <div class="adminMeta" style="margin-top:6px">Режим приложения открывает Kinodaran отдельно. Веб-режим проверяет работу официального сайта в окне Abaj TV; вход на сайте отдельный.</div>
-      <div class="adminMeta" id="kinodaranDiagnostics" style="margin-top:6px"></div>
+      <div class="adminMeta" id="kinodaranDiagnostics" style="margin-top:8px;font-size:13px;line-height:1.45;overflow-wrap:anywhere"></div>
       <button type="button" onclick="diagnoseKinodaran()" style="min-height:38px;margin-top:8px;border:0;border-radius:9px;background:#234a6d;color:#fff;font-weight:800">Проверить интеграцию на этом TV Box</button>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
         <button type="button" id="kinodaranAppModeBtn" onclick="setKinodaranMode('app')" style="min-height:44px;border:0;border-radius:11px;background:#087fe1;color:#fff;font-weight:900">Приложение</button>
@@ -3697,13 +3697,22 @@ function diagnoseKinodaran(){
     const screens=Array.isArray(d.activity_details)?d.activity_details:[];
     const services=Array.isArray(d.service_details)?d.service_details:[];
     const intents=Array.isArray(d.supported_intents)?d.supported_intents:[];
-    const describe=entries=>entries.map(x=>String(x.name||'').split('.').pop()+(x.permission?' (требует разрешение)':'')).join(', ')||'нет';
-    el.textContent='Kinodaran '+String(d.version||'—')+
-      ' · Экраны ('+screens.length+'): '+describe(screens)+
-      ' · Сервисы ('+services.length+'): '+describe(services)+
-      ' · Обработчики: '+(intents.join(', ')||'нет')+
-      ' · Открытые провайдеры: '+providers.length+
-      '. Это проверка интерфейсов, а не подтверждение доступа к фильмам.';
+    const preview=screens.find(x=>String(x.name||'').endsWith('.PreviewActivity'));
+    const lines=[
+      'Kinodaran '+String(d.version||'—')+' · установлен',
+      'Экспортированные экраны: '+screens.length+', сервисы: '+services.length,
+      'PreviewActivity: '+(preview?(preview.permission?'требует разрешения':'доступен, назначение неизвестно'):'не найден'),
+      'Внешний видеоплеер: '+(intents.includes('video_view')?'есть обработчик':'обработчик не заявлен'),
+      'Открытые провайдеры каталога: '+providers.length,
+      'Доступ к фильмам и защищённым потокам не подтверждён.'
+    ];
+    el.replaceChildren();
+    lines.forEach(line=>{
+      const div=document.createElement('div');
+      div.textContent=line;
+      div.style.cssText='padding:3px 0;overflow-wrap:anywhere';
+      el.appendChild(div);
+    });
   }catch(e){el.textContent='Не удалось проверить интерфейсы Kinodaran.';}
 }
 function refreshKinodaranAdminStatus(){
