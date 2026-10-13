@@ -4793,7 +4793,7 @@ function toggleIptvPlaylistMenu(){
 }
 // Handle this popover before the global TV grid controls (which would otherwise
 // move the channels underneath the open menu).
-document.addEventListener('keydown',function(event){
+window.addEventListener('keydown',function(event){
   if(!nativeTv)return;
   const menu=document.getElementById('iptvPlaylistMenu');
   if(!menu)return;
@@ -9249,7 +9249,7 @@ function cinemaDetailOpen(){
   return !!document.getElementById('cinemaDetail')?.classList.contains('open');
 }
 function cinemaDetailFocusable(){
-  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction,#cinemaDetail #cinemaBookmarkBtn,#cinemaDetail #cinemaEpisodeAlertBtn,#cinemaDetail #cinemaAbajRating,#cinemaDetail .cinemaDescriptionMore,#cinemaDetail .cinemaKpEpisodeBtn,#cinemaDetail .cinemaSimilarCard')]
+  return [...document.querySelectorAll('#cinemaDetail .cinemaDetailBack,#cinemaDetail .cinemaDetailAction,#cinemaDetail #cinemaBookmarkBtn,#cinemaDetail #cinemaEpisodeAlertBtn,#cinemaDetail #cinemaAbajRating,#cinemaDetail .cinemaDescriptionMore,#cinemaDetail .cinemaKpEpisodeBtn,#cinemaDetail .cinemaSimilarCard,#cinemaDetail .cinemaCastCard')]
     .filter(el=>el.offsetParent!==null);
 }
 function moveCinemaDetailFocus(direction){
@@ -15907,6 +15907,10 @@ body:not(.nativeTv) .cinemaCastCard.castTapped{transform:scale(.955)!important;f
 body:not(.nativeTv) .cinemaCastCard:active img,
 body:not(.nativeTv) .cinemaCastCard.castTapped img,
 body:not(.nativeTv) .cinemaCastCard:active .cinemaCastAvatarFallback{box-shadow:0 0 12px rgba(255,255,255,.28)!important}
+</style>
+<style id="abaj-tv-cast-remote-focus">
+body.nativeTv #cinemaDetail .cinemaCastCard{pointer-events:auto!important;cursor:pointer!important}
+body.nativeTv #cinemaDetail .cinemaCastCard:focus-visible{outline:none!important}
 </style>
 </body>
 </html>
