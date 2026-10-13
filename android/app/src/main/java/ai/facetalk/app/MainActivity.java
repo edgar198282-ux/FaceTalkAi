@@ -1959,13 +1959,44 @@ public class MainActivity extends Activity {
                     if(p!=null&&p.exported&&p.authority!=null)exportedProviders.put(p.authority);
                 }
                 int exportedActivities=0;
+                org.json.JSONArray activityNames=new org.json.JSONArray();
                 if(pi.activities!=null)for(android.content.pm.ActivityInfo a:pi.activities){
-                    if(a!=null&&a.exported)exportedActivities++;
+                    if(a!=null&&a.exported){
+                        exportedActivities++;
+                        JSONObject item=new JSONObject();
+                        item.put("name",a.name);
+                        item.put("permission",a.permission==null?"":a.permission);
+                        activityNames.put(item);
+                    }
                 }
                 int exportedServices=0;
+                org.json.JSONArray serviceNames=new org.json.JSONArray();
                 if(pi.services!=null)for(android.content.pm.ServiceInfo a:pi.services){
-                    if(a!=null&&a.exported)exportedServices++;
+                    if(a!=null&&a.exported){
+                        exportedServices++;
+                        JSONObject item=new JSONObject();
+                        item.put("name",a.name);
+                        item.put("permission",a.permission==null?"":a.permission);
+                        serviceNames.put(item);
+                    }
                 }
+                out.put("activity_details",activityNames);
+                out.put("service_details",serviceNames);
+                org.json.JSONArray handlers=new org.json.JSONArray();
+                Intent[] probes=new Intent[]{
+                    new Intent(Intent.ACTION_VIEW,Uri.parse("https://kinodaran.com/")),
+                    new Intent(Intent.ACTION_VIEW).setType("video/*"),
+                    new Intent(Intent.ACTION_SEARCH)
+                };
+                String[] labels=new String[]{"web_link","video_view","search"};
+                for(int i=0;i<probes.length;i++){
+                    probes[i].setPackage("com.techcraeft.kinodaran");
+                    try{
+                        java.util.List<android.content.pm.ResolveInfo> matches=getPackageManager().queryIntentActivities(probes[i],0);
+                        if(matches!=null&&!matches.isEmpty())handlers.put(labels[i]);
+                    }catch(Exception ignored){}
+                }
+                out.put("supported_intents",handlers);
                 out.put("exported_providers",exportedProviders);
                 out.put("exported_activities",exportedActivities);
                 out.put("exported_services",exportedServices);
