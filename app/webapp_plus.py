@@ -2812,19 +2812,25 @@ async def _edem_logo_catalog():
     return cache
 
 def _match_edem_catalog_logos(channels, catalog):
+    """Find unambiguous artwork for added playlists only; support broken source URLs."""
     ids, names = catalog.get('by_id') or {}, catalog.get('by_name') or {}
     for item in channels:
-        if str(item.get('logo') or '').strip():
-            continue
-        cid = str(item.get('tvg_id') or '').strip().lower().split('@',1)[0]
+        cid = str(item.get('tvg_id') or '').strip().lower().split('@', 1)[0]
         matches = ids.get(cid, set()) if cid else set()
         if len(matches) != 1:
             matches = set()
             for variant in iptv._logo_name_variants(item.get('name') or ''):
                 if len(variant) >= 4:
                     matches.update(names.get(variant, ()))
-        if len(matches) == 1:
-            item['logo'] = next(iter(matches))
+        if len(matches) != 1:
+            continue
+        artwork = next(iter(matches))
+        original = str(item.get('logo') or '').strip()
+        if not original:
+            item['logo'] = artwork
+        elif artwork != original and not str(item.get('logo_fallback') or '').strip():
+            item['logo_fallback'] = artwork
+
 
 def _keep_edem_logos(rows, previous):
     """Keep channel artwork across temporary M3U/EPG metadata gaps."""
@@ -3082,8 +3088,9 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
             if len(candidates) == 1:
                 country = next(iter(candidates))
         channel['country'] = country
-    # Resolve missing artwork using cached public IPTV logo catalogs, without changing streams.
-    if any(not str(ch.get('logo') or '').strip() for ch in channels):
+    # Use independent IPTV artwork even when a supplied logo URL is broken.
+    # Leave existing playlist art as primary and add a verified fallback.
+    if channels:
         _match_edem_catalog_logos(channels, await _edem_logo_catalog())
     # Share artwork between added playlists only; never borrow Free logos.
     # This does not change stream URLs, names, country filters or ownership.
