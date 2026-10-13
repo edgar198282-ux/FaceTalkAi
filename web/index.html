@@ -2615,7 +2615,7 @@ body:not(.cinemaMode) .cinemaShellSide{
         <button class="adminClose" onclick="closeAdmin()">Закрыть</button>
       </div>
     </div>
-    <button onclick="openSettings()" style="width:100%;margin:14px 0 12px;border:0;border-radius:14px;background:#087fe1;color:#fff;padding:14px 16px;font-size:17px;font-weight:900">⚙ Настройки плейлиста</button>
+    
 
     <div style="font-size:18px;font-weight:900;margin:12px 0 10px">Доступ пользователей</div>
     <div id="accessStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
@@ -2627,6 +2627,13 @@ body:not(.cinemaMode) .cinemaShellSide{
 
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Плейлист</div>
     <div class="adminRows" id="adminRows"><div class="adminEmpty">Загрузка…</div></div>
+    <button type="button" onclick="toggleInlinePlaylistForm()" style="width:100%;min-height:44px;margin-top:10px;border:0;border-radius:11px;background:#1687dc;color:white;font-weight:800">+ Добавить плейлист</button>
+    <div id="inlinePlaylistForm" hidden style="padding:12px 0">
+      <input id="inlinePlaylistName" maxlength="32" placeholder="Название плейлиста" style="width:100%;min-height:44px;padding:10px;margin-bottom:8px;border:1px solid #bed8e5;border-radius:11px">
+      <input id="inlinePlaylistUrl" placeholder="Ссылка M3U / M3U8" style="width:100%;min-height:44px;padding:10px;margin-bottom:10px;border:1px solid #bed8e5;border-radius:11px">
+      <button type="button" id="inlinePlaylistSave" onclick="saveInlinePlaylist()" style="width:100%;min-height:44px;border:0;border-radius:11px;background:#16a05d;color:white;font-weight:800">Сохранить</button>
+      <div id="inlinePlaylistError" role="status" style="margin-top:6px;color:#bb3444"></div>
+    </div>
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Кино · источник</div>
     <div class="adminRow" style="display:block">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
@@ -3957,23 +3964,62 @@ async function saveCinemaPlaybackProvider(){
 }
 async function loadAdminEdem(){
   const box=document.getElementById('adminRows');
+  if(!box)return;
   box.innerHTML='<div class="adminEmpty">Загрузка…</div>';
   try{
     const r=await fetch('/api/admin/iptv/edem',{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)throw new Error('HTTP '+r.status);
     const d=await r.json();
-    const rows=d.users||[];
-    box.innerHTML=rows.length?rows.map(x=>{
-      return '<div class="adminRow"><div><b>ID '+esc(x.user_id)+'</b>'+
-        '<div class="adminMeta">Бессрочно · Полный доступ</div>'+
-        (Array.isArray(x.playlists)?x.playlists.map(p=>'<div class="adminMeta">'+esc(p.name)+'</div>').join(''):'')+
-        '</div><div class="limitBox"><button type="button" onclick="toggleEdemPlaylistEditor('+Number(x.user_id)+')" style="background:#1687dc">Изменить</button></div>'+ 
-        '<div id="edemPlaylistEditor-'+Number(x.user_id)+'" hidden style="width:100%;padding-top:10px">'+
-        '<select id="edemPlaylistSelection-'+Number(x.user_id)+'" aria-label="Выберите плейлист" style="width:100%;min-height:42px;border-radius:10px;padding:8px">'+
-        (Array.isArray(x.playlists)?x.playlists.map(p=>'<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>').join(''):'')+
-        '</select><button type="button" onclick="deleteSelectedEdemPlaylist('+Number(x.user_id)+')" style="background:#d84b5b;margin-top:10px">Удалить выбранный плейлист</button></div></div>';
-    }).join(''):'<div class="adminEmpty">Пока нет назначенных Edem плейлистов</div>';
-  }catch(e){box.innerHTML='<div class="adminEmpty">Не удалось загрузить Edem пользователей</div>'}
+    const rows=(d.users||[]).filter(x=>Number(x.user_id)===0);
+    const playlists=rows.flatMap(x=>Array.isArray(x.playlists)?x.playlists:[]);
+    box.innerHTML=playlists.length?playlists.map(p=>
+      '<div class="adminRow" style="display:block"><b>'+esc(p.name)+'</b>'+
+      '<div class="adminMeta">Общий плейлист · доступ без срока</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">'+
+      '<button type="button" onclick="editInlinePlaylist('+JSON.stringify(String(p.name)).replace(/"/g,'&quot;')+')" style="width:100%;background:#1687dc">Изменить</button>'+
+      '<button type="button" onclick="deleteInlinePlaylist('+JSON.stringify(String(p.name)).replace(/"/g,'&quot;')+')" style="width:100%;background:#cb4758">Удалить</button></div></div>'
+    ).join(''):'<div class="adminEmpty">Плейлистов пока нет</div>';
+  }catch(e){box.innerHTML='<div class="adminEmpty">Не удалось загрузить плейлисты</div>'}
+}
+function toggleInlinePlaylistForm(){
+  const form=document.getElementById('inlinePlaylistForm');
+  if(form){form.hidden=!form.hidden;if(!form.hidden)document.getElementById('inlinePlaylistName')?.focus()}
+}
+function editInlinePlaylist(name){
+  const form=document.getElementById('inlinePlaylistForm');
+  form.hidden=false;
+  document.getElementById('inlinePlaylistName').value=name;
+  document.getElementById('inlinePlaylistUrl').value='';
+  document.getElementById('inlinePlaylistError').textContent='Введите ссылку для обновления плейлиста';
+  document.getElementById('inlinePlaylistUrl').focus();
+}
+async function saveInlinePlaylist(){
+  const name=document.getElementById('inlinePlaylistName').value.trim();
+  const url=document.getElementById('inlinePlaylistUrl').value.trim();
+  const status=document.getElementById('inlinePlaylistError');
+  if(!name||!/^https?:\/\//i.test(url)){status.textContent='Введите название и ссылку http(s)';return}
+  const button=document.getElementById('inlinePlaylistSave');
+  button.disabled=true;
+  status.textContent='';
+  try{
+    const r=await fetch('/api/admin/iptv/edem/assign',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({user_id:0,playlist_name:name,playlist_url:url})});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(data.error||'HTTP '+r.status);
+    document.getElementById('inlinePlaylistName').value='';
+    document.getElementById('inlinePlaylistUrl').value='';
+    document.getElementById('inlinePlaylistForm').hidden=true;
+    showEdemSavedNotice();
+    await loadAdminEdem();
+    await load();
+  }catch(e){status.textContent='Ошибка: '+String(e.message||e)}
+  finally{button.disabled=false}
+}
+async function deleteInlinePlaylist(name){
+  if(!await abajConfirmAction('Удалить плейлист «'+name+'»?','Удалить'))return;
+  const r=await fetch('/api/admin/iptv/edem/assign',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({user_id:0,playlist_name:name,playlist_url:''})});
+  if(!r.ok){const data=await r.json().catch(()=>({}));alert('Ошибка удаления: '+(data.error||r.status));return}
+  await loadAdminEdem();
+  await load();
 }
 async function loadAdminTvs(){
   const box=document.getElementById('adminTvRows');
