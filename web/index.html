@@ -11557,6 +11557,7 @@ function cinemaResolvedRowInfo(row){
     if(qm)quality=qm[1];
   }
   if(/^\d+$/.test(quality))quality=quality+'p';
+  if(/^(?:2160|[3-9]\d{3,})p$/i.test(quality))quality='4K';
 
   let voice=raw
     .replace(/\b(?:сезон|season)\b[\s._:-]*\d{1,3}/ig,' ')
@@ -11931,6 +11932,7 @@ function cinemaStreamFormat(item){
     const m=text.match(/(2160P|1440P|1080P|720P|480P|360P|4K|2K|FHD|HD)/);
     if(m)quality=m[1];
   }
+  if(/^2160p$/i.test(quality))quality='4K';
   return {transport,quality,label:(quality?quality+' · ':'')+transport};
 }
 function renderCinemaFormatOptions(group,item){
@@ -13530,7 +13532,7 @@ function renderCinemaDetail(item){
   let q=cinemaPublicText(cinemaDetailText(item,'quality'))||
     (Array.isArray(mediaForBadges?.files)&&mediaForBadges.files.length?'1080p–2160p':'');
   if(/^\d{3,4}$/i.test(String(q||'').trim()))q=String(q).trim()+'p';
-  if(q)badgeList.push(q);
+  if(q)badgeList.push(String(q).replace(/\b(\d{4,5})\s*[pр]\b/gi,(match,res)=>Number(res)>=2160?'4K':match));
   const audio=cinemaPublicText(cinemaDetailText(item,'audio','sound'))||
     (Array.isArray(mediaForBadges?.audios)&&mediaForBadges.audios.length?'AC3':'');
   if(audio)badgeList.push(audio);
