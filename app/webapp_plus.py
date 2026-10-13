@@ -2301,9 +2301,12 @@ async def api_app_release(request):
     apk_path, _, public_path, channel = _apk_target(channel)
     meta = _read_apk_meta(channel)
     available = os.path.isfile(apk_path) and os.path.getsize(apk_path) >= MIN_APK_SIZE
-    if not available and channel == 'stable':
+    if channel == 'stable':
+        # A signed GitHub release remains a valid OTA source when Railway APK upload
+        # fails, or when Railway still holds an older APK.
         published = await _public_signed_apk_release()
-        if published:
+        local_version = int(meta.get('version_code') or 0) if available else 0
+        if published and int(published.get('version_code') or 0) > local_version:
             return web.json_response({'ok':True, 'service':'abajtv-ota',
                 'channel':channel, **published}, headers={'Cache-Control':'no-store, max-age=0'})
     return web.json_response({'ok':True,'service':'abajtv-ota','channel':channel,'available':available,'version_name':str(meta.get('version_name') or ''),'version_code':int(meta.get('version_code') or 0),'size_bytes':os.path.getsize(apk_path) if available else 0,'download_url':public_path if available else '','published_at':meta.get('published_at')}, headers={'Cache-Control':'no-store, max-age=0'})
