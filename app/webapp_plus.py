@@ -434,6 +434,13 @@ async def api_admin_access_sources(request):
         if not isinstance(selected,list) or len(selected)>100 or any(not isinstance(x,str) or x not in allowed for x in selected):
             return web.json_response({'ok':False,'error':'bad_selection'},status=400)
         await set_setting(f'abaj_source_permissions:{uid}', json.dumps(list(dict.fromkeys(selected))))
+        for token, entry in list(_edem_stream_tokens.items()):
+            if int(entry.get('uid') or 0) == uid:
+                _edem_stream_tokens.pop(token, None)
+        if 'kinopub' not in selected:
+            for token, entry in list(_kinopub_stream_tokens.items()):
+                if int(entry.get('uid') or 0) == uid:
+                    _kinopub_stream_tokens.pop(token, None)
     permissions = await _abaj_sources(uid)
     return web.json_response({'ok':True,'sources':options,'selected':[x['id'] for x in options if permissions is None or x['id'] in permissions]},headers={'Cache-Control':'no-store'})
 
@@ -4908,8 +4915,20 @@ async def api_healthz(request):
     )
 
 
+
+@web.middleware
+async def abaj_source_access_middleware(request, handler):
+    if request.path in ('/api/iptv/channels', '/api/iptv/play', '/api/iptv/proxy'):
+        user = await _user_from_request(request)
+        if user:
+            permissions = await _abaj_sources(int(user['id']))
+            if permissions is not None and 'free' not in permissions:
+                raise web.HTTPForbidden(text='Free TV access disabled')
+    return await handler(request)
+
+
 async def start_webapp(bot):
-    app = web.Application(client_max_size=100*1024*1024, middlewares=[api_error_middleware]); app['bot']=bot
+    app = web.Application(client_max_size=100*1024*1024, middlewares=[api_error_middleware, abaj_source_access_middleware]); app['bot']=bot
     app.router.add_get('/', index)
     app.router.add_get('/site', abaj_site)
     app.router.add_get('/site/', abaj_site)
