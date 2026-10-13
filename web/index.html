@@ -5319,9 +5319,9 @@ function cacheChannels(){
       id:x.id,name:x.name,group:x.group,country:x.country,logo:x.logo,status:x.status,tvg_id:x.tvg_id,
       quality:x.quality,resolution:x.resolution,video_quality:x.video_quality,height:x.height,quality_verified:x.quality_verified===true,
       latency_ms:x.latency_ms,backup_count:x.backup_count,uptime_pct:x.uptime_pct,health_score:x.health_score,health_samples:x.health_samples,unreliable:!!x.unreliable,epg_now:x.epg_now,epg_next:x.epg_next,
-      personal:!!x.personal,provider:x.provider,adult:!!x.adult,logo_fallback:x.logo_fallback
+      personal:!!x.personal,provider:x.provider,playlist_id:x.playlist_id,playlist_name:x.playlist_name,adult:!!x.adult,logo_fallback:x.logo_fallback
     }));
-    localStorage.setItem(CHANNEL_CACHE_KEY,JSON.stringify({ts:Date.now(),channels:slim}));
+    localStorage.setItem(CHANNEL_CACHE_KEY,JSON.stringify({ts:Date.now(),channels:slim,playlists:iptvPlaylistMenuOptions.filter(x=>x.value.startsWith('playlist:')).map(x=>({id:x.value.slice(9),name:x.name}))}));
   }catch(e){}
 }
 function restoreCachedChannels(){
@@ -5389,10 +5389,19 @@ async function load(){
       edemStatusPromise,
       new Promise(resolve=>setTimeout(()=>resolve({active:false,configured:false}),12000))
     ]);
-    const ed=await Promise.race([
+    let ed=await Promise.race([
       edemPromise,
       new Promise(resolve=>setTimeout(()=>resolve({channels:[]}),40000))
     ]);
+    if(!Array.isArray(ed.channels)||!ed.channels.length){
+      const lastGood=channels.filter(x=>x.personal);
+      if(lastGood.length){
+        let savedPlaylists=[];
+        try{savedPlaylists=JSON.parse(localStorage.getItem(CHANNEL_CACHE_KEY)||'null')?.playlists||[]}catch(e){}
+        const fallbackId=sourceFilter.startsWith('playlist:')?sourceFilter.slice(9):'legacy';
+        ed={...ed,channels:lastGood.map(x=>({...x,playlist_id:x.playlist_id||fallbackId})),playlists:Array.isArray(savedPlaylists)&&savedPlaylists.length?savedPlaylists:[{id:fallbackId,name:'Едо'}]};
+      }
+    }
     let base=(d.channels||[]).filter(x=>{
       const key=(String(x&&x.name||'')+' '+String(x&&x.tvg_id||'')).toLowerCase();
       if(key.includes('shoghakat')||key.includes('շողակաթ'))return false;
