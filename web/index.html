@@ -2648,6 +2648,8 @@ body:not(.cinemaMode) .cinemaShellSide{
         <span class="adminMeta" id="kinodaranAdminStatus">Проверка устройства…</span>
       </div>
       <div class="adminMeta" style="margin-top:6px">Режим приложения открывает Kinodaran отдельно. Веб-режим проверяет работу официального сайта в окне Abaj TV; вход на сайте отдельный.</div>
+      <div class="adminMeta" id="kinodaranDiagnostics" style="margin-top:6px"></div>
+      <button type="button" onclick="diagnoseKinodaran()" style="min-height:38px;margin-top:8px;border:0;border-radius:9px;background:#234a6d;color:#fff;font-weight:800">Проверить интеграцию на этом TV Box</button>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
         <button type="button" id="kinodaranAppModeBtn" onclick="setKinodaranMode('app')" style="min-height:44px;border:0;border-radius:11px;background:#087fe1;color:#fff;font-weight:900">Приложение</button>
         <button type="button" id="kinodaranWebModeBtn" onclick="setKinodaranMode('web')" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Веб-версия</button>
@@ -3680,6 +3682,24 @@ function disconnectKinodaranFromAdmin(){
 function showKinodaranIntegrationStatus(){
   const status=document.getElementById('kinodaranAdminStatus');
   if(status)status.textContent='Ожидается API для воспроизведения в Abaj TV';
+}
+function diagnoseKinodaran(){
+  const el=document.getElementById('kinodaranDiagnostics');
+  if(!el)return;
+  try{
+    if(!window.AbajNative||typeof AbajNative.kinodaranCapabilities!=='function'){
+      el.textContent='Для диагностики нужен обновлённый APK Abaj TV.';
+      return;
+    }
+    const d=JSON.parse(AbajNative.kinodaranCapabilities()||'{}');
+    if(!d.installed){el.textContent='Kinodaran не найден на устройстве.';return;}
+    const providers=Array.isArray(d.exported_providers)?d.exported_providers:[];
+    el.textContent='Версия '+String(d.version||'—')+' · Открытых провайдеров: '+providers.length+
+      ' · Экспортированных экранов: '+Number(d.exported_activities||0)+
+      ' · Сервисов: '+Number(d.exported_services||0)+
+      '. Доступ к каталогу и видеопотоку пока не подтверждён.'+
+      (providers.length?' Провайдеры: '+providers.join(', '):'');
+  }catch(e){el.textContent='Не удалось проверить интерфейсы Kinodaran.';}
 }
 function refreshKinodaranAdminStatus(){
   const status=document.getElementById('kinodaranAdminStatus');
