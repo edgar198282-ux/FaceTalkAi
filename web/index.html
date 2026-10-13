@@ -9153,6 +9153,21 @@ function moveTvSettingsFocusSpatial(direction){
   const dark=document.getElementById('appearanceDarkBtn');
   const auto=document.getElementById('tvAutoStartBtn');
 
+  // Keep the admin and updater actions in the D-pad path above language selection.
+  const adminBtn=document.getElementById('settingsAdminBtn');
+  const updateBtn=document.getElementById('appUpdateBtn');
+  const canFocus=el=>!!el&&items.includes(el);
+  if(langIndex>=0&&direction==='up'){
+    focusTvSettingsElement(canFocus(updateBtn)?updateBtn:(canFocus(adminBtn)?adminBtn:document.getElementById('tvSettingsCloseBtn')));
+    return;
+  }
+  if(id==='appUpdateBtn'){
+    if(direction==='up'&&canFocus(adminBtn)){focusTvSettingsElement(adminBtn);return}
+    if(direction==='down'){focusTvSettingsElement(document.getElementById('langRuBtn'));return}
+  }
+  if(id==='settingsAdminBtn'){
+    if(direction==='down'){focusTvSettingsElement(canFocus(updateBtn)?updateBtn:document.getElementById('langRuBtn'));return}
+  }
   if(langIndex>=0){
     if(direction==='left'){focusTvSettingsElement(document.getElementById(langIds[Math.max(0,langIndex-1)]));return}
     if(direction==='right'){focusTvSettingsElement(document.getElementById(langIds[Math.min(langIds.length-1,langIndex+1)]));return}
