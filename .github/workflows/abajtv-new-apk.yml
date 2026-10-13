@@ -38,14 +38,8 @@ jobs:
           name: AbajTV-new-server-debug
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-      - name: Build permanently signed release APK
-        working-directory: android
-        run: gradle --no-daemon :app:assembleRelease -PWEB_APP_URL=https://facetalkai-production-9387.up.railway.app -PAPP_VERSION_CODE=${{ steps.version.outputs.code }} -PAPP_VERSION_NAME=${{ steps.version.outputs.name }}
-      - name: Publish stable OTA release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.name }}
+      - name: Note OTA signing requirement
         run: |
-          cp android/app/build/outputs/apk/release/app-release.apk AbajTV-latest.apk
-          gh release delete abajtv-latest --yes --cleanup-tag 2>/dev/null || true
-          gh release create abajtv-latest AbajTV-latest.apk --title "$VERSION" --notes "Abaj TV stable Android TV update" --latest
+          echo "Debug APK is available as a workflow artifact."
+          echo "Stable OTA publishing requires the original Android signing keystore."
+          echo "Do not publish a release signed with a different key."
