@@ -2500,7 +2500,6 @@ body:not(.cinemaMode) .cinemaShellSide{
 <div class="settingsModal" id="tvSettingsModal" onclick="if(event.target===this)closeTvSettings()">
   <div class="settingsCard">
     <div class="settingsTitle" id="settingsTitle">⚙ Настройки</div>
-    <button class="settingsAction" id="settingsAdminBtn" onclick="openAdminFromTvSettings()" style="display:none;background:#0b5f9e">🛠 Админ-панель</button>
     <button class="settingsAction" id="appUpdateBtn" onclick="manualAppUpdate()" style="display:none;background:#123b78;margin-top:0;margin-bottom:8px">🔄 Проверить обновление</button>
     <div id="appVersionText" class="deviceMeta" style="display:none;text-align:center;margin:-2px 0 8px"></div>
     <button id="activationBotLink" onclick="openActivationBot()" style="width:100%;border:0;border-radius:14px;background:#0d87e7;color:#fff;padding:12px 14px;margin:0 0 10px;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px">
@@ -2549,6 +2548,7 @@ body:not(.cinemaMode) .cinemaShellSide{
       <option value="1080">1080p</option>
       <option value="2160">4K</option>
     </select>
+    <button class="settingsAction" id="settingsAdminBtn" onclick="openAdminFromTvSettings()" style="display:none;background:#0b5f9e">🛠 Админ-панель</button>
     <button class="settingsClose" id="settingsCloseBtn" onclick="closeTvSettings()">Закрыть</button>
   </div>
 </div>
