@@ -2613,8 +2613,8 @@ body:not(.cinemaMode) .cinemaShellSide{
 
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Плейлист</div>
     <div class="adminRows" id="adminRows"><div class="adminEmpty">Загрузка…</div></div>
-    <button type="button" onclick="toggleInlinePlaylistForm()" style="width:100%;min-height:44px;margin-top:10px;border:0;border-radius:11px;background:#1687dc;color:white;font-weight:800">+ Добавить плейлист</button>
-    <div id="inlinePlaylistForm" hidden style="padding:12px 0">
+    <button type="button" id="inlinePlaylistAddBtn" onclick="toggleInlinePlaylistForm()" style="width:100%;min-height:44px;margin-top:10px;border:0;border-radius:11px;background:#1687dc;color:white;font-weight:800">+ Добавить плейлист</button>
+    <div id="inlinePlaylistForm" hidden style="padding:12px;border:2px solid #80bce0;border-radius:13px;background:#edf7ff;margin-top:12px;box-sizing:border-box;width:100%">
       <input id="inlinePlaylistName" maxlength="32" placeholder="Название плейлиста" style="width:100%;min-height:44px;padding:10px;margin-bottom:8px;border:1px solid #bed8e5;border-radius:11px">
       <input id="inlinePlaylistUrl" placeholder="Ссылка M3U / M3U8" style="width:100%;min-height:44px;padding:10px;margin-bottom:10px;border:1px solid #bed8e5;border-radius:11px">
       <button type="button" id="inlinePlaylistSave" onclick="saveInlinePlaylist()" style="width:100%;min-height:44px;border:0;border-radius:11px;background:#16a05d;color:white;font-weight:800">Сохранить</button>
@@ -3965,15 +3965,27 @@ async function loadAdminEdem(){
 }
 function toggleInlinePlaylistForm(){
   const form=document.getElementById('inlinePlaylistForm');
-  if(!form)return;
-  const show=form.hidden;
+  const add=document.getElementById('inlinePlaylistAddBtn');
+  if(!form||!add)return;
+  const show=form.hidden||!!inlineEditOriginal;
+  add.insertAdjacentElement('afterend',form);
   form.hidden=!show;
-  if(show){inlineEditOriginal='';document.getElementById('inlinePlaylistName').value='';document.getElementById('inlinePlaylistUrl').value='';document.getElementById('inlinePlaylistError').textContent='';document.getElementById('inlinePlaylistName').focus()}
+  if(show){
+    inlineEditOriginal='';
+    document.getElementById('inlinePlaylistName').value='';
+    document.getElementById('inlinePlaylistUrl').value='';
+    document.getElementById('inlinePlaylistError').textContent='';
+    document.getElementById('inlinePlaylistName').focus();
+  }
 }
 function editInlinePlaylist(name){
   const form=document.getElementById('inlinePlaylistForm');
-  form.hidden=false;
   const playlist=inlinePlaylists.find(p=>p.name===name);
+  const card=[...document.querySelectorAll('#adminRows .adminRow')].find(el=>el.querySelector('b')?.textContent===name);
+  if(!form||!card)return;
+  if(!form.hidden&&inlineEditOriginal===name){form.hidden=true;inlineEditOriginal='';return}
+  card.appendChild(form);
+  form.hidden=false;
   inlineEditOriginal=name;
   document.getElementById('inlinePlaylistName').value=playlist?.name||name;
   document.getElementById('inlinePlaylistUrl').value=playlist?.url||'';
@@ -3995,7 +4007,9 @@ async function saveInlinePlaylist(){
     inlineEditOriginal='';
     document.getElementById('inlinePlaylistName').value='';
     document.getElementById('inlinePlaylistUrl').value='';
-    document.getElementById('inlinePlaylistForm').hidden=true;
+    const form=document.getElementById('inlinePlaylistForm');
+    form.hidden=true;
+    document.getElementById('inlinePlaylistAddBtn')?.insertAdjacentElement('afterend',form);
     showEdemSavedNotice();
     await loadAdminEdem();
     await load();
