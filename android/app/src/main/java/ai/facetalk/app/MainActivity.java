@@ -1942,6 +1942,38 @@ public class MainActivity extends Activity {
             if(id==null||secret==null||id.length()<8||secret.length()<8||id.length()>160||secret.length()>160)return;
             prefs.edit().putString("abaj_persist_tv_device_id",id).putString("abaj_persist_tv_device_secret",secret).apply();
         }
+        @JavascriptInterface public String kinodaranCapabilities(){
+            JSONObject out=new JSONObject();
+            try{
+                android.content.pm.PackageInfo pi=getPackageManager().getPackageInfo(
+                    "com.techcraeft.kinodaran",
+                    android.content.pm.PackageManager.GET_PROVIDERS|
+                    android.content.pm.PackageManager.GET_ACTIVITIES|
+                    android.content.pm.PackageManager.GET_SERVICES
+                );
+                out.put("installed",true);
+                out.put("version",pi.versionName==null?"":pi.versionName);
+                org.json.JSONArray exportedProviders=new org.json.JSONArray();
+                if(pi.providers!=null)for(android.content.pm.ProviderInfo p:pi.providers){
+                    if(p!=null&&p.exported&&p.authority!=null)exportedProviders.put(p.authority);
+                }
+                int exportedActivities=0;
+                if(pi.activities!=null)for(android.content.pm.ActivityInfo a:pi.activities){
+                    if(a!=null&&a.exported)exportedActivities++;
+                }
+                int exportedServices=0;
+                if(pi.services!=null)for(android.content.pm.ServiceInfo a:pi.services){
+                    if(a!=null&&a.exported)exportedServices++;
+                }
+                out.put("exported_providers",exportedProviders);
+                out.put("exported_activities",exportedActivities);
+                out.put("exported_services",exportedServices);
+                out.put("external_stream_supported",false);
+            }catch(Exception e){
+                try{out.put("installed",false);out.put("error","not_found_or_not_visible");}catch(Exception ignored){}
+            }
+            return out.toString();
+        }
         @JavascriptInterface public String kinodaranInfo(){
             try{
                 android.content.pm.PackageInfo pi=getPackageManager().getPackageInfo("com.techcraeft.kinodaran",0);
