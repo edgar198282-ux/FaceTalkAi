@@ -1,1 +1,0 @@
-KinoPub history sync implementation pending verification of API endpoints.
