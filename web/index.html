@@ -16009,6 +16009,30 @@ body.nativeTv #cinemaDetail #cinemaDetailWatch{
 .playerView.cinemaPlayback #playerRemaining,.playerView.cinemaPlayback #playerCinemaTime{display:none!important}
 .playerView.cinemaPlayback .playerPrimaryControls>.playerPlayCtrl .playerCtrlIcon{margin-top:0!important}
 body.nativeTv .playerView.cinemaPlayback .playerPrimaryControls>.playerPlayCtrl .playerCtrlIcon{width:68px!important;height:68px!important;min-width:68px!important;min-height:68px!important}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
+  height:auto!important;
+  min-height:22px!important;
+  margin-bottom:23px!important;
+  display:block!important;
+}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerSeekRange{
+  height:18px!important;
+  display:block!important;
+}
+body:not(.nativeTv) .playerView.cinemaPlayback .cinemaTimelineClocks{
+  display:flex!important;
+  position:relative!important;
+  width:100%!important;
+  margin-top:2px!important;
+  padding:0 2px!important;
+  box-sizing:border-box!important;
+  justify-content:space-between!important;
+  font-variant-numeric:tabular-nums;
+}
+body:not(.nativeTv) .playerView.cinemaPlayback :is(#playerRemaining,#playerCinemaTime){display:none!important}
+@media(orientation:landscape){
+  body:not(.nativeTv) .playerView.cinemaPlayback :is(.playerMeta,.playerMetaText){padding-right:0!important}
+}
 </style>
 <style id="abaj-cinema-seek-frame-style">
 .playerTimelineWrap{position:relative}
