@@ -15781,6 +15781,23 @@ body :is(.cinemaTvQuickBtn,.cinemaShellBtn,#cinemaTvBtn,#cinemaBackToTvBtn):is(:
   document.addEventListener('touchcancel',()=>{armed=false;pulling=false;hide()},{passive:true});
 })();
 </script>
+<style id="abaj-watch-button-contrast">
+#cinemaDetail #cinemaDetailWatch,
+body:not(.nativeTv) #cinemaDetail #cinemaDetailWatch,
+body.nativeTv #cinemaDetail #cinemaDetailWatch{
+  background:linear-gradient(180deg,#256c98 0%,#17486e 100%)!important;
+  color:#fff!important;
+  border:1px solid rgba(176,226,255,.85)!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.4)!important;
+  box-shadow:0 3px 13px rgba(5,27,49,.35)!important;
+  opacity:1!important;
+}
+#cinemaDetail #cinemaDetailWatch:focus-visible{
+  outline:2px solid #81d9ff!important;
+  outline-offset:2px!important;
+}
+#cinemaDetail #cinemaDetailWatch:disabled{opacity:.65!important}
+</style>
 </body>
 </html>
 
