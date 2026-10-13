@@ -1566,6 +1566,46 @@ async def _kinopub_sync_bookmarks(uid: int):
     return merged[:300]
 
 
+async def _cinema_history_merge_remote(uid, rows):
+    """Merge the user's own KinoPub history; never use the shared owner token."""
+    credentials = await _kinopub_tokens(uid)
+    if not (credentials.get('access_token') or credentials.get('refresh_token')):
+        return rows
+    try:
+        token = await _kinopub_access_token(uid)
+        if not token:
+            return rows
+        status, payload = await _kinopub_api('GET', '/v1/history', params={
+            'access_token': token, 'page': 1, 'perpage': 100,
+        }, timeout=12)
+        if status >= 400:
+            return rows
+        remote = _kinopub_extract_items(payload)
+        merged = {str(row.get('id')): row for row in rows if row.get('id')}
+        for entry in remote:
+            item = entry.get('item') if isinstance(entry.get('item'), dict) else entry
+            item_id = str(item.get('id') or '').strip()
+            if not item_id:
+                continue
+            title = str(item.get('title') or item.get('name') or '').strip()
+            if not title:
+                continue
+            compact = {k: item[k] for k in ('id', 'title', 'original_title',
+                'year', 'poster', 'description', 'rating', 'kind') if k in item}
+            compact['id'] = item_id
+            compact['title'] = title
+            compact['source'] = 'kinopub'
+            try:
+                compact['watched_at'] = int(entry.get('watched_at') or entry.get('updated_at') or 0)
+            except (ValueError, TypeError):
+                compact['watched_at'] = 0
+            if item_id not in merged or compact['watched_at'] > int(merged[item_id].get('watched_at') or 0):
+                merged[item_id] = compact
+        return sorted(merged.values(), key=lambda row: int(row.get('watched_at') or 0), reverse=True)[:200]
+    except Exception:
+        logging.exception('Personal KinoPub history sync failed for user %s', uid)
+        return rows
+
 async def api_cinema_library(request):
     user = await _user_from_request(request)
     if not user:
@@ -1577,6 +1617,8 @@ async def api_cinema_library(request):
     if section not in ('history','watching','bookmarks'):
         return web.json_response({'ok':False,'error':'bad_section'}, status=400)
     rows = await _cinema_library_read(uid, section)
+    if section == 'history':
+        rows = await _cinema_history_merge_remote(uid, rows)
     if section != 'bookmarks':
         return web.json_response({'ok':True,'section':section,'items':rows,'count':len(rows)}, headers={'Cache-Control':'no-store'})
 
