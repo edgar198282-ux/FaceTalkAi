@@ -2603,13 +2603,13 @@ body:not(.cinemaMode) .cinemaShellSide{
     </div>
     
 
-    <div style="font-size:18px;font-weight:900;margin:12px 0 10px">Доступ пользователей</div>
+    <button type="button" id="accessToggleBtn" aria-expanded="false" aria-controls="accessRows" onclick="toggleAdminAccessRows()" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:transparent;border:0;padding:12px 0 10px;color:inherit;font-size:18px;font-weight:900;text-align:left">Доступ пользователей <span id="accessToggleArrow" aria-hidden="true">▼</span></button>
     <div id="accessStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
       <div class="adminRow" style="display:block;text-align:center"><b id="accessTotal">0</b><div class="adminMeta">Всего</div></div>
       <div class="adminRow" style="display:block;text-align:center"><b id="accessActive">0</b><div class="adminMeta">Активировано</div></div>
       <div class="adminRow" style="display:block;text-align:center"><b id="accessPending">0</b><div class="adminMeta">Ожидают</div></div>
     </div>
-    <div class="adminRows" id="accessRows"><div class="adminEmpty">Загрузка…</div></div>
+    <div class="adminRows" id="accessRows" hidden><div class="adminEmpty">Загрузка…</div></div>
 
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Плейлист</div>
     <div class="adminRows" id="adminRows"><div class="adminEmpty">Загрузка…</div></div>
@@ -3531,6 +3531,15 @@ function closeSettings(){
 }
 
 let adminAccessUsers=[];
+function toggleAdminAccessRows(){
+  const rows=document.getElementById('accessRows');
+  const btn=document.getElementById('accessToggleBtn');
+  const arrow=document.getElementById('accessToggleArrow');
+  if(!rows)return;
+  rows.hidden=!rows.hidden;
+  if(btn)btn.setAttribute('aria-expanded',String(!rows.hidden));
+  if(arrow)arrow.textContent=rows.hidden?'▼':'▲';
+}
 function adminPanelOpen(){
   return !!document.getElementById('adminPanel')?.classList.contains('open');
 }
