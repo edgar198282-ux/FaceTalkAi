@@ -3386,7 +3386,7 @@ async def api_admin_iptv_edem_list(request):
         users.append({
             'user_id': uid,
             'configured': True,
-            'playlists': [{'id':x.get('id'),'name':x.get('name')} for x in entries if isinstance(x,dict)],
+            'playlists': [{'id':x.get('id'),'name':x.get('name'),'url':x.get('url')} for x in entries if isinstance(x,dict)],
             'channel_count': len(cache.get('channels') or []) + sum(len((_edem_named_cache.get(f"{uid}:{x.get('id')}") or {}).get('channels') or []) for x in entries if isinstance(x,dict)),
             'active_connections': len(sessions),
             'max_connections': limit,
@@ -4332,7 +4332,13 @@ async def api_admin_iptv_edem_assign(request):
             entries = []
         import hashlib
         playlist_id = hashlib.sha256(playlist_name.casefold().encode()).hexdigest()[:16]
-        entries = [x for x in entries if x.get('id') != playlist_id]
+        original_name = str(body.get('original_name') or '').strip()
+        original_id = hashlib.sha256(original_name.casefold().encode()).hexdigest()[:16] if original_name else playlist_id
+        if original_name and not any(x.get('id') == original_id for x in entries):
+            return web.json_response({'ok':False,'error':'playlist_not_found'},status=404)
+        if original_id != playlist_id and any(x.get('id') == playlist_id for x in entries):
+            return web.json_response({'ok':False,'error':'playlist_name_exists'},status=409)
+        entries = [x for x in entries if x.get('id') not in {playlist_id, original_id}]
         if playlist_url:
             entries.append({'id': playlist_id, 'name': playlist_name, 'url': playlist_url})
         if len(entries) > 20:
