@@ -3694,11 +3694,16 @@ function diagnoseKinodaran(){
     const d=JSON.parse(AbajNative.kinodaranCapabilities()||'{}');
     if(!d.installed){el.textContent='Kinodaran не найден на устройстве.';return;}
     const providers=Array.isArray(d.exported_providers)?d.exported_providers:[];
-    el.textContent='Версия '+String(d.version||'—')+' · Открытых провайдеров: '+providers.length+
-      ' · Экспортированных экранов: '+Number(d.exported_activities||0)+
-      ' · Сервисов: '+Number(d.exported_services||0)+
-      '. Доступ к каталогу и видеопотоку пока не подтверждён.'+
-      (providers.length?' Провайдеры: '+providers.join(', '):'');
+    const screens=Array.isArray(d.activity_details)?d.activity_details:[];
+    const services=Array.isArray(d.service_details)?d.service_details:[];
+    const intents=Array.isArray(d.supported_intents)?d.supported_intents:[];
+    const describe=entries=>entries.map(x=>String(x.name||'').split('.').pop()+(x.permission?' (требует разрешение)':'')).join(', ')||'нет';
+    el.textContent='Kinodaran '+String(d.version||'—')+
+      ' · Экраны ('+screens.length+'): '+describe(screens)+
+      ' · Сервисы ('+services.length+'): '+describe(services)+
+      ' · Обработчики: '+(intents.join(', ')||'нет')+
+      ' · Открытые провайдеры: '+providers.length+
+      '. Это проверка интерфейсов, а не подтверждение доступа к фильмам.';
   }catch(e){el.textContent='Не удалось проверить интерфейсы Kinodaran.';}
 }
 function refreshKinodaranAdminStatus(){
