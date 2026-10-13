@@ -2314,6 +2314,28 @@ body.darkMode #tvSettingsModal #settingsCloseBtn{background:#162b40!important;co
 #tvSettingsModal button:active,#tvSettingsModal [role="button"]:active,#tvAdminModal button:active,#tvAdminModal [role="button"]:active{transform:scale(.96)!important}
 </style>
 <script>document.documentElement.classList.add('abaj-initializing');window.addEventListener('load',()=>setTimeout(()=>document.documentElement.classList.remove('abaj-initializing'),12000),{once:true});</script>
+<style id="abaj-mobile-cinema-controls-compact-v1">
+/* Mobile landscape cinema only: move timeline close to controls and reduce overlay height. */
+@media (orientation:landscape) and (max-height:700px){
+  body:not(.nativeTv) .playerView.cinemaPlayback.pureFullscreen.showPureControls .playerBottom,
+  body:not(.nativeTv) .playerView.cinemaPlayback.appFullscreen.showPureControls .playerBottom{
+    padding-top:4px!important;
+    padding-bottom:calc(5px + env(safe-area-inset-bottom,0px))!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerMeta{
+    min-height:28px!important;
+    padding-bottom:2px!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
+    margin-top:5px!important;
+    margin-bottom:7px!important;
+    min-height:22px!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerPrimaryControls{
+    margin-top:3px!important;
+  }
+}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
