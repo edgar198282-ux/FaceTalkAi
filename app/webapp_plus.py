@@ -1471,8 +1471,26 @@ async def api_cinema_progress(request):
                         params['season'] = season_number
                     status, response = await _kinopub_api(
                         'GET', '/v1/watching/marktime', params=params, timeout=12)
+                    if status == 404 and not season_number:
+                        # KinoPub requires season for serials; verify the item type
+                        # before retrying so ordinary movies remain untouched.
+                        check_status, check_data = await _kinopub_api(
+                            'GET', '/v1/watching',
+                            params={'access_token': token, 'id': item_id},
+                            timeout=12)
+                        watched_item = check_data.get('item') if isinstance(check_data, dict) else None
+                        if (check_status == 200 and isinstance(watched_item, dict)
+                                and str(watched_item.get('type') or '').lower() in
+                                ('serial', 'docuserial', 'tvshow')):
+                            seasons = watched_item.get('seasons') or []
+                            if isinstance(seasons, list) and seasons:
+                                first = seasons[0] if isinstance(seasons[0], dict) else {}
+                                params['season'] = int(first.get('number') or 1)
+                                status, response = await _kinopub_api(
+                                    'GET', '/v1/watching/marktime',
+                                    params=params, timeout=12)
                     if status >= 400 or (isinstance(response, dict) and response.get('status', 200) != 200):
-                        logging.warning('KinoPub marktime rejected for user %s: HTTP %s', uid, status)
+                        logging.warning('KinoPub marktime rejected for user %s item %s season %s: HTTP %s', uid, item_id, params.get('season'), status)
         except Exception:
             logging.exception('KinoPub personal watch position sync failed for user %s', uid)
 
