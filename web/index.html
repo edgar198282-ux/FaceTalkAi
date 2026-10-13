@@ -2575,19 +2575,6 @@ body:not(.cinemaMode) .cinemaShellSide{
       <input id="themeHue" class="themeHue" type="range" min="0" max="359" step="1" value="204" oninput="setThemeHue(this.value)">
       <button class="themeReset" id="themeResetBtn" onclick="resetThemeHue()">Сбросить цвет</button>
     </div>
-    <div class="settingsLabel" id="settingsPlayerLabel">Плеер</div>
-    <select id="tvPlayerPref" class="settingsAction" onchange="setTvPlayerMode(this.value)" style="appearance:auto">
-      <option value="auto">Auto</option>
-      <option value="hls">HLS.js</option>
-      <option value="system">Системный</option>
-    </select>
-    <div class="settingsLabel" id="settingsQualityLabel">Качество по умолчанию</div>
-    <select id="tvQualityPref" class="settingsAction" onchange="setTvPreferredQuality(this.value)" style="appearance:auto">
-      <option value="auto">Auto</option>
-      <option value="720">720p</option>
-      <option value="1080">1080p</option>
-      <option value="2160">4K</option>
-    </select>
     <button class="settingsClose" id="settingsCloseBtn" onclick="closeTvSettings()">Закрыть</button>
   </div>
 </div>
