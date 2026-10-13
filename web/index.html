@@ -13352,7 +13352,11 @@ function renderCinemaCast(item){
       '<div class="cinemaCastName">'+safeName+'</div>';
     btn.dataset.actorSearchName=searchName||name;
     btn.dataset.actorId=actorId;
-    btn.onclick=()=>openCinemaActor(searchName,name,actorId);
+    btn.onclick=()=>{
+      btn.classList.add('castTapped');
+      window.setTimeout(()=>btn.classList.remove('castTapped'),350);
+      openCinemaActor(searchName,name,actorId);
+    };
     btn.style.cursor='pointer';
     btn.removeAttribute('aria-disabled');
     btn.tabIndex=0;
@@ -15859,6 +15863,14 @@ body.nativeTv #cinemaDetail #cinemaDetailWatch{
 <style id="abaj-cast-tap-clean">
 body:not(.nativeTv) .cinemaCastCard{pointer-events:auto!important;-webkit-tap-highlight-color:transparent!important;outline:none!important}
 body:not(.nativeTv) .cinemaCastCard:focus{background:transparent!important;box-shadow:none!important}
+</style>
+<style id="abaj-cast-tap-feedback">
+body:not(.nativeTv) .cinemaCastCard{transition:transform .16s ease,filter .16s ease;-webkit-tap-highlight-color:transparent!important}
+body:not(.nativeTv) .cinemaCastCard:active,
+body:not(.nativeTv) .cinemaCastCard.castTapped{transform:scale(.955)!important;filter:brightness(1.13)}
+body:not(.nativeTv) .cinemaCastCard:active img,
+body:not(.nativeTv) .cinemaCastCard.castTapped img,
+body:not(.nativeTv) .cinemaCastCard:active .cinemaCastAvatarFallback{box-shadow:0 0 12px rgba(255,255,255,.28)!important}
 </style>
 </body>
 </html>
