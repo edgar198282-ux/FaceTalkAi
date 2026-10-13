@@ -2727,6 +2727,7 @@ body:not(.cinemaMode) .cinemaShellSide{
     <div class="playerTimelineWrap">
       <input id="playerSeekRange" class="playerSeekRange" type="range" min="0" max="1000" step="1" value="0" aria-label="Перемотка фильма" oninput="previewCinemaSeek(this.value)" onchange="commitCinemaSeek(this.value)">
       <div class="playerTimeline" aria-hidden="true"><span id="playerTimelineFill"></span></div>
+      <div class="cinemaTimelineClocks"><span id="cinemaElapsedClock"></span><span id="cinemaRemainingClock"></span></div>
       <div id="cinemaSeekPreview" aria-hidden="true"><canvas id="cinemaSeekFrame" width="176" height="99"></canvas><span id="cinemaSeekPreviewTime"></span></div>
     </div>
     <div class="playerPrimaryControls" onclick="event.stopPropagation();if(document.getElementById('playerView').classList.contains('pureFullscreen'))showPureFullscreenControls();else showTvPlayerUi(true)">
@@ -5655,6 +5656,8 @@ function fmtPlaybackClock(sec){
 function updatePlayerRemaining(){
   const el=document.getElementById('playerRemaining');
   const cinemaTime=document.getElementById('playerCinemaTime');
+  const elapsedClock=document.getElementById('cinemaElapsedClock');
+  const remainingClock=document.getElementById('cinemaRemainingClock');
   const timeline=document.getElementById('playerTimelineFill');
   if(!el)return;
 
@@ -5675,6 +5678,8 @@ function updatePlayerRemaining(){
     }
     if(dur>0){
       const timeText=fmtPlaybackClock(pos)+' / '+fmtPlaybackClock(dur);
+      if(elapsedClock)elapsedClock.textContent=fmtPlaybackClock(pos);
+      if(remainingClock)remainingClock.textContent='−'+fmtPlaybackClock(Math.max(0,dur-pos));
       el.textContent=timeText;
       if(cinemaTime)cinemaTime.textContent=timeText;
       if(timeline)timeline.style.width=Math.max(0,Math.min(100,(pos/dur)*100))+'%';
@@ -5682,6 +5687,8 @@ function updatePlayerRemaining(){
       if(seek&&document.activeElement!==seek)seek.value=String(Math.round(Math.max(0,Math.min(1000,(pos/dur)*1000))));
     }else{
       const timeText=pos>0?fmtPlaybackClock(pos):'';
+      if(elapsedClock)elapsedClock.textContent=timeText;
+      if(remainingClock)remainingClock.textContent='';
       el.textContent=timeText;
       if(cinemaTime)cinemaTime.textContent=timeText;
       if(timeline)timeline.style.width='0%';
@@ -5691,6 +5698,8 @@ function updatePlayerRemaining(){
   }
 
   if(cinemaTime)cinemaTime.textContent='';
+  if(elapsedClock)elapsedClock.textContent='';
+  if(remainingClock)remainingClock.textContent='';
   if(!current||!current.epg_now||!current.epg_now.stop){
     el.textContent='';
     if(timeline)timeline.style.width='0%';
@@ -8649,6 +8658,10 @@ function previewCinemaSeek(value){
   const target=Math.max(0,Math.min(dur,(Number(value||0)/1000)*dur));
   const el=document.getElementById('playerRemaining');
   if(el)el.textContent=fmtPlaybackClock(target)+' / '+fmtPlaybackClock(dur);
+  const elapsedClock=document.getElementById('cinemaElapsedClock');
+  const remainingClock=document.getElementById('cinemaRemainingClock');
+  if(elapsedClock)elapsedClock.textContent=fmtPlaybackClock(target);
+  if(remainingClock)remainingClock.textContent='−'+fmtPlaybackClock(Math.max(0,dur-target));
   const fill=document.getElementById('playerTimelineFill');
   if(fill)fill.style.width=(target/dur*100)+'%';
   updateCinemaSeekPreview(target,dur);
@@ -15986,6 +15999,13 @@ body.nativeTv #cinemaDetail #cinemaDetailWatch{
   outline-offset:2px!important;
 }
 #cinemaDetail #cinemaDetailWatch:disabled{opacity:.65!important}
+</style>
+<style id="abaj-cinema-player-clock-alignment">
+.playerView:not(.cinemaPlayback) .cinemaTimelineClocks{display:none}
+.playerView.cinemaPlayback .cinemaTimelineClocks{display:flex;justify-content:space-between;align-items:center;margin-top:3px;color:#d6edff;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.25;pointer-events:none}
+.playerView.cinemaPlayback #playerRemaining,.playerView.cinemaPlayback #playerCinemaTime{display:none!important}
+.playerView.cinemaPlayback .playerPrimaryControls>.playerPlayCtrl .playerCtrlIcon{margin-top:0!important}
+body.nativeTv .playerView.cinemaPlayback .playerPrimaryControls>.playerPlayCtrl .playerCtrlIcon{width:68px!important;height:68px!important;min-width:68px!important;min-height:68px!important}
 </style>
 <style id="abaj-cinema-seek-frame-style">
 .playerTimelineWrap{position:relative}
