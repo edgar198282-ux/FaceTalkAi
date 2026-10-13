@@ -7,11 +7,14 @@ on:
       - 'android/**'
       - '.github/workflows/abajtv-new-apk.yml'
   workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: abajtv-stable-ota
+  cancel-in-progress: false
 jobs:
   build-debug-apk:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -21,11 +24,28 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Build APK for the new Railway domain
+      - name: Set release version
+        id: version
+        run: |
+          CODE=$(date -u +%s)
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "name=1.2.$CODE" >> "$GITHUB_OUTPUT"
+      - name: Build debug APK for testing
         working-directory: android
-        run: gradle --no-daemon :app:assembleDebug -PWEB_APP_URL=https://facetalkai-production-9387.up.railway.app
+        run: gradle --no-daemon :app:assembleDebug -PWEB_APP_URL=https://facetalkai-production-9387.up.railway.app -PAPP_VERSION_CODE=${{ steps.version.outputs.code }} -PAPP_VERSION_NAME=${{ steps.version.outputs.name }}
       - uses: actions/upload-artifact@v4
         with:
           name: AbajTV-new-server-debug
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+      - name: Build permanently signed release APK
+        working-directory: android
+        run: gradle --no-daemon :app:assembleRelease -PWEB_APP_URL=https://facetalkai-production-9387.up.railway.app -PAPP_VERSION_CODE=${{ steps.version.outputs.code }} -PAPP_VERSION_NAME=${{ steps.version.outputs.name }}
+      - name: Publish stable OTA release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk AbajTV-latest.apk
+          gh release delete abajtv-latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create abajtv-latest AbajTV-latest.apk --title "$VERSION" --notes "Abaj TV stable Android TV update" --latest
