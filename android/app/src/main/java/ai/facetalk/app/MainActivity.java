@@ -1954,6 +1954,16 @@ public class MainActivity extends Activity {
                 return "{\"installed\":false,\"integrationAvailable\":false}";
             }
         }
+        @JavascriptInterface public boolean launchKinodaran(){
+            try{
+                Intent launch=getPackageManager().getLaunchIntentForPackage("com.techcraeft.kinodaran");
+                if(launch==null)return false;
+                runOnUiThread(()->{
+                    try{startActivity(launch);}catch(Exception ignored){}
+                });
+                return true;
+            }catch(Exception e){return false;}
+        }
         @JavascriptInterface public String kinoPubInfo(){
             try{
                 android.content.pm.PackageInfo pi=getPackageManager().getPackageInfo("com.kinopub",0);
