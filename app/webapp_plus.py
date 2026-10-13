@@ -2879,7 +2879,6 @@ async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
             text = await r.text(errors='ignore')
 
     rows = _normalize_edem_logo_urls(_unique_edem_channel_ids(iptv._parse_m3u(text, 'ED', playlist_url)), playlist_url)
-    _fill_edem_logos_from_catalog(rows)
     guide = await _edem_xmltv_guide(_playlist_xmltv_url(text))
     out = []
     for row in rows:
@@ -3029,7 +3028,6 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                         channels.extend(cached['channels'])
                     continue
                 parsed_rows = _normalize_edem_logo_urls(_unique_edem_channel_ids(iptv._parse_m3u(body, 'ED', url)), url)
-                _fill_edem_logos_from_catalog(parsed_rows)
                 if not parsed_rows:
                     logging.warning("EDEM_PLAYLIST_EMPTY id=%s payload_bytes=%s", playlist_id, len(body))
                     if cached and cached.get('url') == url and cached.get('channels'):
@@ -3087,7 +3085,7 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
     # Resolve missing artwork using cached public IPTV logo catalogs, without changing streams.
     if any(not str(ch.get('logo') or '').strip() for ch in channels):
         _match_edem_catalog_logos(channels, await _edem_logo_catalog())
-    # Share artwork between playlists only for unambiguous channel identities.
+    # Share artwork between added playlists only; never borrow Free logos.
     # This does not change stream URLs, names, country filters or ownership.
     playlist_logo_by_id = {}
     playlist_logo_by_name = {}
@@ -3101,26 +3099,9 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
         for variant in iptv._logo_name_variants(source_channel.get('name') or ''):
             if len(variant) >= 4:
                 playlist_logo_by_name.setdefault(variant, set()).add(logo)
-    free_by_id = {}
-    free_by_name = {}
-    for free_channel in iptv._state.get('channels', {}).values():
-        tvg_id = str(free_channel.get('tvg_id') or '').split('@', 1)[0].strip().lower()
-        logo = str(free_channel.get('logo') or iptv._epg_logo_for_channel(free_channel) or '').strip()
-        if not logo.startswith(('http://', 'https://')):
-            continue
-        if tvg_id:
-            free_by_id.setdefault(tvg_id, logo)
-        for variant in iptv._logo_name_variants(free_channel.get('name') or ''):
-            free_by_name.setdefault(variant, set()).add(logo)
     for channel in channels:
         tvg_id = str(channel.get('tvg_id') or '').split('@', 1)[0].strip().lower()
-        fallback = free_by_id.get(tvg_id) if tvg_id else None
-        if not fallback:
-            matches = set()
-            for variant in iptv._logo_name_variants(channel.get('name') or ''):
-                matches.update(free_by_name.get(variant) or ())
-            if len(matches) == 1:
-                fallback = next(iter(matches))
+        fallback = None
         if not fallback:
             candidates = playlist_logo_by_id.get(tvg_id, set()) if tvg_id else set()
             if not candidates:
