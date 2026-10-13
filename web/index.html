@@ -5307,8 +5307,9 @@ async function load(){
     }
     if(Array.isArray(ed.channels)&&ed.channels.length){
       const normalizePlaylistChannelName=value=>String(value||'').toLowerCase()
-        .replace(/\b(?:4k|uhd|fhd|hd|sd|1080p|720p)\b/gi,'')
-        .replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+        .replace(/\b(?:4k|uhd|fhd|full\s*hd|hd|sd|2160p|1080p|720p|50\s*fps|60\s*fps|backup|резерв|test)\b/gi,'')
+        .replace(/^(?:(?:ru|rus|russia|am|arm|ua|ukr|by|kz|uz|ge)\s*[:|.\-]\s*)+/gi,'')
+        .replace(/[^\p{L}\p{N}]+/gu,' ').replace(/\s+/g,' ').trim();
       const logoById=new Map(),logoByName=new Map();
       for(const item of ed.channels){
         const id=String(item.tvg_id||'').split('@')[0].trim().toLowerCase();
@@ -5326,7 +5327,12 @@ async function load(){
       // Fill missing artwork in personal playlists using already available channel logos.
       // Do not change stream URLs, source lists, or existing provider artwork.
       const knownLogosById=new Map(),knownLogosByName=new Map();
-      for(const item of [...base,...ed.channels]){
+      let earlierChannels=[];
+      try{
+        const previous=JSON.parse(localStorage.getItem(CHANNEL_CACHE_KEY)||'null');
+        if(Array.isArray(previous?.channels))earlierChannels=previous.channels;
+      }catch(e){}
+      for(const item of [...base,...ed.channels,...earlierChannels]){
         const logo=String(item.logo||'').trim();
         if(!/^https?:\/\//i.test(logo))continue;
         const id=String(item.tvg_id||'').split('@')[0].trim().toLowerCase();
