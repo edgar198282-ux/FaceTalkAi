@@ -14362,7 +14362,7 @@ function animateCinemaPageFlip(fromCinema){
     overlay.addEventListener('animationend',e=>{
       if(e.target.classList.contains('abajTvDoorPanel'))cleanup();
     },{once:true});
-    setTimeout(cleanup,1600);
+    setTimeout(cleanup,3500);
     return;
   }
   const app=document.getElementById('app');
@@ -15656,7 +15656,7 @@ body.nativeTv .abajTvDoorPanel{
   background:linear-gradient(125deg,#061322 0%,#103b66 65%,#087eab 100%);
   box-shadow:0 0 35px rgba(0,0,0,.65);
   backface-visibility:hidden;
-  animation-duration:1.15s;
+  animation-duration:3s;
   animation-timing-function:cubic-bezier(.2,.7,.22,1);
   animation-fill-mode:both;
 }
