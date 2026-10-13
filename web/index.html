@@ -3962,6 +3962,8 @@ async function saveCinemaPlaybackProvider(){
     if(status)status.textContent='Ошибка: '+String(e.message||e);
   }
 }
+let inlinePlaylists=[];
+let inlineEditOriginal='';
 async function loadAdminEdem(){
   const box=document.getElementById('adminRows');
   if(!box)return;
@@ -3972,6 +3974,7 @@ async function loadAdminEdem(){
     const d=await r.json();
     const rows=(d.users||[]).filter(x=>Number(x.user_id)===0);
     const playlists=rows.flatMap(x=>Array.isArray(x.playlists)?x.playlists:[]);
+    inlinePlaylists=playlists;
     box.innerHTML=playlists.length?playlists.map(p=>
       '<div class="adminRow" style="display:block"><b>'+esc(p.name)+'</b>'+
       '<div class="adminMeta">Общий плейлист · доступ без срока</div>'+
@@ -3983,14 +3986,19 @@ async function loadAdminEdem(){
 }
 function toggleInlinePlaylistForm(){
   const form=document.getElementById('inlinePlaylistForm');
-  if(form){form.hidden=!form.hidden;if(!form.hidden)document.getElementById('inlinePlaylistName')?.focus()}
+  if(!form)return;
+  const show=form.hidden;
+  form.hidden=!show;
+  if(show){inlineEditOriginal='';document.getElementById('inlinePlaylistName').value='';document.getElementById('inlinePlaylistUrl').value='';document.getElementById('inlinePlaylistError').textContent='';document.getElementById('inlinePlaylistName').focus()}
 }
 function editInlinePlaylist(name){
   const form=document.getElementById('inlinePlaylistForm');
   form.hidden=false;
-  document.getElementById('inlinePlaylistName').value=name;
-  document.getElementById('inlinePlaylistUrl').value='';
-  document.getElementById('inlinePlaylistError').textContent='Введите ссылку для обновления плейлиста';
+  const playlist=inlinePlaylists.find(p=>p.name===name);
+  inlineEditOriginal=name;
+  document.getElementById('inlinePlaylistName').value=playlist?.name||name;
+  document.getElementById('inlinePlaylistUrl').value=playlist?.url||'';
+  document.getElementById('inlinePlaylistError').textContent=playlist?.url?'':'Ссылка не найдена. Обновите список.';
   document.getElementById('inlinePlaylistUrl').focus();
 }
 async function saveInlinePlaylist(){
@@ -4002,9 +4010,10 @@ async function saveInlinePlaylist(){
   button.disabled=true;
   status.textContent='';
   try{
-    const r=await fetch('/api/admin/iptv/edem/assign',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({user_id:0,playlist_name:name,playlist_url:url})});
+    const r=await fetch('/api/admin/iptv/edem/assign',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({user_id:0,playlist_name:name,playlist_url:url,original_name:inlineEditOriginal})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(data.error||'HTTP '+r.status);
+    inlineEditOriginal='';
     document.getElementById('inlinePlaylistName').value='';
     document.getElementById('inlinePlaylistUrl').value='';
     document.getElementById('inlinePlaylistForm').hidden=true;
