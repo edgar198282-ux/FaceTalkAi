@@ -9864,7 +9864,7 @@ function primeCinemaPosterNetwork(items){
     link.crossOrigin='anonymous';
     document.head.appendChild(link);
   }
-  urls.slice(0,(nativeTv?12:4)).forEach(url=>{
+  urls.slice(0,(nativeTv?4:4)).forEach(url=>{
     if(cinemaPosterPreloaded.has(url))return;
     cinemaPosterPreloaded.add(url);
     const link=document.createElement('link');
@@ -9874,7 +9874,7 @@ function primeCinemaPosterNetwork(items){
     link.fetchPriority='high';
     document.head.appendChild(link);
   });
-  (Array.isArray(items)?items:[]).slice(0,(nativeTv?24:4)).forEach((item,index)=>nativeTv?warmCinemaItemImages(item,index<14):warmCinemaImage(posterUrl(item),index<2));
+  (Array.isArray(items)?items:[]).slice(0,4).forEach((item,index)=>warmCinemaImage(posterUrl(item),index<2));
 }
 function setCinemaBackgrounds(currentItems){
   const current=(Array.isArray(currentItems)?currentItems:[]);
@@ -11028,7 +11028,7 @@ function renderCinemaCatalog(items,options={}){
     const position=Math.max(0,Number(item.position||0));
     const duration=Math.max(0,Number(item.duration||0));
     const progress=duration>0&&position>0?Math.max(1,Math.min(99,Math.round(position/duration*100))):0;
-    const eager=index<(nativeTv?12:4);
+    const eager=index<4;
     card.innerHTML=(poster?'<img class="cinemaPosterImg" loading="'+(eager?'eager':'lazy')+'" decoding="async" fetchpriority="'+(eager?'high':'low')+'" src="'+poster.replace(/"/g,'&quot;')+'" alt="">':'<div class="cinemaPosterFallback">🎞️</div>')+
       '<div class="cinemaPosterMeta"><div class="cinemaPosterTitle">'+cinemaDisplayTitle(item).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
       '<div class="cinemaPosterSub">'+sub.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</div>'+
@@ -11059,7 +11059,7 @@ function renderCinemaCatalog(items,options={}){
     grid.appendChild(card);
   });
   if(cinemaSource==='kinopub'){
-    const prefetchRows=rows.slice(0,nativeTv?6:2);
+    const prefetchRows=rows.slice(0,nativeTv?2:2);
     const runPrefetch=()=>prefetchRows.forEach((item,index)=>setTimeout(()=>prefetchKinoPubDetail(item),index*140));
     if('requestIdleCallback' in window)requestIdleCallback(runPrefetch,{timeout:1200});
     else setTimeout(runPrefetch,350);
