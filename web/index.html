@@ -2308,6 +2308,10 @@ body:not(.cinemaMode) .cinemaShellSide{
 /* Keep the initial layout hidden until the current channel/source state is rendered. */
 html.abaj-initializing #app{visibility:hidden!important}
 body.darkMode #tvSettingsModal #settingsCloseBtn{background:#162b40!important;color:#eaf5ff!important;border:1px solid #35536c!important;box-shadow:none!important}
+
+/* Settings and admin tap feedback */
+#tvSettingsModal button,#tvSettingsModal [role="button"],#tvAdminModal button,#tvAdminModal [role="button"]{-webkit-tap-highlight-color:transparent!important;tap-highlight-color:transparent;touch-action:manipulation;transition:transform .13s ease!important}
+#tvSettingsModal button:active,#tvSettingsModal [role="button"]:active,#tvAdminModal button:active,#tvAdminModal [role="button"]:active{transform:scale(.96)!important}
 </style>
 <script>document.documentElement.classList.add('abaj-initializing');window.addEventListener('load',()=>setTimeout(()=>document.documentElement.classList.remove('abaj-initializing'),12000),{once:true});</script>
 </head>
