@@ -2645,7 +2645,7 @@ body:not(.cinemaMode) .cinemaShellSide{
     <div class="adminRow" id="kinodaranAdminModule" style="display:block;margin-top:10px">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
         <b>Kinodaran</b>
-        <span class="adminMeta" id="kinodaranAdminStatus">Ожидается интеграция</span>
+        <span class="adminMeta" id="kinodaranAdminStatus">Проверка устройства…</span>
       </div>
       <div class="adminMeta" style="margin-top:6px">Для просмотра в плеере Abaj TV необходим официальный доступ Kinodaran к авторизации, каталогу и видеопотокам.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
@@ -3596,11 +3596,26 @@ function openAdmin(){
   loadIptvDiagnostics();
   loadOtaInfo();
   refreshKinoPubAdminStatus();
+  refreshKinodaranAdminStatus();
   if(nativeTv)setTimeout(()=>focusAdminControl(adminFocusable()[0]),80);
 }
 function closeAdmin(){
   const panel=document.getElementById('adminPanel');
   if(panel)panel.classList.remove('open');
+}
+function refreshKinodaranAdminStatus(){
+  const status=document.getElementById('kinodaranAdminStatus');
+  if(!status)return;
+  try{
+    if(!window.AbajNative||typeof AbajNative.kinodaranInfo!=='function'){
+      status.textContent='Требуется обновление APK';
+      return;
+    }
+    const info=JSON.parse(AbajNative.kinodaranInfo()||'{}');
+    status.textContent=info.installed?'Установлен · ожидается API':'Приложение не найдено';
+  }catch(e){
+    status.textContent='Не удалось проверить';
+  }
 }
 function getKinoPubInfo(){
   try{
