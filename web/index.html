@@ -3955,6 +3955,13 @@ let inlineEditOriginal='';
 async function loadAdminEdem(){
   const box=document.getElementById('adminRows');
   if(!box)return;
+  const editor=document.getElementById('inlinePlaylistForm');
+  const addButton=document.getElementById('inlinePlaylistAddBtn');
+  if(editor&&addButton&&box.contains(editor)){
+    editor.hidden=true;
+    inlineEditOriginal='';
+    addButton.insertAdjacentElement('afterend',editor);
+  }
   box.innerHTML='<div class="adminEmpty">Загрузка…</div>';
   try{
     const r=await fetch('/api/admin/iptv/edem',{headers:authHeaders(),cache:'no-store'});
