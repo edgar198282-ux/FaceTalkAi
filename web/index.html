@@ -11187,7 +11187,11 @@ async function loadCinemaCatalog(force=false){
     }
     setTimeout(()=>{
       if(nativeTv&&cinemaMode&&!cinemaFocusable().includes(document.activeElement)){
-        focusCinemaElement(document.querySelector('.cinemaPosterCard[data-cinema-selected="1"]')||document.querySelector('.cinemaPosterCard')||document.getElementById('cinemaMenuBtn'));
+        const first=document.querySelector('#cinemaPosterGrid .cinemaPosterCard');
+        if(first&&cinemaMode){
+          document.querySelectorAll('#cinemaPosterGrid .cinemaPosterCard').forEach(card=>{card.dataset.cinemaSelected=card===first?'1':'0'});
+          focusCinemaElement(first);
+        }
       }
     },60);
     return;
@@ -14383,6 +14387,7 @@ async function toggleCinemaMode(){
   cinemaMode=!cinemaMode;
   localStorage.setItem('abaj_cinema_mode',cinemaMode?'1':'0');
   if(cinemaMode){
+    if(nativeTv)cinemaFocusFirstPosterOnRender=true;
     cinemaType='movies';
     cinemaShellKind='movies';
     cinemaShellCategory='new';
