@@ -1552,6 +1552,20 @@ async def api_cinema_library(request):
                 if key and key not in seen:
                     merged.append(item)
                     seen.add(key)
+        if has_personal_kp and kp_token:
+            for folder in folders:
+                if folder.get('source') != 'KINOPUB':
+                    continue
+                try:
+                    remote_items = await _kinopub_bookmark_folder_items(kp_token, str(folder['id']))
+                except Exception:
+                    logging.exception('KinoPub bookmark sync failed for user %s', uid)
+                    continue
+                for item in remote_items:
+                    key = str(item.get('id') or '').strip() or str(item.get('title') or '').strip().casefold()
+                    if key and key not in seen:
+                        merged.append(item)
+                        seen.add(key)
         return web.json_response({'ok':True,'section':section,'items':merged,'count':len(merged)},
                                  headers={'Cache-Control':'no-store'})
 
