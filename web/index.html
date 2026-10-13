@@ -16042,6 +16042,22 @@ body.nativeTv #cinemaDescriptionMore:is(:focus,:focus-visible,.focused)::after{
   border-radius:5px!important;
 }
 </style>
+<style id="abaj-mobile-cinema-header-neon-scope-v1">
+body:not(.nativeTv) .cinemaShellBar:is(:focus,:focus-visible,:focus-within,:active,.focused,.abajTouchSelected){
+  outline:none!important;
+  box-shadow:none!important;
+}
+body:not(.nativeTv) .cinemaShellBar::before,
+body:not(.nativeTv) .cinemaShellBar::after,
+body:not(.nativeTv) .cinemaShellBar:is(:focus,:focus-visible,:focus-within,:active,.focused,.abajTouchSelected)::before,
+body:not(.nativeTv) .cinemaShellBar:is(:focus,:focus-visible,:focus-within,:active,.focused,.abajTouchSelected)::after{
+  content:none!important;
+  display:none!important;
+  border:0!important;
+  box-shadow:none!important;
+  animation:none!important;
+}
+</style>
 <style id="abaj-tv-cast-remote-focus">
 body.nativeTv #cinemaDetail .cinemaCastCard{pointer-events:auto!important;cursor:pointer!important}
 body.nativeTv #cinemaDetail .cinemaCastCard:focus-visible{outline:none!important}
