@@ -2305,7 +2305,10 @@ body:not(.cinemaMode) .cinemaShellSide{
 <style>
 #iptvScrollTop{display:none;position:fixed;right:16px;bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:45;width:42px;height:42px;align-items:center;justify-content:center;border-radius:50%;border:1px solid #8ee8ff;background:#075483e8;color:#fff;font-size:26px;font-weight:700;box-shadow:0 3px 12px #001b36a0;cursor:pointer}
 .nativeTv #iptvScrollTop{display:none!important}
+/* Keep the initial layout hidden until the current channel/source state is rendered. */
+html.abaj-initializing #app{visibility:hidden!important}
 </style>
+<script>document.documentElement.classList.add('abaj-initializing');window.addEventListener('load',()=>setTimeout(()=>document.documentElement.classList.remove('abaj-initializing'),12000),{once:true});</script>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
@@ -5627,6 +5630,7 @@ async function load(){
       (d.running?' · '+t.updating:'');
     cacheChannels();
     render();
+    document.documentElement.classList.remove('abaj-initializing');
     restoreTvBrowseFocus();
     if(lastChannelId&&!current&&document.visibilityState==='visible'){
       const last=channels.find(x=>x.id===lastChannelId);
