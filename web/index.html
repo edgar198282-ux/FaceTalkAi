@@ -2642,6 +2642,18 @@ body:not(.cinemaMode) .cinemaShellSide{
       </div>
     </div>
 
+    <div class="adminRow" id="kinodaranAdminModule" style="display:block;margin-top:10px">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <b>Kinodaran</b>
+        <span class="adminMeta" id="kinodaranAdminStatus">Ожидается интеграция</span>
+      </div>
+      <div class="adminMeta" style="margin-top:6px">Для просмотра в плеере Abaj TV необходим официальный доступ Kinodaran к авторизации, каталогу и видеопотокам.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+        <button type="button" disabled title="Ожидается официальный API Kinodaran" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900;opacity:.65">Подключить</button>
+        <button type="button" disabled title="Источник не подключён" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900;opacity:.65">Отключить</button>
+      </div>
+    </div>
+
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Диагностика IPTV</div>
     <button id="iptvDiagToggleBtn" class="adminDiagnosticsToggle" type="button" onclick="toggleIptvDiagnosticsBlock()">Показать диагностику ▼</button>
     <div id="iptvDiagBlock">
