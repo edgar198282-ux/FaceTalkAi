@@ -16025,7 +16025,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
 body:not(.nativeTv) .playerView.cinemaPlayback .playerSeekRange{
   height:18px!important;
   display:block!important;
-  background:linear-gradient(to right,#26bcff 0%,#26bcff var(--cinema-seek-progress,0%),rgba(150,180,210,.55) var(--cinema-seek-progress,0%),rgba(150,180,210,.55) 100%) center/100% 4px no-repeat!important;
+  background:transparent!important;
 }
 body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
   margin-top:12px!important;
@@ -16034,10 +16034,10 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerTimeline{
   display:none!important;
 }
 body:not(.nativeTv) .playerView.cinemaPlayback .playerSeekRange::-webkit-slider-runnable-track{
-  background:transparent!important;
+  background:linear-gradient(to right,#26bcff 0%,#26bcff var(--cinema-seek-progress,0%),rgba(150,180,210,.55) var(--cinema-seek-progress,0%),rgba(150,180,210,.55) 100%)!important;
 }
 body:not(.nativeTv) .playerView.cinemaPlayback .playerSeekRange::-moz-range-track{
-  background:transparent!important;
+  background:linear-gradient(to right,#26bcff 0%,#26bcff var(--cinema-seek-progress,0%),rgba(150,180,210,.55) var(--cinema-seek-progress,0%),rgba(150,180,210,.55) 100%)!important;
 }
 body:not(.nativeTv) .playerView.cinemaPlayback .cinemaTimelineClocks{
   display:flex!important;
