@@ -2727,6 +2727,7 @@ body:not(.cinemaMode) .cinemaShellSide{
     <div class="playerTimelineWrap">
       <input id="playerSeekRange" class="playerSeekRange" type="range" min="0" max="1000" step="1" value="0" aria-label="Перемотка фильма" oninput="previewCinemaSeek(this.value)" onchange="commitCinemaSeek(this.value)">
       <div class="playerTimeline" aria-hidden="true"><span id="playerTimelineFill"></span></div>
+      <div id="cinemaSeekPreview" aria-hidden="true"><canvas id="cinemaSeekFrame" width="176" height="99"></canvas><span id="cinemaSeekPreviewTime"></span></div>
     </div>
     <div class="playerPrimaryControls" onclick="event.stopPropagation();if(document.getElementById('playerView').classList.contains('pureFullscreen'))showPureFullscreenControls();else showTvPlayerUi(true)">
       <button class="ctrl playerCircleCtrl tvChannelCtrl" onclick="playPrev()" title="Предыдущий канал"><span class="playerCtrlIcon">◀|</span><small>Пред. канал</small></button>
@@ -8500,6 +8501,54 @@ function getCinemaPlaybackPosition(){
   }
   return {pos,dur};
 }
+let cinemaSeekPreviewVideo=null;
+let cinemaSeekPreviewSource='';
+let cinemaSeekPreviewSeq=0;
+let cinemaSeekPreviewTimer=null;
+function hideCinemaSeekPreview(){
+  const box=document.getElementById('cinemaSeekPreview');
+  if(box)box.classList.remove('visible');
+  clearTimeout(cinemaSeekPreviewTimer);
+}
+function updateCinemaSeekPreview(target,duration){
+  const box=document.getElementById('cinemaSeekPreview');
+  const time=document.getElementById('cinemaSeekPreviewTime');
+  const canvas=document.getElementById('cinemaSeekFrame');
+  const slider=document.getElementById('playerSeekRange');
+  if(!box||!time||!canvas||!slider)return;
+  time.textContent=fmtPlaybackClock(target);
+  box.style.left=(Math.max(.13,Math.min(.87,target/duration))*100)+'%';
+  box.classList.add('visible');
+  clearTimeout(cinemaSeekPreviewTimer);
+  cinemaSeekPreviewTimer=setTimeout(hideCinemaSeekPreview,1400);
+  const sourceVideo=document.getElementById('video');
+  const src=String(sourceVideo?.currentSrc||sourceVideo?.src||'');
+  if(nativeMedia3Active||!/^https?:/i.test(src)||!/\.mp4(?:[?#]|$)/i.test(src)){
+    canvas.style.display='none';
+    return;
+  }
+  if(!cinemaSeekPreviewVideo||cinemaSeekPreviewSource!==src){
+    if(cinemaSeekPreviewVideo){cinemaSeekPreviewVideo.removeAttribute('src');cinemaSeekPreviewVideo.load();}
+    const video=document.createElement('video');
+    video.muted=true;video.playsInline=true;video.preload='metadata';
+    video.crossOrigin='anonymous';
+    video.src=src;
+    cinemaSeekPreviewVideo=video;
+    cinemaSeekPreviewSource=src;
+  }
+  const video=cinemaSeekPreviewVideo,seq=++cinemaSeekPreviewSeq;
+  canvas.style.display='none';
+  if(video.readyState<1)return;
+  video.onseeked=()=>{
+    if(seq!==cinemaSeekPreviewSeq||!box.classList.contains('visible'))return;
+    try{
+      if(!video.videoWidth||!video.videoHeight)return;
+      canvas.getContext('2d').drawImage(video,0,0,176,99);
+      canvas.style.display='block';
+    }catch(e){canvas.style.display='none'}
+  };
+  try{video.currentTime=Math.max(0,Math.min(target,Number(video.duration||duration)-.1))}catch(e){}
+}
 function previewCinemaSeek(value){
   if(!isCinemaPlaybackOpen())return;
   const {dur}=getCinemaPlaybackPosition();
@@ -8509,6 +8558,7 @@ function previewCinemaSeek(value){
   if(el)el.textContent=fmtPlaybackClock(target)+' / '+fmtPlaybackClock(dur);
   const fill=document.getElementById('playerTimelineFill');
   if(fill)fill.style.width=(target/dur*100)+'%';
+  updateCinemaSeekPreview(target,dur);
 }
 function commitCinemaSeek(value){
   if(!isCinemaPlaybackOpen())return false;
@@ -15797,6 +15847,13 @@ body.nativeTv #cinemaDetail #cinemaDetailWatch{
   outline-offset:2px!important;
 }
 #cinemaDetail #cinemaDetailWatch:disabled{opacity:.65!important}
+</style>
+<style id="abaj-cinema-seek-frame-style">
+.playerTimelineWrap{position:relative}
+#cinemaSeekPreview{position:absolute;left:50%;bottom:calc(100% + 14px);transform:translateX(-50%) translateY(8px);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;opacity:0;transition:opacity .15s ease,transform .15s ease;z-index:15;border-radius:9px;background:rgba(9,25,41,.9);padding:5px 7px;color:white;font:700 13px system-ui,sans-serif;box-shadow:0 5px 18px #0008;min-width:64px}
+#cinemaSeekPreview.visible{opacity:1;transform:translateX(-50%) translateY(0)}
+#cinemaSeekFrame{display:none;width:176px;height:99px;border-radius:5px;object-fit:cover}
+.playerView:not(.cinemaPlayback) #cinemaSeekPreview{display:none}
 </style>
 </body>
 </html>
