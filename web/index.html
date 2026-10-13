@@ -5684,7 +5684,7 @@ function updatePlayerRemaining(){
       if(cinemaTime)cinemaTime.textContent=timeText;
       if(timeline)timeline.style.width=Math.max(0,Math.min(100,(pos/dur)*100))+'%';
       const seek=document.getElementById('playerSeekRange');
-      if(seek&&document.activeElement!==seek)seek.value=String(Math.round(Math.max(0,Math.min(1000,(pos/dur)*1000))));
+      if(seek){seek.style.setProperty('--cinema-seek-progress',Math.max(0,Math.min(100,(pos/dur)*100))+'%');if(document.activeElement!==seek)seek.value=String(Math.round(Math.max(0,Math.min(1000,(pos/dur)*1000))));}
     }else{
       const timeText=pos>0?fmtPlaybackClock(pos):'';
       if(elapsedClock)elapsedClock.textContent=timeText;
@@ -8664,6 +8664,8 @@ function previewCinemaSeek(value){
   if(remainingClock)remainingClock.textContent='−'+fmtPlaybackClock(Math.max(0,dur-target));
   const fill=document.getElementById('playerTimelineFill');
   if(fill)fill.style.width=(target/dur*100)+'%';
+  const seekRange=document.getElementById('playerSeekRange');
+  if(seekRange)seekRange.style.setProperty('--cinema-seek-progress',Math.max(0,Math.min(100,(target/dur)*100))+'%');
   updateCinemaSeekPreview(target,dur);
 }
 function commitCinemaSeek(value){
@@ -16023,6 +16025,19 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
 body:not(.nativeTv) .playerView.cinemaPlayback .playerSeekRange{
   height:18px!important;
   display:block!important;
+  background:linear-gradient(to right,#26bcff 0%,#26bcff var(--cinema-seek-progress,0%),rgba(150,180,210,.55) var(--cinema-seek-progress,0%),rgba(150,180,210,.55) 100%) center/100% 4px no-repeat!important;
+}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
+  margin-top:12px!important;
+}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerTimeline{
+  display:none!important;
+}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerSeekRange::-webkit-slider-runnable-track{
+  background:transparent!important;
+}
+body:not(.nativeTv) .playerView.cinemaPlayback .playerSeekRange::-moz-range-track{
+  background:transparent!important;
 }
 body:not(.nativeTv) .playerView.cinemaPlayback .cinemaTimelineClocks{
   display:flex!important;
