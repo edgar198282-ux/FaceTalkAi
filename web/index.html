@@ -14347,6 +14347,24 @@ function animateCinemaPageFlip(fromCinema){
   if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
   const previous=document.getElementById('abajCinemaPageFlip');
   if(previous)previous.remove();
+  if(nativeTv){
+    const overlay=document.createElement('div');
+    overlay.id='abajCinemaPageFlip';
+    overlay.className='abajTvDoorTransition'+(fromCinema?' abajTvDoorReverse':'');
+    overlay.setAttribute('aria-hidden','true');
+    for(const side of ['left','right']){
+      const panel=document.createElement('div');
+      panel.className='abajTvDoorPanel abajTvDoor-'+side;
+      overlay.appendChild(panel);
+    }
+    document.body.appendChild(overlay);
+    const cleanup=()=>overlay.remove();
+    overlay.addEventListener('animationend',e=>{
+      if(e.target.classList.contains('abajTvDoorPanel'))cleanup();
+    },{once:true});
+    setTimeout(cleanup,1600);
+    return;
+  }
   const app=document.getElementById('app');
   if(!app)return;
   const overlay=document.createElement('div');
@@ -15618,6 +15636,50 @@ body:not(.nativeTv) .cinemaPosterCard.abajMobilePosterTap::after{content:''!impo
 body:not(.nativeTv) .cinemaPosterCard[data-cinema-selected="1"]:not(.abajMobilePosterTap){position:relative;isolation:isolate;outline:none!important;box-shadow:none!important}
 body:not(.nativeTv) .cinemaPosterCard[data-cinema-selected="1"]:not(.abajMobilePosterTap)::after{content:''!important;position:absolute;inset:-3px;border:2.8px solid transparent;border-radius:14px;background:conic-gradient(from var(--abaj-neon-angle,0deg),#ff4fa3,#ffd84f,#47f58c,#42d7ff,#7c66ff,#ff4fa3) border-box;-webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;z-index:5;opacity:1!important;animation:abajNeonRotate 2.16s linear infinite!important}
 body:not(.nativeTv) .cinemaPosterCard[data-cinema-selected="1"] :is(.cinemaPosterImg,.cinemaPosterFallback){box-shadow:0 6px 18px rgba(0,0,0,.24)!important}
+</style>
+<style id="abaj-tv-door-transition-v1">
+body.nativeTv #abajCinemaPageFlip.abajTvDoorTransition{
+  display:flex!important;
+  position:fixed!important;
+  inset:0!important;
+  z-index:2147483000!important;
+  overflow:hidden!important;
+  pointer-events:none!important;
+  background:transparent!important;
+  perspective:1200px;
+}
+body.nativeTv .abajTvDoorPanel{
+  position:relative;
+  width:50%;
+  height:100%;
+  flex:0 0 50%;
+  background:linear-gradient(125deg,#061322 0%,#103b66 65%,#087eab 100%);
+  box-shadow:0 0 35px rgba(0,0,0,.65);
+  backface-visibility:hidden;
+  animation-duration:1.15s;
+  animation-timing-function:cubic-bezier(.2,.7,.22,1);
+  animation-fill-mode:both;
+}
+body.nativeTv .abajTvDoor-left{
+  transform-origin:left center;
+  animation-name:abajTvDoorOpenLeft;
+  border-right:3px solid #42d7ff;
+}
+body.nativeTv .abajTvDoor-right{
+  transform-origin:right center;
+  animation-name:abajTvDoorOpenRight;
+  border-left:3px solid #ff4fa3;
+}
+body.nativeTv .abajTvDoorReverse .abajTvDoor-left{border-right-color:#ff4fa3}
+body.nativeTv .abajTvDoorReverse .abajTvDoor-right{border-left-color:#42d7ff}
+@keyframes abajTvDoorOpenLeft{
+  0%,14%{transform:rotateY(0deg);opacity:1}
+  100%{transform:rotateY(-100deg);opacity:0}
+}
+@keyframes abajTvDoorOpenRight{
+  0%,14%{transform:rotateY(0deg);opacity:1}
+  100%{transform:rotateY(100deg);opacity:0}
+}
 </style>
 <style id="abaj-cinema-pageflip-v2">
 #abajCinemaPageFlip{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;perspective:1200px}
