@@ -2943,14 +2943,23 @@ function applyChannelAccessGate(rows){
   if(preview.length)return [...preview,...publicRows];
   return [...list.filter(ch=>!ch.personal&&['AM','RU'].includes(String(ch.country||''))).slice(0,8),...publicRows];
 }
-const deviceId=localStorage.getItem('abaj_device_id')||(
+let nativeTvIdentity={};
+try{
+  if(window.AbajNative&&typeof AbajNative.getTvDeviceIdentity==='function')
+    nativeTvIdentity=JSON.parse(AbajNative.getTvDeviceIdentity()||'{}');
+}catch(e){}
+const deviceId=localStorage.getItem('abaj_device_id')||nativeTvIdentity.id||(
   (crypto&&crypto.randomUUID)?crypto.randomUUID():('abaj-'+Date.now()+'-'+Math.random().toString(36).slice(2))
 );
-localStorage.setItem('abaj_device_id',deviceId);
-const tvDeviceSecret=localStorage.getItem('abaj_tv_device_secret')||(
+const tvDeviceSecret=localStorage.getItem('abaj_tv_device_secret')||nativeTvIdentity.secret||(
   (crypto&&crypto.randomUUID)?crypto.randomUUID():('sec-'+Date.now()+'-'+Math.random().toString(36).slice(2))
 );
+localStorage.setItem('abaj_device_id',deviceId);
 localStorage.setItem('abaj_tv_device_secret',tvDeviceSecret);
+try{
+  if(window.AbajNative&&typeof AbajNative.saveTvDeviceIdentity==='function')
+    AbajNative.saveTvDeviceIdentity(deviceId,tvDeviceSecret);
+}catch(e){}
 let tvPairPoll=null;
 let tvNumberBuffer='';
 let tvNumberTimer=null;
