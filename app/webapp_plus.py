@@ -2215,16 +2215,52 @@ async def api_kinopub_catalog(request):
     if status >= 400:
         return web.json_response({'ok':False,'error':'kinopub_catalog_failed','status':status}, status=502)
     rows = []
-    for item in _kinopub_extract_items(data):
-        row = _kinopub_normalize(item)
-        if not row:
-            continue
-        if requested_kind in ('movies','series') and row['kind'] != requested_kind:
-            continue
-        rows.append(row)
+    if actor_query:
+        actor_key = re.sub(r'[^\\w]+', ' ', actor_query.casefold(), flags=re.UNICODE).strip()
+        actor_words = actor_key.split()
+        def cast_matches(raw):
+            for value in (raw.get('actors'), raw.get('cast'), raw.get('actor')):
+                entries = value if isinstance(value, list) else ([value] if value else [])
+                for entry in entries:
+                    if isinstance(entry, dict):
+                        names = [entry.get(field) for field in ('name', 'original_name', 'name_en', 'english_name', 'full_name', 'title')]
+                    else:
+                        names = re.split(r'[,;]+', str(entry or ''))
+                    for name in names:
+                        candidate = re.sub(r'[^\\w]+', ' ', str(name or '').casefold(), flags=re.UNICODE).strip()
+                        if candidate and (candidate == actor_key or (len(actor_words) >= 2 and set(actor_words).issubset(candidate.split()))):
+                            return True
+            return False
+        semaphore = asyncio.Semaphore(5)
+        async def checked_actor_item(raw):
+            if cast_matches(raw):
+                return _kinopub_normalize(raw)
+            item_id = str(raw.get('id') or '').strip()
+            if not item_id:
+                return None
+            async with semaphore:
+                try:
+                    item_status, detail = await _kinopub_api('GET', '/v1/items/' + item_id,
+                        params={'access_token': token}, timeout=12)
+                    if item_status >= 400 or not isinstance(detail, dict):
+                        return None
+                    record = detail.get('item') if isinstance(detail.get('item'), dict) else detail
+                    return _kinopub_normalize(record) if cast_matches(record) else None
+                except (aiohttp.ClientError, asyncio.TimeoutError):
+                    return None
+        verified = await asyncio.gather(*(checked_actor_item(raw) for raw in _kinopub_extract_items(data)[:perpage]))
+        rows = [row for row in verified if row and (requested_kind not in ('movies', 'series') or row['kind'] == requested_kind)]
+    else:
+        for item in _kinopub_extract_items(data):
+            row = _kinopub_normalize(item)
+            if not row:
+                continue
+            if requested_kind in ('movies','series') and row['kind'] != requested_kind:
+                continue
+            rows.append(row)
     total = _kinopub_total_from_data(data)
     if actor_query:
-        logging.info('KINOPUB_ACTOR_QUERY actor=%s count=%s total=%s status=%s', actor_query, len(rows), total, status)
+        logging.info('KINOPUB_ACTOR_QUERY actor=%s verified=%s upstream_total=%s status=%s', actor_query, len(rows), total, status)
     return web.json_response({
         'ok':True,'items':rows,'count':len(rows),'total':total,
         'page':page,'perpage':perpage,
