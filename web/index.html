@@ -16108,6 +16108,36 @@ body:not(.nativeTv) #cinemaScreen .cinemaShellBar > #cinemaCategoryBtn:is(:focus
   border-radius:50%!important;
 }
 </style>
+<style id="abaj-mobile-tv-button-only-focus-v1">
+body:not(.nativeTv) #cinemaScreen .cinemaShellBar,
+body:not(.nativeTv) #cinemaScreen .cinemaShellBar:is(:active,:focus,:focus-within,.focused,.abajTouchSelected){
+  outline:0!important;
+  box-shadow:none!important;
+  border-color:transparent!important;
+}
+body:not(.nativeTv) #cinemaScreen .cinemaShellBar::before,
+body:not(.nativeTv) #cinemaScreen .cinemaShellBar::after{
+  content:none!important;
+  display:none!important;
+}
+body:not(.nativeTv) #cinemaScreen #cinemaTvQuickBtn{
+  position:relative!important;
+  isolation:isolate!important;
+  flex:0 0 35px!important;
+  width:35px!important;
+  min-width:35px!important;
+  height:39px!important;
+  min-height:39px!important;
+  border-radius:9px!important;
+}
+body:not(.nativeTv) #cinemaScreen #cinemaTvQuickBtn:is(:focus,:focus-visible,:active,.focused,.abajTouchSelected)::after{
+  content:''!important;
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  border-radius:9px!important;
+}
+</style>
 <style id="abaj-tv-cinema-header-focus-no-fill-v1">
 body.nativeTv #cinemaScreen :is(#cinemaSearchBtn,#cinemaSettingsBtn):is(:focus,:focus-visible,.focused){
   background:transparent!important;
