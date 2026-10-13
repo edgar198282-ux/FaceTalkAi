@@ -2711,6 +2711,34 @@ def _unique_edem_channel_ids(rows):
     return rows
 
 
+def _keep_edem_logos(rows, previous):
+    """Keep channel artwork across temporary M3U/EPG metadata gaps."""
+    by_id = {}
+    by_name = {}
+    for old in previous or []:
+        logo = str(old.get('logo') or old.get('logo_fallback') or '').strip()
+        if not logo.startswith(('https://', 'http://')):
+            continue
+        cid = str(old.get('tvg_id') or '').strip().lower()
+        name = iptv._normalize_name(old.get('name') or '')
+        if cid:
+            by_id.setdefault(cid, logo)
+        if name:
+            by_name.setdefault(name, logo)
+    for row in rows:
+        cid = str(row.get('tvg_id') or '').strip().lower()
+        name = iptv._normalize_name(row.get('name') or '')
+        old_logo = by_id.get(cid) if cid else None
+        if not old_logo:
+            old_logo = by_name.get(name)
+        current = str(row.get('logo') or '').strip()
+        if old_logo and not current:
+            row['logo'] = old_logo
+        elif old_logo and old_logo != current and not str(row.get('logo_fallback') or '').strip():
+            row['logo_fallback'] = old_logo
+    return rows
+
+
 async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
     sub = await _edem_subscription_state(uid)
     raw = await get_setting(f'edem_playlist:{uid}', '')
@@ -2750,6 +2778,8 @@ async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
         item['provider'] = 'Edem'
         item['adult'] = bool(iptv._is_adult_channel(item))
         out.append(item)
+    if cached.get('url') == playlist_url:
+        _keep_edem_logos(out, cached.get('channels'))
     _edem_cache[uid] = {'url': playlist_url, 'ts': now, 'channels': out}
     return {'configured': True, 'channels': out, 'playlist_url': playlist_url, **sub}
 
@@ -2901,6 +2931,8 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                                 personal=True, provider='Edem', playlist_id=playlist_id,
                                 playlist_name=name, public_playlist=public, adult=bool(iptv._is_adult_channel(item)))
                     compiled.append(item)
+                if cached and cached.get('url') == url:
+                    _keep_edem_logos(compiled, cached.get('channels'))
                 cached = {'url': url, 'ts': now, 'channels': compiled}
                 _edem_named_cache[key] = cached
             except (aiohttp.ClientError, TimeoutError, ValueError) as exc:
