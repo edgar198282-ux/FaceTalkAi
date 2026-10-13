@@ -14,7 +14,6 @@
     <queries>
         <package android:name="com.lazycatsoftware.lmd" />
         <package android:name="com.kinopub" />
-        <package android:name="com.techcraeft.kinodaran" />
     </queries>
 
     <application
