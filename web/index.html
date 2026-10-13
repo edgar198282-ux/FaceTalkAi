@@ -2588,7 +2588,6 @@ body:not(.cinemaMode) .cinemaShellSide{
       <option value="1080">1080p</option>
       <option value="2160">4K</option>
     </select>
-    <button class="settingsAction" id="relinkTelegramBtn" onclick="relinkTelegramApp()" style="display:none;background:#096a9b">🔗 Перепривязать Telegram в этом APK</button>
     <button class="settingsClose" id="settingsCloseBtn" onclick="closeTvSettings()">Закрыть</button>
   </div>
 </div>
@@ -2657,11 +2656,6 @@ body:not(.cinemaMode) .cinemaShellSide{
       <div class="adminRows" id="iptvDiagRows"><div class="adminEmpty">Нажмите «Обновить диагностику»</div></div>
     </div>
     <div style="font-size:18px;font-weight:900;margin:20px 0 10px">Обновления Abaj TV</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <button onclick="loadOtaInfo()" style="background:#087fe1;color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:800">Проверить OTA</button>
-      <button onclick="promoteBeta()" style="background:#16a05d;color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:800">Beta → Stable</button>
-      <button onclick="rollbackApp()" style="background:#d87824;color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:800">Откатить stable</button>
-    </div>
     <div class="adminRows" id="otaInfoRows"><div class="adminEmpty">Stable / Beta</div></div>
   </div>
 </div>
