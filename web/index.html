@@ -2647,10 +2647,12 @@ body:not(.cinemaMode) .cinemaShellSide{
         <b>Kinodaran</b>
         <span class="adminMeta" id="kinodaranAdminStatus">Проверка устройства…</span>
       </div>
-      <div class="adminMeta" style="margin-top:6px">Для просмотра в плеере Abaj TV необходим официальный доступ Kinodaran к авторизации, каталогу и видеопотокам.</div>
+      <div class="adminMeta" style="margin-top:6px">Режим приложения открывает Kinodaran отдельно. Веб-режим проверяет работу официального сайта в окне Abaj TV; вход на сайте отдельный.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-        <button type="button" onclick="connectKinodaranFromAdmin()" title="Открыть установленное приложение Kinodaran" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Подключить</button>
-        <button type="button" aria-disabled="true" onclick="showKinodaranIntegrationStatus()" title="Источник не подключён" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Отключить</button>
+        <button type="button" id="kinodaranAppModeBtn" onclick="setKinodaranMode('app')" style="min-height:44px;border:0;border-radius:11px;background:#087fe1;color:#fff;font-weight:900">Приложение</button>
+        <button type="button" id="kinodaranWebModeBtn" onclick="setKinodaranMode('web')" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Веб-версия</button>
+        <button type="button" onclick="connectKinodaranFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#16a05d;color:#fff;font-weight:900">Открыть</button>
+        <button type="button" onclick="disconnectKinodaranFromAdmin()" style="min-height:44px;border:0;border-radius:11px;background:#6f8798;color:#fff;font-weight:900">Закрыть</button>
       </div>
     </div>
 
@@ -3606,14 +3608,61 @@ function openAdmin(){
   loadOtaInfo();
   refreshKinoPubAdminStatus();
   refreshKinodaranAdminStatus();
+  updateKinodaranModeButtons();
   if(nativeTv)setTimeout(()=>focusAdminControl(adminFocusable()[0]),80);
 }
 function closeAdmin(){
   const panel=document.getElementById('adminPanel');
   if(panel)panel.classList.remove('open');
 }
+let kinodaranMode=localStorage.getItem('abaj_kinodaran_mode')==='web'?'web':'app';
+function updateKinodaranModeButtons(){
+  const app=document.getElementById('kinodaranAppModeBtn'),web=document.getElementById('kinodaranWebModeBtn');
+  if(app)app.style.background=kinodaranMode==='app'?'#087fe1':'#6f8798';
+  if(web)web.style.background=kinodaranMode==='web'?'#087fe1':'#6f8798';
+}
+function setKinodaranMode(mode){
+  kinodaranMode=mode==='web'?'web':'app';
+  localStorage.setItem('abaj_kinodaran_mode',kinodaranMode);
+  updateKinodaranModeButtons();
+  const status=document.getElementById('kinodaranAdminStatus');
+  if(status)status.textContent=kinodaranMode==='web'?'Веб-режим выбран':'Режим приложения выбран';
+}
+function closeKinodaranWeb(){
+  const overlay=document.getElementById('kinodaranWebOverlay');
+  if(overlay){overlay.remove();}
+  const btn=document.getElementById('kinodaranWebModeBtn');
+  if(adminPanelOpen()&&btn)focusAdminControl(btn);
+}
+function openKinodaranWeb(){
+  closeKinodaranWeb();
+  const overlay=document.createElement('div');
+  overlay.id='kinodaranWebOverlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:2147483600;background:#071021;display:flex;flex-direction:column;';
+  const bar=document.createElement('div');
+  bar.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 12px;background:#101f39;color:#fff;flex-shrink:0;';
+  const back=document.createElement('button');
+  back.textContent='← Abaj TV';
+  back.style.cssText='padding:10px 14px;background:#087fe1;color:#fff;border:0;border-radius:9px;font-size:16px;';
+  back.onclick=closeKinodaranWeb;
+  const info=document.createElement('span');
+  info.textContent='Kinodaran · официальный сайт (вход отдельно)';
+  bar.append(back,info);
+  const iframe=document.createElement('iframe');
+  iframe.src='https://kinodaran.com/';
+  iframe.title='Kinodaran';
+  iframe.setAttribute('allow','autoplay; fullscreen; encrypted-media; picture-in-picture');
+  iframe.setAttribute('allowfullscreen','');
+  iframe.style.cssText='border:0;width:100%;flex:1;background:#000;';
+  overlay.append(bar,iframe);
+  document.body.appendChild(overlay);
+  back.focus();
+  const status=document.getElementById('kinodaranAdminStatus');
+  if(status)status.textContent='Проверка сайта Kinodaran в окне Abaj TV';
+}
 function connectKinodaranFromAdmin(){
   const status=document.getElementById('kinodaranAdminStatus');
+  if(kinodaranMode==='web'){openKinodaranWeb();return;}
   if(!window.AbajNative||typeof AbajNative.launchKinodaran!=='function'){
     if(status)status.textContent='Для запуска требуется обновление APK';
     return;
@@ -3621,9 +3670,12 @@ function connectKinodaranFromAdmin(){
   try{
     const launched=AbajNative.launchKinodaran();
     if(status)status.textContent=launched?'Kinodaran открыт · просмотр в Abaj TV не подключён':'Приложение Kinodaran не найдено';
-  }catch(e){
-    if(status)status.textContent='Не удалось открыть Kinodaran';
-  }
+  }catch(e){if(status)status.textContent='Не удалось открыть Kinodaran';}
+}
+function disconnectKinodaranFromAdmin(){
+  closeKinodaranWeb();
+  const status=document.getElementById('kinodaranAdminStatus');
+  if(status)status.textContent='Окно закрыто · аккаунт Kinodaran не изменён';
 }
 function showKinodaranIntegrationStatus(){
   const status=document.getElementById('kinodaranAdminStatus');
