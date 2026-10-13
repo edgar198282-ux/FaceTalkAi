@@ -13352,9 +13352,10 @@ function renderCinemaCast(item){
       '<div class="cinemaCastName">'+safeName+'</div>';
     btn.dataset.actorSearchName=searchName||name;
     btn.dataset.actorId=actorId;
-    btn.onclick=()=>{};
-    btn.style.cursor='default';
-    btn.setAttribute('aria-disabled','true');
+    btn.onclick=()=>openCinemaActor(searchName,name,actorId);
+    btn.style.cursor='pointer';
+    btn.removeAttribute('aria-disabled');
+    btn.tabIndex=0;
     row.appendChild(btn);
     const setPhoto=src=>{
       src=String(src||'').trim();
