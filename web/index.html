@@ -5796,6 +5796,31 @@ async function refreshChannels(){
 function normalizeSearchText(v){
   return String(v||'').toLowerCase().replace(/ё/g,'е').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zа-я0-9ա-ֆ]+/gi,' ').replace(/\s+/g,' ').trim();
 }
+const NEW_CHANNEL_ORDER_KEY='abaj_tv_new_channel_order_v1';
+function prioritizeNewChannels(rows){
+  if(modeFilter==='recent')return rows;
+  try{
+    const saved=JSON.parse(localStorage.getItem(NEW_CHANNEL_ORDER_KEY)||'null');
+    if(!saved||!Array.isArray(saved.known)){
+      localStorage.setItem(NEW_CHANNEL_ORDER_KEY,JSON.stringify({known:channels.map(x=>String(x.id)),newest:[]}));
+      return rows;
+    }
+    const known=new Set(saved.known);
+    const newest=Array.isArray(saved.newest)?saved.newest.filter(id=>channels.some(x=>String(x.id)===id)):[];
+    let changed=false;
+    for(const ch of channels){
+      const id=String(ch.id);
+      if(known.has(id))continue;
+      known.add(id);
+      newest.unshift(id);
+      changed=true;
+    }
+    if(changed)localStorage.setItem(NEW_CHANNEL_ORDER_KEY,JSON.stringify({known:[...known],newest:newest.slice(0,300)}));
+    if(!newest.length)return rows;
+    const rank=new Map(newest.map((id,i)=>[id,i]));
+    return rows.slice().sort((a,b)=>(rank.get(String(a.id))??Infinity)-(rank.get(String(b.id))??Infinity));
+  }catch(e){return rows}
+}
 function getFiltered(){
   const q=normalizeSearchText(document.getElementById('search').value||'');
   const g=document.getElementById('group').value||'';
@@ -5831,7 +5856,7 @@ function getFiltered(){
       return terms.every(term=>hay.includes(term));
     });
   }
-  return rows;
+  return prioritizeNewChannels(rows);
 }
 function fmtClock(ts){
   if(!ts)return '';
