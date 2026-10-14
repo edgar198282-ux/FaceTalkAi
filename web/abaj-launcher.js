@@ -60,6 +60,29 @@ const css=`
 .abajLaunchTile:focus-visible{animation:abajNeonFocus 2.4s ease-in-out infinite}
 @keyframes abajNeonFocus{0%,100%{box-shadow:0 0 0 2px #b8f6ff,0 0 18px #00baff,0 0 32px #007bff}50%{box-shadow:0 0 0 3px #e3ffff,0 0 28px #00d9ff,0 0 52px #007bff}}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile,.abajLaunchTile:before{animation:none!important;transition:none!important}}
+
+/* ABAJ launcher polish — 2026-10-14: visual-only, preserve routing and viewport fit */
+#abajLauncher{background-color:#020b1c;background-image:linear-gradient(180deg,rgba(1,7,20,.02) 0%,rgba(1,8,24,.38) 26%,#020b1d 100%),url('/static/launcher-header.svg?v=5');scrollbar-width:none}
+#abajLauncher::-webkit-scrollbar{display:none}
+.abajLaunchTop{position:relative;z-index:1}
+.abajLaunchBrand{filter:drop-shadow(0 0 12px rgba(37,150,255,.45))}
+.abajLaunchTitle{color:#d9eaff;text-shadow:0 1px 8px #00132d,0 0 10px #228aff77}
+.abajLaunchTile{background-blend-mode:normal;border-color:#24bfff;box-shadow:0 0 0 1px #8deeff66,0 0 13px #00baffb8,0 0 28px #0879ff77,inset 0 0 18px #05aeff55}
+.abajLaunchTile:before{border:1px solid #9cecff55;box-shadow:inset 0 0 16px #36bfff80,0 0 12px #12aaff88}
+.abajLaunchTile:focus-visible{border-color:#d3faff;animation:abajNeonFocus 2.4s ease-in-out infinite}
+.abajLaunchText{z-index:2}
+.abajLaunchName{color:#fff;text-shadow:0 3px 9px #000,0 0 14px #001733}
+.abajLaunchDesc{color:#eaf4ff;text-shadow:0 2px 8px #000}
+@media(max-width:650px){
+#abajLauncher{height:100dvh;max-height:100dvh;overflow:hidden;padding:clamp(10px,1.35dvh,18px) 17px max(12px,env(safe-area-inset-bottom))}
+.abajLaunchTop{min-height:clamp(65px,8dvh,95px)}
+.abajLaunchTitle{margin:0 0 clamp(9px,1.4dvh,17px)}
+.abajLaunchTiles{flex:1 1 0;min-height:0;gap:clamp(10px,1.4dvh,17px)}
+.abajLaunchTile{flex:1 1 0;min-height:0;padding:clamp(12px,1.7dvh,20px) 20px;border-radius:clamp(21px,3.5vw,27px)}
+.abajLaunchName{font-size:clamp(28px,7.4vw,42px)}
+.abajLaunchDesc{font-size:clamp(13px,3.7vw,19px)}
+}
+@media(max-height:620px) and (max-width:650px){.abajLaunchTop{min-height:52px}.abajLaunchTitle{margin-bottom:7px}.abajLaunchTiles{gap:8px}.abajLaunchTile{padding:8px 16px}.abajLaunchName{font-size:25px}.abajLaunchDesc{font-size:12px}}
 `;
 function start(){
 if(document.getElementById('abajLauncher'))return;
