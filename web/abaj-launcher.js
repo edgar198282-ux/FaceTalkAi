@@ -35,7 +35,7 @@ const css=`
 .abajSceneMotion i{position:absolute;display:block;pointer-events:none}
 .abajLaunchTile[data-target="cinema"] .abajSceneSun{left:35%;top:19%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff5b34d 0%,#ffbf4440 15%,#ffb12a16 39%,transparent 69%);mix-blend-mode:screen;animation:abajSunDrift 32s ease-in-out infinite}
 .abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff25,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
-.abajIptvFlightCurtain{position:fixed;inset:0;z-index:2147483646;background:#06152c;opacity:0;pointer-events:none}.abajCinemaLensWash{position:fixed;inset:0;z-index:2147483646;pointer-events:none;opacity:0;background:linear-gradient(90deg,#ff26382b 0%,#f4293b3b 49.7%,#1aafff3b 50.3%,#09b8ff30 100%)}.abajCinema3dGlasses{position:fixed;z-index:2147483647;width:280px;height:118px;pointer-events:none;transform:translate(-50%,-50%);filter:drop-shadow(0 12px 16px #000b);will-change:transform;perspective:600px}.abajIptvFlyingBall{position:fixed;z-index:2147483647;display:block;width:76px;height:76px;line-height:0;text-align:center;pointer-events:none;transform:translate(-50%,-50%);filter:drop-shadow(0 7px 8px #0009);user-select:none;transform-style:preserve-3d}
+.abajIptvFlightCurtain{position:fixed;inset:0;z-index:2147483646;background:#06152c;opacity:0;pointer-events:none}.abajCinemaLensWash{position:fixed;inset:0;z-index:2147483646;pointer-events:none;opacity:0;background:linear-gradient(90deg,#ff26382b 0%,#f4293b3b 49.7%,#1aafff3b 50.3%,#09b8ff30 100%)}.abajCinema3dGlasses{position:fixed;z-index:2147483647;width:300px;height:145px;pointer-events:none;transform:translate(-50%,-50%);transform-style:preserve-3d;will-change:transform;filter:drop-shadow(0 5px 5px #0005)}.abajIptvFlyingBall{position:fixed;z-index:2147483647;display:block;width:76px;height:76px;line-height:0;text-align:center;pointer-events:none;transform:translate(-50%,-50%);filter:drop-shadow(0 7px 8px #0009);user-select:none;transform-style:preserve-3d}
 .abajLaunchTile[data-target="iptv"] .abajIptvMotionVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1;border-radius:inherit}
 .abajLaunchTile[data-target="iptv"].abajIptvVideoReady{background-image:linear-gradient(0deg,#010b19b3,transparent 42%),var(--tile-bg)!important}
 body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajIptvVideoReady .abajIptvMotionVideo{opacity:.82}
@@ -220,14 +220,14 @@ async function playCinemaGlassesTransition(tile){
  document.body.appendChild(lensWash);document.body.appendChild(glasses);
  try{
   const dx=innerWidth*.5-(rect.left+rect.width*.5),dy=innerHeight*.5-(rect.top+rect.height*.48);
-  const scale=Math.min(3.2,Math.max(1.7,innerWidth/340*2.5));
+  const scale=Math.min(3.1,Math.max(1.8,innerWidth/350*2.5));
   const animation=glasses.animate([
-   {transform:'translate(-50%,-50%) translate(0px,0px) scale(.13) rotateX(-27deg) rotateZ(-7deg)',opacity:0,offset:0},
-   {transform:'translate(-50%,-50%) translate('+dx*.25+'px,'+dy*.25+'px) scale(.48) rotateX(-16deg) rotateZ(-3deg)',opacity:1,offset:.28},
-   {transform:'translate(-50%,-50%) translate('+dx*.8+'px,'+dy*.8+'px) scale('+scale*.68+') rotateX(-6deg) rotateZ(0deg)',opacity:1,offset:.78},
-   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+scale+') rotateX(0deg) rotateZ(0deg)',opacity:1,offset:1}
+   {transform:'translate(-50%,-50%) translate(0px,0px) scale(.12) rotateX(-32deg) rotateY(-12deg) rotateZ(-5deg)',opacity:0,offset:0},
+   {transform:'translate(-50%,-50%) translate('+dx*.25+'px,'+dy*.25+'px) scale(.48) rotateX(-23deg) rotateY(-7deg) rotateZ(-2deg)',opacity:1,offset:.28},
+   {transform:'translate(-50%,-50%) translate('+dx*.8+'px,'+dy*.8+'px) scale('+scale*.72+') rotateX(-11deg) rotateY(0deg) rotateZ(0deg)',opacity:1,offset:.78},
+   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+scale+') rotateX(0deg) rotateY(0deg) rotateZ(0deg)',opacity:1,offset:1}
   ],{duration:1300,easing:'cubic-bezier(.2,.06,.2,1)',fill:'forwards'});
-  const wash= lensWash.animate([{opacity:0,offset:0},{opacity:0,offset:.78},{opacity:.25,offset:.92},{opacity:.8,offset:1}],{duration:1300,fill:'forwards'});
+  const wash=lensWash.animate([{opacity:0,offset:0},{opacity:0,offset:.82},{opacity:.18,offset:.94},{opacity:.62,offset:1}],{duration:1300,fill:'forwards'});
   await Promise.race([Promise.all([animation.finished.catch(()=>{}),wash.finished.catch(()=>{})]),new Promise(resolve=>setTimeout(resolve,1600))]);
   wash.cancel();
   animation.cancel();
