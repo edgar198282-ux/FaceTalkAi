@@ -2332,6 +2332,7 @@ def public_state(compact: bool = False, fast: bool = False):
     if compact:
         names = [re.sub(r"\s+", " ", str(x.get("name") or "").strip()).casefold() for x in rows]
         stats["free_duplicate_names"] = len(names) - len(set(names))
+        stats["free_unique_names"] = len(set(names))
     stats["excluded_from_list"] = excluded
     stats["restricted_breakdown"] = restricted_breakdown
     stats["restricted_with_backups"] = restricted_with_backups
