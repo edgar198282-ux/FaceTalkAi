@@ -2330,7 +2330,7 @@ def public_state(compact: bool = False, fast: bool = False):
     stats["catalog_total"] = len(_state["channels"])
     stats["list_total"] = len(rows) if compact else len(_state["channels"]) - sum(excluded.values())
     if compact:
-        names = [re.sub(r"\\s+", " ", str(x.get("name") or "").strip()).casefold() for x in rows]
+        names = [re.sub(r"\s+", " ", str(x.get("name") or "").strip()).casefold() for x in rows]
         stats["free_duplicate_names"] = len(names) - len(set(names))
     stats["excluded_from_list"] = excluded
     stats["restricted_breakdown"] = restricted_breakdown
