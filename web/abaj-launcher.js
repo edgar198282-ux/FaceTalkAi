@@ -218,17 +218,17 @@ async function playIptvBallTransition(tile){
  try{
   const endX=window.innerWidth/2,endY=window.innerHeight/2;
   const dx=endX-x,dy=endY-y;
-  const targetScale=Math.max(window.innerWidth,window.innerHeight)/76*1.65;
-  const spin=ball.firstElementChild.animate([{transform:'rotate(-12deg)'},{transform:'rotate(235deg)'}],{duration:1350,easing:'cubic-bezier(.25,.1,.3,1)',fill:'forwards'});
+  const targetScale=Math.min(5.5,Math.max(3,Math.min(window.innerWidth,window.innerHeight)/85));
+  const spin=ball.firstElementChild.animate([{transform:'rotate(-12deg)'},{transform:'rotate(150deg)'}],{duration:900,easing:'ease-out',fill:'forwards'});
   const anim=ball.animate([
    {transform:'translate(-50%,-50%) translate(0px,0px) scale(.12)',opacity:1,offset:0},
    {transform:'translate(-50%,-50%) translate('+dx*.18+'px,'+dy*.18+'px) scale(.48)',opacity:1,offset:.32},
-   {transform:'translate(-50%,-50%) translate('+dx*.7+'px,'+dy*.7+'px) scale('+targetScale*.22+')',opacity:1,offset:.74},
-   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale*.82+')',opacity:1,offset:.94},
+   {transform:'translate(-50%,-50%) translate('+dx*.7+'px,'+dy*.7+'px) scale('+targetScale*.38+')',opacity:1,offset:.74},
+   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale*.9+')',opacity:1,offset:.94},
    {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale+')',opacity:1,offset:1}
-  ],{duration:1350,easing:'cubic-bezier(.2,.06,.24,1)',fill:'forwards'});
-  await anim.finished.catch(()=>{});
-  spin.cancel();
+  ],{duration:900,easing:'cubic-bezier(.2,.06,.24,1)',fill:'forwards'});
+  await Promise.race([anim.finished.catch(()=>{}),new Promise(resolve=>setTimeout(resolve,1150))]);
+  anim.cancel();spin.cancel();
  }finally{ball.remove();iptvTransitionBusy=false}
  return true;
 }
