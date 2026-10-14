@@ -2651,6 +2651,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
 <div class="settingsModal" id="tvSettingsModal" onclick="if(event.target===this)closeTvSettings()">
   <div class="settingsCard">
     <div class="settingsTitle" id="settingsTitle">⚙ Настройки</div>
+    <button type="button" id="abajSettingsHomeBtn" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV">⌂</button>
     <button class="settingsAction" id="settingsAdminBtn" onclick="openAdminFromTvSettings()" style="display:none;background:#0b5f9e">🛠 Админ-панель</button>
     <button class="settingsAction" id="appUpdateBtn" onclick="manualAppUpdate()" style="display:none;background:#123b78;margin-top:0;margin-bottom:8px">🔄 Проверить обновление</button>
     <div id="appVersionText" class="deviceMeta" style="display:none;text-align:center;margin:-2px 0 8px"></div>
@@ -16689,7 +16690,8 @@ body.nativeTv #cinemaDetail .cinemaCastCard:focus-visible{outline:none!important
   window.addEventListener('popstate',closeIptvPlaylistMenu);
 })();
 </script>
-<style id="abaj-hide-mode-switch-20261014">\n/* Only hide the two redundant top-bar cinema/TV switches. Keep search and home. */\n#cinemaToggleBtn,#cinemaTvQuickBtn{display:none!important}\n</style>\n<script src="/static/abaj-launcher.js?v=20261014-5" defer></script>
+<style id="abaj-hide-mode-switch-20261014">\n/* Only hide the two redundant top-bar cinema/TV switches. Keep search and home. */\n#cinemaToggleBtn,#cinemaTvQuickBtn{display:none!important}\n</style>\n<style id="abaj-settings-home-style">#tvSettingsModal .settingsCard{position:relative!important}#abajSettingsHomeBtn{position:absolute;right:14px;top:12px;display:flex;align-items:center;justify-content:center;width:43px;height:43px;border:0;border-radius:12px;background:#dceeff;color:#12699c;font-size:32px;font-weight:bold;cursor:pointer;z-index:5}#abajSettingsHomeBtn:focus-visible{outline:3px solid #00baff;box-shadow:0 0 18px #00baff}#tvSettingsModal .settingsTitle{padding-right:55px!important}#tvSettingsModal .settingsClose{display:none!important}</style>
+<script src="/static/abaj-launcher.js?v=20261014-5" defer></script>
 </body>
 </html>
 
