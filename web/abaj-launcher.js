@@ -28,10 +28,15 @@ const css=`
 .abajLaunchTile[data-target="cinema"] .abajSceneSun{left:35%;top:19%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff5b34d 0%,#ffbf4440 15%,#ffb12a16 39%,transparent 69%);mix-blend-mode:screen;animation:abajSunDrift 18s ease-in-out infinite alternate}
 .abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff35,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
 .abajLaunchTile[data-target="settings"] .abajSceneGear{right:10%;top:8%;width:37%;aspect-ratio:1;border-radius:50%;border:2px dashed #9ce8ff35;box-shadow:0 0 24px #45caff1a,inset 0 0 20px #48bfff12;animation:abajGearTurn 24s linear infinite}
+.abajSceneDolphin,.abajSceneGearOverlay{position:absolute;display:block;pointer-events:none;will-change:transform}
+.abajSceneDolphin{left:52%;top:36%;width:13%;opacity:.72;filter:drop-shadow(0 0 4px #6edfff);animation:abajDolphinSwim 9s ease-in-out infinite}
+.abajSceneGearOverlay{right:12%;top:12%;width:32%;aspect-ratio:1;opacity:.72;filter:drop-shadow(0 0 6px #68caff44);animation:abajGearTurn 24s linear infinite}
+.abajSceneDolphin svg,.abajSceneGearOverlay svg{width:100%;height:100%}
+@keyframes abajDolphinSwim{0%{transform:translate(-30%,12%) rotate(-8deg);opacity:.18}35%{transform:translate(45%,-10%) rotate(5deg);opacity:.78}70%{transform:translate(105%,8%) rotate(-5deg);opacity:.65}100%{transform:translate(160%,-10%) rotate(7deg);opacity:.08}}
 @keyframes abajSunDrift{from{transform:translate(-5%,8%) scale(.83);opacity:.45}to{transform:translate(9%,-12%) scale(1.2);opacity:.9}}
 @keyframes abajWaterSwim{from{transform:translate(-25%,7%) scale(.85);opacity:.22}to{transform:translate(48%,-14%) scale(1.3);opacity:.7}}
 @keyframes abajGearTurn{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){.abajSceneMotion i{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.abajSceneMotion i,.abajSceneDolphin,.abajSceneGearOverlay{animation:none!important}}
 
 .abajLaunchText{display:flex;flex-direction:column;gap:7px;max-width:calc(100% - 48px);position:relative;z-index:2}
 .abajLaunchName{font-size:clamp(28px,3.25vw,44px);font-weight:800;line-height:1.08;letter-spacing:-.7px;text-shadow:0 2px 8px #0008}
@@ -81,7 +86,18 @@ document.body.appendChild(root);
 for(const tile of root.querySelectorAll('.abajLaunchTile')){
 const motion=document.createElement('span');motion.className='abajSceneMotion';motion.setAttribute('aria-hidden','true');
 const accent=document.createElement('i');accent.className=tile.dataset.target==='cinema'?'abajSceneSun':tile.dataset.target==='iptv'?'abajSceneWater':'abajSceneGear';
-motion.appendChild(accent);tile.insertBefore(motion,tile.firstChild);
+motion.appendChild(accent);
+if(tile.dataset.target==='iptv'){
+  const dolphin=document.createElement('span');dolphin.className='abajSceneDolphin';
+  dolphin.innerHTML='<svg viewBox="0 0 120 58" aria-hidden="true"><path d="M7 31Q25 12 50 18Q67 2 83 8L77 20Q91 22 102 31L115 21L109 38L116 48L95 39Q76 47 57 41L43 55L40 39Q22 42 7 31Z" fill="#9be9ff" fill-opacity=".74" stroke="#d7f8ff" stroke-width="1.5"/><circle cx="88" cy="28" r="2" fill="#113b5c"/></svg>';
+  motion.appendChild(dolphin);
+}
+if(tile.dataset.target==='settings'){
+  const gear=document.createElement('span');gear.className='abajSceneGearOverlay';
+  gear.innerHTML='<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M43 4H57L61 16L71 20L82 14L92 24L86 35L90 43L97 44V57L85 61L81 71L87 82L77 92L65 86L57 90L56 97H43L39 85L29 81L18 87L8 77L14 65L10 57L3 56V43L15 39L19 29L13 18L23 8L35 14L43 10Z" fill="#8ec8e9" fill-opacity=".35" stroke="#e2f4ff" stroke-opacity=".75" stroke-width="2"/><circle cx="50" cy="50" r="19" fill="#071b35" fill-opacity=".5" stroke="#c4eaff" stroke-width="4"/></svg>';
+  motion.appendChild(gear);
+}
+tile.insertBefore(motion,tile.firstChild);
 }
 const brand=root.querySelector('.abajLaunchBrand');
 for(const [x,y,delay,speed] of [[5,22,0,2.7],[17,70,-1.3,3.2],[29,18,-.8,2.4],[42,77,-2.1,3.5],[54,25,-1.7,2.9],[67,69,-.4,3.1],[80,16,-2.5,2.6],[93,73,-1.1,3.4]]){
