@@ -209,6 +209,7 @@ async function playIptvBallTransition(tile){
  ball.className='abajIptvFlyingBall';
  ball.innerHTML='<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><radialGradient id="abajBallShade" cx="32%" cy="24%" r="78%"><stop offset="0" stop-color="#fff"/><stop offset=".53" stop-color="#f5f7f9"/><stop offset=".8" stop-color="#b6c0c9"/><stop offset="1" stop-color="#263748"/></radialGradient><clipPath id="abajBallClip"><circle cx="50" cy="50" r="48"/></clipPath></defs><circle cx="50" cy="50" r="48" fill="url(#abajBallShade)"/><g clip-path="url(#abajBallClip)" fill="#101821" stroke="#283541" stroke-width="1.2"><polygon points="48,30 66,38 63,57 43,64 31,47"/><polygon points="6,15 25,8 34,23 20,39 3,34"/><polygon points="77,7 96,19 96,38 80,36 68,21"/><polygon points="8,71 27,65 36,84 25,103 3,94"/><polygon points="73,74 93,63 106,77 92,99 72,95"/></g><g clip-path="url(#abajBallClip)" fill="none" stroke="#78818a" stroke-width="2.2"><path d="M31 47 20 39M48 30 34 23M66 38 80 36M63 57 73 74M43 64 36 84M27 65 20 39M68 21 48 30M93 63 63 57"/></g><ellipse cx="35" cy="20" rx="22" ry="11" fill="#fff" opacity=".28" transform="rotate(-25 35 20)"/></svg>';
  ball.setAttribute('aria-hidden','true');
+ ball.style.perspective='550px';
  const r=tile.getBoundingClientRect();
  // The football is near the top centre of the TV screen in the original IPTV artwork.
  const x=r.left+r.width*.665,y=r.top+r.height*.285;
@@ -217,15 +218,17 @@ async function playIptvBallTransition(tile){
  try{
   const endX=window.innerWidth/2,endY=window.innerHeight/2;
   const dx=endX-x,dy=endY-y;
-  const targetScale=Math.min(4.2,Math.max(2.6,Math.min(window.innerWidth,window.innerHeight)/120));
+  const targetScale=Math.min(5.2,Math.max(3.1,Math.min(window.innerWidth,window.innerHeight)/95));
+  const spin=ball.firstElementChild.animate([{transform:'rotate(-12deg)'},{transform:'rotate(235deg)'}],{duration:1350,easing:'cubic-bezier(.25,.1,.3,1)',fill:'forwards'});
   const anim=ball.animate([
-   {transform:'translate(-50%,-50%) translate(0px,0px) scale(.12) rotateY(-25deg) rotate(-15deg)',opacity:1,offset:0},
-   {transform:'translate(-50%,-50%) translate('+dx*.18+'px,'+dy*.18+'px) scale(.6) rotateY(5deg) rotate(2deg)',opacity:1,offset:.32},
-   {transform:'translate(-50%,-50%) translate('+dx*.7+'px,'+dy*.7+'px) scale('+targetScale*.35+') rotateY(65deg) rotate(24deg)',opacity:1,offset:.74},
-   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale+') rotateY(120deg) rotate(35deg)',opacity:1,offset:.94},
-   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale*1.2+') rotateY(150deg) rotate(38deg)',opacity:0,offset:1}
-  ],{duration:1050,easing:'cubic-bezier(.22,.08,.2,1)',fill:'forwards'});
+   {transform:'translate(-50%,-50%) translate(0px,0px) scale(.12)',opacity:1,offset:0},
+   {transform:'translate(-50%,-50%) translate('+dx*.18+'px,'+dy*.18+'px) scale(.48)',opacity:1,offset:.32},
+   {transform:'translate(-50%,-50%) translate('+dx*.7+'px,'+dy*.7+'px) scale('+targetScale*.4+')',opacity:1,offset:.74},
+   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale+')',opacity:1,offset:.94},
+   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale*1.06+')',opacity:0,offset:1}
+  ],{duration:1350,easing:'cubic-bezier(.2,.06,.24,1)',fill:'forwards'});
   await anim.finished.catch(()=>{});
+  spin.cancel();
  }finally{ball.remove();iptvTransitionBusy=false}
  return true;
 }
