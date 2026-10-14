@@ -1,17 +1,17 @@
 /* ABAJ TV Premium Dark launcher — isolated UI layer */
 (()=>{'use strict';
 const css=`
-#abajLauncher{position:fixed;inset:0;z-index:9000;overflow-y:auto;display:flex;flex-direction:column;padding:clamp(20px,3vw,46px);color:#f6fbff;background:radial-gradient(ellipse at 85% 10%,#1152a2aa,transparent 48%),linear-gradient(150deg,#010614,#041a42 60%,#020917);font-family:Arial,sans-serif}
+#abajLauncher{position:fixed;inset:0;z-index:9000;overflow-y:auto;display:flex;flex-direction:column;padding:clamp(20px,3vw,46px);color:#f6fbff;background:linear-gradient(180deg,#01071633 0%,#020c26e8 34%,#020917 100%),url('/static/launcher-header.svg') center top / 100% auto no-repeat,#020917;font-family:Arial,sans-serif}
 #abajLauncher[hidden],#abajLaunchHome[hidden]{display:none!important}
 #abajLauncher *{box-sizing:border-box}
 .abajLaunchTop{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.abajLaunchBrand{font-size:clamp(31px,5vw,66px);font-weight:950;letter-spacing:2px;white-space:nowrap;color:#fff;text-shadow:0 0 12px #b4d9ff,0 0 28px #1269ff}
+.abajLaunchBrand{font-size:clamp(31px,5vw,66px);font-weight:950;letter-spacing:2px;white-space:nowrap;color:#fff;text-shadow:0 0 12px #b4d9ff,0 0 28px #1269ff,0 0 48px #038aff}
 .abajLaunchBrand b{color:#03baff;text-shadow:0 0 16px #04caff,0 0 35px #0259ff}
 .abajLaunchTime{color:#d8e9ff;font-size:clamp(16px,1.8vw,22px)}
 .abajLaunchTitle{font-size:clamp(12px,1.6vw,18px);letter-spacing:4px;font-weight:650;text-transform:uppercase;color:#d4e7ff;margin:4px 0 clamp(20px,4vh,40px);text-shadow:0 0 12px #3085ff}
 .abajLaunchTiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(16px,2vw,28px);flex:1}
 .abajLaunchTile{position:relative;isolation:isolate;min-height:260px;display:flex;align-items:flex-end;text-align:left;padding:clamp(18px,2.5vw,32px);border-radius:24px;border:2px solid #14aaff;background-image:linear-gradient(0deg,#02071bf7 0%,#02071b8a 35%,#02071b0b 75%),var(--tile-bg);background-size:cover;background-position:center;color:#fff;box-shadow:0 0 10px #01aaff,0 0 24px #006bff70,inset 0 0 20px #009cff66;cursor:pointer;transition:transform .18s,box-shadow .18s}
-.abajLaunchTile:after{content:'›';position:absolute;right:16px;bottom:21px;color:#e7f8ff;font-size:45px;line-height:1;text-shadow:0 0 12px #18aaff}
+.abajLaunchTile:before{content:'';position:absolute;inset:-2px;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 12px #07baff66;animation:abajPulse 3s ease-in-out infinite}@keyframes abajPulse{0%,100%{opacity:.5}50%{opacity:1}}\n.abajLaunchTile:after{content:'›';position:absolute;right:16px;bottom:21px;color:#e7f8ff;font-size:45px;line-height:1;text-shadow:0 0 12px #18aaff}
 .abajLaunchTile:hover,.abajLaunchTile:focus-visible{outline:none;transform:scale(1.018);border-color:#d8faff;box-shadow:0 0 0 2px #54dfff,0 0 33px #009cff,0 0 60px #126cff,inset 0 0 22px #00baff66}
 .abajLaunchText{display:flex;flex-direction:column;gap:9px;max-width:calc(100% - 26px);position:relative;z-index:1}
 .abajLaunchIcon{display:none}
@@ -30,9 +30,9 @@ const home=document.createElement('button');home.id='abajLaunchHome';home.textCo
 const clock=document.getElementById('abajLaunchClock');function tick(){clock.textContent=new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}tick();setInterval(tick,60000);
 function show(){try{if(typeof closeTvSettings==='function')closeTvSettings()}catch(e){}root.hidden=false;home.hidden=true;if(document.body.classList.contains('nativeTv'))root.querySelector('button')?.focus({preventScroll:true})}
 function hide(){root.hidden=true;home.hidden=false}
-root.addEventListener('click',async e=>{const b=e.target.closest('[data-target]');if(!b)return;const target=b.dataset.target;try{if(target==='cinema'&&!document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();if(target==='iptv'&&document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();if(target==='settings'&&typeof openTvSettings==='function')openTvSettings();if(target!=='cinema'||document.body.classList.contains('cinemaMode'))hide()}catch(err){console.error('ABAJ launcher navigation',err)}});
+root.addEventListener('click',async e=>{const b=e.target.closest('[data-target]');if(!b)return;const target=b.dataset.target;try{if(target==='cinema'&&!document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();if(target==='iptv'&&document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();if(target==='settings'&&typeof openTvSettings==='function')openTvSettings();if(target==='settings'||target==='iptv'||document.body.classList.contains('cinemaMode'))hide()}catch(err){console.error('ABAJ launcher navigation',err)}});
 home.addEventListener('click',show);
-root.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const bs=[...root.querySelectorAll('[data-target]')];const i=bs.indexOf(document.activeElement);bs[(i+(e.key==='ArrowRight'?1:bs.length-1))%bs.length].focus();e.preventDefault()}});
+root.addEventListener('keydown',e=>{const keys=['ArrowRight','ArrowLeft','ArrowUp','ArrowDown'];if(!keys.includes(e.key))return;const bs=[...root.querySelectorAll('[data-target]')];const i=Math.max(0,bs.indexOf(document.activeElement));const delta=(e.key==='ArrowRight'||e.key==='ArrowDown')?1:-1;bs[(i+delta+bs.length)%bs.length].focus({preventScroll:true});e.preventDefault()});
 show();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,250));else setTimeout(start,250);
