@@ -1586,6 +1586,15 @@ def _epg_for_channel(item: dict) -> tuple[dict | None, dict | None]:
         mapped = names.get(name) if name and name not in ambiguous else None
         if mapped and allowed(mapped):
             rows = guides.get(mapped)
+        # The XMLTV display-name index includes country prefixes and compact
+        # spelling variants. Try them only when they resolve to one safe ID.
+        if not rows and name and name not in ambiguous:
+            candidates = {names.get(v) for v in _epg_name_variants(item.get("name") or "")}
+            candidates.discard(None)
+            candidates.discard("")
+            candidates = {v for v in candidates if allowed(v) and guides.get(v)}
+            if len(candidates) == 1:
+                rows = guides[next(iter(candidates))]
     if not rows:
         return None, None
     now = int(time.time())
