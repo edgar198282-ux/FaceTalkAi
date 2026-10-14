@@ -2776,9 +2776,14 @@ public class MainActivity extends Activity {
             nativeCinemaEverReady=false;
             nativeCinemaLastProgressMs=0L;
             nativeProbeStartedAt=System.currentTimeMillis();
-            MediaItem mediaItem="KINOPUB".equals(provider)
-                ?new MediaItem.Builder().setUri(Uri.parse(url)).setMimeType(MimeTypes.APPLICATION_M3U8).build()
-                :MediaItem.fromUri(Uri.parse(url));
+            Uri mediaUri=Uri.parse(url);
+            String mediaPath=mediaUri.getPath()==null?"":mediaUri.getPath().toLowerCase(java.util.Locale.ROOT);
+            MediaItem.Builder mediaBuilder=new MediaItem.Builder().setUri(mediaUri);
+            if(mediaPath.endsWith(".mpd"))mediaBuilder.setMimeType(MimeTypes.APPLICATION_MPD);
+            else if(mediaPath.endsWith(".m3u8"))mediaBuilder.setMimeType(MimeTypes.APPLICATION_M3U8);
+            else if("KINOPUB".equals(provider)&&!mediaPath.endsWith(".mp4")&&!mediaPath.endsWith(".m4v"))
+                mediaBuilder.setMimeType(MimeTypes.APPLICATION_M3U8);
+            MediaItem mediaItem=mediaBuilder.build();
             nativeProbePlayer.setMediaSource(
                 mediaFactory.createMediaSource(mediaItem),true
             );
