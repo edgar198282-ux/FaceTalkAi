@@ -35,7 +35,7 @@ const css=`
 .abajSceneMotion i{position:absolute;display:block;pointer-events:none}
 .abajLaunchTile[data-target="cinema"] .abajSceneSun{left:35%;top:19%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff5b34d 0%,#ffbf4440 15%,#ffb12a16 39%,transparent 69%);mix-blend-mode:screen;animation:abajSunDrift 32s ease-in-out infinite}
 .abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff25,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
-.abajIptvFlyingBall{position:fixed;z-index:2147483647;display:block;width:76px;height:76px;line-height:0;text-align:center;pointer-events:none;transform:translate(-50%,-50%);filter:drop-shadow(0 7px 8px #0009);user-select:none;transform-style:preserve-3d}
+.abajIptvFlightCurtain{position:fixed;inset:0;z-index:2147483646;background:#06152c;opacity:0;pointer-events:none}.abajIptvFlyingBall{position:fixed;z-index:2147483647;display:block;width:76px;height:76px;line-height:0;text-align:center;pointer-events:none;transform:translate(-50%,-50%);filter:drop-shadow(0 7px 8px #0009);user-select:none;transform-style:preserve-3d}
 .abajLaunchTile[data-target="iptv"] .abajIptvMotionVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1;border-radius:inherit}
 .abajLaunchTile[data-target="iptv"].abajIptvVideoReady{background-image:linear-gradient(0deg,#010b19b3,transparent 42%),var(--tile-bg)!important}
 body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajIptvVideoReady .abajIptvMotionVideo{opacity:.82}
@@ -218,18 +218,20 @@ async function playIptvBallTransition(tile){
  try{
   const endX=window.innerWidth/2,endY=window.innerHeight/2;
   const dx=endX-x,dy=endY-y;
-  const targetScale=Math.min(5.5,Math.max(3,Math.min(window.innerWidth,window.innerHeight)/85));
-  const spin=ball.firstElementChild.animate([{transform:'rotate(-12deg)'},{transform:'rotate(150deg)'}],{duration:900,easing:'ease-out',fill:'forwards'});
+  const targetScale=Math.min(6,Math.max(3.5,Math.min(window.innerWidth,window.innerHeight)/76));
+  const curtain=document.createElement('span');curtain.className='abajIptvFlightCurtain';document.body.appendChild(curtain);
+  const spin=ball.firstElementChild.animate([{transform:'rotate(-12deg)'},{transform:'rotate(150deg)'}],{duration:1200,easing:'ease-out',fill:'forwards'});
   const anim=ball.animate([
    {transform:'translate(-50%,-50%) translate(0px,0px) scale(.12)',opacity:1,offset:0},
    {transform:'translate(-50%,-50%) translate('+dx*.18+'px,'+dy*.18+'px) scale(.48)',opacity:1,offset:.32},
-   {transform:'translate(-50%,-50%) translate('+dx*.7+'px,'+dy*.7+'px) scale('+targetScale*.38+')',opacity:1,offset:.74},
-   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale*.9+')',opacity:1,offset:.94},
+   {transform:'translate(-50%,-50%) translate('+dx*.7+'px,'+dy*.7+'px) scale('+targetScale*.42+')',opacity:1,offset:.74},
+   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale*.94+')',opacity:1,offset:.94},
    {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale+')',opacity:1,offset:1}
-  ],{duration:900,easing:'cubic-bezier(.2,.06,.24,1)',fill:'forwards'});
-  await Promise.race([anim.finished.catch(()=>{}),new Promise(resolve=>setTimeout(resolve,1150))]);
-  anim.cancel();spin.cancel();
- }finally{ball.remove();iptvTransitionBusy=false}
+  ],{duration:1200,easing:'cubic-bezier(.2,.06,.24,1)',fill:'forwards'});
+  const cover=curtain.animate([{opacity:0,offset:0},{opacity:0,offset:.68},{opacity:1,offset:1}],{duration:1200,fill:'forwards'});
+  await Promise.race([Promise.all([anim.finished.catch(()=>{}),cover.finished.catch(()=>{})]),new Promise(resolve=>setTimeout(resolve,1550))]);
+  anim.cancel();spin.cancel();cover.cancel();curtain.remove();
+ }finally{ball.remove();document.querySelectorAll('.abajIptvFlightCurtain').forEach(el=>el.remove());iptvTransitionBusy=false}
  return true;
 }
 function show(){applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;home.hidden=true;root.querySelector('button')?.focus({preventScroll:true})}
