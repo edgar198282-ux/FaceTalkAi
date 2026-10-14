@@ -1,29 +1,30 @@
 /* ABAJ TV Premium Dark launcher — isolated UI layer */
 (()=>{'use strict';
 const css=`
-#abajLauncher{position:fixed;inset:0;z-index:9000;display:flex;flex-direction:column;padding:clamp(18px,3vw,48px);color:#f5fbff;background:linear-gradient(180deg,#02091688,#03122af0 88%),radial-gradient(ellipse at 67% 9%,#177bd1 0%,transparent 45%),linear-gradient(140deg,#020818,#0a2d57 58%,#010711);font-family:Arial,sans-serif;overflow:auto}
-#abajLauncher[hidden]{display:none!important}
+#abajLauncher{position:fixed;inset:0;z-index:9000;overflow-y:auto;display:flex;flex-direction:column;padding:clamp(20px,3vw,46px);color:#f6fbff;background:radial-gradient(ellipse at 85% 10%,#1152a2aa,transparent 48%),linear-gradient(150deg,#010614,#041a42 60%,#020917);font-family:Arial,sans-serif}
+#abajLauncher[hidden],#abajLaunchHome[hidden]{display:none!important}
 #abajLauncher *{box-sizing:border-box}
-.abajLaunchTop{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.abajLaunchBrand{font-size:clamp(27px,4vw,52px);font-weight:900;letter-spacing:2px;color:#fff;text-shadow:0 0 18px #068eff}
-.abajLaunchBrand b{color:#32b5ff}
-.abajLaunchTime{font-size:clamp(15px,1.7vw,23px);color:#c5e6ff}
-.abajLaunchTitle{font-size:clamp(18px,2.3vw,29px);font-weight:750;margin:clamp(20px,5vh,65px) 0 24px}
-.abajLaunchTiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(12px,2vw,28px);flex:1;min-height:0}
-.abajLaunchTile{position:relative;min-height:260px;max-height:520px;display:flex;flex-direction:column;justify-content:flex-end;text-align:left;gap:8px;padding:clamp(17px,2.5vw,35px);border-radius:14px;border:2px solid #28a8ec;color:white;background:linear-gradient(0deg,#010814fa 0%,#06152b7a 38%,#0b37650b 85%),var(--tile-bg);background-size:cover;background-position:center;box-shadow:inset 0 0 30px #001c44,0 16px 30px #0008,0 0 12px #0076cf55;transition:transform .15s,border-color .15s,box-shadow .15s;cursor:pointer}
-.abajLaunchTile:hover,.abajLaunchTile:focus-visible{outline:none;border-color:#b7f3ff;box-shadow:0 0 0 3px #057aff,0 0 32px #00aeff,inset 0 0 30px #04487a;transform:scale(1.015)}
+.abajLaunchTop{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.abajLaunchBrand{font-size:clamp(31px,5vw,66px);font-weight:950;letter-spacing:2px;white-space:nowrap;color:#fff;text-shadow:0 0 12px #b4d9ff,0 0 28px #1269ff}
+.abajLaunchBrand b{color:#03baff;text-shadow:0 0 16px #04caff,0 0 35px #0259ff}
+.abajLaunchTime{color:#d8e9ff;font-size:clamp(16px,1.8vw,22px)}
+.abajLaunchTitle{font-size:clamp(12px,1.6vw,18px);letter-spacing:4px;font-weight:650;text-transform:uppercase;color:#d4e7ff;margin:4px 0 clamp(20px,4vh,40px);text-shadow:0 0 12px #3085ff}
+.abajLaunchTiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(16px,2vw,28px);flex:1}
+.abajLaunchTile{position:relative;isolation:isolate;min-height:260px;display:flex;align-items:flex-end;text-align:left;padding:clamp(18px,2.5vw,32px);border-radius:24px;border:2px solid #14aaff;background-image:linear-gradient(0deg,#02071bf7 0%,#02071b8a 35%,#02071b0b 75%),var(--tile-bg);background-size:cover;background-position:center;color:#fff;box-shadow:0 0 10px #01aaff,0 0 24px #006bff70,inset 0 0 20px #009cff66;cursor:pointer;transition:transform .18s,box-shadow .18s}
+.abajLaunchTile:after{content:'›';position:absolute;right:16px;bottom:21px;color:#e7f8ff;font-size:45px;line-height:1;text-shadow:0 0 12px #18aaff}
+.abajLaunchTile:hover,.abajLaunchTile:focus-visible{outline:none;transform:scale(1.018);border-color:#d8faff;box-shadow:0 0 0 2px #54dfff,0 0 33px #009cff,0 0 60px #126cff,inset 0 0 22px #00baff66}
+.abajLaunchText{display:flex;flex-direction:column;gap:9px;max-width:calc(100% - 26px);position:relative;z-index:1}
 .abajLaunchIcon{display:none}
-.abajLaunchName{font-size:clamp(22px,2.8vw,38px);font-weight:900;text-shadow:0 3px 10px #000,0 0 14px #0077ff}
-.abajLaunchDesc{font-size:clamp(13px,1.3vw,19px);color:#c4d7e8}
-.abajLaunchFoot{display:flex;gap:12px;justify-content:center;margin-top:22px;color:#a7c8e5;font-size:14px}
-#abajLaunchHome{position:fixed;left:12px;bottom:12px;z-index:8000;background:#061b36eb;border:1px solid #20a7ff;color:#fff;border-radius:50%;width:45px;height:45px;font-size:24px;box-shadow:0 0 14px #0075c477;cursor:pointer}
-#abajLaunchHome[hidden]{display:none!important}
-@media(max-width:650px){#abajLauncher{padding:20px 15px 26px}.abajLaunchTitle{margin:22px 0 15px}.abajLaunchTiles{grid-template-columns:1fr;gap:12px;flex:initial}.abajLaunchTile{min-height:170px;max-height:none;flex-direction:row;align-items:flex-end;justify-content:flex-start;gap:16px;padding:18px;border-radius:16px}.abajLaunchIcon{display:none}.abajLaunchName{font-size:24px}.abajLaunchDesc{font-size:13px}.abajLaunchText{display:flex;flex-direction:column;gap:4px}.abajLaunchFoot{margin-top:18px}}
+.abajLaunchName{font-size:clamp(25px,3.2vw,47px);font-weight:950;line-height:1.06;text-shadow:0 2px 7px #000,0 0 12px #007bff}
+.abajLaunchDesc{font-size:clamp(13px,1.5vw,20px);line-height:1.25;color:#e2ecff;text-shadow:0 2px 7px #000}
+.abajLaunchFoot{display:none}
+#abajLaunchHome{position:fixed;bottom:18px;left:18px;z-index:8000;background:#041b3ae8;color:#fff;border:2px solid #12baff;border-radius:50%;width:49px;height:49px;font-size:26px;box-shadow:0 0 18px #039bff}
+@media(max-width:650px){#abajLauncher{padding:18px 15px 25px}.abajLaunchTop{margin-top:0}.abajLaunchBrand{font-size:clamp(30px,9vw,48px)}.abajLaunchTitle{font-size:11px;letter-spacing:2.5px;margin:6px 0 24px}.abajLaunchTime{font-size:16px}.abajLaunchTiles{display:flex;flex-direction:column;gap:17px;flex:initial}.abajLaunchTile{min-height:clamp(185px,26vh,265px);padding:18px 20px;border-radius:23px}.abajLaunchName{font-size:clamp(29px,7.2vw,40px)}.abajLaunchDesc{font-size:clamp(14px,3.7vw,18px)}.abajLaunchTile:after{bottom:21px;font-size:38px}}
 `;
 function start(){
 if(document.getElementById('abajLauncher'))return;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
-const root=document.createElement('section');root.id='abajLauncher';root.setAttribute('aria-label','ABAJ TV — главная');root.innerHTML=`<div class="abajLaunchTop"><div class="abajLaunchBrand">▶ ABAJ <b>TV</b></div><div class="abajLaunchTime" id="abajLaunchClock"></div></div><div class="abajLaunchTitle">Кино и телевидение нового уровня</div><div class="abajLaunchTiles"><button class="abajLaunchTile" data-target="cinema" style="--tile-bg:url('/static/launcher-cinema.svg')"><span class="abajLaunchIcon">🎞</span><span class="abajLaunchText"><span class="abajLaunchName">Кинотеатр</span><span class="abajLaunchDesc">Фильмы, сериалы, мультфильмы</span></span></button><button class="abajLaunchTile" data-target="iptv" style="--tile-bg:url('/static/launcher-iptv.svg')"><span class="abajLaunchIcon">▣</span><span class="abajLaunchText"><span class="abajLaunchName">IPTV</span><span class="abajLaunchDesc">Каналы и прямые эфиры</span></span></button><button class="abajLaunchTile" data-target="settings" style="--tile-bg:url('/static/launcher-settings.svg')"><span class="abajLaunchIcon">⚙</span><span class="abajLaunchText"><span class="abajLaunchName">Настройки</span><span class="abajLaunchDesc">Параметры и управление</span></span></button></div><div class="abajLaunchFoot">◈ &nbsp; Кино &nbsp; · &nbsp; IPTV &nbsp; · &nbsp; Настройки</div>`;
+const root=document.createElement('section');root.id='abajLauncher';root.setAttribute('aria-label','ABAJ TV — главная');root.innerHTML=`<div class="abajLaunchTop"><div class="abajLaunchBrand">▶ ABAJ <b>TV</b></div><div class="abajLaunchTime" id="abajLaunchClock"></div></div><div class="abajLaunchTitle">ВАШ МИР КИНО И ТЕЛЕВИДЕНИЯ</div><div class="abajLaunchTiles"><button class="abajLaunchTile" data-target="cinema" style="--tile-bg:url('/static/launcher-cinema.svg')"><span class="abajLaunchIcon">🎞</span><span class="abajLaunchText"><span class="abajLaunchName">Кинотеатр</span><span class="abajLaunchDesc">Фильмы, сериалы, мультфильмы</span></span></button><button class="abajLaunchTile" data-target="iptv" style="--tile-bg:url('/static/launcher-iptv.svg')"><span class="abajLaunchIcon">▣</span><span class="abajLaunchText"><span class="abajLaunchName">IPTV</span><span class="abajLaunchDesc">Каналы и прямые эфиры</span></span></button><button class="abajLaunchTile" data-target="settings" style="--tile-bg:url('/static/launcher-settings.svg')"><span class="abajLaunchIcon">⚙</span><span class="abajLaunchText"><span class="abajLaunchName">Настройки</span><span class="abajLaunchDesc">Параметры и управление</span></span></button></div><div class="abajLaunchFoot"></div>`;
 document.body.appendChild(root);
 const home=document.createElement('button');home.id='abajLaunchHome';home.textContent='⌂';home.title='Главная ABAJ TV';home.setAttribute('aria-label','Главная ABAJ TV');home.hidden=true;document.body.appendChild(home);
 const clock=document.getElementById('abajLaunchClock');function tick(){clock.textContent=new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}tick();setInterval(tick,60000);
