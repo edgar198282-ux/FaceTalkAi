@@ -1604,14 +1604,14 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void enterPlayerFullscreen(){
             if(isTv)return;
             runOnUiThread(()->{
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                MainActivity.this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
                 enterMobilePlayerImmersive();
             });
         }
         @JavascriptInterface public void exitPlayerFullscreen(){
             if(isTv)return;
             runOnUiThread(()->{
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                MainActivity.this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
                 exitMobilePlayerImmersive();
             });
         }
