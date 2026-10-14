@@ -5926,27 +5926,27 @@ async function refreshChannels(){
 function normalizeSearchText(v){
   return String(v||'').toLowerCase().replace(/ё/g,'е').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zа-я0-9ա-ֆ]+/gi,' ').replace(/\s+/g,' ').trim();
 }
-const NEW_CHANNEL_ORDER_KEY='abaj_tv_new_channel_order_v1';
+const NEW_CHANNEL_ORDER_KEY='abaj_tv_free_new_channel_order_v2';
 function prioritizeNewChannels(rows){
-  if(modeFilter==='recent')return rows;
+  if(modeFilter==='recent'||sourceFilter!=='free')return rows;
   try{
+    const free=channels.filter(x=>!x.personal);
+    const ids=free.map(x=>String(x.id));
     const saved=JSON.parse(localStorage.getItem(NEW_CHANNEL_ORDER_KEY)||'null');
     if(!saved||!Array.isArray(saved.known)){
-      localStorage.setItem(NEW_CHANNEL_ORDER_KEY,JSON.stringify({known:channels.map(x=>String(x.id)),newest:[]}));
+      localStorage.setItem(NEW_CHANNEL_ORDER_KEY,JSON.stringify({known:ids,newest:[]}));
       return rows;
     }
     const known=new Set(saved.known);
-    const newest=Array.isArray(saved.newest)?saved.newest.filter(id=>channels.some(x=>String(x.id)===id)):[];
+    const newest=Array.isArray(saved.newest)?saved.newest.filter(id=>ids.includes(id)):[];
     let changed=false;
-    for(const ch of channels){
-      const id=String(ch.id);
+    for(const id of ids){
       if(known.has(id))continue;
       known.add(id);
       newest.unshift(id);
       changed=true;
     }
-    if(changed)localStorage.setItem(NEW_CHANNEL_ORDER_KEY,JSON.stringify({known:[...known],newest:newest.slice(0,300)}));
-    if(!newest.length)return rows;
+    if(changed)localStorage.setItem(NEW_CHANNEL_ORDER_KEY,JSON.stringify({known:[...known],newest:newest.slice(0,500)}));
     const rank=new Map(newest.map((id,i)=>[id,i]));
     return rows.slice().sort((a,b)=>(rank.get(String(a.id))??Infinity)-(rank.get(String(b.id))??Infinity));
   }catch(e){return rows}
@@ -6236,7 +6236,7 @@ function render(){
     (grouped[k]||(grouped[k]=[])).push(x);
   });
   let out='';
-  Object.keys(grouped).sort((a,b)=>a.localeCompare(b,'ru')).forEach(group=>{
+  Object.keys(grouped).sort((a,b)=>sourceFilter==='free' ? 0 : a.localeCompare(b,'ru')).forEach(group=>{
     if(!tvMode&&layout!=='grid')out+='<div class="groupTitle">'+esc(localizedCategoryLabel(group))+'</div>';
     grouped[group].forEach(ch=>{
       const fallbackLogo=channelFallbackLogo(ch);
