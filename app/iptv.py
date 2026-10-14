@@ -2430,6 +2430,20 @@ def public_state(compact: bool = False, fast: bool = False):
             -float(x.get("health_score") or 0),
         ))
         primary = copies[0]
+        # FREE duplicates represent the same normalized station. If the
+        # preferred quality stream has no guide, reuse a guide from another
+        # copy only when all available schedules agree on the current event.
+        if not primary.get("epg_now") and len(copies) > 1:
+            guided = [copy for copy in copies if copy.get("epg_now")]
+            signatures = {
+                (str(copy["epg_now"].get("title") or "").strip(),
+                 int(copy["epg_now"].get("start") or 0),
+                 int(copy["epg_now"].get("stop") or 0))
+                for copy in guided
+            }
+            if len(signatures) == 1 and guided:
+                primary["epg_now"] = guided[0]["epg_now"]
+                primary["epg_next"] = guided[0].get("epg_next")
         if len(copies) > 1 and not fast:
             alternate_urls = list(primary.get("backups") or [])
             for alternate in copies[1:]:
