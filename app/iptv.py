@@ -2298,20 +2298,29 @@ def public_state(compact: bool = False, fast: bool = False):
         rows.append(row)
     rows.sort(key=lambda x: (x["status"] != "ONLINE", x.get("country", ""), x.get("group", ""), x.get("name", "")))
     stats = dict(_state["stats"])
-    if True:
-        # Keep admin diagnostics consistent with the compact list used by TV.
-        excluded = {"offline": 0, "restricted_or_placeholder": 0, "advertising_placeholder": 0}
-        for source in _state["channels"].values():
-            if str(source.get("status") or "") != "ONLINE":
-                excluded["offline"] += 1
-            elif _is_wink_placeholder_stream(source) or _hide_unusable_catalog_channel(source):
-                excluded["restricted_or_placeholder"] += 1
-            elif (bool((_cinerama_placeholder_state.get(str(source.get("id") or "")) or {}).get("active"))
-                  or bool((_ottclub_ad_state.get(str(source.get("id") or "")) or {}).get("active"))):
-                excluded["advertising_placeholder"] += 1
-        stats["catalog_total"] = len(_state["channels"])
-        stats["list_total"] = len(rows) if compact else max(0, len(_state["channels"]) - sum(excluded.values()))
-        stats["excluded_from_list"] = excluded
+    # Report the same exclusions applied to the compact TV channel list.
+    excluded = {"offline": 0, "restricted_or_placeholder": 0, "advertising_placeholder": 0}
+    excluded_samples = {reason: [] for reason in excluded}
+    for source in _state["channels"].values():
+        cid = str(source.get("id") or "")
+        reason = None
+        if str(source.get("status") or "") != "ONLINE":
+            reason = "offline"
+        elif _is_wink_placeholder_stream(source) or _hide_unusable_catalog_channel(source):
+            reason = "restricted_or_placeholder"
+        elif (bool((_cinerama_placeholder_state.get(cid) or {}).get("active"))
+              or bool((_ottclub_ad_state.get(cid) or {}).get("active"))):
+            reason = "advertising_placeholder"
+        if reason:
+            excluded[reason] += 1
+            if len(excluded_samples[reason]) < 15:
+                excluded_samples[reason].append({
+                    "id": cid, "name": str(source.get("name") or "")[:100],
+                    "country": str(source.get("country") or "")[:8]})
+    stats["catalog_total"] = len(_state["channels"])
+    stats["list_total"] = len(_state["channels"]) - sum(excluded.values())
+    stats["excluded_from_list"] = excluded
+    stats["excluded_samples"] = excluded_samples
     stats["epg_channels"] = len(_state["epg"]) if _state["epg"] else int(stats.get("epg_channels") or 0)
     stats["epg_logo_channels"] = len(_state.get("epg_logos") or {})
     stats["epg_source_count"] = len(EPG_URLS)
