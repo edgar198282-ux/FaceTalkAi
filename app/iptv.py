@@ -1549,21 +1549,29 @@ def _epg_logo_for_channel(item: dict) -> str:
 
 def _epg_for_channel(item: dict) -> tuple[dict | None, dict | None]:
     cid = str(item.get("tvg_id") or "").strip()
-    rows = _state["epg"].get(cid) if cid else None
-    if not rows and cid:
+    country = str(item.get("country") or "").strip().upper()
+    names = _state.get("epg_names") or {}
+    guides = _state.get("epg") or {}
+
+    def guide_country(guide_id):
+        suffix = str(guide_id).split("@", 1)[0].rsplit(".", 1)
+        return suffix[-1].upper() if len(suffix) == 2 and len(suffix[-1]) == 2 and suffix[-1].isalpha() else ""
+
+    def allowed(guide_id):
+        origin = guide_country(guide_id)
+        return not (country and origin and origin != country)
+
+    rows = guides.get(cid) if cid and allowed(cid) else None
+    if not rows and cid and "@" in cid:
         base_cid = cid.split("@", 1)[0].strip()
-        rows = _state["epg"].get(base_cid) if base_cid else None
+        if allowed(base_cid):
+            rows = guides.get(base_cid)
     if not rows:
-        # Match only the channel's own name, never inherited aliases from other streams.
-        # Country-prefixed variants are excluded to avoid cross-region guides.
         name = _normalize_name(item.get("name") or "")
-        country = str(item.get("country") or "").strip().upper()
-        # Generic names such as Kino TV are shared by unrelated broadcasters.
-        # Without an exact guide identifier they must not inherit foreign EPG.
-        ambiguous = {"kino", "kino tv", "cinema", "cinema tv", "movie", "movie tv", "film", "film tv"}
-        mapped = (_state.get("epg_names") or {}).get(name) if name and name not in ambiguous else None
-        if mapped and mapped in _state["epg"]:
-            rows = _state["epg"][mapped]
+        ambiguous = {"kino", "kino tv", "cinema", "cinema tv", "movie", "movie tv", "film", "film tv", "hit", "hit hd", "hit tv"}
+        mapped = names.get(name) if name and name not in ambiguous else None
+        if mapped and allowed(mapped):
+            rows = guides.get(mapped)
     if not rows:
         return None, None
     now = int(time.time())
@@ -2330,8 +2338,8 @@ def public_state(compact: bool = False, fast: bool = False):
         # the previous fast path made all player programme titles disappear
         # even though the diagnostics counted hundreds of EPG matches.
         current, nxt = _epg_for_channel(row)
-        row["epg_now"] = current if current is not None else row.get("epg_now")
-        row["epg_next"] = nxt if nxt is not None else row.get("epg_next")
+        row["epg_now"] = current
+        row["epg_next"] = nxt
         if not str(row.get("logo") or "").strip():
             epg_logo = _epg_logo_for_channel(row)
             if epg_logo:
