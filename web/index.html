@@ -2514,6 +2514,26 @@ body:not(.nativeTv) #playerView .playerPrimaryControls > .playerCircleCtrl{
 #playerView.cinemaPlayback.cinemaSeriesControls .playerPrimaryControls > .playerPlayCtrl{order:0!important}
 #playerView.cinemaPlayback.cinemaSeriesControls .playerPrimaryControls > .cinemaSeekCtrl[onclick="seekPlayerBy(10)"]{order:2!important}
 </style>
+<style id="abaj-seek-ten-modern-v1">
+/* Cinema only: crisp ten-second circular rewind/forward icons. */
+#playerView.cinemaPlayback .cinemaSeekCtrl .abajSeekTenIcon{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  width:48px!important;height:48px!important;border-radius:50%!important;
+  background:linear-gradient(145deg,rgba(51,90,123,.55),rgba(12,26,46,.45))!important;
+  border:1px solid rgba(130,194,238,.35)!important;
+  color:#edf8ff!important;
+  box-shadow:inset 0 1px 2px rgba(255,255,255,.13),0 3px 12px rgba(0,0,0,.18)!important;
+}
+#playerView.cinemaPlayback .cinemaSeekCtrl .abajSeekTenIcon svg{
+  display:block;width:32px;height:32px;overflow:visible;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));
+}
+#playerView.cinemaPlayback .cinemaSeekCtrl:active .abajSeekTenIcon,
+#playerView.cinemaPlayback .cinemaSeekCtrl:focus-visible .abajSeekTenIcon{
+  color:#fff!important;border-color:#3ac3ff!important;
+  box-shadow:0 0 0 2px rgba(47,188,255,.25),0 0 15px rgba(25,165,255,.5)!important;
+}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
@@ -2916,9 +2936,9 @@ body:not(.nativeTv) #playerView .playerPrimaryControls > .playerCircleCtrl{
     <div class="playerPrimaryControls" onclick="event.stopPropagation();if(document.getElementById('playerView').classList.contains('pureFullscreen'))showPureFullscreenControls();else showTvPlayerUi(true)">
       <button class="ctrl playerCircleCtrl tvChannelCtrl" onclick="playPrev()" title="Предыдущий канал"><span class="playerCtrlIcon">◀|</span><small>Пред. канал</small></button>
       <button id="playerFavAction" class="ctrl playerCircleCtrl tvChannelCtrl" onclick="togglePlayerFavorite()" title="Избранное"><span class="playerCtrlIcon">♡</span><small>Избранное</small></button>
-      <button class="ctrl playerCircleCtrl cinemaSeekCtrl" onclick="seekPlayerBy(-10)" title="Назад 10 секунд"><span class="playerCtrlIcon">↶</span><small>−10 сек</small></button>
+      <button class="ctrl playerCircleCtrl cinemaSeekCtrl" onclick="seekPlayerBy(-10)" title="Назад 10 секунд"><span class="playerCtrlIcon abajSeekTenIcon"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M14 15A15 15 0 1 1 9 29" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><path d="M14 6v10h10" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><text x="24" y="30" text-anchor="middle" font-size="15" font-weight="800" fill="currentColor" font-family="Arial,sans-serif">10</text></svg></span><small>−10 сек</small></button>
       <button id="playerPlayPause" class="ctrl playerCircleCtrl playerPlayCtrl" onclick="togglePlayerPlayback()" title="Пауза"><span class="playerCtrlIcon" id="playerPlayPauseIcon">Ⅱ</span><small id="playerPlayPauseLabel">Пауза</small></button>
-      <button class="ctrl playerCircleCtrl cinemaSeekCtrl" onclick="seekPlayerBy(10)" title="Вперёд 10 секунд"><span class="playerCtrlIcon">↷</span><small>+10 сек</small></button>
+      <button class="ctrl playerCircleCtrl cinemaSeekCtrl" onclick="seekPlayerBy(10)" title="Вперёд 10 секунд"><span class="playerCtrlIcon abajSeekTenIcon"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M34 15A15 15 0 1 0 39 29" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><path d="M34 6v10H24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><text x="24" y="30" text-anchor="middle" font-size="15" font-weight="800" fill="currentColor" font-family="Arial,sans-serif">10</text></svg></span><small>+10 сек</small></button>
       <button class="ctrl playerCircleCtrl mobileFullscreenSizeCtrl" onclick="toggleFullscreen()" title="На весь экран"><span class="playerCtrlIcon">⛶</span><small>Экран</small></button>
       <button class="ctrl playerCircleCtrl tvChannelCtrl" onclick="playNext()" title="Следующий канал"><span class="playerCtrlIcon">|▶</span><small>След. канал</small></button>
       <button id="cinemaPrevEpisodeBtn" class="ctrl playerCircleCtrl cinemaEpisodeCtrl" hidden style="display:none" onclick="playAdjacentCinemaEpisode(-1)" title="Предыдущая серия"><span class="playerCtrlIcon">|◀</span><small>Пред. серия</small></button>
