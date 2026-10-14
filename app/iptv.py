@@ -3287,7 +3287,8 @@ async def _bootstrap_public_channels():
                             prior_urls.insert(0, prior_primary)
                         deduped = list(dict.fromkeys(u for u in prior_urls
                                                      if u and u != new_primary))[:8]
-                        result[cid] = {**previous, **row, "backups": deduped}
+                        result[cid] = {**previous, **row, "backups": deduped,
+                                       "backup_count": len(deduped)}
                     elif str(previous.get("url") or "") == str(row.get("url") or ""):
                         result[cid] = {**previous, **row}
                     else:
@@ -3298,6 +3299,7 @@ async def _bootstrap_public_channels():
                         new_url = str(row.get("url") or "")
                         if new_url and new_url != previous.get("url") and new_url not in backups:
                             previous["backups"] = (backups + [new_url])[:8]
+                            previous["backup_count"] = len(previous["backups"])
                 failures = {}
                 for row in checked:
                     if row.get("status") != "ONLINE":
