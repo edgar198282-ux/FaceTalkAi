@@ -2231,6 +2231,20 @@ body:not(.cinemaMode) .cinemaShellSide{
 }
 </style>
 
+<style id="abaj-mobile-tv-landscape-epg-controls-safe-v1">
+@media (orientation:landscape) and (max-height:700px){
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.appFullscreen:not(.cinemaPlayback) .playerBottom{
+    padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))!important;
+    box-sizing:border-box!important;
+    max-height:70dvh!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+  }
+  body:not(.nativeTv).mobileLandscapePlayer .playerView.appFullscreen:not(.cinemaPlayback) .playerPrimaryControls{
+    margin-bottom:12px!important;
+  }
+}
+</style>
 <style id="mobile-tv-player-controls-align-v1">
 @media (orientation:landscape) and (max-height:700px){
   body:not(.nativeTv).mobileLandscapePlayer .playerView.appFullscreen:not(.cinemaPlayback) .playerPrimaryControls{
