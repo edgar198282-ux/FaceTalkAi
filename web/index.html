@@ -2488,6 +2488,32 @@ body:not(.nativeTv) #playerView .playerPrimaryControls > .playerCircleCtrl{
   }
 }
 </style>
+<style id="abaj-series-controls-order-v1">
+/* Series only: previous episode at far left, next episode at far right. */
+#playerView.cinemaPlayback.cinemaSeriesControls .playerPrimaryControls{
+  display:flex!important;
+  flex-direction:row!important;
+  justify-content:space-between!important;
+  align-items:center!important;
+  width:min(100%,1080px)!important;
+  max-width:1080px!important;
+  gap:clamp(5px,1.2vw,18px)!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+#playerView.cinemaPlayback.cinemaSeriesControls .playerPrimaryControls > .cinemaEpisodeCtrl{
+  flex:0 0 auto!important;
+}
+#playerView.cinemaPlayback.cinemaSeriesControls #cinemaPrevEpisodeBtn{order:-10!important}
+#playerView.cinemaPlayback.cinemaSeriesControls #cinemaNextEpisodeBtn{order:10!important}
+#playerView.cinemaPlayback.cinemaSeriesControls .playerPrimaryControls > .cinemaSeekCtrl,
+#playerView.cinemaPlayback.cinemaSeriesControls .playerPrimaryControls > .playerPlayCtrl{
+  flex:0 0 auto!important;
+}
+#playerView.cinemaPlayback.cinemaSeriesControls .playerPrimaryControls > .cinemaSeekCtrl[onclick="seekPlayerBy(-10)"]{order:-2!important}
+#playerView.cinemaPlayback.cinemaSeriesControls .playerPrimaryControls > .playerPlayCtrl{order:0!important}
+#playerView.cinemaPlayback.cinemaSeriesControls .playerPrimaryControls > .cinemaSeekCtrl[onclick="seekPlayerBy(10)"]{order:2!important}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
@@ -14322,6 +14348,8 @@ function updateCinemaNextEpisodeButton(){
   const hasPrev=isSeries&&!!cinemaAdjacentMedia(-1);
   if(next){next.hidden=!isSeries;next.style.display=isSeries?'inline-flex':'none';next.disabled=!hasNext;next.setAttribute('aria-disabled',String(!hasNext))}
   if(prev){prev.hidden=!isSeries;prev.style.display=isSeries?'inline-flex':'none';prev.disabled=!hasPrev;prev.setAttribute('aria-disabled',String(!hasPrev))}
+  const player=document.getElementById('playerView');
+  if(player)player.classList.toggle('cinemaSeriesControls',isSeries);
 }
 async function playAdjacentCinemaEpisode(step=1){
   const next=cinemaAdjacentMedia(step);
