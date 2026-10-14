@@ -1489,8 +1489,12 @@ async def refresh_epg(force: bool = False):
                         continue
                     programmes, names, logos, logo_names = await asyncio.to_thread(_parse_epg_xml, text)
                     del text
+                # A channel ID may be reused by unrelated XMLTV providers.
+                # Never merge programmes from different sources under one ID:
+                # that produces interleaved / foreign-language film titles.
                 for cid, rows in programmes.items():
-                    all_programmes.setdefault(cid, []).extend(rows)
+                    if cid not in all_programmes:
+                        all_programmes[cid] = rows
                 for key, value in names.items():
                     all_names.setdefault(key, value)
                 for key, value in logos.items():
