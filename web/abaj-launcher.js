@@ -20,6 +20,33 @@ const css=`
 .abajLaunchFoot{display:none}
 #abajLaunchHome{position:fixed;bottom:18px;left:18px;z-index:8000;background:#041b3ae8;color:#fff;border:2px solid #12baff;border-radius:50%;width:49px;height:49px;font-size:26px;box-shadow:0 0 18px #039bff}
 @media(max-width:650px){#abajLauncher{padding:18px 15px 25px}.abajLaunchTop{margin-top:0}.abajLaunchBrand{font-size:clamp(30px,9vw,48px)}.abajLaunchTitle{font-size:11px;letter-spacing:2.5px;margin:6px 0 24px}.abajLaunchTime{font-size:16px}.abajLaunchTiles{display:flex;flex-direction:column;gap:17px;flex:initial}.abajLaunchTile{min-height:clamp(185px,26vh,265px);padding:18px 20px;border-radius:23px}.abajLaunchName{font-size:clamp(29px,7.2vw,40px)}.abajLaunchDesc{font-size:clamp(14px,3.7vw,18px)}.abajLaunchTile:after{bottom:21px;font-size:38px}}
+
+/* Refined cinematic home: readable typography, layered lighting and precise mobile spacing */
+#abajLauncher{overscroll-behavior:contain;background-image:linear-gradient(180deg,#01081900 0%,#010b22dd 29%,#020b1d 100%),url('/static/launcher-header.svg?v=5');background-position:center top;background-size:100% auto;background-repeat:no-repeat;background-color:#020b1d}
+.abajLaunchTop{min-height:clamp(78px,11vh,128px);align-items:center}
+.abajLaunchBrand{font-family:Arial,sans-serif;font-size:clamp(40px,5.7vw,74px);letter-spacing:3px;line-height:1.08}
+.abajLaunchTitle{margin:0 0 clamp(21px,3vh,38px);font-size:clamp(12px,1.6vw,19px);font-weight:750;letter-spacing:3px;white-space:normal}
+.abajLaunchTiles{align-items:stretch}
+.abajLaunchTile{overflow:hidden;border:2px solid #0ebaff;border-radius:28px;background-image:linear-gradient(180deg,#02081a00 15%,#02081a55 53%,#020817f7 100%),var(--tile-bg);background-position:center center;box-shadow:0 0 0 1px #74e8ff55,0 0 15px #00c2ffbb,0 0 34px #0074ff8a,inset 0 0 20px #00bfff66}
+.abajLaunchTile:before{inset:0;border-radius:inherit;box-shadow:inset 0 0 14px #5cdfffaa;animation:abajPulse 4s ease-in-out infinite}
+.abajLaunchTile:after{right:20px;bottom:28px;font-size:54px;font-weight:300}
+.abajLaunchName{font-size:clamp(29px,3.6vw,52px);letter-spacing:-.7px;text-shadow:0 2px 9px #000,0 0 18px #000}
+.abajLaunchDesc{font-size:clamp(15px,1.6vw,23px);color:#e6f2ff;text-shadow:0 2px 9px #000}
+.abajLaunchTile:active{transform:scale(.988)}
+@media(max-width:650px){
+#abajLauncher{padding:16px 17px max(26px,env(safe-area-inset-bottom));background-size:100% auto}
+.abajLaunchTop{min-height:clamp(92px,12vh,128px)}
+.abajLaunchBrand{font-size:clamp(37px,9vw,54px);letter-spacing:1.2px}
+.abajLaunchTitle{font-size:clamp(11px,2.9vw,14px);letter-spacing:2.1px;margin:0 0 26px;line-height:1.4}
+.abajLaunchTiles{gap:20px}
+.abajLaunchTile{min-height:clamp(190px,24vh,255px);padding:20px 20px 23px;border-radius:26px;background-position:center 43%}
+.abajLaunchText{gap:9px;max-width:calc(100% - 38px)}
+.abajLaunchName{font-size:clamp(29px,7.6vw,41px)}
+.abajLaunchDesc{font-size:clamp(14px,3.8vw,19px)}
+.abajLaunchTile:after{right:16px;bottom:22px;font-size:43px}
+}
+@media(min-width:651px) and (max-width:1050px){.abajLaunchTile{min-height:330px}.abajLaunchTiles{gap:18px}}
+@media(prefers-reduced-motion:reduce){.abajLaunchTile,.abajLaunchTile:before{animation:none!important;transition:none!important}}
 `;
 function start(){
 if(document.getElementById('abajLauncher'))return;
