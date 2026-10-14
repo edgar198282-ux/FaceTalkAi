@@ -109,6 +109,22 @@ if(settingsTile){
   img.onload=()=>{if(failed||!settingsTile.isConnected)return;if(++loaded===urls.length){
    const gear=document.createElement('span');gear.className='abajGearForeground';gear.setAttribute('aria-hidden','true');
    settingsTile.insertBefore(gear,settingsTile.querySelector('.abajLaunchText'));
+   // Align the original 550x555px cutout to the 1536x797px source
+   // using the same centered "cover" geometry as the background image.
+   const alignGear=()=>{
+    const w=settingsTile.clientWidth,h=settingsTile.clientHeight;
+    if(!w||!h)return;
+    const scale=Math.max(w/1536,h/797);
+    const offsetX=(w-1536*scale)/2,offsetY=(h-797*scale)/2;
+    gear.style.left=(offsetX+850*scale)+'px';
+    gear.style.top=(offsetY+35*scale)+'px';
+    gear.style.width=(550*scale)+'px';
+    gear.style.height=(555*scale)+'px';
+   };
+   alignGear();
+   if(typeof ResizeObserver!=='undefined'){
+    const observer=new ResizeObserver(alignGear);observer.observe(settingsTile);
+   }else{window.addEventListener('resize',alignGear,{passive:true})}
    settingsTile.classList.add('abajGearReady');
   }};
   img.onerror=()=>{failed=true};
