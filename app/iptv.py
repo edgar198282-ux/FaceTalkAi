@@ -1524,7 +1524,10 @@ async def refresh_epg(force: bool = False):
         _state["epg_logo_names"] = all_logo_names
         _state["epg_last_refresh"] = int(time.time())
         _state["epg_error"] = "" if all_programmes else "EPG sources exceeded safe memory limits or were unavailable"
-        logging.info("EPG safe refresh: %d channels", len(all_programmes))
+        logging.info("EPG safe refresh: %d channels, aliases=%d, ambiguous=%d",
+                     len(all_programmes),
+                     sum(bool(v) for v in all_names.values()),
+                     sum(not bool(v) for v in all_names.values()))
     except Exception as exc:
         _state["epg_error"] = repr(exc)[:300]
         logging.exception("EPG safe refresh failed")
@@ -2453,6 +2456,15 @@ def public_state(compact: bool = False, fast: bool = False):
     stats["epg_logo_channels"] = len(_state.get("epg_logos") or {})
     stats["epg_source_count"] = len(EPG_URLS)
     stats["with_epg"] = sum(1 for x in rows if bool(x.get("epg_now")))
+    # FREE-only audit: expose unmatched channels without touching custom playlists.
+    # Keep samples small to avoid bloating the diagnostics response.
+    stats["epg_missing_count"] = sum(1 for x in rows if not x.get("epg_now"))
+    stats["epg_missing_samples"] = [
+        {"name": str(x.get("name") or "")[:90],
+         "country": str(x.get("country") or "")[:4],
+         "tvg_id": str(x.get("tvg_id") or "")[:90]}
+        for x in rows if not x.get("epg_now")
+    ][:40]
     stats["with_logo"] = sum(1 for x in rows if bool(x.get("logo")))
     coverage_by_country = {}
     for x in rows:
