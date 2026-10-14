@@ -2564,6 +2564,26 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback) .playerTop .back{
 }
 }
 </style>
+<style id="abaj-iptv-player-back-safe-v1">
+/* Same compact back arrow as cinema, available in IPTV landscape playback. */
+@media (orientation:landscape){
+body:not(.nativeTv) #playerView.open:not(.cinemaPlayback) .playerTop{
+  display:flex!important;visibility:visible!important;opacity:1!important;
+  pointer-events:none!important;position:fixed!important;top:0!important;left:0!important;
+  right:auto!important;width:auto!important;height:auto!important;z-index:2147483640!important;
+  padding:8px 0 0 max(12px,env(safe-area-inset-left))!important;background:transparent!important;
+}
+body:not(.nativeTv) #playerView.open:not(.cinemaPlayback) .playerTop .back{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  pointer-events:auto!important;position:relative!important;
+  width:42px!important;height:42px!important;min-width:42px!important;
+  border-radius:50%!important;border:1px solid rgba(255,255,255,.3)!important;
+  background:rgba(0,0,0,.62)!important;color:white!important;font-size:34px!important;
+  line-height:1!important;box-shadow:0 2px 12px rgba(0,0,0,.35)!important;
+}
+body:not(.nativeTv) #playerView.open:not(.cinemaPlayback) .playerTop .playerTitle{display:none!important}
+}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
@@ -8829,6 +8849,7 @@ function closePlayer(){
   playerView.classList.remove('videoFill');
   playerView.classList.remove('pureFullscreen');
   playerView.classList.remove('cinemaPlayback');
+  playerView.classList.remove('cinemaSeriesControls');
   document.body.classList.remove('playerFullscreenActive');
   document.body.classList.remove('mobileLandscapePlayer');
   if(!nativeTv){
