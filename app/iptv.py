@@ -1614,6 +1614,19 @@ def _epg_for_channel(item: dict) -> tuple[dict | None, dict | None]:
             candidates = {v for v in candidates if allowed(v) and guides.get(v)}
             if len(candidates) == 1:
                 rows = guides[next(iter(candidates))]
+        # Some FREE catalog entries carry verified alternative channel names.
+        # Resolve only when all aliases point to exactly one permitted guide.
+        if not rows and item.get("epg_aliases"):
+            alias_candidates = set()
+            for alias in item.get("epg_aliases") or []:
+                for variant in _epg_name_variants(alias):
+                    if variant in ambiguous:
+                        continue
+                    candidate = names.get(variant)
+                    if candidate and allowed(candidate) and guides.get(candidate):
+                        alias_candidates.add(candidate)
+            if len(alias_candidates) == 1:
+                rows = guides[next(iter(alias_candidates))]
     if not rows:
         return None, None
     now = int(time.time())
