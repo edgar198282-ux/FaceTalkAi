@@ -209,9 +209,8 @@ async function playCinemaGlassesTransition(tile){
  const glasses=document.createElement('div');
  glasses.className='abajCinema3dGlasses';
  glasses.setAttribute('aria-hidden','true');
- glasses.innerHTML='<svg viewBox="0 0 360 150" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="abajFrame" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#42454c"/><stop offset=".45" stop-color="#090b10"/><stop offset="1" stop-color="#282c34"/></linearGradient><linearGradient id="abajRedLens" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff7a87"/><stop offset=".45" stop-color="#ed1237"/><stop offset="1" stop-color="#670017"/></linearGradient><linearGradient id="abajBlueLens" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b6f9ff"/><stop offset=".45" stop-color="#1fbbff"/><stop offset="1" stop-color="#063a9c"/></linearGradient></defs><path d="M16 48 0 36 0 48 19 70M344 48 360 36 360 48 341 70" fill="none" stroke="#0b0c10" stroke-width="14" stroke-linejoin="round"/><path d="M17 40 Q18 25 40 25 H139 Q158 25 161 46 L166 58 Q180 49 194 58 L199 46 Q202 25 221 25 H320 Q342 25 343 40 L339 101 Q336 123 316 126 H232 Q211 126 206 109 L191 69 Q180 58 169 69 L154 109 Q149 126 128 126 H44 Q24 123 21 101 Z" fill="url(#abajFrame)" stroke="#05070b" stroke-width="5"/><path d="M38 39 H138 Q146 39 149 49 L145 98 Q143 111 129 112 H47 Q35 111 33 99 L29 50 Q29 40 38 39Z" fill="url(#abajRedLens)"/><path d="M222 39 H322 Q331 40 331 50 L327 99 Q325 111 313 112 H231 Q217 111 215 98 L211 49 Q214 39 222 39Z" fill="url(#abajBlueLens)"/><path d="M42 44 H112 M225 44 H291" stroke="#fff" stroke-width="5" opacity=".35" stroke-linecap="round"/></svg>';
- // Show the inside of the glasses: the arms extend towards the viewer.
- glasses.querySelector('svg').insertAdjacentHTML('beforeend','<g fill="none" stroke="#0b0d13" stroke-width="15" stroke-linecap="round"><path d="M24 44 L-10 26 L-55 -18"/><path d="M336 44 L370 26 L415 -18"/></g><g fill="none" stroke="#707781" stroke-width="3" opacity=".65"><path d="M24 41 L-10 23 L-55 -21"/><path d="M336 41 L370 23 L415 -21"/></g>');
+ glasses.innerHTML='<svg viewBox="-110 -80 580 280" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="abajInnerFrame" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#555b64"/><stop offset=".4" stop-color="#101319"/><stop offset="1" stop-color="#05070b"/></linearGradient><linearGradient id="abajInnerRed" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffb6b9" stop-opacity=".7"/><stop offset=".55" stop-color="#e91a36" stop-opacity=".8"/><stop offset="1" stop-color="#78041b" stop-opacity=".9"/></linearGradient><linearGradient id="abajInnerBlue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c9faff" stop-opacity=".8"/><stop offset=".55" stop-color="#1cb9ff" stop-opacity=".8"/><stop offset="1" stop-color="#063b99" stop-opacity=".9"/></linearGradient></defs><g fill="none" stroke-linejoin="round" stroke-linecap="round"><path d="M25 48 -12 28 -94 -59" stroke="#080b10" stroke-width="19"/><path d="M335 48 372 28 454 -59" stroke="#080b10" stroke-width="19"/><path d="M25 44 -12 24 -94 -63 M335 44 372 24 454 -63" stroke="#6d727c" stroke-width="4"/><path d="M-94 -59 -98 -76 M454 -59 458 -76" stroke="#11141a" stroke-width="14"/></g><path d="M20 39 Q22 25 42 25 H136 Q153 25 160 44 L166 57 Q180 47 194 57 L200 44 Q207 25 224 25 H318 Q338 25 340 39 L337 102 Q335 122 315 125 H232 Q212 125 206 106 L192 70 Q180 60 168 70 L154 106 Q148 125 128 125 H45 Q25 122 23 102 Z" fill="url(#abajInnerFrame)" stroke="#050609" stroke-width="6"/><path d="M41 40 H135 Q146 40 148 53 L143 99 Q141 110 128 111 H47 Q36 110 35 99 L32 52 Q32 40 41 40Z" fill="url(#abajInnerRed)"/><path d="M225 40 H319 Q328 40 328 52 L325 99 Q324 110 313 111 H232 Q219 110 217 99 L212 53 Q214 40 225 40Z" fill="url(#abajInnerBlue)"/><path d="M45 44 H119 M226 44 H300" fill="none" stroke="#fff" stroke-width="4" opacity=".28" stroke-linecap="round"/><path d="M162 67 Q180 77 198 67" fill="none" stroke="#5d626a" stroke-width="5"/></svg>';
+ // Rear view with visible temples and the inner rim, as if the glasses approach the eyes.
  const lensWash=document.createElement('div');
  lensWash.className='abajCinemaLensWash';
  lensWash.setAttribute('aria-hidden','true');
@@ -221,14 +220,14 @@ async function playCinemaGlassesTransition(tile){
  document.body.appendChild(lensWash);document.body.appendChild(glasses);
  try{
   const dx=innerWidth*.5-(rect.left+rect.width*.5),dy=innerHeight*.5-(rect.top+rect.height*.48);
-  const scale=Math.min(4.5,Math.max(2.1,innerWidth/260*2.7));
+  const scale=Math.min(3.2,Math.max(1.7,innerWidth/340*2.5));
   const animation=glasses.animate([
-   {transform:'translate(-50%,-50%) translate(0px,0px) scale(.12) rotateY(0deg) rotateX(-22deg)',opacity:0,offset:0},
-   {transform:'translate(-50%,-50%) translate('+dx*.25+'px,'+dy*.25+'px) scale(.46) rotateY(0deg) rotateX(-13deg)',opacity:1,offset:.28},
-   {transform:'translate(-50%,-50%) translate('+dx*.8+'px,'+dy*.8+'px) scale('+scale*.64+') rotateY(0deg) rotateX(-5deg)',opacity:1,offset:.78},
-   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+scale+') rotateY(0deg) rotateX(0deg)',opacity:1,offset:1}
-  ],{duration:1250,easing:'cubic-bezier(.16,.08,.18,1)',fill:'forwards'});
-  const wash= lensWash.animate([{opacity:0,offset:0},{opacity:0,offset:.73},{opacity:.3,offset:.91},{opacity:.88,offset:1}],{duration:1250,fill:'forwards'});
+   {transform:'translate(-50%,-50%) translate(0px,0px) scale(.13) rotateX(-27deg) rotateZ(-7deg)',opacity:0,offset:0},
+   {transform:'translate(-50%,-50%) translate('+dx*.25+'px,'+dy*.25+'px) scale(.48) rotateX(-16deg) rotateZ(-3deg)',opacity:1,offset:.28},
+   {transform:'translate(-50%,-50%) translate('+dx*.8+'px,'+dy*.8+'px) scale('+scale*.68+') rotateX(-6deg) rotateZ(0deg)',opacity:1,offset:.78},
+   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+scale+') rotateX(0deg) rotateZ(0deg)',opacity:1,offset:1}
+  ],{duration:1300,easing:'cubic-bezier(.2,.06,.2,1)',fill:'forwards'});
+  const wash= lensWash.animate([{opacity:0,offset:0},{opacity:0,offset:.78},{opacity:.25,offset:.92},{opacity:.8,offset:1}],{duration:1300,fill:'forwards'});
   await Promise.race([Promise.all([animation.finished.catch(()=>{}),wash.finished.catch(()=>{})]),new Promise(resolve=>setTimeout(resolve,1600))]);
   wash.cancel();
   animation.cancel();
