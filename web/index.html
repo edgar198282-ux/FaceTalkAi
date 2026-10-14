@@ -2460,7 +2460,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
         <button id="cinemaToggleBtn" class="iconBtn tvTopAction cinemaSwitchBtn" onclick="toggleCinemaMode()" title="Кино" aria-label="Кино"><span id="cinemaToggleIcon">🎬</span></button>
         <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск" aria-label="Поиск">🔍</button>
         <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
-        <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="openTvSettings()" title="Настройки" aria-label="Настройки">⚙</button>
+        <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV">⌂</button>
       </div>
     </div>
     <div class="toolbar">
@@ -2522,7 +2522,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
   </svg>
 </button>
         <button class="cinemaShellBtn" id="cinemaSearchBtn" onclick="openTvSearch()" aria-label="Поиск">🔍</button>
-        <button class="cinemaShellBtn cinemaSettingsQuickBtn" id="cinemaSettingsBtn" onclick="openTvSettings()" title="Настройки" aria-label="Настройки">⚙</button>
+        <button class="cinemaShellBtn cinemaSettingsQuickBtn" id="cinemaSettingsBtn" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV">⌂</button>
       </div>
     </div>
     <div class="cinemaShellCategory" id="cinemaCategoryMenu">
@@ -16689,7 +16689,7 @@ body.nativeTv #cinemaDetail .cinemaCastCard:focus-visible{outline:none!important
   window.addEventListener('popstate',closeIptvPlaylistMenu);
 })();
 </script>
-<script src="/static/abaj-launcher.js?v=1" defer></script>
+<script src="/static/abaj-launcher.js?v=20261014-5" defer></script>
 </body>
 </html>
 
