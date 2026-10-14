@@ -109,7 +109,8 @@ motion.appendChild(accent);
 tile.insertBefore(motion,tile.firstChild);
 }
 // Dolphin movement is enabled only after both original artwork layers load.
-const iptvTile=root.querySelector('.abajLaunchTile[data-target="iptv"]');
+// The single flat dolphin sprite cannot make a convincing 3D dive. Keep the original IPTV tile visible until a frame-by-frame animation is ready.
+const iptvTile=null; // root.querySelector('.abajLaunchTile[data-target="iptv"]');
 if(iptvTile){
  const sources=['/static/launcher-iptv-background.webp','/static/launcher-iptv-real-dolphin.png'];
  let ready=0,failed=false;
