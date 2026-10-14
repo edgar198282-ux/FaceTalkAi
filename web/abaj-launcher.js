@@ -46,6 +46,19 @@ const css=`
 .abajLaunchTile:after{right:16px;bottom:22px;font-size:43px}
 }
 @media(min-width:651px) and (max-width:1050px){.abajLaunchTile{min-height:330px}.abajLaunchTiles{gap:18px}}
+/* Fit all three cards and header to the actual viewport; retain animated neon focus. */
+@media(max-width:650px){
+#abajLauncher{height:100dvh;max-height:100dvh;overflow:hidden;display:flex;flex-direction:column;padding:clamp(10px,1.5dvh,18px) 17px clamp(10px,1.5dvh,20px)}
+.abajLaunchTop{flex:0 0 auto;min-height:clamp(62px,8dvh,96px)}
+.abajLaunchTitle{flex:0 0 auto;margin:0 0 clamp(8px,1.2dvh,16px)}
+.abajLaunchTiles{display:flex;flex:1 1 0;min-height:0;flex-direction:column;gap:clamp(9px,1.4dvh,16px)}
+.abajLaunchTile{flex:1 1 0;min-height:0;height:auto;padding:clamp(10px,1.8dvh,20px) 20px;border-radius:26px}
+.abajLaunchName{font-size:clamp(25px,6.9vw,41px)}
+.abajLaunchDesc{font-size:clamp(12px,3.5vw,19px)}
+.abajLaunchTile:after{bottom:clamp(12px,2dvh,22px)}
+}
+.abajLaunchTile:focus-visible{animation:abajNeonFocus 2.4s ease-in-out infinite}
+@keyframes abajNeonFocus{0%,100%{box-shadow:0 0 0 2px #b8f6ff,0 0 18px #00baff,0 0 32px #007bff}50%{box-shadow:0 0 0 3px #e3ffff,0 0 28px #00d9ff,0 0 52px #007bff}}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile,.abajLaunchTile:before{animation:none!important;transition:none!important}}
 `;
 function start(){
