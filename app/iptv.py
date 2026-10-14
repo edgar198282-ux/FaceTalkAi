@@ -3346,7 +3346,7 @@ async def _bootstrap_public_channels():
         _save_json(SNAPSHOT_PATH, {"saved_at": int(time.time()), "state": {
             "channels": list(result.values()), "last_refresh": _state["last_refresh"],
             "stats": _state["stats"], "error": ""}})
-        logging.info("IPTV Free visibility: %s", public_state(compact=True, fast=True)["stats"].get("excluded_from_list"))
+        logging.info("IPTV Free visibility: %s", {k: public_state(compact=True, fast=True)["stats"].get(k) for k in ("catalog_total", "list_total", "excluded_from_list")})
         logging.info("IPTV light catalogue saved %d channels (+%d) to volume", len(result), len(result)-original_count)
     else:
         logging.info("IPTV light catalogue unchanged: %d channels", original_count)
