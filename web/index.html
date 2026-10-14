@@ -2412,10 +2412,11 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
   }
 }
 </style>
-<style id="abaj-cinema-seek-lower-landscape-v7">
-/* Compact landscape cinema controls: natural flow, no translated overlap. */
+<style id="abaj-cinema-seek-lower-landscape-v8">
+/* Compact controls, including pureFullscreen and mobileLandscapePlayer overrides. */
 @media (orientation:landscape) and (max-height:700px){
-  body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
+  body:not(.nativeTv) #playerView.cinemaPlayback .playerBottom,
+  body:not(.nativeTv).mobileLandscapePlayer #playerView.pureFullscreen.cinemaPlayback.showPureControls .playerBottom{
     display:flex!important;
     flex-direction:column!important;
     justify-content:flex-end!important;
@@ -2425,20 +2426,21 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
     min-height:0!important;
     max-height:none!important;
     overflow:visible!important;
-    padding:6px 18px 2px!important;
+    padding:4px 18px 2px!important;
     box-sizing:border-box!important;
-    background:linear-gradient(to top,rgba(3,9,18,.84) 0%,rgba(3,9,18,.52) 65%,transparent 100%)!important;
+    background:linear-gradient(to top,rgba(3,9,18,.76) 0%,rgba(3,9,18,.38) 65%,transparent 100%)!important;
   }
-  body:not(.nativeTv) .playerView.cinemaPlayback .playerMeta{
+  body:not(.nativeTv) #playerView.cinemaPlayback .playerMeta,
+  body:not(.nativeTv).mobileLandscapePlayer #playerView.pureFullscreen.cinemaPlayback.showPureControls .playerMeta{
     order:0!important;
     flex:0 0 auto!important;
     position:relative!important;
     transform:none!important;
+    min-height:30px!important;
     margin:0 0 2px!important;
-    padding:0 0 2px!important;
-    min-height:34px!important;
+    padding:0!important;
   }
-  body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
+  body:not(.nativeTv) #playerView.cinemaPlayback .playerTimelineWrap{
     order:1!important;
     flex:0 0 auto!important;
     position:relative!important;
@@ -2447,10 +2449,11 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
     height:auto!important;
     min-height:22px!important;
     transform:none!important;
-    margin:0 0 17px!important;
+    margin:0 0 19px!important;
     z-index:3!important;
   }
-  body:not(.nativeTv) .playerView.cinemaPlayback .playerPrimaryControls{
+  body:not(.nativeTv) #playerView.cinemaPlayback .playerPrimaryControls,
+  body:not(.nativeTv).mobileLandscapePlayer #playerView.pureFullscreen.cinemaPlayback.showPureControls .playerPrimaryControls{
     order:2!important;
     flex:0 0 auto!important;
     margin:0 auto!important;
