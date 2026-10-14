@@ -1603,11 +1603,27 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void enterPlayerFullscreen(){
             if(isTv)return;
-            runOnUiThread(()->enterMobilePlayerImmersive());
+            runOnUiThread(()->{
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                enterMobilePlayerImmersive();
+            });
         }
         @JavascriptInterface public void exitPlayerFullscreen(){
             if(isTv)return;
-            runOnUiThread(()->exitMobilePlayerImmersive());
+            runOnUiThread(()->{
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                exitMobilePlayerImmersive();
+            });
+        }
+        @JavascriptInterface public void setRequestedOrientation(String orientation){
+            if(isTv)return;
+            runOnUiThread(()->{
+                if("landscape".equalsIgnoreCase(orientation)){
+                    MainActivity.this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                }else if("unspecified".equalsIgnoreCase(orientation)||"unlock".equalsIgnoreCase(orientation)){
+                    MainActivity.this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                }
+            });
         }
         @JavascriptInterface public void showKeyboard(){
             runOnUiThread(()->{
