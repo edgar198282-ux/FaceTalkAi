@@ -3237,7 +3237,8 @@ async def _bootstrap_public_channels():
                 parsed = _parse_m3u(raw.decode("utf-8", "ignore"), country, url)
                 candidates = [row for row in parsed if not _is_adult_channel(row)
                               and not _looks_junk(row) and not _is_quarantined(row.get("url", ""))
-                              and str(row.get("id")) not in result]
+                              and (str(row.get("id")) not in result or
+                                   str(result[str(row.get("id"))].get("status")) != "ONLINE")]
                 # Rotate across the entire source instead of probing the same
                 # first 60 entries forever. Bound network work per source/day.
                 daily_slot = int(time.time()) // REFRESH_SECONDS
@@ -3249,8 +3250,15 @@ async def _bootstrap_public_channels():
                 for row in checked:
                     if row.get("status") == "ONLINE":
                         result.setdefault(str(row["id"]), row)
-                logging.info("IPTV light source %s: %d candidates, %d verified, total %d",
-                             country, len(parsed), sum(row.get("status") == "ONLINE" for row in checked), len(result))
+                failures = {}
+                for row in checked:
+                    if row.get("status") != "ONLINE":
+                        reason = str(row.get("error") or row.get("status_code") or "unknown")[:90]
+                        failures[reason] = failures.get(reason, 0) + 1
+                logging.info("IPTV light source %s: %d candidates, %d probed, %d verified, total %d, failures=%s",
+                             country, len(parsed), len(checked),
+                             sum(row.get("status") == "ONLINE" for row in checked),
+                             len(result), sorted(failures.items(), key=lambda x: -x[1])[:4])
                 del raw, parsed
             except Exception as exc:
                 logging.warning("IPTV light source failed (%s): %s", url, str(exc)[:160])
