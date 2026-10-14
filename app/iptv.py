@@ -461,12 +461,11 @@ def _record_health(row: dict):
     _stream_health[url] = h
 
 EPG_URLS = [
-    # Primary CIS guide.
-    ("CIS", "https://epg.one/epg2.xml"),
-    # Extra current XMLTV sources. RU adds much broader Russian coverage;
-    # Lite contributes additional popular channels from multiple countries.
-    ("EPGPW_RU", "https://epg.pw/xmltv/epg_RU.xml"),
+    # Use the compact multi-country XMLTV feed first. The previous CIS feed
+    # exceeded the default 8 MB download cap, leaving EPG empty.
     ("EPGPW_LITE", "https://epg.pw/xmltv/epg_lite.xml"),
+    ("EPGPW_RU", "https://epg.pw/xmltv/epg_RU.xml"),
+    ("CIS", "https://epg.one/epg2.xml"),
 ]
 IPTV_ORG_STREAMS_API = "https://iptv-org.github.io/api/streams.json"
 IPTV_ORG_CHANNELS_API = "https://iptv-org.github.io/api/channels.json"
@@ -1426,7 +1425,7 @@ async def refresh_epg(force: bool = False):
     try:
         # Process sources sequentially. Previously three entire XML feeds and
         # three parsed trees were held concurrently, exhausting a 1 GB service.
-        max_bytes = max(1, min(24, int(os.getenv("IPTV_EPG_MAX_MB", "8")))) * 1048576
+        max_bytes = max(1, min(24, int(os.getenv("IPTV_EPG_MAX_MB", "24")))) * 1048576
         source_count = max(1, min(len(EPG_URLS), int(os.getenv("IPTV_EPG_SOURCE_COUNT", "1"))))
         all_programmes, all_names, all_logos, all_logo_names = {}, {}, {}, {}
         connector = aiohttp.TCPConnector(limit=2, ssl=False)
