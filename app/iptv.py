@@ -2302,6 +2302,7 @@ def public_state(compact: bool = False, fast: bool = False):
     excluded = {"offline": 0, "restricted_or_placeholder": 0, "advertising_placeholder": 0}
     excluded_samples = {reason: [] for reason in excluded}
     restricted_breakdown = {"wink_stream": 0, "known_unusable": 0}
+    restricted_with_backups = {"wink_stream": 0, "known_unusable": 0}
     for source in _state["channels"].values():
         cid = str(source.get("id") or "")
         reason = None
@@ -2310,9 +2311,13 @@ def public_state(compact: bool = False, fast: bool = False):
         elif _is_wink_placeholder_stream(source):
             reason = "restricted_or_placeholder"
             restricted_breakdown["wink_stream"] += 1
+            if source.get("backups"):
+                restricted_with_backups["wink_stream"] += 1
         elif _hide_unusable_catalog_channel(source):
             reason = "restricted_or_placeholder"
             restricted_breakdown["known_unusable"] += 1
+            if source.get("backups"):
+                restricted_with_backups["known_unusable"] += 1
         elif (bool((_cinerama_placeholder_state.get(cid) or {}).get("active"))
               or bool((_ottclub_ad_state.get(cid) or {}).get("active"))):
             reason = "advertising_placeholder"
@@ -2326,6 +2331,7 @@ def public_state(compact: bool = False, fast: bool = False):
     stats["list_total"] = len(_state["channels"]) - sum(excluded.values())
     stats["excluded_from_list"] = excluded
     stats["restricted_breakdown"] = restricted_breakdown
+    stats["restricted_with_backups"] = restricted_with_backups
     stats["excluded_samples"] = excluded_samples
     stats["epg_channels"] = len(_state["epg"]) if _state["epg"] else int(stats.get("epg_channels") or 0)
     stats["epg_logo_channels"] = len(_state.get("epg_logos") or {})
@@ -3352,7 +3358,7 @@ async def _bootstrap_public_channels():
         _save_json(SNAPSHOT_PATH, {"saved_at": int(time.time()), "state": {
             "channels": list(result.values()), "last_refresh": _state["last_refresh"],
             "stats": _state["stats"], "error": ""}})
-        logging.info("IPTV Free visibility: %s", {k: public_state(compact=True, fast=True)["stats"].get(k) for k in ("catalog_total", "list_total", "excluded_from_list", "restricted_breakdown")})
+        logging.info("IPTV Free visibility: %s", {k: public_state(compact=True, fast=True)["stats"].get(k) for k in ("catalog_total", "list_total", "excluded_from_list", "restricted_breakdown", "restricted_with_backups")})
         logging.info("IPTV light catalogue saved %d channels (+%d) to volume", len(result), len(result)-original_count)
     else:
         logging.info("IPTV light catalogue unchanged: %d channels", original_count)
