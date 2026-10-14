@@ -294,6 +294,23 @@ OFFICIAL_CHANNELS = [
 ]
 
 SOURCE_URLS = [
+    # Additional regional Russian and general-interest public streams.
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-mow.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-spe.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-mos.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-ta.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-ba.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-da.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-kda.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-sve.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-nvs.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-sam.m3u"),
+    ("HQ", "https://iptv-org.github.io/iptv/categories/general.m3u"),
+    ("HQ", "https://iptv-org.github.io/iptv/categories/movies.m3u"),
+    ("HQ", "https://iptv-org.github.io/iptv/categories/series.m3u"),
+    ("HQ", "https://iptv-org.github.io/iptv/categories/kids.m3u"),
+    ("HQ", "https://iptv-org.github.io/iptv/categories/education.m3u"),
+    ("HQ", "https://iptv-org.github.io/iptv/categories/science.m3u"),
     # Curated publicly available free-to-air channels; existing URL/channel dedup applies.
     ("HQ", "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8"),
     ("HQ", "https://iptv-org.github.io/iptv/categories/news.m3u"),
