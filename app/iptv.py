@@ -3454,7 +3454,8 @@ async def start_background(app):
             except Exception:
                 pass
             await asyncio.sleep(10)
-    app["iptv_ad_watch_task"] = asyncio.create_task(ad_watch_loop())
+    app["iptv_ad_watch_task"] = (asyncio.create_task(ad_watch_loop())
+        if str(os.getenv("IPTV_CONTINUOUS_AD_SCAN", "0")).strip().lower() in {"1", "true", "yes", "on"} else None)
 
     async def ottclub_watch_loop():
         await asyncio.sleep(12)
