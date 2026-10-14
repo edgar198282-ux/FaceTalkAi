@@ -49,6 +49,12 @@ body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajIptvVi
 .abajLaunchTile[data-target="settings"] .abajSceneGear{display:block;left:51%;top:6%;width:44%;height:72%;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,transparent 275deg,#b8ecff00 295deg,#c8edff24 316deg,transparent 340deg,transparent 360deg);mix-blend-mode:screen;opacity:.4;animation:abajGearLight 18s linear infinite}
 @keyframes abajGearLight{to{transform:rotate(360deg)}}
 @keyframes abajSunDrift{0%{transform:translate(-8%,20%) scale(.7);opacity:.12}25%{transform:translate(-2%,3%) scale(.95);opacity:.55}50%{transform:translate(5%,-13%) scale(1.16);opacity:.9}75%{transform:translate(10%,4%) scale(.94);opacity:.5}100%{transform:translate(14%,20%) scale(.7);opacity:.12}}
+/* Dim the existing painted lamp itself, rather than drawing another glow. */
+.abajLaunchTile[data-target="iptv"] .abajLampOffMask{position:absolute;left:0;top:13%;width:13%;height:10%;pointer-events:none;background:linear-gradient(180deg,#111823d9,#33251ddc);clip-path:polygon(0 8%,92% 8%,100% 32%,82% 51%,0 51%);opacity:0;animation:abajLampRealCycle 6s steps(1,end) infinite}
+.abajLaunchTile[data-target="iptv"] .abajLampOffAmbient{position:absolute;left:0;top:13%;width:28%;height:39%;pointer-events:none;background:radial-gradient(ellipse at 6% 2%,rgba(2,8,17,.63),rgba(2,8,17,.4) 33%,transparent 72%);opacity:0;animation:abajLampRealCycle 6s steps(1,end) infinite}
+@keyframes abajLampRealCycle{0%,49.99%{opacity:0}50%,100%{opacity:1}}
+#abajLauncher[hidden] .abajLampOffMask,#abajLauncher[hidden] .abajLampOffAmbient{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajLampOffMask,.abajLaunchTile[data-target="iptv"] .abajLampOffAmbient{animation:none;opacity:0}}
 @keyframes abajWaterSwim{from{transform:translate(-25%,7%) scale(.85);opacity:.22}to{transform:translate(48%,-14%) scale(1.3);opacity:.7}}
 @keyframes abajGearTurn{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.abajSceneMotion i,.abajSceneDolphin,.abajSceneGearOverlay{animation:none!important}}
@@ -103,6 +109,7 @@ for(const tile of root.querySelectorAll('.abajLaunchTile')){
 const motion=document.createElement('span');motion.className='abajSceneMotion';motion.setAttribute('aria-hidden','true');
 const accent=document.createElement('i');accent.className=tile.dataset.target==='cinema'?'abajSceneSun':tile.dataset.target==='iptv'?'abajSceneWater':'abajSceneGear';
 motion.appendChild(accent);
+if(tile.dataset.target==='iptv'){for(const name of ['abajLampOffAmbient','abajLampOffMask']){const dim=document.createElement('i');dim.className=name;motion.appendChild(dim);}}
 tile.insertBefore(motion,tile.firstChild);
 }
 // A true dolphin dive must be a rendered sequence, not a rotated flat PNG.
