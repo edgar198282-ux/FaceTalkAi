@@ -2534,6 +2534,14 @@ body:not(.nativeTv) #playerView .playerPrimaryControls > .playerCircleCtrl{
   box-shadow:0 0 0 2px rgba(47,188,255,.25),0 0 15px rgba(25,165,255,.5)!important;
 }
 </style>
+<style id="abaj-iptv-controls-lower-v1">
+/* IPTV only: add a little breathing room below the EPG timeline. */
+@media (orientation:landscape) and (max-height:700px){
+  body:not(.nativeTv).mobileLandscapePlayer #playerView:not(.cinemaPlayback) .playerPrimaryControls{
+    transform:translateY(12px)!important;
+  }
+}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
