@@ -2414,8 +2414,16 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
 </style>
 <style id="abaj-mobile-hide-screen-size-control-v1">
 /* Hide only the nonfunctional screen-size button on mobile, not TV or fullscreen behavior. */
-body:not(.nativeTv) #playerView .playerPrimaryControls > .mobileFullscreenSizeCtrl{
+#playerView .playerPrimaryControls > .mobileFullscreenSizeCtrl{
   display:none!important;
+}
+body.nativeTv #playerView .playerPrimaryControls{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  align-items:center!important;
+  justify-items:center!important;
+}
+body.nativeTv #playerView.cinemaPlayback .playerPrimaryControls{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
 }
 body:not(.nativeTv) #playerView .playerPrimaryControls{
   grid-template-columns:repeat(4,minmax(0,1fr))!important;
