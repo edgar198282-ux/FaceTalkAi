@@ -32,6 +32,9 @@ const css=`
 .abajSceneDolphin{left:52%;top:36%;width:13%;opacity:.72;filter:drop-shadow(0 0 4px #6edfff);animation:abajDolphinSwim 9s ease-in-out infinite}
 .abajSceneGearOverlay{right:12%;top:12%;width:32%;aspect-ratio:1;opacity:.72;filter:drop-shadow(0 0 6px #68caff44);animation:abajGearTurn 24s linear infinite}
 .abajSceneDolphin svg,.abajSceneGearOverlay svg{width:100%;height:100%}
+/* Pause off-screen animations and avoid decorative overlays on compact TV tiles. */
+#abajLauncher[hidden] .abajSceneMotion *,#abajLauncher[hidden] .abajBrandSpark{animation-play-state:paused!important}
+@media(orientation:landscape) and (max-height:520px){.abajSceneDolphin{width:10%;top:32%}.abajSceneGearOverlay{width:24%;top:10%;right:8%}}
 @keyframes abajDolphinSwim{0%{transform:translate(-30%,12%) rotate(-8deg);opacity:.18}35%{transform:translate(45%,-10%) rotate(5deg);opacity:.78}70%{transform:translate(105%,8%) rotate(-5deg);opacity:.65}100%{transform:translate(160%,-10%) rotate(7deg);opacity:.08}}
 @keyframes abajSunDrift{from{transform:translate(-5%,8%) scale(.83);opacity:.45}to{transform:translate(9%,-12%) scale(1.2);opacity:.9}}
 @keyframes abajWaterSwim{from{transform:translate(-25%,7%) scale(.85);opacity:.22}to{transform:translate(48%,-14%) scale(1.3);opacity:.7}}
