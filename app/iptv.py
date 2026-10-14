@@ -1424,7 +1424,7 @@ async def _fetch_epg_streamed(session: aiohttp.ClientSession, url: str) -> tuple
     programmes, names, logos, logo_names = {}, {}, {}, {}
     now = int(time.time())
     min_ts, max_ts = now - 4 * 3600, now + 36 * 3600
-    max_download = max(32, min(256, int(os.getenv("IPTV_EPG_STREAM_MAX_MB", "96")))) * 1048576
+    max_download = max(32, min(512, int(os.getenv("IPTV_EPG_STREAM_MAX_MB", "256")))) * 1048576
     async with session.get(url, timeout=aiohttp.ClientTimeout(total=120)) as response:
         if response.status >= 400:
             return programmes, names, logos, logo_names
