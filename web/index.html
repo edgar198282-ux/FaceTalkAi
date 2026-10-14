@@ -2412,22 +2412,23 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
   }
 }
 </style>
-<style id="abaj-cinema-seek-lower-landscape-v3">
-/* Anchor the cinema timeline to the bottom buttons, independently of the title row. */
+<style id="abaj-cinema-seek-lower-landscape-v4">
+/* Keep the cinema panel anchored to the bottom; position timeline above controls. */
 @media (orientation:landscape) and (max-height:700px){
   body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
     position:absolute!important;
-    height:224px!important;
+    bottom:0!important;
+    height:auto!important;
     min-height:0!important;
     max-height:none!important;
-    box-sizing:border-box!important;
-    padding-top:8px!important;
+    padding-top:6px!important;
     overflow:visible!important;
   }
   body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
     position:absolute!important;
     left:18px!important;
     right:18px!important;
+    top:auto!important;
     bottom:104px!important;
     width:auto!important;
     transform:none!important;
