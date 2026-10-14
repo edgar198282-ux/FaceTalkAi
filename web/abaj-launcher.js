@@ -35,11 +35,11 @@ const css=`
 .abajLaunchTile:active{transform:scale(.988)}
 @media(max-width:650px){
 #abajLauncher{padding:16px 17px max(26px,env(safe-area-inset-bottom));background-size:100% auto}
-.abajLaunchTop{min-height:clamp(92px,12vh,128px)}
+.abajLaunchTop{min-height:clamp(72px,9vh,96px)}
 .abajLaunchBrand{font-size:clamp(37px,9vw,54px);letter-spacing:1.2px}
-.abajLaunchTitle{font-size:clamp(11px,2.9vw,14px);letter-spacing:2.1px;margin:0 0 26px;line-height:1.4}
-.abajLaunchTiles{gap:22px}
-.abajLaunchTile{min-height:clamp(245px,29vh,330px);padding:24px 20px 28px;border-radius:26px;background-position:center 43%;background-size:cover}
+.abajLaunchTitle{font-size:clamp(11px,2.9vw,14px);letter-spacing:2.1px;margin:0 0 14px;line-height:1.4}
+.abajLaunchTiles{gap:12px}
+.abajLaunchTile{min-height:clamp(155px,20vh,210px);padding:16px 20px 20px;border-radius:26px;background-position:center 43%;background-size:cover}
 .abajLaunchText{gap:9px;max-width:calc(100% - 38px)}
 .abajLaunchName{font-size:clamp(29px,7.6vw,41px)}
 .abajLaunchDesc{font-size:clamp(14px,3.8vw,19px)}
