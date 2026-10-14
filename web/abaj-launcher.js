@@ -42,6 +42,18 @@ const css=`
 @media(orientation:landscape) and (max-height:520px){
 #abajLauncher{padding:8px 18px 16px}.abajLaunchTop{min-height:48px}.abajLaunchBrand{font-size:40px}.abajLaunchTitle{font-size:10px;margin:6px 0 12px}.abajLaunchTiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;min-height:180px}.abajLaunchTile,.abajLaunchTile[data-target="settings"]{min-height:180px;padding:14px}.abajLaunchName{font-size:25px}.abajLaunchDesc{font-size:12px}.abajLaunchText{max-width:100%;padding-right:0}#abajLauncher .abajLaunchTile:after,#abajLauncher .abajLaunchTile:before{display:none}
 }
+body:not(.darkMode) #abajLauncher{color:#102b46;background-color:#edf5fc;background-image:linear-gradient(180deg,#edf6ffcc 0%,#edf5fce8 70%,#edf5fc 100%),url('/static/launcher-header-20261014.webp')}
+body:not(.darkMode) #abajLauncher .abajLaunchBrand{color:#103a5c;text-shadow:0 2px 16px #ffffffb3}
+body:not(.darkMode) #abajLauncher .abajLaunchBrand b{color:#008fc8}
+body:not(.darkMode) #abajLauncher .abajLaunchTitle{color:#386681}
+body:not(.darkMode) #abajLauncher .abajLaunchTile{color:#102b46;background-color:#f7fbff;background-image:linear-gradient(0deg,#f7fbff 0%,#f7fbfff7 26%,#f7fbff59 48%,transparent 68%),var(--tile-bg);border-color:#88bddc;box-shadow:inset 0 0 0 1px #ffffffb3,0 7px 24px #245b8226}
+body:not(.darkMode) #abajLauncher .abajLaunchName{color:#10314d;text-shadow:0 1px 6px #ffffffb3}
+body:not(.darkMode) #abajLauncher .abajLaunchDesc{color:#3e607a;text-shadow:0 1px 4px #ffffffb3}
+body:not(.darkMode) #abajLauncher .abajLaunchTile:after{border-color:#58a7d2;background:linear-gradient(145deg,#ffffffed,#e0f2ffed);box-shadow:inset 0 0 0 1px #fff,0 3px 12px #25678926}
+body:not(.darkMode) #abajLauncher .abajLaunchTile:before{border-color:#17608a}
+body:not(.darkMode) #abajLauncher .abajLaunchTile:hover{border-color:#198fc6;box-shadow:0 7px 24px #167eb833}
+body:not(.darkMode) #abajLauncher .abajLaunchTile:focus-visible{outline-color:#087fb9!important;border-color:#087fb9;box-shadow:0 0 20px #159bdb59!important}
+body:not(.darkMode) #abajLaunchHome{background:#f3faff;color:#12628f;border-color:#58a7d2;box-shadow:0 3px 14px #25678926}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile{animation:none!important;transition:none!important}}
 `;
 function start(){
