@@ -1487,15 +1487,22 @@ async def refresh_epg(force: bool = False):
         all_programmes, all_names, all_logos, all_logo_names = {}, {}, {}, {}
         connector = aiohttp.TCPConnector(limit=2, ssl=False)
         async with aiohttp.ClientSession(connector=connector, headers={"User-Agent": "AbajTV/1.0"}) as session:
-            for _, url in EPG_URLS[:source_count]:
-                if url.endswith("epg_RU.xml"):
-                    programmes, names, logos, logo_names = await _fetch_epg_streamed(session, url)
-                else:
-                    text = await _fetch_epg_limited(session, url, max_bytes)
-                    if not text:
-                        continue
-                    programmes, names, logos, logo_names = await asyncio.to_thread(_parse_epg_xml, text)
-                    del text
+            for source_name, url in EPG_URLS[:source_count]:
+                try:
+                    if url.endswith("epg_RU.xml"):
+                        programmes, names, logos, logo_names = await _fetch_epg_streamed(session, url)
+                    else:
+                        xml_data = await _fetch_epg_limited(session, url, max_bytes)
+                        if not xml_data:
+                            logging.warning("FREE EPG source %s: empty/unavailable", source_name)
+                            continue
+                        programmes, names, logos, logo_names = await asyncio.to_thread(_parse_epg_xml, xml_data)
+                        del xml_data
+                    logging.info("FREE EPG source %s: programmes=%d aliases=%d",
+                                 source_name, len(programmes), len(names))
+                except Exception as source_exc:
+                    logging.warning("FREE EPG source %s failed: %s", source_name, repr(source_exc)[:180])
+                    continue
                 # A channel ID may be reused by unrelated XMLTV providers.
                 # Never merge programmes from different sources under one ID:
                 # that produces interleaved / foreign-language film titles.
