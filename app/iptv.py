@@ -1553,17 +1553,8 @@ def _epg_for_channel(item: dict) -> tuple[dict | None, dict | None]:
     if not rows and cid:
         base_cid = cid.split("@", 1)[0].strip()
         rows = _state["epg"].get(base_cid) if base_cid else None
-    if not rows:
-        aliases = [item.get("name") or ""] + list(item.get("epg_aliases") or [])
-        for alias in aliases:
-            for variant in _epg_name_variants(alias):
-                mapped = _state["epg_names"].get(variant)
-                if mapped:
-                    rows = _state["epg"].get(mapped)
-                    if rows:
-                        break
-            if rows:
-                break
+    # A provider's display-name or merged alias is not a reliable XMLTV identity.
+    # Never attach another channel's programme when the exact tvg-id is missing.
     if not rows:
         return None, None
     now = int(time.time())
