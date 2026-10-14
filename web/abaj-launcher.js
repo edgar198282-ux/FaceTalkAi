@@ -22,6 +22,17 @@ const css=`
 .abajLaunchTile:hover{border-color:#b5eaff;box-shadow:0 0 18px #16a9ef42}
 #abajLauncher .abajLaunchTile:focus-visible{outline:2px solid #b5efff!important;outline-offset:3px;border-color:#d5f5ff;box-shadow:0 0 20px #12bdff80!important}
 .abajLaunchTile:active{transform:scale(.992)}
+/* Lightweight animated scene accents: only composited transforms/opacity. */
+.abajLaunchTile .abajSceneMotion{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;border-radius:inherit}
+.abajSceneMotion i{position:absolute;display:block;pointer-events:none}
+.abajLaunchTile[data-target="cinema"] .abajSceneSun{left:35%;top:19%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff5b34d 0%,#ffbf4440 15%,#ffb12a16 39%,transparent 69%);mix-blend-mode:screen;animation:abajSunDrift 18s ease-in-out infinite alternate}
+.abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff35,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
+.abajLaunchTile[data-target="settings"] .abajSceneGear{right:10%;top:8%;width:37%;aspect-ratio:1;border-radius:50%;border:2px dashed #9ce8ff35;box-shadow:0 0 24px #45caff1a,inset 0 0 20px #48bfff12;animation:abajGearTurn 24s linear infinite}
+@keyframes abajSunDrift{from{transform:translate(-5%,8%) scale(.83);opacity:.45}to{transform:translate(9%,-12%) scale(1.2);opacity:.9}}
+@keyframes abajWaterSwim{from{transform:translate(-25%,7%) scale(.85);opacity:.22}to{transform:translate(48%,-14%) scale(1.3);opacity:.7}}
+@keyframes abajGearTurn{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.abajSceneMotion i{animation:none!important}}
+
 .abajLaunchText{display:flex;flex-direction:column;gap:7px;max-width:calc(100% - 48px);position:relative;z-index:2}
 .abajLaunchName{font-size:clamp(28px,3.25vw,44px);font-weight:800;line-height:1.08;letter-spacing:-.7px;text-shadow:0 2px 8px #0008}
 .abajLaunchDesc{font-size:clamp(13px,1.5vw,19px);line-height:1.35;font-weight:400;color:#b8ccdf;text-shadow:0 1px 5px #0009}
@@ -67,6 +78,11 @@ if(document.getElementById('abajLauncher'))return;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
 const root=document.createElement('section');root.id='abajLauncher';root.setAttribute('aria-label','ABAJ TV — главная');root.innerHTML=`<div class="abajLaunchTop"><div class="abajLaunchBrand">ABAJ<b>TV</b></div></div><div class="abajLaunchTitle">ВАШ МИР КИНО И ТЕЛЕВИДЕНИЯ</div><div class="abajLaunchTiles"><button class="abajLaunchTile" data-target="cinema" style="--tile-bg:url('/static/launcher-cinema-20261014.webp')"><span class="abajLaunchIcon">🎞</span><span class="abajLaunchText"><span class="abajLaunchName">Кинотеатр</span><span class="abajLaunchDesc">Фильмы, сериалы, мультфильмы</span></span></button><button class="abajLaunchTile" data-target="iptv" style="--tile-bg:url('/static/launcher-iptv-20261014.webp')"><span class="abajLaunchIcon">▣</span><span class="abajLaunchText"><span class="abajLaunchName">IPTV</span><span class="abajLaunchDesc">Каналы и прямые эфиры</span></span></button><button class="abajLaunchTile" data-target="settings" style="--tile-bg:url('/static/launcher-settings-20261014.webp')"><span class="abajLaunchIcon">⚙</span><span class="abajLaunchText"><span class="abajLaunchName">Настройки</span><span class="abajLaunchDesc">Параметры и управление</span></span></button></div><div class="abajLaunchFoot"></div>`;
 document.body.appendChild(root);
+for(const tile of root.querySelectorAll('.abajLaunchTile')){
+const motion=document.createElement('span');motion.className='abajSceneMotion';motion.setAttribute('aria-hidden','true');
+const accent=document.createElement('i');accent.className=tile.dataset.target==='cinema'?'abajSceneSun':tile.dataset.target==='iptv'?'abajSceneWater':'abajSceneGear';
+motion.appendChild(accent);tile.insertBefore(motion,tile.firstChild);
+}
 const brand=root.querySelector('.abajLaunchBrand');
 for(const [x,y,delay,speed] of [[5,22,0,2.7],[17,70,-1.3,3.2],[29,18,-.8,2.4],[42,77,-2.1,3.5],[54,25,-1.7,2.9],[67,69,-.4,3.1],[80,16,-2.5,2.6],[93,73,-1.1,3.4]]){
 const spark=document.createElement('i');
