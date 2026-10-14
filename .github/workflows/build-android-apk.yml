@@ -1,4 +1,5 @@
 name: Build Abaj TV Android APK
+# Rebuild signed phone and TV APK after native landscape-orientation fix.
 
 on:
   workflow_dispatch:
