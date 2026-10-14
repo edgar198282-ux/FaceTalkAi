@@ -1502,6 +1502,10 @@ async def refresh_epg(force: bool = False):
                     if cid not in all_programmes:
                         all_programmes[cid] = rows
                 for key, value in names.items():
+                    # Only index aliases whose channel actually has programmes.
+                    # Otherwise an empty guide masks a working match from another feed.
+                    if not value or value not in all_programmes:
+                        continue
                     if key not in all_names:
                         all_names[key] = value
                     elif all_names[key] != value:
