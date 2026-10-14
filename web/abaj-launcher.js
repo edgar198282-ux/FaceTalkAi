@@ -35,6 +35,13 @@ const css=`
 .abajSceneMotion i{position:absolute;display:block;pointer-events:none}
 .abajLaunchTile[data-target="cinema"] .abajSceneSun{left:35%;top:19%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff5b34d 0%,#ffbf4440 15%,#ffb12a16 39%,transparent 69%);mix-blend-mode:screen;animation:abajSunDrift 32s ease-in-out infinite}
 .abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff25,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
+.abajLaunchTile[data-target="iptv"].abajDolphinReady{background-image:linear-gradient(0deg,#010b19b3,transparent 42%),url('/static/launcher-iptv-background.webp')!important;background-size:cover,cover!important;background-position:center,center!important;animation:none!important}
+.abajLaunchTile[data-target="iptv"] .abajDolphinForeground{position:absolute;z-index:1;display:none;pointer-events:none;background:url('/static/launcher-iptv-dolphin-foreground.png') center/100% 100% no-repeat;transform-origin:50% 60%;will-change:transform,opacity}
+.abajLaunchTile[data-target="iptv"].abajDolphinReady .abajDolphinForeground{display:block;animation:abajDolphinLeap 7s ease-in-out infinite}
+@keyframes abajDolphinLeap{0%,9%{transform:translate(0,0) rotate(0deg);opacity:1}27%{transform:translate(18%,-48%) rotate(-12deg);opacity:1}46%{transform:translate(34%,-67%) rotate(-5deg);opacity:1}66%{transform:translate(42%,18%) rotate(18deg);opacity:1}84%,100%{transform:translate(0,0) rotate(0deg);opacity:1}}
+@media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"].abajDolphinReady .abajDolphinForeground{animation:none!important}}
+#abajLauncher[hidden] .abajDolphinForeground{animation-play-state:paused!important}
+body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajDolphinReady{background-image:linear-gradient(0deg,#f7fbff 0%,#f7fbfff7 26%,#f7fbff59 48%,transparent 68%),url('/static/launcher-iptv-background.webp')!important}
 .abajLaunchTile[data-target="settings"].abajGearReady{background-image:linear-gradient(0deg,#010b19b3,transparent 42%),url('/static/launcher-settings-background.webp')!important;background-size:cover,cover!important;background-position:center,center!important}
 .abajLaunchTile[data-target="settings"].abajGearReady .abajSceneMotion:before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 37% 68% at 75% 42%,#031b34e8 0%,#04203aa8 52%,transparent 100%);opacity:.42}
 .abajLaunchTile[data-target="settings"].abajGearReady .abajSceneGear{display:none}
@@ -100,6 +107,39 @@ const motion=document.createElement('span');motion.className='abajSceneMotion';m
 const accent=document.createElement('i');accent.className=tile.dataset.target==='cinema'?'abajSceneSun':tile.dataset.target==='iptv'?'abajSceneWater':'abajSceneGear';
 motion.appendChild(accent);
 tile.insertBefore(motion,tile.firstChild);
+}
+// Dolphin movement is enabled only after both original artwork layers load.
+const iptvTile=root.querySelector('.abajLaunchTile[data-target="iptv"]');
+if(iptvTile){
+ const sources=['/static/launcher-iptv-background.webp','/static/launcher-iptv-dolphin-foreground.png'];
+ let ready=0,failed=false;
+ sources.forEach((url,index)=>{
+  const image=new Image();
+  image.onload=()=>{
+   if(failed||!iptvTile.isConnected)return;
+   if(index===0&&(image.naturalWidth!==1536||image.naturalHeight!==997)){failed=true;return}
+   if(index===1&&(image.naturalWidth!==151||image.naturalHeight!==131)){failed=true;return}
+   if(++ready!==sources.length)return;
+   const dolphin=document.createElement('span');dolphin.className='abajDolphinForeground';dolphin.setAttribute('aria-hidden','true');
+   iptvTile.insertBefore(dolphin,iptvTile.querySelector('.abajLaunchText'));
+   const position=()=>{
+    const w=iptvTile.clientWidth,h=iptvTile.clientHeight;
+    if(!w||!h)return;
+    const scale=Math.max(w/1536,h/997);
+    const dx=(w-1536*scale)/2,dy=(h-997*scale)/2;
+    dolphin.style.left=(dx+762*scale)+'px';
+    dolphin.style.top=(dy+418*scale)+'px';
+    dolphin.style.width=(151*scale)+'px';
+    dolphin.style.height=(131*scale)+'px';
+   };
+   position();
+   if(typeof ResizeObserver!=='undefined'){new ResizeObserver(position).observe(iptvTile)}
+   else{window.addEventListener('resize',position,{passive:true})}
+   iptvTile.classList.add('abajDolphinReady');
+  };
+  image.onerror=()=>{failed=true};
+  image.src=url;
+ });
 }
 // Progressive enhancement: only replace the original settings art if BOTH layers load.
 const settingsTile=root.querySelector('.abajLaunchTile[data-target="settings"]');
