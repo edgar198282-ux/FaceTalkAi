@@ -2412,8 +2412,8 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
   }
 }
 </style>
-<style id="abaj-cinema-seek-lower-landscape-v6">
-/* Cinema landscape: title, seek bar, clocks and buttons in one compact bottom stack. */
+<style id="abaj-cinema-seek-lower-landscape-v7">
+/* Compact landscape cinema controls: natural flow, no translated overlap. */
 @media (orientation:landscape) and (max-height:700px){
   body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
     display:flex!important;
@@ -2427,15 +2427,16 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
     overflow:visible!important;
     padding:6px 18px 2px!important;
     box-sizing:border-box!important;
-    background:linear-gradient(0deg,rgba(3,9,18,.84),rgba(3,9,18,.56) 65%,rgba(3,9,18,0))!important;
+    background:linear-gradient(to top,rgba(3,9,18,.84) 0%,rgba(3,9,18,.52) 65%,transparent 100%)!important;
   }
   body:not(.nativeTv) .playerView.cinemaPlayback .playerMeta{
     order:0!important;
     flex:0 0 auto!important;
     position:relative!important;
-    transform:translateY(70px)!important;
-    margin:0 0 4px!important;
+    transform:none!important;
+    margin:0 0 2px!important;
     padding:0 0 2px!important;
+    min-height:34px!important;
   }
   body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
     order:1!important;
@@ -2445,8 +2446,8 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
     width:100%!important;
     height:auto!important;
     min-height:22px!important;
-    transform:translateY(70px)!important;
-    margin:0 0 5px!important;
+    transform:none!important;
+    margin:0 0 17px!important;
     z-index:3!important;
   }
   body:not(.nativeTv) .playerView.cinemaPlayback .playerPrimaryControls{
