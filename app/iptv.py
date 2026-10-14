@@ -2502,12 +2502,37 @@ def public_state(compact: bool = False, fast: bool = False):
     # FREE-only audit: expose unmatched channels without touching custom playlists.
     # Keep samples small to avoid bloating the diagnostics response.
     stats["epg_missing_count"] = sum(1 for x in rows if not x.get("epg_now"))
-    stats["epg_missing_samples"] = [
-        {"name": str(x.get("name") or "")[:90],
-         "country": str(x.get("country") or "")[:4],
-         "tvg_id": str(x.get("tvg_id") or "")[:90]}
-        for x in rows if not x.get("epg_now")
-    ][:40]
+    # Explain each missing FREE programme without logging private playlist URLs.
+    guide_ids = _state.get("epg") or {}
+    guide_names = _state.get("epg_names") or {}
+    missing_reasons = {}
+    missing_samples = []
+    for x in rows:
+        if x.get("epg_now"):
+            continue
+        channel_id = str(x.get("tvg_id") or "").strip()
+        variants = _epg_name_variants(x.get("name") or "")
+        name_matches = [guide_names.get(v) for v in variants]
+        if channel_id and channel_id in guide_ids:
+            reason = "id_found_but_no_current_programme"
+        elif any(v == "" for v in name_matches if v is not None):
+            reason = "ambiguous_name"
+        elif any(v and v in guide_ids for v in name_matches):
+            reason = "name_found_but_no_current_programme"
+        elif not channel_id:
+            reason = "missing_tvg_id_and_name"
+        else:
+            reason = "id_and_name_not_in_guide"
+        missing_reasons[reason] = missing_reasons.get(reason, 0) + 1
+        if len(missing_samples) < 80:
+            missing_samples.append({
+                "name": str(x.get("name") or "")[:90],
+                "country": str(x.get("country") or "")[:4],
+                "tvg_id": channel_id[:90],
+                "reason": reason,
+            })
+    stats["epg_missing_reasons"] = missing_reasons
+    stats["epg_missing_samples"] = missing_samples
     stats["with_logo"] = sum(1 for x in rows if bool(x.get("logo")))
     coverage_by_country = {}
     for x in rows:
