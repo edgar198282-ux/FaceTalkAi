@@ -2460,7 +2460,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
         
         <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск" aria-label="Поиск">🔍</button>
         <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
-        <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV">⌂</button>
+        <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV"><svg class="abajHomeSvg" viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.2 12 3l9 7.2V21h-6.5v-7h-5v7H3z"/></svg></button>
       </div>
     </div>
     <div class="toolbar">
@@ -2508,7 +2508,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
         </div>
         
         <button class="cinemaShellBtn" id="cinemaSearchBtn" onclick="openTvSearch()" aria-label="Поиск">🔍</button>
-        <button class="cinemaShellBtn cinemaSettingsQuickBtn" id="cinemaSettingsBtn" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV">⌂</button>
+        <button class="cinemaShellBtn cinemaSettingsQuickBtn" id="cinemaSettingsBtn" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV"><svg class="abajHomeSvg" viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.2 12 3l9 7.2V21h-6.5v-7h-5v7H3z"/></svg></button>
       </div>
     </div>
     <div class="cinemaShellCategory" id="cinemaCategoryMenu">
@@ -2671,7 +2671,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
       <input id="themeHue" class="themeHue" type="range" min="0" max="359" step="1" value="204" oninput="setThemeHue(this.value)">
       <button class="themeReset" id="themeResetBtn" onclick="resetThemeHue()">Сбросить цвет</button>
     </div>
-    <button type="button" class="settingsClose" id="settingsCloseBtn" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV">⌂</button>
+    <button type="button" class="settingsClose" id="settingsCloseBtn" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV"><svg class="abajHomeSvg" viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.2 12 3l9 7.2V21h-6.5v-7h-5v7H3z"/></svg></button>
   </div>
 </div>
 
@@ -2694,7 +2694,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
       
       <div class="adminHeadActions" style="width:100%;flex:1 1 100%;justify-content:space-between">
         <button class="adminBack" onclick="backFromAdmin()">← Назад</button>
-        <button class="adminClose" onclick="closeAdmin()">Закрыть</button>
+        <button class="adminClose abajHomeAction" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV"><svg class="abajHomeSvg" viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.2 12 3l9 7.2V21h-6.5v-7h-5v7H3z"/></svg></button>
       </div>
     </div>
     
@@ -15518,8 +15518,8 @@ body.nativeTv .playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtr
   color:#0b5f9e!important;
 }
 #tvSettingsModal #settingsCloseBtn::before{
-  content:"⌂";
-  font-size:30px!important;
+  content:none!important;
+  display:none!important;
   font-weight:700!important;
   line-height:1!important;
 }
@@ -16676,7 +16676,16 @@ body.nativeTv #cinemaDetail .cinemaCastCard:focus-visible{outline:none!important
 })();
 </script>
 \n
-<script src="/static/abaj-launcher.js?v=20261014-7" defer></script>
+<style id="abaj-modern-home-20261014">
+.abajHomeAction,#tvSettingsBtn,#cinemaSettingsBtn{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:0!important}
+.abajHomeSvg{width:26px;height:26px;flex-shrink:0;filter:drop-shadow(0 0 3px #12aeff66)}
+#tvSettingsModal #settingsCloseBtn{display:flex!important;align-items:center!important;justify-content:center!important;font-size:0!important}
+#tvSettingsModal #settingsCloseBtn .abajHomeSvg{width:27px;height:27px}
+#tvSettingsModal #settingsCloseBtn::before{content:none!important;display:none!important}
+#adminPanel .adminClose.abajHomeAction{min-width:48px!important;width:48px!important;height:43px!important;padding:6px!important;border-radius:12px!important;font-size:0!important;background:#d9efff!important;color:#0b5f9e!important;border:1px solid #b2e1fa!important}
+#adminPanel .adminClose.abajHomeAction:focus-visible,#tvSettingsModal #settingsCloseBtn:focus-visible{outline:3px solid #00aaff!important;box-shadow:0 0 15px #00aaff!important}
+</style>
+<script src="/static/abaj-launcher.js?v=20261014-8" defer></script>
 </body>
 </html>
 
