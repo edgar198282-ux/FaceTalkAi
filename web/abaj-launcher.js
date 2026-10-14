@@ -61,28 +61,69 @@ const css=`
 @keyframes abajNeonFocus{0%,100%{box-shadow:0 0 0 2px #b8f6ff,0 0 18px #00baff,0 0 32px #007bff}50%{box-shadow:0 0 0 3px #e3ffff,0 0 28px #00d9ff,0 0 52px #007bff}}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile,.abajLaunchTile:before{animation:none!important;transition:none!important}}
 
-/* ABAJ launcher polish — 2026-10-14: visual-only, preserve routing and viewport fit */
-#abajLauncher{background-color:#020b1c;background-image:linear-gradient(180deg,rgba(1,7,20,.02) 0%,rgba(1,8,24,.38) 26%,#020b1d 100%),url('/static/launcher-header.svg?v=5');scrollbar-width:none}
-#abajLauncher::-webkit-scrollbar{display:none}
-.abajLaunchTop{position:relative;z-index:1}
-.abajLaunchBrand{filter:drop-shadow(0 0 12px rgba(37,150,255,.45))}
-.abajLaunchTitle{color:#d9eaff;text-shadow:0 1px 8px #00132d,0 0 10px #228aff77}
-.abajLaunchTile{background-blend-mode:normal;border-color:#24bfff;box-shadow:0 0 0 1px #8deeff66,0 0 13px #00baffb8,0 0 28px #0879ff77,inset 0 0 18px #05aeff55}
-.abajLaunchTile:before{border:1px solid #9cecff55;box-shadow:inset 0 0 16px #36bfff80,0 0 12px #12aaff88}
-.abajLaunchTile:focus-visible{border-color:#d3faff;animation:abajNeonFocus 2.4s ease-in-out infinite}
-.abajLaunchText{z-index:2}
-.abajLaunchName{color:#fff;text-shadow:0 3px 9px #000,0 0 14px #001733}
-.abajLaunchDesc{color:#eaf4ff;text-shadow:0 2px 8px #000}
-@media(max-width:650px){
-#abajLauncher{height:100dvh;max-height:100dvh;overflow:hidden;padding:clamp(10px,1.35dvh,18px) 17px max(12px,env(safe-area-inset-bottom))}
-.abajLaunchTop{min-height:clamp(65px,8dvh,95px)}
-.abajLaunchTitle{margin:0 0 clamp(9px,1.4dvh,17px)}
-.abajLaunchTiles{flex:1 1 0;min-height:0;gap:clamp(10px,1.4dvh,17px)}
-.abajLaunchTile{flex:1 1 0;min-height:0;padding:clamp(12px,1.7dvh,20px) 20px;border-radius:clamp(21px,3.5vw,27px)}
-.abajLaunchName{font-size:clamp(28px,7.4vw,42px)}
-.abajLaunchDesc{font-size:clamp(13px,3.7vw,19px)}
+/* ABAJ cinematic redesign v6 — stronger visual change, isolated launcher only */
+#abajLauncher{
+  background:#02091b radial-gradient(ellipse at 50% 7%,#1353a766,transparent 42%);
+  padding:clamp(18px,3vw,40px);
 }
-@media(max-height:620px) and (max-width:650px){.abajLaunchTop{min-height:52px}.abajLaunchTitle{margin-bottom:7px}.abajLaunchTiles{gap:8px}.abajLaunchTile{padding:8px 16px}.abajLaunchName{font-size:25px}.abajLaunchDesc{font-size:12px}}
+.abajLaunchTop{
+  position:relative;justify-content:center;min-height:clamp(86px,13vh,145px);
+  background:linear-gradient(90deg,transparent,#0c2b5780,transparent);
+  border-bottom:1px solid #4acbff35;
+}
+.abajLaunchTop:before{
+  content:'▶';position:absolute;left:1%;top:50%;transform:translateY(-50%);
+  color:#fff;font-size:clamp(29px,5vw,55px);
+  filter:drop-shadow(0 0 12px #00baff);
+}
+.abajLaunchTop:after{
+  content:'⌂';position:absolute;right:1%;top:50%;transform:translateY(-50%);
+  color:#a6dfff;font-size:clamp(35px,6vw,65px);
+  text-shadow:0 0 16px #13aaff;
+}
+.abajLaunchBrand{
+  font-size:clamp(40px,6vw,76px);letter-spacing:4px;
+  background:linear-gradient(115deg,#fff 10%,#b7ddff 42%,#00caff 70%,#2887ff 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 16px #098cff88);text-shadow:none;
+}
+.abajLaunchBrand b{color:#00bfff;text-shadow:0 0 18px #00bfff}
+.abajLaunchTitle{text-align:center;letter-spacing:clamp(2px,.5vw,5px);color:#d9ecff;text-shadow:0 0 12px #197dff;margin:10px 0 20px}
+.abajLaunchTiles{gap:clamp(16px,2.5vw,28px)}
+.abajLaunchTile{
+  border:2px solid #31c9ff;border-radius:30px;
+  background-image:linear-gradient(180deg,#061a3c15 0%,#04132d15 38%,#020b20f5 100%),var(--tile-bg);
+  background-position:center;background-size:cover;
+  box-shadow:0 0 0 1px #d0f7ff66,0 0 20px #009bff99,0 0 44px #0078ff55,inset 0 0 32px #0b90ff55;
+}
+.abajLaunchTile:before{
+  inset:5px;border:1px solid #a4ecff4a;border-radius:24px;
+  box-shadow:inset 0 0 25px #079aff55;animation:abajPulse 3s ease-in-out infinite;
+}
+.abajLaunchTile:after{content:'❯';font-size:clamp(26px,3vw,38px);right:23px;bottom:29px;color:#e8faff}
+.abajLaunchText{gap:8px;max-width:calc(100% - 38px)}
+.abajLaunchName{font-size:clamp(32px,4vw,55px);letter-spacing:-1px;color:white;text-shadow:0 3px 12px #000,0 0 20px #001c49}
+.abajLaunchDesc{font-size:clamp(15px,1.7vw,23px);color:#edf7ff;text-shadow:0 2px 9px #000}
+.abajLaunchTile:focus-visible{
+  border-color:#fff;outline:none;animation:abajNeonFocus 2.4s ease-in-out infinite;
+}
+@media(max-width:650px){
+ #abajLauncher{height:100dvh;max-height:100dvh;overflow:hidden;display:flex;flex-direction:column;padding:clamp(8px,1.1dvh,15px) 16px max(11px,env(safe-area-inset-bottom));background:radial-gradient(ellipse at 50% 4%,#1453a488,transparent 35%),#020a1d}
+ .abajLaunchTop{flex:0 0 auto;min-height:clamp(62px,9dvh,100px)}
+ .abajLaunchTop:before{font-size:clamp(19px,5vw,27px);left:1%}
+ .abajLaunchTop:after{font-size:clamp(24px,6vw,32px);right:1%}
+ .abajLaunchBrand{font-size:clamp(31px,8vw,49px);letter-spacing:1px}
+ .abajLaunchTitle{flex:0 0 auto;margin:clamp(7px,1dvh,12px) 0 clamp(12px,1.8dvh,22px);font-size:clamp(10px,2.8vw,14px);letter-spacing:clamp(1.4px,.38vw,3px);line-height:1.3}
+ .abajLaunchTiles{display:flex;flex:1 1 0;min-height:0;flex-direction:column;gap:clamp(11px,1.5dvh,19px)}
+ .abajLaunchTile{flex:1 1 0;min-height:0;height:auto;padding:clamp(12px,1.8dvh,20px) 20px;border-radius:26px}
+ .abajLaunchTile:before{inset:4px;border-radius:21px}
+ .abajLaunchText{gap:7px}
+ .abajLaunchName{font-size:clamp(27px,7vw,41px)}
+ .abajLaunchDesc{font-size:clamp(12px,3.55vw,18px)}
+ .abajLaunchTile:after{right:17px;bottom:clamp(17px,2dvh,24px);font-size:29px}
+}
+@media(max-height:620px) and (max-width:650px){.abajLaunchTop{min-height:50px}.abajLaunchTitle{margin:5px 0 8px}.abajLaunchTiles{gap:8px}.abajLaunchName{font-size:25px}.abajLaunchDesc{font-size:12px}}
+
 `;
 function start(){
 if(document.getElementById('abajLauncher'))return;
