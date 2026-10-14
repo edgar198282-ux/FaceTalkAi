@@ -3197,18 +3197,9 @@ async def api_proxy(request):
 
 async def _bootstrap_public_channels():
     """Merge bounded public playlists into an existing channel snapshot."""
-    sources = [
-        ("AM", "https://iptv-org.github.io/iptv/countries/am.m3u"),
-        ("RU", "https://iptv-org.github.io/iptv/countries/ru.m3u"),
-        ("AM", "https://iptv-org.github.io/iptv/languages/hye.m3u"),
-        ("RU", "https://iptv-org.github.io/iptv/languages/rus.m3u"),
-        ("RU", "https://raw.githubusercontent.com/smolnp/IPTVru/refs/heads/gh-pages/IPTVstable.m3u8"),
-        ("RU", "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv-top.m3u"),
-        ("AM", "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_armenia.m3u8"),
-        ("RU", "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_russia.m3u8"),
-        ("AM", "https://dearbulut.github.io/iptv/playlists/country/am.m3u"),
-        ("RU", "https://dearbulut.github.io/iptv/playlists/country/ru.m3u"),
-    ]
+    # Production runs this lightweight scanner, not refresh_channels().
+    # Share the configured AM/RU sources with the full scanner.
+    sources = [(country, url) for country, url in SOURCE_URLS if country in {"AM", "RU"}]
     result = dict(_state["channels"])
     original_count = len(result)
     existing = sorted((row for row in result.values() if row.get("url")), key=lambda row: str(row.get("id")))
@@ -3247,18 +3238,22 @@ async def _bootstrap_public_channels():
                 candidates = [row for row in parsed if not _is_adult_channel(row)
                               and not _looks_junk(row) and not _is_quarantined(row.get("url", ""))
                               and str(row.get("id")) not in result]
+                # Rotate across the entire source instead of probing the same
+                # first 60 entries forever. Bound network work per source/day.
+                daily_slot = int(time.time()) // REFRESH_SECONDS
+                offset = (daily_slot * 60) % len(candidates) if candidates else 0
+                sample_new = (candidates[offset:offset + 60] +
+                              candidates[:max(0, offset + 60 - len(candidates))])
                 sem = asyncio.Semaphore(12)
-                checked = await asyncio.gather(*[_probe(session, row, sem) for row in candidates[:60]])
+                checked = await asyncio.gather(*[_probe(session, row, sem) for row in sample_new])
                 for row in checked:
                     if row.get("status") == "ONLINE":
                         result.setdefault(str(row["id"]), row)
                 logging.info("IPTV light source %s: %d candidates, %d verified, total %d",
                              country, len(parsed), sum(row.get("status") == "ONLINE" for row in checked), len(result))
                 del raw, parsed
-                if len(result) >= 3500:
-                    break
             except Exception as exc:
-                logging.warning("IPTV light source failed: %s", type(exc).__name__)
+                logging.warning("IPTV light source failed (%s): %s", url, str(exc)[:160])
     if result:
         _state["channels"] = result
         _state["last_refresh"] = int(time.time())
