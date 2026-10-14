@@ -317,7 +317,6 @@ SOURCE_URLS = [
     ("UZ", "https://iptv-org.github.io/iptv/countries/uz.m3u"),
     ("MD", "https://iptv-org.github.io/iptv/countries/md.m3u"),
 ]
-MAX_STREAMS = max(1500, int(os.getenv("IPTV_MAX_STREAMS", "3500")))
 REFRESH_SECONDS = max(3600, int(os.getenv("IPTV_REFRESH_SECONDS", "86400")))
 PROBE_CONCURRENCY = 40
 QUARANTINE_SECONDS = max(3600, int(os.getenv("IPTV_QUARANTINE_SECONDS", "86400")))
@@ -2088,10 +2087,7 @@ async def refresh_channels(force: bool = False):
                         unique.append(item)
                     else:
                         backups.append(item)
-                    if len(unique) >= MAX_STREAMS:
-                        break
-                if len(unique) < MAX_STREAMS:
-                    unique.extend(backups[:MAX_STREAMS-len(unique)])
+                unique.extend(backups)
                 sem = asyncio.Semaphore(PROBE_CONCURRENCY)
                 checked = await asyncio.gather(*[_probe(session, item, sem) for item in unique])
             grouped = {}
@@ -2185,7 +2181,7 @@ async def refresh_channels(force: bool = False):
                 "offline": len(channels) - online,
                 "source_count": len(SOURCE_URLS),
                 "candidate_streams": len(checked),
-                "max_streams": MAX_STREAMS,
+                "max_streams": None,
                 "duplicates_removed": max(0, len(checked) - len(channels)),
                 "with_backups": sum(1 for x in channels.values() if int(x.get("backup_count") or 0) > 0),
                 "health_records": len(_stream_health),
