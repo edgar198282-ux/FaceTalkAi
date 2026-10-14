@@ -35,7 +35,7 @@ const css=`
 .abajSceneMotion i{position:absolute;display:block;pointer-events:none}
 .abajLaunchTile[data-target="cinema"] .abajSceneSun{left:35%;top:19%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff5b34d 0%,#ffbf4440 15%,#ffb12a16 39%,transparent 69%);mix-blend-mode:screen;animation:abajSunDrift 32s ease-in-out infinite}
 .abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff25,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
-.abajIptvFlyingBall{position:fixed;z-index:2147483647;display:block;width:76px;height:76px;line-height:76px;text-align:center;font-size:72px;pointer-events:none;transform:translate(-50%,-50%);filter:drop-shadow(0 7px 8px #0009);user-select:none}
+.abajIptvFlyingBall{position:fixed;z-index:2147483647;display:block;width:76px;height:76px;line-height:0;text-align:center;pointer-events:none;transform:translate(-50%,-50%);filter:drop-shadow(0 7px 8px #0009);user-select:none}
 .abajLaunchTile[data-target="iptv"] .abajIptvMotionVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1;border-radius:inherit}
 .abajLaunchTile[data-target="iptv"].abajIptvVideoReady{background-image:linear-gradient(0deg,#010b19b3,transparent 42%),var(--tile-bg)!important}
 body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajIptvVideoReady .abajIptvMotionVideo{opacity:.82}
@@ -207,20 +207,24 @@ async function playIptvBallTransition(tile){
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){iptvTransitionBusy=false;return true}
  const ball=document.createElement('span');
  ball.className='abajIptvFlyingBall';
- ball.textContent='⚽';
+ ball.innerHTML='<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><radialGradient id="abajBallShade" cx="32%" cy="24%" r="78%"><stop offset="0" stop-color="#fff"/><stop offset=".53" stop-color="#f5f7f9"/><stop offset=".8" stop-color="#b6c0c9"/><stop offset="1" stop-color="#263748"/></radialGradient><clipPath id="abajBallClip"><circle cx="50" cy="50" r="48"/></clipPath></defs><circle cx="50" cy="50" r="48" fill="url(#abajBallShade)"/><g clip-path="url(#abajBallClip)" fill="#101821" stroke="#283541" stroke-width="1.2"><polygon points="48,30 66,38 63,57 43,64 31,47"/><polygon points="6,15 25,8 34,23 20,39 3,34"/><polygon points="77,7 96,19 96,38 80,36 68,21"/><polygon points="8,71 27,65 36,84 25,103 3,94"/><polygon points="73,74 93,63 106,77 92,99 72,95"/></g><g clip-path="url(#abajBallClip)" fill="none" stroke="#78818a" stroke-width="2.2"><path d="M31 47 20 39M48 30 34 23M66 38 80 36M63 57 73 74M43 64 36 84M27 65 20 39M68 21 48 30M93 63 63 57"/></g><ellipse cx="35" cy="20" rx="22" ry="11" fill="#fff" opacity=".28" transform="rotate(-25 35 20)"/></svg>';
  ball.setAttribute('aria-hidden','true');
  const r=tile.getBoundingClientRect();
  // The football is near the top centre of the TV screen in the original IPTV artwork.
- const x=r.left+r.width*.65,y=r.top+r.height*.34;
+ const x=r.left+r.width*.665,y=r.top+r.height*.265;
  ball.style.left=x+'px';ball.style.top=y+'px';
  document.body.appendChild(ball);
  try{
+  const endX=window.innerWidth/2,endY=window.innerHeight/2;
+  const dx=endX-x,dy=endY-y;
+  const targetScale=Math.max(window.innerWidth,window.innerHeight)/76*1.35;
   const anim=ball.animate([
-   {transform:'translate(-50%,-50%) scale(.28) rotate(-20deg)',opacity:0.85,offset:0},
-   {transform:'translate(-50%,-50%) scale(1.1) rotate(25deg)',opacity:1,offset:.4},
-   {transform:'translate(-50%,-50%) scale(12) rotate(100deg)',opacity:1,offset:.88},
-   {transform:'translate(-50%,-50%) scale(16) rotate(125deg)',opacity:0,offset:1}
-  ],{duration:1050,easing:'cubic-bezier(.2,.1,.32,1)',fill:'forwards'});
+   {transform:'translate(-50%,-50%) translate(0px,0px) scale(.14) rotate(-15deg)',opacity:1,offset:0},
+   {transform:'translate(-50%,-50%) translate('+dx*.18+'px,'+dy*.18+'px) scale(.8) rotate(2deg)',opacity:1,offset:.32},
+   {transform:'translate(-50%,-50%) translate('+dx*.7+'px,'+dy*.7+'px) scale('+targetScale*.35+') rotate(24deg)',opacity:1,offset:.74},
+   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale+') rotate(35deg)',opacity:1,offset:.94},
+   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale*1.2+') rotate(38deg)',opacity:0,offset:1}
+  ],{duration:1250,easing:'cubic-bezier(.22,.08,.2,1)',fill:'forwards'});
   await anim.finished.catch(()=>{});
  }finally{ball.remove();iptvTransitionBusy=false}
  return true;
