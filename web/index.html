@@ -5595,7 +5595,33 @@ function deduplicateFreeChannels(rows){
     const prev=selected.get(key);
     if(!prev||score(ch)>score(prev))selected.set(key,ch);
   }
-  return rows.filter(ch=>ch.personal||selected.get(keyOf(ch))===ch);
+  const alternatives=new Map();
+  for(const ch of rows){
+    if(ch.personal)continue;
+    const key=keyOf(ch);
+    const winner=selected.get(key);
+    if(!winner||winner===ch)continue;
+    const winnerId=String(winner.tvg_id||'').trim().toLowerCase();
+    const candidateId=String(ch.tvg_id||'').trim().toLowerCase();
+    if(!winnerId||winnerId!==candidateId)continue;
+    if(!alternatives.has(key))alternatives.set(key,[]);
+    alternatives.get(key).push(String(ch.url||''),...(Array.isArray(ch.backups)?ch.backups:[]));
+  }
+  return rows.filter(ch=>ch.personal||selected.get(keyOf(ch))===ch).map(ch=>{
+    if(ch.personal)return ch;
+    const extra=alternatives.get(keyOf(ch));
+    if(!extra||!extra.length)return ch;
+    const seen=new Set([String(ch.url||'').trim()]);
+    const backups=[];
+    for(const raw of [...(Array.isArray(ch.backups)?ch.backups:[]),...extra]){
+      const url=String(raw||'').trim();
+      if(!(url.startsWith('https://')||url.startsWith('http://'))||seen.has(url))continue;
+      seen.add(url);
+      backups.push(url);
+      if(backups.length>=12)break;
+    }
+    return {...ch,backups,backup_count:backups.length};
+  });
 }
 async function load(){
   try{
