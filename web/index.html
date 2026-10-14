@@ -2769,7 +2769,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
   <div class="playerTop" onclick="event.stopPropagation()">
     <button class="back" onclick="closePlayer()">‹</button>
     <div class="playerTitle" id="playerTitle">Канал</div>
-    <button id="playerFavBtn" class="iconBtn" style="display:none" hidden aria-hidden="true" tabindex="-1">♡</button>
+    
   </div>
   <div class="videoWrap" onclick="handlePlayerSurfaceClick(event)">
     <div class="playerBrand" onclick="dismissMobilePlayerLoading(event)"><img class="playerLoadingLogo" src="/static/abaj_tv_logo.jpg" alt="ABAJ TV"></div>
@@ -5271,7 +5271,7 @@ function updatePlayerFavoriteUi(){
   const enabled=favs.has(current.id);
   const top=document.getElementById('playerFavBtn');
   const action=document.getElementById('playerFavAction');
-  if(top){top.textContent=enabled?'♥':'♡';top.title=enabled?'Убрать из избранного':'Добавить в избранное';top.classList.toggle('favoriteOn',enabled)}
+  if(top){top.style.display='none';top.hidden=true;}
   if(action){
     const icon=action.querySelector('.playerCtrlIcon');
     const label=action.querySelector('small');
