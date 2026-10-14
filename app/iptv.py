@@ -3259,6 +3259,14 @@ async def _bootstrap_public_channels():
                              country, len(parsed), len(checked),
                              sum(row.get("status") == "ONLINE" for row in checked),
                              len(result), sorted(failures.items(), key=lambda x: -x[1])[:4])
+                if len(result) > original_count:
+                    # Persist newly verified streams before the next source:
+                    # Railway can restart during a long catalogue scan.
+                    _save_json(SNAPSHOT_PATH, {"saved_at": int(time.time()), "state": {
+                        "channels": list(result.values()), "last_refresh": int(time.time()),
+                        "stats": {"total": len(result),
+                                  "online": sum(x.get("status") == "ONLINE" for x in result.values())},
+                        "error": ""}})
                 del raw, parsed
             except Exception as exc:
                 logging.warning("IPTV light source failed (%s): %s", url, str(exc)[:160])
