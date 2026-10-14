@@ -2462,6 +2462,8 @@ async def api_cinema_catalog(request):
 
 async def api_diagnostics(request):
     state = public_state()
+    free_stats = public_state(compact=True, fast=True).get("stats") or {}
+    state["stats"].update({key: free_stats[key] for key in ("list_total", "free_duplicate_names", "free_unique_names", "excluded_from_list", "restricted_breakdown", "restricted_with_backups") if key in free_stats})
     rows = state.get("channels") or []
     problem = [
         {
