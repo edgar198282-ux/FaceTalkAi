@@ -465,7 +465,7 @@ EPG_URLS = [
     # exceeded the default 8 MB download cap, leaving EPG empty.
     ("EPGPW_LITE", "https://epg.pw/xmltv/epg_lite.xml"),
     ("EPGPW_RU", "https://epg.pw/xmltv/epg_RU.xml"),
-    ("AM_IPTV_ORG", "https://iptv-org.github.io/epg/guides/am/tv.mail.ru.epg.xml"),
+    ("AM_IPTV_EPG", "https://iptv-epg.org/files/epg-am.xml"),
     ("CIS", "https://epg.one/epg2.xml"),
 ]
 IPTV_ORG_STREAMS_API = "https://iptv-org.github.io/api/streams.json"
