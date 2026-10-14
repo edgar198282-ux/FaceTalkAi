@@ -466,6 +466,7 @@ EPG_URLS = [
     ("EPGPW_LITE", "https://epg.pw/xmltv/epg_lite.xml"),
     ("EPGPW_RU", "https://epg.pw/xmltv/epg_RU.xml"),
     ("AM_IPTV_EPG", "https://iptv-epg.org/files/epg-am.xml"),
+    ("RU_YANDEX", "https://iptv-org.github.io/epg/guides/ru/tv.yandex.ru.epg.xml"),
     ("CIS", "https://epg.one/epg2.xml"),
 ]
 IPTV_ORG_STREAMS_API = "https://iptv-org.github.io/api/streams.json"
@@ -1483,7 +1484,7 @@ async def refresh_epg(force: bool = False):
         # Process sources sequentially. Previously three entire XML feeds and
         # three parsed trees were held concurrently, exhausting a 1 GB service.
         max_bytes = max(1, min(24, int(os.getenv("IPTV_EPG_MAX_MB", "24")))) * 1048576
-        source_count = max(3, min(len(EPG_URLS), int(os.getenv("IPTV_EPG_SOURCE_COUNT", "3"))))
+        source_count = max(4, min(len(EPG_URLS), int(os.getenv("IPTV_EPG_SOURCE_COUNT", "4"))))
         all_programmes, all_names, all_logos, all_logo_names = {}, {}, {}, {}
         connector = aiohttp.TCPConnector(limit=2, ssl=False)
         async with aiohttp.ClientSession(connector=connector, headers={"User-Agent": "AbajTV/1.0"}) as session:
