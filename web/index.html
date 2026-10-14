@@ -2457,7 +2457,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
         </div>
       </div>
       <div class="icons">
-        <button id="cinemaToggleBtn" class="iconBtn tvTopAction cinemaSwitchBtn" onclick="toggleCinemaMode()" title="Кино" aria-label="Кино"><span id="cinemaToggleIcon">🎬</span></button>
+        
         <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск" aria-label="Поиск">🔍</button>
         <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
         <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV">⌂</button>
@@ -2506,21 +2506,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
           <button class="cinemaKpNavBtn" data-kp-nav="history" onclick="cinemaKpNav('history')">История</button>
           <button class="cinemaKpNavBtn" data-kp-nav="settings" onclick="cinemaKpNav('settings')">Настройки</button>
         </div>
-        <button class="cinemaShellBtn cinemaTvQuickBtn" id="cinemaTvQuickBtn" onclick="toggleCinemaMode()" title="ТВ" aria-label="ТВ">
-  <svg class="cinemaTvQuickSvg" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-    <defs>
-      <linearGradient id="cinemaTvDisplay" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#6ddfff"/>
-        <stop offset=".55" stop-color="#168cd6"/>
-        <stop offset="1" stop-color="#074777"/>
-      </linearGradient>
-    </defs>
-    <rect x="2" y="5" width="28" height="21" rx="3" fill="#c5d5e1" stroke="#e0f4ff" stroke-width="1"/>
-    <rect x="4.5" y="7.5" width="23" height="16" rx="1.5" fill="url(#cinemaTvDisplay)" stroke="#173d58" stroke-width=".8"/>
-    <path d="M7 19L21 9" stroke="#b8f4ff" stroke-width="1.5" opacity=".5"/>
-    <path d="M13 26v3m6-3v3M10 29h12" stroke="#c5d5e1" stroke-width="2" stroke-linecap="round"/>
-  </svg>
-</button>
+        
         <button class="cinemaShellBtn" id="cinemaSearchBtn" onclick="openTvSearch()" aria-label="Поиск">🔍</button>
         <button class="cinemaShellBtn cinemaSettingsQuickBtn" id="cinemaSettingsBtn" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV">⌂</button>
       </div>
@@ -2651,7 +2637,6 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
 <div class="settingsModal" id="tvSettingsModal" onclick="if(event.target===this)closeTvSettings()">
   <div class="settingsCard">
     <div class="settingsTitle" id="settingsTitle">⚙ Настройки</div>
-    <button type="button" id="abajSettingsHomeBtn" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV">⌂</button>
     <button class="settingsAction" id="settingsAdminBtn" onclick="openAdminFromTvSettings()" style="display:none;background:#0b5f9e">🛠 Админ-панель</button>
     <button class="settingsAction" id="appUpdateBtn" onclick="manualAppUpdate()" style="display:none;background:#123b78;margin-top:0;margin-bottom:8px">🔄 Проверить обновление</button>
     <div id="appVersionText" class="deviceMeta" style="display:none;text-align:center;margin:-2px 0 8px"></div>
@@ -2686,7 +2671,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
       <input id="themeHue" class="themeHue" type="range" min="0" max="359" step="1" value="204" oninput="setThemeHue(this.value)">
       <button class="themeReset" id="themeResetBtn" onclick="resetThemeHue()">Сбросить цвет</button>
     </div>
-    <button class="settingsClose" id="settingsCloseBtn" onclick="closeTvSettings()">Закрыть</button>
+    <button type="button" class="settingsClose" id="settingsCloseBtn" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV">⌂</button>
   </div>
 </div>
 
@@ -15533,8 +15518,8 @@ body.nativeTv .playerView.cinemaPlayback .playerPrimaryControls>.playerCircleCtr
   color:#0b5f9e!important;
 }
 #tvSettingsModal #settingsCloseBtn::before{
-  content:"×";
-  font-size:28px!important;
+  content:"⌂";
+  font-size:30px!important;
   font-weight:700!important;
   line-height:1!important;
 }
@@ -16690,8 +16675,8 @@ body.nativeTv #cinemaDetail .cinemaCastCard:focus-visible{outline:none!important
   window.addEventListener('popstate',closeIptvPlaylistMenu);
 })();
 </script>
-<style id="abaj-hide-mode-switch-20261014">\n/* Only hide the two redundant top-bar cinema/TV switches. Keep search and home. */\n#cinemaToggleBtn,#cinemaTvQuickBtn{display:none!important}\n</style>\n<style id="abaj-settings-home-style">#tvSettingsModal .settingsCard{position:relative!important}#abajSettingsHomeBtn{position:absolute;right:14px;top:12px;display:flex;align-items:center;justify-content:center;width:43px;height:43px;border:0;border-radius:12px;background:#dceeff;color:#12699c;font-size:32px;font-weight:bold;cursor:pointer;z-index:5}#abajSettingsHomeBtn:focus-visible{outline:3px solid #00baff;box-shadow:0 0 18px #00baff}#tvSettingsModal .settingsTitle{padding-right:55px!important}#tvSettingsModal .settingsClose{display:none!important}</style>
-<script src="/static/abaj-launcher.js?v=20261014-5" defer></script>
+\n
+<script src="/static/abaj-launcher.js?v=20261014-7" defer></script>
 </body>
 </html>
 
