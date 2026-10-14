@@ -8392,19 +8392,20 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
         });
       }
 
-      if(String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&String(data?.details||'').includes('manifestIncompatibleCodecsError')){
+      if(String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&String(data?.details||'').includes('manifestIncompatibleCodecsError')&&!ch.cinemaCodecFallbackTried){
+        ch.cinemaCodecFallbackTried=true;
         clearFirstFrameTimer();
         err.textContent='Переключаю на совместимый поток…';
         try{
           const params=new URLSearchParams();
           if(ch.cinemaItemId)params.set('id',String(ch.cinemaItemId));
           if(ch.cinemaMediaId)params.set('mid',String(ch.cinemaMediaId));
-          params.set('format','hls4');
+          params.set('format','hls');
           params.set('direct','1');
           const rr=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
           const dd=rr.ok?await rr.json():null;
           const fallbackUrl=String(dd?.url||'').trim();
-          if(fallbackUrl&&attemptToken===streamAttemptToken&&current&&current.id===ch.id){
+          if(fallbackUrl&&fallbackUrl!==ch.url&&attemptToken===streamAttemptToken&&current&&current.id===ch.id){
             ch.url=fallbackUrl;
             ch.cinemaForceHttp=false;
             ch.cinemaHeaders=(dd?.headers&&typeof dd.headers==='object')?dd.headers:{};
