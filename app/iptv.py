@@ -1418,6 +1418,56 @@ async def _fetch_epg_limited(session: aiohttp.ClientSession, url: str, max_bytes
         return buffer.decode("utf-8", "ignore")
 
 
+async def _fetch_epg_streamed(session: aiohttp.ClientSession, url: str) -> tuple[dict, dict, dict, dict]:
+    """Incrementally parse large XMLTV feeds with bounded live programme memory."""
+    import tempfile
+    programmes, names, logos, logo_names = {}, {}, {}, {}
+    now = int(time.time())
+    min_ts, max_ts = now - 4 * 3600, now + 36 * 3600
+    max_download = max(32, min(256, int(os.getenv("IPTV_EPG_STREAM_MAX_MB", "96")))) * 1048576
+    async with session.get(url, timeout=aiohttp.ClientTimeout(total=120)) as response:
+        if response.status >= 400:
+            return programmes, names, logos, logo_names
+        with tempfile.TemporaryFile() as temp:
+            downloaded = 0
+            async for chunk in response.content.iter_chunked(65536):
+                downloaded += len(chunk)
+                if downloaded > max_download:
+                    logging.warning("EPG streamed source exceeded %d MB", max_download // 1048576)
+                    return {}, {}, {}, {}
+                temp.write(chunk)
+            temp.seek(0)
+            for _, element in ET.iterparse(temp, events=("end",)):
+                tag = element.tag.rsplit("}", 1)[-1]
+                if tag == "channel":
+                    cid = str(element.attrib.get("id") or "").strip()
+                    if cid:
+                        aliases = [n.text.strip() for n in element.findall("display-name") if n.text and n.text.strip()]
+                        aliases.append(cid)
+                        for alias in aliases:
+                            for variant in _epg_name_variants(alias):
+                                names.setdefault(variant, cid)
+                        icon = element.find("icon")
+                        logo = str(icon.attrib.get("src") or "").strip() if icon is not None else ""
+                        if logo.startswith(("http://", "https://")):
+                            logos.setdefault(cid, logo)
+                            for alias in aliases:
+                                for variant in _epg_name_variants(alias):
+                                    logo_names.setdefault(variant, logo)
+                elif tag == "programme":
+                    cid = str(element.attrib.get("channel") or "").strip()
+                    start = _parse_xmltv_time(element.attrib.get("start") or "")
+                    stop = _parse_xmltv_time(element.attrib.get("stop") or "")
+                    if cid and start and stop and stop >= min_ts and start <= max_ts:
+                        title_node, desc_node = element.find("title"), element.find("desc")
+                        title = (title_node.text or "").strip() if title_node is not None and title_node.text else ""
+                        desc = (desc_node.text or "").strip() if desc_node is not None and desc_node.text else ""
+                        programmes.setdefault(cid, []).append({"title": title or "Программа", "desc": desc[:300], "start": start, "stop": stop})
+                if tag in ("channel", "programme"):
+                    element.clear()
+    return programmes, names, logos, logo_names
+
+
 async def refresh_epg(force: bool = False):
     now = int(time.time())
     if not force and _state["epg"] and now - int(_state["epg_last_refresh"] or 0) < EPG_REFRESH_SECONDS:
@@ -1431,11 +1481,14 @@ async def refresh_epg(force: bool = False):
         connector = aiohttp.TCPConnector(limit=2, ssl=False)
         async with aiohttp.ClientSession(connector=connector, headers={"User-Agent": "AbajTV/1.0"}) as session:
             for _, url in EPG_URLS[:source_count]:
-                text = await _fetch_epg_limited(session, url, max_bytes)
-                if not text:
-                    continue
-                programmes, names, logos, logo_names = await asyncio.to_thread(_parse_epg_xml, text)
-                del text
+                if url.endswith("epg_RU.xml"):
+                    programmes, names, logos, logo_names = await _fetch_epg_streamed(session, url)
+                else:
+                    text = await _fetch_epg_limited(session, url, max_bytes)
+                    if not text:
+                        continue
+                    programmes, names, logos, logo_names = await asyncio.to_thread(_parse_epg_xml, text)
+                    del text
                 for cid, rows in programmes.items():
                     all_programmes.setdefault(cid, []).extend(rows)
                 for key, value in names.items():
