@@ -14,6 +14,7 @@ const css=`
 @media(prefers-reduced-motion:reduce){.abajBrandSpark{animation:none;opacity:.65}}
 
 .abajLaunchTitle{flex-shrink:0;text-align:center;font-size:clamp(11px,1.45vw,17px);line-height:1.5;font-weight:500;letter-spacing:4px;color:#b9e8ff;margin:12px 0 24px}
+#abajLauncher[data-launch-lang="hy"] .abajLaunchTitle{max-width:100%;width:100%;padding:0 6px;white-space:normal;overflow-wrap:normal;text-align:center;letter-spacing:1px;font-size:clamp(10px,2.5vw,15px);line-height:1.35}
 .abajLaunchTiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;flex:1;min-height:0}
 .abajLaunchTile{position:relative;isolation:isolate;overflow:hidden;min-width:0;min-height:250px;display:flex;align-items:flex-end;text-align:left;padding:24px;border-radius:24px;border:1.5px solid #55b8ed;background-color:#031020;background-image:linear-gradient(0deg,#010b19b3,transparent 42%),var(--tile-bg);background-size:cover;background-position:center;color:#fff;box-shadow:inset 0 0 0 1px #9bdbff26,0 6px 22px #0005;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s;-webkit-tap-highlight-color:transparent}
 #abajLauncher .abajLaunchTile:after{inset:auto;animation:none;-webkit-mask:none;mask:none;z-index:0;content:'';position:absolute;right:18px;bottom:24px;width:46px;height:46px;border:1.5px solid #4ab9f0;border-radius:50%;background:radial-gradient(circle at 50% 100%,#0b355b99,#020d1ba6);box-shadow:inset 0 0 12px #1a82ba33,0 0 14px #0879b52b;pointer-events:none}
@@ -85,6 +86,7 @@ const selected=localStorage.getItem('abaj_tv_lang')||'ru';
 const lang=launcherTranslations[selected]?selected:'ru';
 if(lang===launcherLanguage)return;
 launcherLanguage=lang;
+root.dataset.launchLang=lang;
 const t=launcherTranslations[lang];
 root.querySelector('.abajLaunchTitle').textContent=t.title;
 for(const [target,name,desc] of [['cinema',t.cinema,t.cinemaDesc],['iptv',t.iptv,t.iptvDesc],['settings',t.settings,t.settingsDesc]]){
