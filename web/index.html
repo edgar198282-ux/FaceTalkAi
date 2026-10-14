@@ -2412,12 +2412,21 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
   }
 }
 </style>
-<style id="abaj-cinema-seek-lower-landscape-v2">
-/* Move only the cinema seek bar and its clocks down into the empty gap. */
+<style id="abaj-cinema-seek-lower-landscape-v3">
+/* Anchor the cinema timeline to the bottom buttons, independently of the title row. */
 @media (orientation:landscape) and (max-height:700px){
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
+    position:absolute!important;
+  }
   body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
-    transform:translateY(66px)!important;
-    margin-bottom:3px!important;
+    position:absolute!important;
+    left:18px!important;
+    right:18px!important;
+    bottom:104px!important;
+    width:auto!important;
+    transform:none!important;
+    margin:0!important;
+    z-index:3!important;
   }
 }
 </style>
