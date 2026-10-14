@@ -2412,6 +2412,23 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
   }
 }
 </style>
+<style id="abaj-mobile-hide-screen-size-control-v1">
+/* Hide only the nonfunctional screen-size button on mobile, not TV or fullscreen behavior. */
+body:not(.nativeTv) #playerView .playerPrimaryControls > .mobileFullscreenSizeCtrl{
+  display:none!important;
+}
+body:not(.nativeTv) #playerView .playerPrimaryControls{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  align-items:center!important;
+  justify-items:center!important;
+}
+body:not(.nativeTv) #playerView.cinemaPlayback .playerPrimaryControls{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+body:not(.nativeTv) #playerView .playerPrimaryControls > .playerCircleCtrl{
+  align-self:center!important;
+}
+</style>
 <style id="abaj-cinema-seek-lower-landscape-v9">
 /* Compact controls, including pureFullscreen and mobileLandscapePlayer overrides. */
 @media (orientation:landscape) and (max-height:700px){
@@ -2867,7 +2884,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
       <button class="ctrl playerCircleCtrl cinemaSeekCtrl" onclick="seekPlayerBy(-10)" title="Назад 10 секунд"><span class="playerCtrlIcon">↶</span><small>−10 сек</small></button>
       <button id="playerPlayPause" class="ctrl playerCircleCtrl playerPlayCtrl" onclick="togglePlayerPlayback()" title="Пауза"><span class="playerCtrlIcon" id="playerPlayPauseIcon">Ⅱ</span><small id="playerPlayPauseLabel">Пауза</small></button>
       <button class="ctrl playerCircleCtrl cinemaSeekCtrl" onclick="seekPlayerBy(10)" title="Вперёд 10 секунд"><span class="playerCtrlIcon">↷</span><small>+10 сек</small></button>
-      <button class="ctrl playerCircleCtrl" onclick="toggleFullscreen()" title="На весь экран"><span class="playerCtrlIcon">⛶</span><small>Экран</small></button>
+      <button class="ctrl playerCircleCtrl mobileFullscreenSizeCtrl" onclick="toggleFullscreen()" title="На весь экран"><span class="playerCtrlIcon">⛶</span><small>Экран</small></button>
       <button class="ctrl playerCircleCtrl tvChannelCtrl" onclick="playNext()" title="Следующий канал"><span class="playerCtrlIcon">|▶</span><small>След. канал</small></button>
       <button id="cinemaPrevEpisodeBtn" class="ctrl playerCircleCtrl cinemaEpisodeCtrl" hidden style="display:none" onclick="playAdjacentCinemaEpisode(-1)" title="Предыдущая серия"><span class="playerCtrlIcon">|◀</span><small>Пред. серия</small></button>
       <button id="cinemaNextEpisodeBtn" class="ctrl playerCircleCtrl cinemaEpisodeCtrl" hidden style="display:none" onclick="playAdjacentCinemaEpisode(1)" title="Следующая серия"><span class="playerCtrlIcon">▶|</span><small>След. серия</small></button>
