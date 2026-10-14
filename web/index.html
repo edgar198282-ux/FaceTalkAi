@@ -2797,6 +2797,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
           <b id="playerName"></b>
           <div id="playerGroup" style="font-size:13px;color:#aaa;margin-top:2px"></div>
           <div id="playerCinemaTime" class="playerCinemaTime"></div>
+          <div id="playerEpgDetails" style="font-size:12px;color:#bcd7e8;margin-top:4px;line-height:1.35;display:none"></div>
         </div>
       </div>
       <div style="text-align:right">
@@ -7275,6 +7276,15 @@ function openPlayer(id){
   document.getElementById('playerGroup').textContent=cinemaPlayback
     ?''
     :[((COUNTRY_META[ch.country]&&COUNTRY_META[ch.country].name)||ch.country||''),cleanTvLabel((ch.epg_now&&ch.epg_now.title)||ch.group,'')].filter(Boolean).join(' · ');
+  const epgDetails=document.getElementById('playerEpgDetails');
+  if(epgDetails){
+    const now=ch.epg_now, next=ch.epg_next;
+    const parts=[];
+    if(now&&now.title)parts.push('Сейчас: '+cleanTvLabel(now.title,'')+' · '+fmtClock(now.start)+'–'+fmtClock(now.stop));
+    if(next&&next.title)parts.push('Далее: '+cleanTvLabel(next.title,'')+' · '+fmtClock(next.start));
+    epgDetails.textContent=parts.join('  |  ');
+    epgDetails.style.display=!cinemaPlayback&&parts.length?'block':'none';
+  }
   document.getElementById('playerError').textContent='';
   updatePlayerFavoriteUi();
   updatePlayerRemaining();
