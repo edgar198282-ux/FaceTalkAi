@@ -2357,6 +2357,34 @@ def public_state(compact: bool = False, fast: bool = False):
                         "stop": epg.get("stop"),
                     }
         rows.append(row)
+    # FREE catalogue only: collapse quality-labelled copies of the same station.
+    # Preserve alternate URLs for playback fallback; never alter user playlists.
+    grouped_free = {}
+    for row in rows:
+        key = (str(row.get("country") or "").upper(), _normalize_name(row.get("name") or ""))
+        if not key[1]:
+            key = (key[0], str(row.get("id") or ""))
+        grouped_free.setdefault(key, []).append(row)
+    deduped_free = []
+    for copies in grouped_free.values():
+        copies.sort(key=lambda x: (
+            x.get("status") != "ONLINE",
+            0 if x.get("quality_verified") else 1,
+            -int(x.get("height") or 0),
+            {"4K": 0, "FHD": 1, "HD": 2}.get(str(x.get("quality") or "").upper(), 3),
+            -float(x.get("health_score") or 0),
+        ))
+        primary = copies[0]
+        if len(copies) > 1 and not fast:
+            alternate_urls = list(primary.get("backups") or [])
+            for alternate in copies[1:]:
+                for url in [alternate.get("url"), *(alternate.get("backups") or [])]:
+                    if url and url != primary.get("url") and url not in alternate_urls:
+                        alternate_urls.append(url)
+            primary["backups"] = alternate_urls
+            primary["backup_count"] = len(alternate_urls)
+        deduped_free.append(primary)
+    rows = deduped_free
     rows.sort(key=lambda x: (x["status"] != "ONLINE", x.get("country", ""), x.get("group", ""), x.get("name", "")))
     stats = dict(_state["stats"])
     # Report the same exclusions applied to the compact TV channel list.
