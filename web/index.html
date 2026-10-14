@@ -5595,7 +5595,34 @@ function deduplicateFreeChannels(rows){
     const prev=selected.get(key);
     if(!prev||score(ch)>score(prev))selected.set(key,ch);
   }
-  return rows.filter(ch=>ch.personal||selected.get(keyOf(ch))===ch);
+  // Preserve verified alternate streams only when the EPG identity matches.
+  // Similar-looking names without matching tvg_id must not share backups.
+  const merged=new Map();
+  for(const ch of rows){
+    if(ch.personal)continue;
+    const key=keyOf(ch), winner=selected.get(key);
+    if(!winner||winner===ch)continue;
+    const primaryId=String(winner.tvg_id||'').trim().toLowerCase();
+    const alternateId=String(ch.tvg_id||'').trim().toLowerCase();
+    if(!primaryId||primaryId!==alternateId)continue;
+    const urls=[String(ch.url||''),...(Array.isArray(ch.backups)?ch.backups:[])];
+    if(!merged.has(key))merged.set(key,[]);
+    merged.get(key).push(...urls);
+  }
+  return rows.filter(ch=>ch.personal||selected.get(keyOf(ch))===ch).map(ch=>{
+    if(ch.personal)return ch;
+    const extra=merged.get(keyOf(ch));
+    if(!extra||!extra.length)return ch;
+    const seen=new Set([String(ch.url||'').trim()]);
+    const backups=[];
+    for(const url of [...(Array.isArray(ch.backups)?ch.backups:[]),...extra]){
+      const value=String(url||'').trim();
+      if(!/^https?:\\/\\//i.test(value)||seen.has(value))continue;
+      seen.add(value);
+      backups.push(value);
+    }
+    return {...ch,backups,backup_count:backups.length};
+  });
 }
 async function load(){
   try{
