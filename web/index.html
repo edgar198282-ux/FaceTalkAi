@@ -2542,6 +2542,28 @@ body:not(.nativeTv) #playerView .playerPrimaryControls > .playerCircleCtrl{
   }
 }
 </style>
+<style id="abaj-iptv-landscape-back-v1">
+/* Mobile IPTV: cinema-style back control, visible alongside playback controls. */
+@media (orientation:landscape){
+body:not(.nativeTv) #playerView.open:not(.cinemaPlayback):not(.pureFullscreen) .playerTop,
+body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPureControls .playerTop{
+ display:flex!important;position:absolute!important;left:max(10px,env(safe-area-inset-left))!important;
+ top:max(8px,env(safe-area-inset-top))!important;right:auto!important;
+ width:auto!important;height:auto!important;min-height:0!important;
+ padding:0!important;margin:0!important;background:transparent!important;
+ z-index:2147483646!important;opacity:1!important;pointer-events:auto!important
+}
+body:not(.nativeTv) #playerView.open:not(.cinemaPlayback) .playerTop .playerTitle{display:none!important}
+body:not(.nativeTv) #playerView.open:not(.cinemaPlayback) .playerTop .back{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;
+ padding:0!important;margin:0!important;border-radius:50%!important;
+ border:1px solid rgba(255,255,255,.32)!important;background:rgba(0,0,0,.52)!important;
+ color:#fff!important;font-size:32px!important;line-height:1!important;
+ box-shadow:0 3px 12px rgba(0,0,0,.3)!important
+}
+}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
