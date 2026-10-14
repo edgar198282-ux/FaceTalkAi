@@ -1525,6 +1525,10 @@ async def refresh_epg(force: bool = False):
                 del programmes, names, logos, logo_names
         for rows in all_programmes.values():
             rows.sort(key=lambda x: x["start"])
+        if not all_programmes:
+            _state["epg_error"] = "All EPG feeds unavailable; last guide retained"
+            logging.warning("FREE EPG refresh empty; keeping last valid snapshot")
+            return
         _state["epg"] = all_programmes
         _state["epg_names"] = all_names
         _state["epg_logos"] = all_logos
