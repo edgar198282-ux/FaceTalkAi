@@ -2412,28 +2412,45 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
   }
 }
 </style>
-<style id="abaj-cinema-seek-lower-landscape-v4">
-/* Keep the cinema panel anchored to the bottom; position timeline above controls. */
+<style id="abaj-cinema-seek-lower-landscape-v5">
+/* Cinema landscape: title, seek bar, clocks and buttons in one compact bottom stack. */
 @media (orientation:landscape) and (max-height:700px){
   body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:flex-end!important;
     position:absolute!important;
-    bottom:0!important;
+    inset:auto 0 0 0!important;
     height:auto!important;
     min-height:0!important;
     max-height:none!important;
-    padding-top:6px!important;
     overflow:visible!important;
+    padding:6px 18px 2px!important;
+    box-sizing:border-box!important;
+    background:linear-gradient(0deg,rgba(3,9,18,.92),rgba(3,9,18,.78) 70%,rgba(3,9,18,0))!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerMeta{
+    order:0!important;
+    flex:0 0 auto!important;
+    margin:0 0 4px!important;
+    padding:0 0 2px!important;
   }
   body:not(.nativeTv) .playerView.cinemaPlayback .playerTimelineWrap{
-    position:absolute!important;
-    left:18px!important;
-    right:18px!important;
-    top:auto!important;
-    bottom:104px!important;
-    width:auto!important;
+    order:1!important;
+    flex:0 0 auto!important;
+    position:relative!important;
+    inset:auto!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:22px!important;
     transform:none!important;
-    margin:0!important;
+    margin:0 0 5px!important;
     z-index:3!important;
+  }
+  body:not(.nativeTv) .playerView.cinemaPlayback .playerPrimaryControls{
+    order:2!important;
+    flex:0 0 auto!important;
+    margin:0 auto!important;
   }
 }
 </style>
