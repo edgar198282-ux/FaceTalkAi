@@ -27,7 +27,7 @@ const css=`
 .abajLaunchBrand{font-family:Arial,sans-serif;font-size:clamp(40px,5.7vw,74px);letter-spacing:3px;line-height:1.08}
 .abajLaunchTitle{margin:0 0 clamp(21px,3vh,38px);font-size:clamp(12px,1.6vw,19px);font-weight:750;letter-spacing:3px;white-space:normal}
 .abajLaunchTiles{align-items:stretch}
-.abajLaunchTile{overflow:hidden;border:2px solid #0ebaff;border-radius:28px;background-image:linear-gradient(180deg,#02081a00 15%,#02081a55 53%,#020817f7 100%),var(--tile-bg);background-position:center center;box-shadow:0 0 0 1px #74e8ff55,0 0 15px #00c2ffbb,0 0 34px #0074ff8a,inset 0 0 20px #00bfff66}
+.abajLaunchTile{overflow:hidden;border:2px solid #0ebaff;border-radius:28px;background-image:linear-gradient(180deg,#02081a00 8%,#02081a20 38%,#020817f2 100%),var(--tile-bg);background-position:center center;box-shadow:0 0 0 1px #74e8ff77,0 0 19px #00c2ffdd,0 0 42px #0074ff99,inset 0 0 20px #00bfff66}
 .abajLaunchTile:before{inset:0;border-radius:inherit;box-shadow:inset 0 0 14px #5cdfffaa;animation:abajPulse 4s ease-in-out infinite}
 .abajLaunchTile:after{right:20px;bottom:28px;font-size:54px;font-weight:300}
 .abajLaunchName{font-size:clamp(29px,3.6vw,52px);letter-spacing:-.7px;text-shadow:0 2px 9px #000,0 0 18px #000}
@@ -38,8 +38,8 @@ const css=`
 .abajLaunchTop{min-height:clamp(92px,12vh,128px)}
 .abajLaunchBrand{font-size:clamp(37px,9vw,54px);letter-spacing:1.2px}
 .abajLaunchTitle{font-size:clamp(11px,2.9vw,14px);letter-spacing:2.1px;margin:0 0 26px;line-height:1.4}
-.abajLaunchTiles{gap:20px}
-.abajLaunchTile{min-height:clamp(190px,24vh,255px);padding:20px 20px 23px;border-radius:26px;background-position:center 43%}
+.abajLaunchTiles{gap:22px}
+.abajLaunchTile{min-height:clamp(245px,29vh,330px);padding:24px 20px 28px;border-radius:26px;background-position:center 43%;background-size:cover}
 .abajLaunchText{gap:9px;max-width:calc(100% - 38px)}
 .abajLaunchName{font-size:clamp(29px,7.6vw,41px)}
 .abajLaunchDesc{font-size:clamp(14px,3.8vw,19px)}
