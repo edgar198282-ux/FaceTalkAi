@@ -7275,6 +7275,40 @@ function recreateNativeTvVideo(){
   fresh.muted=muted;
   old.parentNode.replaceChild(fresh,old);
 }
+function requestPlayerLandscape(){
+  if(nativeTv)return;
+  document.body.classList.add('playerLandscapeRequested');
+  try{
+    if(window.AbajNative&&typeof window.AbajNative.setRequestedOrientation==='function'){
+      window.AbajNative.setRequestedOrientation('landscape');
+    }else if(window.AbajNative&&typeof window.AbajNative.lockLandscape==='function'){
+      window.AbajNative.lockLandscape();
+    }
+  }catch(e){}
+  const lock=()=>{
+    try{
+      if(screen.orientation&&typeof screen.orientation.lock==='function'){
+        Promise.resolve(screen.orientation.lock('landscape')).catch(()=>{});
+      }
+    }catch(e){}
+  };
+  lock();
+  setTimeout(()=>{
+    if(document.getElementById('playerView')?.classList.contains('open'))lock();
+  },350);
+}
+function releasePlayerLandscape(){
+  if(nativeTv)return;
+  document.body.classList.remove('playerLandscapeRequested');
+  try{
+    if(window.AbajNative&&typeof window.AbajNative.setRequestedOrientation==='function'){
+      window.AbajNative.setRequestedOrientation('unspecified');
+    }else if(window.AbajNative&&typeof window.AbajNative.unlockOrientation==='function'){
+      window.AbajNative.unlockOrientation();
+    }
+  }catch(e){}
+  try{screen.orientation?.unlock?.()}catch(e){}
+}
 function openPlayer(id){
 
   const hud=document.getElementById('playerChannelHud');
@@ -7324,6 +7358,7 @@ function openPlayer(id){
   const loadingBrand=playerView.querySelector('.playerBrand');
   if(loadingBrand)loadingBrand.style.display='flex';
   playerView.classList.add('open');
+  requestPlayerLandscape();
   document.body.classList.remove('playerClean');
   if(nativeTv){
     playerView.classList.add('tvFullscreen');
@@ -8711,6 +8746,7 @@ function closePlayer(){
   const closingCinemaExternal=!!(cinemaExternalChannel&&closingId===cinemaExternalChannel.id);
   const playerView=document.getElementById('playerView');
   playerView.classList.remove('open');
+  releasePlayerLandscape();
   playerView.classList.remove('tvFullscreen');
   playerView.classList.remove('appFullscreen');
   playerView.classList.remove('videoFill');
