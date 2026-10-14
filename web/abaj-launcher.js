@@ -8,6 +8,11 @@ const css=`
 .abajLaunchTop{display:flex;align-items:flex-end;justify-content:center;flex-shrink:0;min-height:112px}
 .abajLaunchBrand{font-size:clamp(46px,6vw,76px);font-weight:900;line-height:1.12;letter-spacing:1px;white-space:nowrap;color:#fff;text-shadow:0 3px 24px #00112780}
 .abajLaunchBrand b{color:#08bbef}
+.abajLaunchBrand{position:relative;isolation:isolate}
+.abajBrandSpark{position:absolute;width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 5px 2px #fff,0 0 12px 4px #63dfff,0 0 22px 7px #0af;pointer-events:none;opacity:0;animation:abajSparkBlink var(--spark-speed,2.5s) ease-in-out infinite;animation-delay:var(--spark-delay,0s)}
+@keyframes abajSparkBlink{0%,12%,36%,100%{opacity:0;transform:scale(.3)}19%,25%{opacity:1;transform:scale(1.2)}29%{opacity:.45;transform:scale(.7)}}
+@media(prefers-reduced-motion:reduce){.abajBrandSpark{animation:none;opacity:.65}}
+
 .abajLaunchTitle{flex-shrink:0;text-align:center;font-size:clamp(11px,1.45vw,17px);line-height:1.5;font-weight:500;letter-spacing:4px;color:#b9e8ff;margin:12px 0 24px}
 .abajLaunchTiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;flex:1;min-height:0}
 .abajLaunchTile{position:relative;isolation:isolate;overflow:hidden;min-width:0;min-height:250px;display:flex;align-items:flex-end;text-align:left;padding:24px;border-radius:24px;border:1.5px solid #55b8ed;background-color:#031020;background-image:linear-gradient(0deg,#010b19b3,transparent 42%),var(--tile-bg);background-size:cover;background-position:center;color:#fff;box-shadow:inset 0 0 0 1px #9bdbff26,0 6px 22px #0005;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s;-webkit-tap-highlight-color:transparent}
@@ -61,6 +66,14 @@ if(document.getElementById('abajLauncher'))return;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
 const root=document.createElement('section');root.id='abajLauncher';root.setAttribute('aria-label','ABAJ TV — главная');root.innerHTML=`<div class="abajLaunchTop"><div class="abajLaunchBrand">ABAJ<b>TV</b></div></div><div class="abajLaunchTitle">ВАШ МИР КИНО И ТЕЛЕВИДЕНИЯ</div><div class="abajLaunchTiles"><button class="abajLaunchTile" data-target="cinema" style="--tile-bg:url('/static/launcher-cinema-20261014.webp')"><span class="abajLaunchIcon">🎞</span><span class="abajLaunchText"><span class="abajLaunchName">Кинотеатр</span><span class="abajLaunchDesc">Фильмы, сериалы, мультфильмы</span></span></button><button class="abajLaunchTile" data-target="iptv" style="--tile-bg:url('/static/launcher-iptv-20261014.webp')"><span class="abajLaunchIcon">▣</span><span class="abajLaunchText"><span class="abajLaunchName">IPTV</span><span class="abajLaunchDesc">Каналы и прямые эфиры</span></span></button><button class="abajLaunchTile" data-target="settings" style="--tile-bg:url('/static/launcher-settings-20261014.webp')"><span class="abajLaunchIcon">⚙</span><span class="abajLaunchText"><span class="abajLaunchName">Настройки</span><span class="abajLaunchDesc">Параметры и управление</span></span></button></div><div class="abajLaunchFoot"></div>`;
 document.body.appendChild(root);
+const brand=root.querySelector('.abajLaunchBrand');
+for(const [x,y,delay,speed] of [[5,22,0,2.7],[17,70,-1.3,3.2],[29,18,-.8,2.4],[42,77,-2.1,3.5],[54,25,-1.7,2.9],[67,69,-.4,3.1],[80,16,-2.5,2.6],[93,73,-1.1,3.4]]){
+const spark=document.createElement('i');
+spark.className='abajBrandSpark';
+spark.style.cssText='left:'+x+'%;top:'+y+'%;--spark-delay:'+delay+'s;--spark-speed:'+speed+'s';
+spark.setAttribute('aria-hidden','true');
+brand.appendChild(spark);
+}
 const launcherTranslations={
 ru:{title:'ВАШ МИР КИНО И ТЕЛЕВИДЕНИЯ',cinema:'Кинотеатр',cinemaDesc:'Фильмы, сериалы, мультфильмы',iptv:'IPTV',iptvDesc:'Каналы и прямые эфиры',settings:'Настройки',settingsDesc:'Параметры и управление',home:'Главная ABAJ TV'},
 hy:{title:'ԿԻՆՈՅԻ ԵՎ ՀԵՌՈՒՍՏԱՏԵՍՈՒԹՅԱՆ ՁԵՐ ԱՇԽԱՐՀԸ',cinema:'Կինոթատրոն',cinemaDesc:'Ֆիլմեր, սերիալներ, մուլտֆիլմեր',iptv:'IPTV',iptvDesc:'Հեռուստաալիքներ և ուղիղ եթերներ',settings:'Կարգավորումներ',settingsDesc:'Կարգավորումներ և կառավարում',home:'ABAJ TV գլխավոր էջ'},
