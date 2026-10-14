@@ -14689,7 +14689,7 @@ function animateCinemaPageFlip(fromCinema){
 async function toggleCinemaMode(){
   await loadGlobalCinemaSource();
   if(!cinemaAccessEnabled)return;
-  animateCinemaPageFlip(cinemaMode);
+  document.getElementById('abajCinemaPageFlip')?.remove();
   cinemaMode=!cinemaMode;
   localStorage.setItem('abaj_cinema_mode',cinemaMode?'1':'0');
   if(cinemaMode){
