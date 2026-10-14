@@ -294,6 +294,13 @@ OFFICIAL_CHANNELS = [
 ]
 
 SOURCE_URLS = [
+    # Curated publicly available free-to-air channels; existing URL/channel dedup applies.
+    ("HQ", "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8"),
+    ("HQ", "https://iptv-org.github.io/iptv/categories/news.m3u"),
+    ("HQ", "https://iptv-org.github.io/iptv/categories/sports.m3u"),
+    ("HQ", "https://iptv-org.github.io/iptv/categories/documentary.m3u"),
+    ("HQ", "https://iptv-org.github.io/iptv/categories/music.m3u"),
+    ("HQ", "https://iptv-org.github.io/iptv/categories/entertainment.m3u"),
     ("HQ", "https://dearbulut.github.io/iptv/playlists/best.m3u"),
     ("HQ", "https://dearbulut.github.io/iptv/playlists/online.m3u"),
     ("RU", "https://raw.githubusercontent.com/smolnp/IPTVru/refs/heads/gh-pages/IPTVstable.m3u8"),
