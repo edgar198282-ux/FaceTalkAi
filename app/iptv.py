@@ -1193,9 +1193,7 @@ def _looks_junk(item: dict) -> bool:
 def _is_quarantined(url: str, now: int | None = None) -> bool:
     h = _stream_health.get(str(url or "")) or {}
     samples = int(h.get("successes") or 0) + int(h.get("failures") or 0)
-    if samples < 4 or int(h.get("consecutive_failures") or 0) < 3:
-        return False
-    if float(h.get("uptime_pct") or 0.0) >= 25.0:
+    if int(h.get("consecutive_failures") or 0) < 3:
         return False
     last_fail = int(h.get("last_fail") or 0)
     if not last_fail:
@@ -2104,6 +2102,8 @@ async def refresh_channels(force: bool = False):
                     # Repeatedly dead streams are temporarily quarantined. They are
                     # retried automatically after the quarantine window expires.
                     if _is_quarantined(url, now):
+                        # Probe again after the quarantine interval; a successful
+                        # probe clears consecutive_failures and restores the stream.
                         continue
                     seen_urls.add(url)
                     if cid not in seen_channels:
@@ -2122,8 +2122,10 @@ async def refresh_channels(force: bool = False):
             for cid, rows in grouped.items():
                 rows.sort(key=lambda x: (
                     x.get("status") != "ONLINE",
-                    0 if str(x.get("quality") or "").upper() == "4K" else (1 if str(x.get("quality") or "").upper() == "FHD" else 2),
                     -float(x.get("health_score") or _health_score(str(x.get("url") or ""))),
+                    0 if x.get("quality_verified") else 1,
+                    -int(x.get("height") or 0),
+                    0 if str(x.get("quality") or "").upper() == "4K" else (1 if str(x.get("quality") or "").upper() == "FHD" else 2),
                     int(x.get("consecutive_failures") or 0),
                     int(x.get("runtime_startup_ms") or 999999),
                     int(x.get("latency_ms") or 999999),
