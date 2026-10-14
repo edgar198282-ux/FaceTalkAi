@@ -1611,7 +1611,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void exitPlayerFullscreen(){
             if(isTv)return;
             runOnUiThread(()->{
-                MainActivity.this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                MainActivity.this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
                 exitMobilePlayerImmersive();
             });
         }
@@ -1620,6 +1620,8 @@ public class MainActivity extends Activity {
             runOnUiThread(()->{
                 if("landscape".equalsIgnoreCase(orientation)){
                     MainActivity.this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                }else if("portrait".equalsIgnoreCase(orientation)){
+                    MainActivity.this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
                 }else if("unspecified".equalsIgnoreCase(orientation)||"unlock".equalsIgnoreCase(orientation)){
                     MainActivity.this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
                 }
