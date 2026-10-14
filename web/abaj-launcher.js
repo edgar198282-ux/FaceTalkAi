@@ -24,6 +24,14 @@ const css=`
 .abajLaunchTile:active{transform:scale(.992)}
 /* Lightweight animated scene accents: only composited transforms/opacity. */
 .abajLaunchTile .abajSceneMotion{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;border-radius:inherit}
+/* Subtle camera movement of the original artwork, without duplicate figures. */
+#abajLauncher .abajLaunchTile[data-target="cinema"]{animation:abajCinemaPan 22s ease-in-out infinite alternate}
+#abajLauncher .abajLaunchTile[data-target="iptv"]{animation:abajIptvPan 26s ease-in-out infinite alternate}
+@keyframes abajCinemaPan{from{background-position:center,49% 50%}to{background-position:center,53% 48%}}
+@keyframes abajIptvPan{from{background-position:center,49% 50%}to{background-position:center,52% 51%}}
+@media(prefers-reduced-motion:reduce){#abajLauncher .abajLaunchTile[data-target="cinema"],#abajLauncher .abajLaunchTile[data-target="iptv"]{animation:none!important}}
+#abajLauncher[hidden] .abajLaunchTile{animation-play-state:paused!important}
+
 .abajSceneMotion i{position:absolute;display:block;pointer-events:none}
 .abajLaunchTile[data-target="cinema"] .abajSceneSun{left:35%;top:19%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff5b34d 0%,#ffbf4440 15%,#ffb12a16 39%,transparent 69%);mix-blend-mode:screen;animation:abajSunDrift 18s ease-in-out infinite alternate}
 .abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff25,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
