@@ -2328,7 +2328,10 @@ def public_state(compact: bool = False, fast: bool = False):
                     "id": cid, "name": str(source.get("name") or "")[:100],
                     "country": str(source.get("country") or "")[:8]})
     stats["catalog_total"] = len(_state["channels"])
-    stats["list_total"] = len(_state["channels"]) - sum(excluded.values())
+    stats["list_total"] = len(rows) if compact else len(_state["channels"]) - sum(excluded.values())
+    if compact:
+        names = [re.sub(r"\\s+", " ", str(x.get("name") or "").strip()).casefold() for x in rows]
+        stats["free_duplicate_names"] = len(names) - len(set(names))
     stats["excluded_from_list"] = excluded
     stats["restricted_breakdown"] = restricted_breakdown
     stats["restricted_with_backups"] = restricted_with_backups
@@ -3358,7 +3361,7 @@ async def _bootstrap_public_channels():
         _save_json(SNAPSHOT_PATH, {"saved_at": int(time.time()), "state": {
             "channels": list(result.values()), "last_refresh": _state["last_refresh"],
             "stats": _state["stats"], "error": ""}})
-        logging.info("IPTV Free visibility: %s", {k: public_state(compact=True, fast=True)["stats"].get(k) for k in ("catalog_total", "list_total", "excluded_from_list", "restricted_breakdown", "restricted_with_backups")})
+        logging.info("IPTV Free visibility: %s", {k: public_state(compact=True, fast=True)["stats"].get(k) for k in ("catalog_total", "list_total", "free_duplicate_names", "excluded_from_list", "restricted_breakdown", "restricted_with_backups")})
         logging.info("IPTV light catalogue saved %d channels (+%d) to volume", len(result), len(result)-original_count)
     else:
         logging.info("IPTV light catalogue unchanged: %d channels", original_count)
