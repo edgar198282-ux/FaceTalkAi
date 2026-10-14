@@ -2322,13 +2322,12 @@ def public_state(compact: bool = False, fast: bool = False):
         ):
             continue
         row = dict(source)
-        if not fast:
-            current, nxt = _epg_for_channel(row)
-            row["epg_now"] = current if current is not None else row.get("epg_now")
-            row["epg_next"] = nxt if nxt is not None else row.get("epg_next")
-        else:
-            row.pop("epg_now", None)
-            row.pop("epg_next", None)
+        # Fast compact feed powers the actual TV player. Do not strip EPG:
+        # the previous fast path made all player programme titles disappear
+        # even though the diagnostics counted hundreds of EPG matches.
+        current, nxt = _epg_for_channel(row)
+        row["epg_now"] = current if current is not None else row.get("epg_now")
+        row["epg_next"] = nxt if nxt is not None else row.get("epg_next")
         if not str(row.get("logo") or "").strip():
             epg_logo = _epg_logo_for_channel(row)
             if epg_logo:
@@ -2336,8 +2335,6 @@ def public_state(compact: bool = False, fast: bool = False):
         if compact:
             row = {k: row.get(k) for k in compact_keys if k in row}
             if fast:
-                row.pop("epg_now", None)
-                row.pop("epg_next", None)
                 row.pop("backups", None)
             for epg_key in ("epg_now", "epg_next"):
                 epg = row.get(epg_key)
