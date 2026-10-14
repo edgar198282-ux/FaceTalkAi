@@ -2301,13 +2301,18 @@ def public_state(compact: bool = False, fast: bool = False):
     # Report the same exclusions applied to the compact TV channel list.
     excluded = {"offline": 0, "restricted_or_placeholder": 0, "advertising_placeholder": 0}
     excluded_samples = {reason: [] for reason in excluded}
+    restricted_breakdown = {"wink_stream": 0, "known_unusable": 0}
     for source in _state["channels"].values():
         cid = str(source.get("id") or "")
         reason = None
         if str(source.get("status") or "") != "ONLINE":
             reason = "offline"
-        elif _is_wink_placeholder_stream(source) or _hide_unusable_catalog_channel(source):
+        elif _is_wink_placeholder_stream(source):
             reason = "restricted_or_placeholder"
+            restricted_breakdown["wink_stream"] += 1
+        elif _hide_unusable_catalog_channel(source):
+            reason = "restricted_or_placeholder"
+            restricted_breakdown["known_unusable"] += 1
         elif (bool((_cinerama_placeholder_state.get(cid) or {}).get("active"))
               or bool((_ottclub_ad_state.get(cid) or {}).get("active"))):
             reason = "advertising_placeholder"
@@ -2320,6 +2325,7 @@ def public_state(compact: bool = False, fast: bool = False):
     stats["catalog_total"] = len(_state["channels"])
     stats["list_total"] = len(_state["channels"]) - sum(excluded.values())
     stats["excluded_from_list"] = excluded
+    stats["restricted_breakdown"] = restricted_breakdown
     stats["excluded_samples"] = excluded_samples
     stats["epg_channels"] = len(_state["epg"]) if _state["epg"] else int(stats.get("epg_channels") or 0)
     stats["epg_logo_channels"] = len(_state.get("epg_logos") or {})
