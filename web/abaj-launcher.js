@@ -49,10 +49,6 @@ body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajIptvVi
 .abajLaunchTile[data-target="settings"] .abajSceneGear{display:block;left:51%;top:6%;width:44%;height:72%;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,transparent 275deg,#b8ecff00 295deg,#c8edff24 316deg,transparent 340deg,transparent 360deg);mix-blend-mode:screen;opacity:.4;animation:abajGearLight 18s linear infinite}
 @keyframes abajGearLight{to{transform:rotate(360deg)}}
 @keyframes abajSunDrift{0%{transform:translate(-8%,20%) scale(.7);opacity:.12}25%{transform:translate(-2%,3%) scale(.95);opacity:.55}50%{transform:translate(5%,-13%) scale(1.16);opacity:.9}75%{transform:translate(10%,4%) scale(.94);opacity:.5}100%{transform:translate(14%,20%) scale(.7);opacity:.12}}
-.abajLaunchTile[data-target="iptv"] .abajNightLampGlow{position:absolute;left:0%;top:13%;width:17%;height:16%;border-radius:0;background:radial-gradient(ellipse 68% 35% at 30% 23%,rgba(255,244,200,.58) 0%,rgba(255,198,100,.32) 45%,transparent 100%);mix-blend-mode:screen;pointer-events:none;animation:abajLampCycle 6s steps(1,end) infinite}
-@keyframes abajLampCycle{0%,49.99%{opacity:1}50%,100%{opacity:0}}
-#abajLauncher[hidden] .abajNightLampGlow{animation-play-state:paused}
-@media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajNightLampGlow{animation:none;opacity:.5}}
 @keyframes abajWaterSwim{from{transform:translate(-25%,7%) scale(.85);opacity:.22}to{transform:translate(48%,-14%) scale(1.3);opacity:.7}}
 @keyframes abajGearTurn{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.abajSceneMotion i,.abajSceneDolphin,.abajSceneGearOverlay{animation:none!important}}
@@ -107,7 +103,6 @@ for(const tile of root.querySelectorAll('.abajLaunchTile')){
 const motion=document.createElement('span');motion.className='abajSceneMotion';motion.setAttribute('aria-hidden','true');
 const accent=document.createElement('i');accent.className=tile.dataset.target==='cinema'?'abajSceneSun':tile.dataset.target==='iptv'?'abajSceneWater':'abajSceneGear';
 motion.appendChild(accent);
-if(tile.dataset.target==='iptv'){const lamp=document.createElement('i');lamp.className='abajNightLampGlow';motion.appendChild(lamp);}
 tile.insertBefore(motion,tile.firstChild);
 }
 // A true dolphin dive must be a rendered sequence, not a rotated flat PNG.
