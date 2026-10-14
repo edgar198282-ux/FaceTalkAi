@@ -1579,7 +1579,12 @@ def _epg_for_channel(item: dict) -> tuple[dict | None, dict | None]:
 
     def guide_country(guide_id):
         suffix = str(guide_id).split("@", 1)[0].rsplit(".", 1)
-        return suffix[-1].upper() if len(suffix) == 2 and len(suffix[-1]) == 2 and suffix[-1].isalpha() else ""
+        if len(suffix) != 2:
+            return ""
+        code = suffix[-1].upper()
+        # XMLTV IDs can end with format tokens (.HD, .TV) rather than a
+        # country. Treat only known country codes as geographic restrictions.
+        return code if code in COUNTRY_CODES and code not in {"TV", "HD", "SD"} else ""
 
     def allowed(guide_id):
         origin = guide_country(guide_id)
