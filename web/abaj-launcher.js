@@ -35,6 +35,7 @@ const css=`
 .abajSceneMotion i{position:absolute;display:block;pointer-events:none}
 .abajLaunchTile[data-target="cinema"] .abajSceneSun{left:35%;top:19%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff5b34d 0%,#ffbf4440 15%,#ffb12a16 39%,transparent 69%);mix-blend-mode:screen;animation:abajSunDrift 32s ease-in-out infinite}
 .abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff25,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
+.abajIptvFlyingBall{position:fixed;z-index:2147483647;display:block;width:76px;height:76px;line-height:76px;text-align:center;font-size:72px;pointer-events:none;transform:translate(-50%,-50%);filter:drop-shadow(0 7px 8px #0009);user-select:none}
 .abajLaunchTile[data-target="iptv"] .abajIptvMotionVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1;border-radius:inherit}
 .abajLaunchTile[data-target="iptv"].abajIptvVideoReady{background-image:linear-gradient(0deg,#010b19b3,transparent 42%),var(--tile-bg)!important}
 body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajIptvVideoReady .abajIptvMotionVideo{opacity:.82}
@@ -198,10 +199,36 @@ if(e.target.closest('#langHyBtn,#langRuBtn,#langEnBtn'))queueMicrotask(applyLaun
 window.addEventListener('storage',e=>{if(e.key==='abaj_tv_lang')applyLauncherLanguage()});
 const home=document.createElement('button');home.id='abajLaunchHome';home.textContent='⌂';home.title='Главная ABAJ TV';home.setAttribute('aria-label','Главная ABAJ TV');home.hidden=true;document.body.appendChild(home);applyLauncherLanguage();
 
+// IPTV transition: the football from the sports thumbnail flies towards the viewer.
+let iptvTransitionBusy=false;
+async function playIptvBallTransition(tile){
+ if(iptvTransitionBusy)return false;
+ iptvTransitionBusy=true;
+ if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){iptvTransitionBusy=false;return true}
+ const ball=document.createElement('span');
+ ball.className='abajIptvFlyingBall';
+ ball.textContent='⚽';
+ ball.setAttribute('aria-hidden','true');
+ const r=tile.getBoundingClientRect();
+ // The football is near the top centre of the TV screen in the original IPTV artwork.
+ const x=r.left+r.width*.65,y=r.top+r.height*.34;
+ ball.style.left=x+'px';ball.style.top=y+'px';
+ document.body.appendChild(ball);
+ try{
+  const anim=ball.animate([
+   {transform:'translate(-50%,-50%) scale(.28) rotate(-20deg)',opacity:0.85,offset:0},
+   {transform:'translate(-50%,-50%) scale(1.1) rotate(25deg)',opacity:1,offset:.4},
+   {transform:'translate(-50%,-50%) scale(12) rotate(100deg)',opacity:1,offset:.88},
+   {transform:'translate(-50%,-50%) scale(16) rotate(125deg)',opacity:0,offset:1}
+  ],{duration:1050,easing:'cubic-bezier(.2,.1,.32,1)',fill:'forwards'});
+  await anim.finished.catch(()=>{});
+ }finally{ball.remove();iptvTransitionBusy=false}
+ return true;
+}
 function show(){applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;home.hidden=true;root.querySelector('button')?.focus({preventScroll:true})}
 function hide(){root.hidden=true;home.hidden=true}
 window.abajLauncherHome=show;
-root.addEventListener('click',async e=>{const b=e.target.closest('[data-target]');if(!b)return;const target=b.dataset.target;try{if(target==='cinema'&&!document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();if(target==='iptv'&&document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();if(target==='settings'&&typeof openTvSettings==='function')openTvSettings();if(target==='settings'||target==='iptv'||document.body.classList.contains('cinemaMode'))hide()}catch(err){console.error('ABAJ launcher navigation',err)}});
+root.addEventListener('click',async e=>{const b=e.target.closest('[data-target]');if(!b)return;const target=b.dataset.target;try{if(target==='cinema'&&!document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();if(target==='iptv'){if(iptvTransitionBusy)return;await playIptvBallTransition(b)}if(target==='iptv'&&document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();if(target==='settings'&&typeof openTvSettings==='function')openTvSettings();if(target==='settings'||target==='iptv'||document.body.classList.contains('cinemaMode'))hide()}catch(err){console.error('ABAJ launcher navigation',err)}});
 home.addEventListener('click',show);
 root.addEventListener('keydown',e=>{const keys=['ArrowRight','ArrowLeft','ArrowUp','ArrowDown'];if(!keys.includes(e.key))return;const bs=[...root.querySelectorAll('[data-target]')];const i=Math.max(0,bs.indexOf(document.activeElement));const delta=(e.key==='ArrowRight'||e.key==='ArrowDown')?1:-1;bs[(i+delta+bs.length)%bs.length].focus({preventScroll:true});e.preventDefault()});
 show();
