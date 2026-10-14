@@ -2945,7 +2945,15 @@ function bindVisibleChannelLogos(){
     img.src=src;
   };
   if(typeof IntersectionObserver!=='function'){
-    imgs.slice(0,32).forEach(reveal);
+    // Older Android TV WebViews may lack IntersectionObserver.
+    // Load every rendered logo, not only the first 32 channels.
+    let offset=0;
+    const loadBatch=()=>{
+      imgs.slice(offset,offset+48).forEach(reveal);
+      offset+=48;
+      if(offset<imgs.length)setTimeout(loadBatch,40);
+    };
+    loadBatch();
     return;
   }
   const root=document.getElementById('content');
