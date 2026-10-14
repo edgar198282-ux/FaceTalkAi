@@ -295,6 +295,13 @@ OFFICIAL_CHANNELS = [
 
 SOURCE_URLS = [
     # Additional regional Russian and general-interest public streams.
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-ad.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-al.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-alt.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-ark.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-ast.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-bel.m3u"),
+    ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-ce.m3u"),
     ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-mow.m3u"),
     ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-spe.m3u"),
     ("RU", "https://iptv-org.github.io/iptv/subdivisions/ru-mos.m3u"),
