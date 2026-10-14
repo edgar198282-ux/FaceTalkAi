@@ -61,9 +61,34 @@ if(document.getElementById('abajLauncher'))return;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
 const root=document.createElement('section');root.id='abajLauncher';root.setAttribute('aria-label','ABAJ TV — главная');root.innerHTML=`<div class="abajLaunchTop"><div class="abajLaunchBrand">ABAJ<b>TV</b></div></div><div class="abajLaunchTitle">ВАШ МИР КИНО И ТЕЛЕВИДЕНИЯ</div><div class="abajLaunchTiles"><button class="abajLaunchTile" data-target="cinema" style="--tile-bg:url('/static/launcher-cinema-20261014.webp')"><span class="abajLaunchIcon">🎞</span><span class="abajLaunchText"><span class="abajLaunchName">Кинотеатр</span><span class="abajLaunchDesc">Фильмы, сериалы, мультфильмы</span></span></button><button class="abajLaunchTile" data-target="iptv" style="--tile-bg:url('/static/launcher-iptv-20261014.webp')"><span class="abajLaunchIcon">▣</span><span class="abajLaunchText"><span class="abajLaunchName">IPTV</span><span class="abajLaunchDesc">Каналы и прямые эфиры</span></span></button><button class="abajLaunchTile" data-target="settings" style="--tile-bg:url('/static/launcher-settings-20261014.webp')"><span class="abajLaunchIcon">⚙</span><span class="abajLaunchText"><span class="abajLaunchName">Настройки</span><span class="abajLaunchDesc">Параметры и управление</span></span></button></div><div class="abajLaunchFoot"></div>`;
 document.body.appendChild(root);
-const home=document.createElement('button');home.id='abajLaunchHome';home.textContent='⌂';home.title='Главная ABAJ TV';home.setAttribute('aria-label','Главная ABAJ TV');home.hidden=true;document.body.appendChild(home);
+const launcherTranslations={
+ru:{title:'ВАШ МИР КИНО И ТЕЛЕВИДЕНИЯ',cinema:'Кинотеатр',cinemaDesc:'Фильмы, сериалы, мультфильмы',iptv:'IPTV',iptvDesc:'Каналы и прямые эфиры',settings:'Настройки',settingsDesc:'Параметры и управление',home:'Главная ABAJ TV'},
+hy:{title:'ԿԻՆՈՅԻ ԵՎ ՀԵՌՈՒՍՏԱՏԵՍՈՒԹՅԱՆ ՁԵՐ ԱՇԽԱՐՀԸ',cinema:'Կինոթատրոն',cinemaDesc:'Ֆիլմեր, սերիալներ, մուլտֆիլմեր',iptv:'IPTV',iptvDesc:'Հեռուստաալիքներ և ուղիղ եթերներ',settings:'Կարգավորումներ',settingsDesc:'Կարգավորումներ և կառավարում',home:'ABAJ TV գլխավոր էջ'},
+en:{title:'YOUR WORLD OF MOVIES AND TELEVISION',cinema:'Cinema',cinemaDesc:'Movies, series, cartoons',iptv:'IPTV',iptvDesc:'Channels and live TV',settings:'Settings',settingsDesc:'Preferences and controls',home:'ABAJ TV Home'}
+};
+let launcherLanguage='';
+function applyLauncherLanguage(){
+const selected=localStorage.getItem('abaj_tv_lang')||'ru';
+const lang=launcherTranslations[selected]?selected:'ru';
+if(lang===launcherLanguage)return;
+launcherLanguage=lang;
+const t=launcherTranslations[lang];
+root.querySelector('.abajLaunchTitle').textContent=t.title;
+for(const [target,name,desc] of [['cinema',t.cinema,t.cinemaDesc],['iptv',t.iptv,t.iptvDesc],['settings',t.settings,t.settingsDesc]]){
+const tile=root.querySelector('[data-target="'+target+'"]');
+tile.querySelector('.abajLaunchName').textContent=name;
+tile.querySelector('.abajLaunchDesc').textContent=desc;
+}
+root.setAttribute('aria-label',t.home);
+if(typeof home!=='undefined'){home.title=t.home;home.setAttribute('aria-label',t.home)}
+}
+document.addEventListener('click',e=>{
+if(e.target.closest('#langHyBtn,#langRuBtn,#langEnBtn'))queueMicrotask(applyLauncherLanguage);
+});
+window.addEventListener('storage',e=>{if(e.key==='abaj_tv_lang')applyLauncherLanguage()});
+const home=document.createElement('button');home.id='abajLaunchHome';home.textContent='⌂';home.title='Главная ABAJ TV';home.setAttribute('aria-label','Главная ABAJ TV');home.hidden=true;document.body.appendChild(home);applyLauncherLanguage();
 
-function show(){try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;home.hidden=true;root.querySelector('button')?.focus({preventScroll:true})}
+function show(){applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;home.hidden=true;root.querySelector('button')?.focus({preventScroll:true})}
 function hide(){root.hidden=true;home.hidden=true}
 window.abajLauncherHome=show;
 root.addEventListener('click',async e=>{const b=e.target.closest('[data-target]');if(!b)return;const target=b.dataset.target;try{if(target==='cinema'&&!document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();if(target==='iptv'&&document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();if(target==='settings'&&typeof openTvSettings==='function')openTvSettings();if(target==='settings'||target==='iptv'||document.body.classList.contains('cinemaMode'))hide()}catch(err){console.error('ABAJ launcher navigation',err)}});
