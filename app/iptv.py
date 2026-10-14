@@ -1507,7 +1507,7 @@ async def refresh_epg(force: bool = False):
                 # Never merge programmes from different sources under one ID:
                 # that produces interleaved / foreign-language film titles.
                 for cid, rows in programmes.items():
-                    if cid not in all_programmes:
+                    if cid not in all_programmes or (not all_programmes[cid] and rows):
                         all_programmes[cid] = rows
                 for key, value in names.items():
                     # Only index aliases whose channel actually has programmes.
