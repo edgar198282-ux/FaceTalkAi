@@ -7378,12 +7378,13 @@ function releasePlayerLandscape(){
   document.body.classList.remove('playerLandscapeRequested');
   try{
     if(window.AbajNative&&typeof window.AbajNative.setRequestedOrientation==='function'){
-      window.AbajNative.setRequestedOrientation('unspecified');
+      window.AbajNative.setRequestedOrientation('portrait');
     }else if(window.AbajNative&&typeof window.AbajNative.unlockOrientation==='function'){
       window.AbajNative.unlockOrientation();
     }
   }catch(e){}
   try{screen.orientation?.unlock?.()}catch(e){}
+  try{if(!window.AbajNative&&screen.orientation?.lock)Promise.resolve(screen.orientation.lock('portrait')).catch(()=>{})}catch(e){}
 }
 function openPlayer(id){
 
