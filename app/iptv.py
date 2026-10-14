@@ -1557,7 +1557,11 @@ def _epg_for_channel(item: dict) -> tuple[dict | None, dict | None]:
         # Match only the channel's own name, never inherited aliases from other streams.
         # Country-prefixed variants are excluded to avoid cross-region guides.
         name = _normalize_name(item.get("name") or "")
-        mapped = (_state.get("epg_names") or {}).get(name) if name else None
+        country = str(item.get("country") or "").strip().upper()
+        # Generic names such as Kino TV are shared by unrelated broadcasters.
+        # Without an exact guide identifier they must not inherit foreign EPG.
+        ambiguous = {"kino", "kino tv", "cinema", "cinema tv", "movie", "movie tv", "film", "film tv"}
+        mapped = (_state.get("epg_names") or {}).get(name) if name and name not in ambiguous else None
         if mapped and mapped in _state["epg"]:
             rows = _state["epg"][mapped]
     if not rows:
