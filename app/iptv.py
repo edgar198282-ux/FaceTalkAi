@@ -3243,8 +3243,8 @@ async def _bootstrap_public_channels():
                 # first 60 entries forever. Bound network work per source/day.
                 daily_slot = int(time.time()) // REFRESH_SECONDS
                 offset = (daily_slot * 60) % len(candidates) if candidates else 0
-                sample_new = (candidates[offset:offset + 60] +
-                              candidates[:max(0, offset + 60 - len(candidates))])
+                sample_new = (candidates[offset:offset + min(60, len(candidates))] +
+                              candidates[:max(0, offset + min(60, len(candidates)) - len(candidates))])
                 sem = asyncio.Semaphore(12)
                 checked = await asyncio.gather(*[_probe(session, row, sem) for row in sample_new])
                 for row in checked:
