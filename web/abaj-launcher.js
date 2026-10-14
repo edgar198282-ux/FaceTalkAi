@@ -35,6 +35,12 @@ const css=`
 .abajSceneMotion i{position:absolute;display:block;pointer-events:none}
 .abajLaunchTile[data-target="cinema"] .abajSceneSun{left:35%;top:19%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff5b34d 0%,#ffbf4440 15%,#ffb12a16 39%,transparent 69%);mix-blend-mode:screen;animation:abajSunDrift 32s ease-in-out infinite}
 .abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff25,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
+.abajLaunchTile[data-target="settings"].abajGearReady{background-image:linear-gradient(0deg,#010b19b3,transparent 42%),url('/static/launcher-settings-background.webp')!important;background-size:cover,cover!important;background-position:center,center!important}
+.abajLaunchTile[data-target="settings"].abajGearReady .abajSceneGear{display:none}
+.abajLaunchTile[data-target="settings"] .abajGearForeground{display:none;position:absolute;z-index:1;left:55.34%;top:4.39%;width:35.81%;height:69.01%;background:url('/static/launcher-gear-foreground.png') center/contain no-repeat;pointer-events:none;transform-origin:center center}
+.abajLaunchTile[data-target="settings"].abajGearReady .abajGearForeground{display:block;animation:abajGearTurn 18s linear infinite}
+@media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="settings"].abajGearReady .abajGearForeground{animation:none!important}}
+#abajLauncher[hidden] .abajGearForeground{animation-play-state:paused!important}
 .abajLaunchTile[data-target="settings"] .abajSceneGear{display:block;left:51%;top:6%;width:44%;height:72%;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,transparent 275deg,#b8ecff00 295deg,#c8edff24 316deg,transparent 340deg,transparent 360deg);mix-blend-mode:screen;opacity:.4;animation:abajGearLight 18s linear infinite}
 @keyframes abajGearLight{to{transform:rotate(360deg)}}
 @keyframes abajSunDrift{0%{transform:translate(-8%,20%) scale(.7);opacity:.12}25%{transform:translate(-2%,3%) scale(.95);opacity:.55}50%{transform:translate(5%,-13%) scale(1.16);opacity:.9}75%{transform:translate(10%,4%) scale(.94);opacity:.5}100%{transform:translate(14%,20%) scale(.7);opacity:.12}}
@@ -92,6 +98,22 @@ const motion=document.createElement('span');motion.className='abajSceneMotion';m
 const accent=document.createElement('i');accent.className=tile.dataset.target==='cinema'?'abajSceneSun':tile.dataset.target==='iptv'?'abajSceneWater':'abajSceneGear';
 motion.appendChild(accent);
 tile.insertBefore(motion,tile.firstChild);
+}
+// Progressive enhancement: only replace the original settings art if BOTH layers load.
+const settingsTile=root.querySelector('.abajLaunchTile[data-target="settings"]');
+if(settingsTile){
+ const urls=['/static/launcher-settings-background.webp','/static/launcher-gear-foreground.png'];
+ let loaded=0,failed=false;
+ urls.forEach(url=>{
+  const img=new Image();
+  img.onload=()=>{if(failed||!settingsTile.isConnected)return;if(++loaded===urls.length){
+   const gear=document.createElement('span');gear.className='abajGearForeground';gear.setAttribute('aria-hidden','true');
+   settingsTile.insertBefore(gear,settingsTile.querySelector('.abajLaunchText'));
+   settingsTile.classList.add('abajGearReady');
+  }};
+  img.onerror=()=>{failed=true};
+  img.src=url;
+ });
 }
 const brand=root.querySelector('.abajLaunchBrand');
 for(const [x,y,delay,speed] of [[5,22,0,2.7],[17,70,-1.3,3.2],[29,18,-.8,2.4],[42,77,-2.1,3.5],[54,25,-1.7,2.9],[67,69,-.4,3.1],[80,16,-2.5,2.6],[93,73,-1.1,3.4]]){
