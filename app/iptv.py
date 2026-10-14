@@ -3248,8 +3248,22 @@ async def _bootstrap_public_channels():
                 sem = asyncio.Semaphore(12)
                 checked = await asyncio.gather(*[_probe(session, row, sem) for row in sample_new])
                 for row in checked:
-                    if row.get("status") == "ONLINE":
-                        result.setdefault(str(row["id"]), row)
+                    if row.get("status") != "ONLINE":
+                        continue
+                    cid = str(row["id"])
+                    previous = result.get(cid)
+                    if previous is None or previous.get("status") != "ONLINE":
+                        result[cid] = row
+                    elif str(previous.get("url") or "") == str(row.get("url") or ""):
+                        result[cid] = {**previous, **row}
+                    else:
+                        # Keep one channel ID and retain an alternate working URL.
+                        # Do not overwrite a functioning primary stream with a
+                        # merely advertised higher-quality stream.
+                        backups = list(previous.get("backups") or [])
+                        new_url = str(row.get("url") or "")
+                        if new_url and new_url != previous.get("url") and new_url not in backups:
+                            previous["backups"] = (backups + [new_url])[:8]
                 failures = {}
                 for row in checked:
                     if row.get("status") != "ONLINE":
