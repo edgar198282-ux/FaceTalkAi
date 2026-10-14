@@ -1366,7 +1366,10 @@ def _parse_epg_xml(text: str) -> tuple[dict, dict, dict, dict]:
             aliases.append(base_cid)
         for display in aliases:
             for variant in _epg_name_variants(display):
-                names.setdefault(variant, cid)
+                if variant not in names:
+                    names[variant] = cid
+                elif names[variant] != cid:
+                    names[variant] = ""
 
         icon = ch.find("icon")
         icon_src = str(icon.attrib.get("src") or "").strip() if icon is not None else ""
@@ -1446,7 +1449,10 @@ async def _fetch_epg_streamed(session: aiohttp.ClientSession, url: str) -> tuple
                         aliases.append(cid)
                         for alias in aliases:
                             for variant in _epg_name_variants(alias):
-                                names.setdefault(variant, cid)
+                                if variant not in names:
+                                    names[variant] = cid
+                                elif names[variant] != cid:
+                                    names[variant] = ""
                         icon = element.find("icon")
                         logo = str(icon.attrib.get("src") or "").strip() if icon is not None else ""
                         if logo.startswith(("http://", "https://")):
@@ -1496,7 +1502,10 @@ async def refresh_epg(force: bool = False):
                     if cid not in all_programmes:
                         all_programmes[cid] = rows
                 for key, value in names.items():
-                    all_names.setdefault(key, value)
+                    if key not in all_names:
+                        all_names[key] = value
+                    elif all_names[key] != value:
+                        all_names[key] = ""
                 for key, value in logos.items():
                     all_logos.setdefault(key, value)
                 for key, value in logo_names.items():
