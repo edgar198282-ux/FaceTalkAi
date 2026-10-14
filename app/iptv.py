@@ -3252,8 +3252,19 @@ async def _bootstrap_public_channels():
                         continue
                     cid = str(row["id"])
                     previous = result.get(cid)
-                    if previous is None or previous.get("status") != "ONLINE":
+                    if previous is None:
                         result[cid] = row
+                    elif previous.get("status") != "ONLINE":
+                        # Restore an offline channel with a verified alternative,
+                        # preserving other known fallback URLs and metadata.
+                        prior_urls = list(previous.get("backups") or [])
+                        prior_primary = str(previous.get("url") or "")
+                        new_primary = str(row.get("url") or "")
+                        if prior_primary and prior_primary != new_primary:
+                            prior_urls.insert(0, prior_primary)
+                        deduped = list(dict.fromkeys(u for u in prior_urls
+                                                     if u and u != new_primary))[:8]
+                        result[cid] = {**previous, **row, "backups": deduped}
                     elif str(previous.get("url") or "") == str(row.get("url") or ""):
                         result[cid] = {**previous, **row}
                     else:
