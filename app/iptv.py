@@ -3268,6 +3268,22 @@ async def _bootstrap_public_channels():
                 offset = (daily_slot * 60) % len(candidates) if candidates else 0
                 sample_new = (candidates[offset:offset + min(60, len(candidates))] +
                               candidates[:max(0, offset + min(60, len(candidates)) - len(candidates))])
+                # Also verify a small rotating set of alternative URLs for
+                # already-online channels. Previously these were excluded, so
+                # the backup collection path could never run.
+                alternatives = [row for row in parsed
+                                if str(row.get("id") or "") in result
+                                and result[str(row["id"])].get("status") == "ONLINE"
+                                and row.get("url")
+                                and row["url"] != result[str(row["id"])].get("url")
+                                and row["url"] not in (result[str(row["id"])].get("backups") or [])
+                                and not _is_adult_channel(row)
+                                and not _looks_junk(row)
+                                and not _is_quarantined(row["url"])]
+                if alternatives:
+                    alt_offset = (daily_slot * 8) % len(alternatives)
+                    sample_new += [alternatives[(alt_offset + i) % len(alternatives)]
+                                   for i in range(min(8, len(alternatives)))]
                 sem = asyncio.Semaphore(12)
                 checked = await asyncio.gather(*[_probe(session, row, sem) for row in sample_new])
                 for row in checked:
