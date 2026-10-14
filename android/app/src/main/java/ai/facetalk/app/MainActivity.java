@@ -2415,19 +2415,14 @@ public class MainActivity extends Activity {
     }
 
     private void maintainStorage(){
+        // Keep the persistent WebView HTTP image cache between launches.
+        // Clearing it makes large IPTV playlists (e.g. Edo) download logos again.
         deleteOldUpdateApks();
-        trimAppCache(isTv?64L*1024L*1024L:96L*1024L*1024L);
         try{
             File webViewDir=new File(getApplicationInfo().dataDir,"app_webview");
             long webViewBytes=storageSize(webViewDir);
-            long cacheBytes=storageSize(getCacheDir());
-            long threshold=isTv?160L*1024L*1024L:220L*1024L*1024L;
-            if(webView!=null&&webViewBytes+cacheBytes>threshold){
-                webView.clearCache(false);
-                trimAppCache(isTv?48L*1024L*1024L:80L*1024L*1024L);
-                Log.i("AbajStorage","WebView cache cleared; cached bytes="+(webViewBytes+cacheBytes));
-            }
-        }catch(Exception e){Log.w("AbajStorage","WebView cache maintenance failed",e);}
+            Log.i("AbajStorage","Preserving WebView image cache; bytes="+webViewBytes);
+        }catch(Exception e){Log.w("AbajStorage","WebView cache inspection failed",e);}
     }
 
     @Override protected void onCreate(Bundle savedInstanceState){
@@ -2446,7 +2441,7 @@ public class MainActivity extends Activity {
         }
         prefs=getSharedPreferences("facetalk_auth",MODE_PRIVATE); consumeAuthIntent(getIntent());
         deleteOldUpdateApks();
-        trimAppCache(isTv?64L*1024L*1024L:96L*1024L*1024L);
+        // Preserve cached IPTV logo images across app restarts.
         fullscreenContainer=new FrameLayout(this);
         fullscreenContainer.setBackgroundColor(Color.BLACK);
         if(isTv){
