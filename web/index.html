@@ -2412,7 +2412,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
   }
 }
 </style>
-<style id="abaj-cinema-seek-lower-landscape-v5">
+<style id="abaj-cinema-seek-lower-landscape-v6">
 /* Cinema landscape: title, seek bar, clocks and buttons in one compact bottom stack. */
 @media (orientation:landscape) and (max-height:700px){
   body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
@@ -2427,11 +2427,13 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
     overflow:visible!important;
     padding:6px 18px 2px!important;
     box-sizing:border-box!important;
-    background:linear-gradient(0deg,rgba(3,9,18,.92),rgba(3,9,18,.78) 70%,rgba(3,9,18,0))!important;
+    background:linear-gradient(0deg,rgba(3,9,18,.84),rgba(3,9,18,.56) 65%,rgba(3,9,18,0))!important;
   }
   body:not(.nativeTv) .playerView.cinemaPlayback .playerMeta{
     order:0!important;
     flex:0 0 auto!important;
+    position:relative!important;
+    transform:translateY(70px)!important;
     margin:0 0 4px!important;
     padding:0 0 2px!important;
   }
@@ -2443,7 +2445,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
     width:100%!important;
     height:auto!important;
     min-height:22px!important;
-    transform:none!important;
+    transform:translateY(70px)!important;
     margin:0 0 5px!important;
     z-index:3!important;
   }
@@ -2451,6 +2453,8 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerBottom{
     order:2!important;
     flex:0 0 auto!important;
     margin:0 auto!important;
+    position:relative!important;
+    z-index:4!important;
   }
 }
 </style>
