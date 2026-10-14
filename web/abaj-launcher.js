@@ -37,8 +37,8 @@ const css=`
 .abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff25,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
 .abajLaunchTile[data-target="iptv"].abajDolphinReady{background-image:linear-gradient(0deg,#010b19b3,transparent 42%),url('/static/launcher-iptv-background.webp')!important;background-size:cover,cover!important;background-position:center,center!important;animation:none!important}
 .abajLaunchTile[data-target="iptv"] .abajDolphinForeground{position:absolute;z-index:1;display:none;pointer-events:none;background:url('/static/launcher-iptv-dolphin-foreground.png') center/100% 100% no-repeat;transform-origin:50% 60%;will-change:transform,opacity}
-.abajLaunchTile[data-target="iptv"].abajDolphinReady .abajDolphinForeground{display:block;animation:abajDolphinLeap 7s ease-in-out infinite}
-@keyframes abajDolphinLeap{0%,9%{transform:translate(0,0) rotate(0deg);opacity:1}27%{transform:translate(18%,-48%) rotate(-12deg);opacity:1}46%{transform:translate(34%,-67%) rotate(-5deg);opacity:1}66%{transform:translate(42%,18%) rotate(18deg);opacity:1}84%,100%{transform:translate(0,0) rotate(0deg);opacity:1}}
+.abajLaunchTile[data-target="iptv"].abajDolphinReady .abajDolphinForeground{display:block;animation:abajDolphinLeap 6.6s ease-in-out infinite}
+@keyframes abajDolphinLeap{0%,10%{transform:translate(0,0) scale(.42) rotate(0deg);opacity:.88}22%{transform:translate(-14%,-24%) scale(.8) rotate(-18deg);opacity:1}39%{transform:translate(-48%,-94%) scale(1.18) rotate(-15deg);opacity:1}49%{transform:translate(-65%,-110%) scale(1.2) rotate(12deg);opacity:1}62%{transform:translate(-79%,-65%) scale(1.1) rotate(73deg);opacity:1}75%{transform:translate(-75%,8%) scale(.83) rotate(116deg);opacity:1}87%{transform:translate(-24%,23%) scale(.53) rotate(134deg);opacity:.92}100%{transform:translate(0,0) scale(.42) rotate(0deg);opacity:.88}}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"].abajDolphinReady .abajDolphinForeground{animation:none!important}}
 #abajLauncher[hidden] .abajDolphinForeground{animation-play-state:paused!important}
 body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajDolphinReady{background-image:linear-gradient(0deg,#f7fbff 0%,#f7fbfff7 26%,#f7fbff59 48%,transparent 68%),url('/static/launcher-iptv-background.webp')!important}
@@ -129,8 +129,8 @@ if(iptvTile){
     const dx=(w-1536*scale)/2,dy=(h-997*scale)/2;
     dolphin.style.left=(dx+762*scale)+'px';
     dolphin.style.top=(dy+418*scale)+'px';
-    dolphin.style.width=(151*scale)+'px';
-    dolphin.style.height=(131*scale)+'px';
+    dolphin.style.width=(360*scale)+'px';
+    dolphin.style.height=(312*scale)+'px';
    };
    position();
    if(typeof ResizeObserver!=='undefined'){new ResizeObserver(position).observe(iptvTile)}
