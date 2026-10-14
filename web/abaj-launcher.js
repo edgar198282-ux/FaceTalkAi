@@ -105,9 +105,14 @@ const settingsTile=root.querySelector('.abajLaunchTile[data-target="settings"]')
 if(settingsTile){
  const urls=['/static/launcher-settings-background.webp','/static/launcher-gear-foreground.png'];
  let loaded=0,failed=false;
- urls.forEach(url=>{
+ const expectedSizes=[[1536,797],[550,555]];
+ urls.forEach((url,index)=>{
   const img=new Image();
-  img.onload=()=>{if(failed||!settingsTile.isConnected)return;if(++loaded===urls.length){
+  img.onload=()=>{
+   if(failed||!settingsTile.isConnected)return;
+   // Reject an HTML fallback, corrupt asset, or a mismatched export.
+   if(img.naturalWidth!==expectedSizes[index][0]||img.naturalHeight!==expectedSizes[index][1]){failed=true;return}
+   if(++loaded===urls.length){
    const gear=document.createElement('span');gear.className='abajGearForeground';gear.setAttribute('aria-hidden','true');
    settingsTile.insertBefore(gear,settingsTile.querySelector('.abajLaunchText'));
    // Align the original 550x555px cutout to the 1536x797px source
