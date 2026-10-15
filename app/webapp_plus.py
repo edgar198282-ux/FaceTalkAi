@@ -16,6 +16,7 @@ from aiohttp import web
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from .config import DATA_DIR, PORT, ADMIN_ID, TELEGRAM_BOT_TOKEN
+from . import cinema_compat
 from . import iptv
 from . import ai as ai_service
 from .db import get_setting, set_setting, list_settings_prefix, list_user_ids
@@ -1116,6 +1117,61 @@ async def api_kinopub_item(request):
         'related':related[:24],
     },headers={'Cache-Control':'private, max-age=300'})
 
+async def _kinopub_compatible_response(request, uid, token):
+    item_id = str(request.query.get('id') or '').strip()
+    media_id = str(request.query.get('mid') or '').strip()
+    if not item_id:
+        raise web.HTTPBadRequest(text='Movie id is required for compatible playback')
+    status, payload = await _kinopub_api('GET', '/v1/items/' + item_id,
+                                       params={'access_token': token})
+    if status >= 400 or not isinstance(payload, dict):
+        raise web.HTTPBadGateway(text='Movie metadata is unavailable')
+    item = payload.get('item') if isinstance(payload.get('item'), dict) else payload
+    media_rows = [m for row in _kinopub_media_rows(item) for m in row.get('items', [])]
+    if media_id:
+        media = next((m for m in media_rows if str(m.get('media_id') or m.get('mid') or m.get('id') or '') == media_id), None)
+    else:
+        media = next(iter(media_rows), None)
+    if not media:
+        raise web.HTTPNotFound(text='Movie episode is unavailable')
+    files = [f for f in media.get('files', []) if isinstance(f, dict)]
+    def quality(f):
+        match = re.search(r'(2160|1440|1080|720|480|360)', str(f.get('quality') or ''))
+        return int(match.group(1)) if match else int(f.get('h') or 0)
+    eligible = [f for f in files if 0 < quality(f) <= 1080]
+    if not eligible:
+        eligible = files
+    if not eligible:
+        raise web.HTTPBadGateway(text='Movie files are unavailable')
+    selected = max(eligible, key=lambda f: (min(quality(f), 1080),
+                   str(f.get('codec') or '').lower() in ('h264', 'avc', 'avc1')))
+    file_token = str(selected.get('file') or '')
+    if not file_token:
+        raise web.HTTPBadGateway(text='Movie file is unavailable')
+    source = ''
+    for stream_type in ('hls', 'http'):
+        st, video = await _kinopub_api('GET', '/v1/items/media-video-link', params={
+            'access_token': token, 'file': file_token, 'type': stream_type})
+        if st < 400:
+            source = _kinopub_stream_from_obj(video, stream_type)
+            if source:
+                break
+    if not source:
+        raise web.HTTPBadGateway(text='Movie stream is unavailable')
+    if quality(selected) <= 1080 and str(selected.get('codec') or '').lower() in ('h264', 'avc', 'avc1'):
+        response = _kinopub_direct_stream_response(request, uid, source)
+        if response is not None:
+            return response
+    duration = media.get('duration') or item.get('duration')
+    key = cinema_compat.create(uid, source, duration)
+    logging.info('CINEMA_COMPAT prepared item=%s media=%s source_codec=%s source_quality=%s target=h264_1080_aac',
+                 item_id, media_id, selected.get('codec'), selected.get('quality'))
+    return web.json_response({'ok': True, 'url': f'/api/kinopub/compat/{key}/index.m3u8',
+                             'provider': 'KINOPUB', 'quality': '1080p',
+                             'codec': 'h264', 'compatible': True, 'fallbacks': []},
+                            headers={'Cache-Control': 'no-store'})
+
+
 async def api_kinopub_play(request):
     user = await _user_from_request(request)
     if not user:
@@ -1126,6 +1182,8 @@ async def api_kinopub_play(request):
     token = await _kinopub_access_token(uid)
     if not token:
         return web.json_response({'ok':False,'error':'kinopub_auth_required'}, status=401)
+    if str(request.query.get('compat') or '') == '1080':
+        return await _kinopub_compatible_response(request, uid, token)
     item_id = str(request.query.get('id') or '').strip()
     media_id = str(request.query.get('mid') or '').strip()
     file_token = str(request.query.get('file') or '').strip()
@@ -5099,6 +5157,9 @@ async def start_webapp(bot):
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/open', api_tv_pair_open); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
+    app.cleanup_ctx.append(cinema_compat.cleanup)
+    app.router.add_get('/api/kinopub/compat/{key}/index.m3u8', cinema_compat.playlist)
+    app.router.add_get(r'/api/kinopub/compat/{key}/{index:\d+}.ts', cinema_compat.segment)
     app.router.add_get('/api/kinopub/status', api_kinopub_status); app.router.add_post('/api/kinopub/auth/start', api_kinopub_auth_start); app.router.add_post('/api/kinopub/auth/poll', api_kinopub_auth_poll); app.router.add_post('/api/kinopub/disconnect', api_kinopub_disconnect); app.router.add_get('/api/kinopub/catalog', api_kinopub_catalog); app.router.add_get('/api/kinopub/play', api_kinopub_play); app.router.add_get('/api/kinopub/benchmark', api_kinopub_benchmark); app.router.add_get('/api/kinopub/proxy', api_kinopub_proxy); app.router.add_get('/api/kinopub/download', api_kinopub_download); app.router.add_get('/api/kinopub/item', api_kinopub_item)
     app.router.add_get('/api/kinopub/overview', api_kinopub_overview); app.router.add_get('/api/cinema/rating', api_cinema_rating); app.router.add_post('/api/cinema/rating', api_cinema_rating); app.router.add_get('/api/cinema/library', api_cinema_library); app.router.add_get('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_delete('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_post('/api/cinema/bookmark-folders', api_cinema_bookmark_folders); app.router.add_post('/api/cinema/library/bookmark', api_cinema_library_bookmark); app.router.add_post('/api/cinema/library/watch', api_cinema_library_watch); app.router.add_get('/api/kinopub/filters', api_kinopub_filters); app.router.add_get('/api/kinopub/section', api_kinopub_section); app.router.add_get('/api/kinopub/collection', api_kinopub_collection_items); app.router.add_get('/api/cinema/progress', api_cinema_progress); app.router.add_post('/api/cinema/progress', api_cinema_progress)
     app.router.add_get('/api/admin/tv/devices', api_admin_tv_devices); app.router.add_post('/api/admin/tv/disconnect', api_admin_tv_disconnect)

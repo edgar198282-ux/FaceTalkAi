@@ -8303,7 +8303,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
       maxLiveSyncPlaybackRate:fastStart?1.5:1,
       manifestLoadingTimeOut:teamTvFast?3500:(mobileFast?4500:(nativeTv?6000:10000)),
       levelLoadingTimeOut:teamTvFast?3500:(mobileFast?4500:(nativeTv?6000:10000)),
-      fragLoadingTimeOut:teamTvFast?5000:(mobileFast?7000:(nativeTv?9000:14000)),
+      fragLoadingTimeOut:String(src).includes('/api/kinopub/compat/')?75000:(teamTvFast?5000:(mobileFast?7000:(nativeTv?9000:14000))),
       capLevelToPlayerSize:true,
       abrEwmaDefaultEstimate:teamTvFast?1200000:(mobileFast?1500000:(nativeTv?tvInitialAbrEstimate(ch):500000))
     });
@@ -14447,11 +14447,15 @@ async function resolveKinoPubInternalStream(item,media=null){
     // Mobile WebView cannot play KinoPub's HEVC hls4 variant reliably.
     // Keep the original hls4 preference on Android TV.
     params.set('format',typeof nativeTv!=='undefined'&&nativeTv?'hls4':'hls');
+    if(typeof nativeTv==='undefined'||!nativeTv)params.set('compat','1080');
     params.set('direct','1');
     const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
     if(!r.ok)return null;
     const d=await r.json();
-    if(d&&d.ok&&/^https?:\/\//i.test(String(d.url||'')))return d;
+    if(d&&d.ok){
+      const url=new URL(String(d.url||''),location.origin);
+      if(/^https?:$/.test(url.protocol))return {...d,url:url.href};
+    }
   }catch(e){}
   return null;
 }
