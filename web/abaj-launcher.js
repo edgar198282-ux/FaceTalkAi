@@ -50,13 +50,13 @@ const css=`
 @media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{display:none}}
 /* Subtle drifting cloud haze confined to the upper-left mountain picture.
    Transparent overlay: the original mountains remain visible, with no duplicate imagery. */
-/* Narrow, low-opacity cloud wisps only in the sky of each photograph. */
-#abajLauncher .abajLaunchTile .abajMountainClouds{position:absolute;pointer-events:none;z-index:2;overflow:hidden;mix-blend-mode:screen;opacity:.45}
-#abajLauncher .abajLaunchTile[data-target="cinema"] .abajMountainClouds{left:5%;top:5%;width:84%;height:21%;clip-path:inset(0 round 8px)}
-#abajLauncher .abajLaunchTile[data-target="iptv"] .abajMountainClouds{left:38%;top:12%;width:19%;height:15%;clip-path:inset(0 round 2px)}
-#abajLauncher .abajMountainClouds:before,#abajLauncher .abajMountainClouds:after{content:'';position:absolute;left:-95%;top:20%;width:100%;height:34%;background:linear-gradient(0deg,transparent,rgba(237,246,255,.22) 45%,transparent);filter:blur(5px);border-radius:45% 55% 40% 60%;transform:translateX(0);animation:abajMountainCloudDrift 24s linear infinite}
-#abajLauncher .abajMountainClouds:after{top:56%;opacity:.6;animation-duration:33s;animation-delay:-14s}
-@keyframes abajMountainCloudDrift{from{transform:translateX(0)}to{transform:translateX(190%)}}
+/* Precisely positioned cloud movement: cinema sky and upper-left mountain TV panel. */
+#abajLauncher .abajLaunchTile .abajMountainClouds{position:absolute;display:block;pointer-events:none;z-index:2;overflow:hidden;isolation:isolate}
+#abajLauncher .abajLaunchTile[data-target="cinema"] .abajMountainClouds{left:4%;top:4%;width:81%;height:29%}
+#abajLauncher .abajLaunchTile[data-target="iptv"] .abajMountainClouds{left:37%;top:12%;width:19%;height:25%}
+#abajLauncher .abajMountainClouds:before,#abajLauncher .abajMountainClouds:after{content:'';display:block;position:absolute;left:-65%;top:12%;width:75%;height:42%;border-radius:50%;background:radial-gradient(ellipse at center,rgba(248,251,255,.56) 0%,rgba(240,247,255,.34) 33%,rgba(237,246,255,.10) 60%,transparent 76%);filter:blur(2px);animation:abajMountainCloudDrift 8s linear infinite;will-change:transform}
+#abajLauncher .abajMountainClouds:after{top:52%;width:58%;height:33%;opacity:.72;animation-duration:12s;animation-delay:-5s}
+@keyframes abajMountainCloudDrift{0%{transform:translate3d(0,0,0)}100%{transform:translate3d(245%,0,0)}}
 #abajLauncher[hidden] .abajMountainClouds:before,#abajLauncher[hidden] .abajMountainClouds:after{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){#abajLauncher .abajMountainClouds{display:none}}
 /* Keep the lighting layers over the artwork but behind the IPTV title. */
