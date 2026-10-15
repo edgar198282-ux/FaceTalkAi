@@ -43,7 +43,9 @@ const css=`
 /* Motion stays inside the television's existing picture panels, without changing the artwork. */
 /* Visible TV picture motion: broad moving light confined to the TV side of the card. */
 .abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{position:absolute;left:53%;top:7%;width:40%;height:55%;z-index:2;overflow:hidden;pointer-events:none;opacity:1;clip-path:polygon(5% 5%,96% 4%,96% 94%,5% 96%)}
-.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:before{content:'';position:absolute;inset:-15%;background:linear-gradient(105deg,transparent 23%,rgba(70,194,255,.02) 33%,rgba(150,226,255,.34) 48%,rgba(65,185,255,.07) 60%,transparent 76%);transform:translateX(-115%);animation:abajTvPictureSweep 5s linear infinite;mix-blend-mode:screen}
+.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(0,65,130,.02),rgba(10,155,235,.15) 48%,rgba(0,48,90,.02));mix-blend-mode:screen;animation:abajTvLiveBrightness 5s ease-in-out infinite alternate}
+@keyframes abajTvLiveBrightness{0%{opacity:.15}100%{opacity:.85}}
+.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:before{content:'';position:absolute;inset:-15%;background:linear-gradient(105deg,transparent 23%,rgba(70,194,255,.02) 33%,rgba(150,226,255,.46) 48%,rgba(65,185,255,.07) 60%,transparent 76%);transform:translateX(-115%);animation:abajTvPictureSweep 5s linear infinite;mix-blend-mode:screen}
 @keyframes abajTvPictureSweep{0%{transform:translateX(-115%)}72%,100%{transform:translateX(115%)}}
 #abajLauncher[hidden] .abajTvScreenMotion:before{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{display:none}}
@@ -120,25 +122,8 @@ tile.insertBefore(motion,tile.firstChild);
 }
 // A true dolphin dive must be a rendered sequence, not a rotated flat PNG.
 // Enable a seamless full-card video only if the approved asset exists.
-const iptvTile=root.querySelector('.abajLaunchTile[data-target="iptv"]');
-if(iptvTile && !window.matchMedia('(prefers-reduced-motion: reduce)').matches){
- const clip=document.createElement('video');
- clip.className='abajIptvMotionVideo';
- clip.muted=true;clip.defaultMuted=true;clip.loop=true;clip.playsInline=true;
- clip.preload='metadata';clip.setAttribute('aria-hidden','true');
- clip.addEventListener('loadeddata',()=>{
-  if(!iptvTile.isConnected)return;
-  iptvTile.insertBefore(clip,iptvTile.querySelector('.abajLaunchText'));
-  iptvTile.classList.add('abajIptvVideoReady');
-  if(!root.hidden)clip.play().catch(()=>{});
- },{once:true});
- clip.addEventListener('error',()=>{clip.remove();iptvTile.classList.remove('abajIptvVideoReady')},{once:true});
- clip.src='/static/launcher-iptv-dolphin-loop.webm';
- const watch=new MutationObserver(()=>{
-  if(root.hidden){clip.pause()}else if(clip.isConnected){clip.play().catch(()=>{})}
- });
- watch.observe(root,{attributes:true,attributeFilter:['hidden']});
-}
+// The old optional dolphin .webm does not exist in this repository.
+// Do not request a missing video or cover the photo with a broken player.
 // Progressive enhancement: only replace the original settings art if BOTH layers load.
 const settingsTile=root.querySelector('.abajLaunchTile[data-target="settings"]');
 if(settingsTile){
