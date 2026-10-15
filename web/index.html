@@ -7817,7 +7817,12 @@ function tryCinemaNativeFallback(ch,src,attemptToken){
     setNativeMedia3Visible(true);
     try{v.pause()}catch(e){}
     try{v.removeAttribute('src');v.load()}catch(e){}
-    markFrameReady(true);
+    // This callback is outside startStream: its local markFrameReady is not in scope.
+    tvPlaybackStable=true;
+    playbackPlayerMode='native';
+    if(nativeTv)tvChannelSwitchBusyUntil=0;
+    const wrap=document.querySelector('.videoWrap');
+    if(wrap)wrap.classList.add('playing','frameReady');
     if(err)err.textContent='';
     setTimeout(()=>{applyCinemaResume();updatePlayerRemaining()},80);
   };
@@ -8390,6 +8395,11 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
           code:String(data?.response?.code||data?.details||data?.type||'hls_error'),
           message:String((data?.details||data?.type||'HLS fatal error')+(data?.response?.text?' · '+data.response.text:''))
         });
+      }
+
+      if(String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&String(data?.details||'').includes('manifestIncompatibleCodecsError')&&nativeTv&&!forceWebCinema&&!tvForceWebCinema){
+        clearFirstFrameTimer();
+        if(tryCinemaNativeFallback(ch,src,attemptToken))return;
       }
 
       if(String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&String(data?.details||'').includes('manifestIncompatibleCodecsError')&&!ch.cinemaCodecFallbackTried){
