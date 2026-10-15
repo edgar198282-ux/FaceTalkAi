@@ -9109,6 +9109,12 @@ async function syncMobileLandscapePlayerUi(){
 
   if(active&&landscape){
     document.body.classList.add('mobileLandscapePlayer');
+    // Hide Android status/navigation bars without triggering browser fullscreen.
+    try{
+      if(window.AbajNative&&typeof window.AbajNative.enterPlayerFullscreen==='function'){
+        window.AbajNative.enterPlayerFullscreen();
+      }
+    }catch(e){}
     // Cinema already uses an app-level player. Avoid stacking browser and native
     // fullscreen transitions during rotation, which exposes partial blue/black frames.
     if(player.classList.contains('cinemaPlayback')){
@@ -9128,6 +9134,13 @@ async function syncMobileLandscapePlayerUi(){
   }
 
   document.body.classList.remove('mobileLandscapePlayer');
+  if(player.dataset.orientationFullscreen==='1'){
+    try{
+      if(window.AbajNative&&typeof window.AbajNative.exitPlayerFullscreen==='function'){
+        window.AbajNative.exitPlayerFullscreen();
+      }
+    }catch(e){}
+  }
   player.classList.remove('videoFill');
 
   if(player.dataset.orientationFullscreen==='1'){
