@@ -5406,8 +5406,7 @@ function setCategory(v){
   activeCategory=v;
   document.querySelectorAll('.cat').forEach(x=>x.classList.toggle('active',x.dataset.cat===v));
   const sel=document.getElementById('group');
-  if(v&&[...sel.options].some(o=>o.value===v))sel.value=v;
-  else sel.value='';
+  sel.value='';
   focusIndex=0;
   persistTvBrowseState();
   render();
@@ -5913,7 +5912,7 @@ async function load(){
     const dedup=new Map();
     for(const ch of base){
       const providerKey=ch.personal?'edem:'+String(ch.playlist_id||'legacy'):'free';
-      const key=(providerKey+'|'+(ch.tvg_id||'')+'|'+(ch.country||'')+'|'+(ch.name||'')).toLowerCase();
+      const key=ch.personal?providerKey+'|'+ch.id:(providerKey+'|'+(ch.tvg_id||'')+'|'+(ch.country||'')+'|'+(ch.name||'')).toLowerCase();
       if(!dedup.has(key))dedup.set(key,ch);
     }
     channels=applyChannelAccessGate([...dedup.values()]);

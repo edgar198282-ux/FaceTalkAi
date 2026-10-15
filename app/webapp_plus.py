@@ -3181,16 +3181,14 @@ async def _load_edem_legacy_for_uid(uid: int, force: bool = False):
 _edem_xmltv_cache = {}
 
 def _playlist_xmltv_url(text):
-    """Read provider XMLTV address from quoted or unquoted M3U header."""
-    header = str(text or '').splitlines()[:2]
-    for line in header:
+    for line in str(text or '').lstrip('\ufeff').splitlines()[:2]:
         if not line.lstrip().upper().startswith('#EXTM3U'):
             continue
         for key in ('url-tvg', 'x-tvg-url', 'tvg-url'):
-            match = re.search(r'(?<![\\w-])' + key + r'\\s*=\\s*(?:"([^"]+)"|([^\\s]+))', line, re.I)
+            match = re.search(r"(?<![\w-])" + key + r"\s*=\s*(?:\"([^\"]+)\"|'([^']+)'|([^\s]+))", line, re.I)
             if not match:
                 continue
-            url = (match.group(1) or match.group(2) or '').strip().strip(chr(39)).split(',')[0].strip()
+            url = next((value for value in match.groups() if value), '').split(',')[0].strip()
             if urlparse(url).scheme in ('http', 'https'):
                 return url
     return ''
@@ -3207,18 +3205,24 @@ async def _edem_xmltv_guide(url):
         async with aiohttp.ClientSession(timeout=timeout, headers={'User-Agent': 'AbajTV/1.0'}) as session:
             async with session.get(url, allow_redirects=True) as response:
                 response.raise_for_status()
-                raw = await response.content.read(8 * 1024 * 1024 + 1)
-                if len(raw) > 8 * 1024 * 1024:
-                    return cached['guide'] if cached else None
+                raw = bytearray()
+                async for chunk in response.content.iter_chunked(65536):
+                    raw.extend(chunk)
+                    if len(raw) > 8 * 1024 * 1024:
+                        return cached['guide'] if cached else None
         if urlparse(url).path.lower().endswith('.gz') or raw[:2] == b'\x1f\x8b':
             import gzip
-            raw = gzip.decompress(raw)
+            import io
+            with gzip.GzipFile(fileobj=io.BytesIO(raw)) as compressed:
+                raw = compressed.read(32 * 1024 * 1024 + 1)
             if len(raw) > 32 * 1024 * 1024:
                 return cached['guide'] if cached else None
         guide = await asyncio.to_thread(iptv._parse_epg_xml, raw.decode('utf-8', 'ignore'))
+        if not any(guide):
+            return cached['guide'] if cached else None
         _edem_xmltv_cache[url] = {'ts': now, 'guide': guide}
         return guide
-    except (aiohttp.ClientError, TimeoutError, OSError, ValueError):
+    except (aiohttp.ClientError, TimeoutError, OSError, ValueError, EOFError):
         return cached['guide'] if cached else None
 
 def _edem_guide_channel(item, guide):
@@ -3236,6 +3240,8 @@ def _edem_guide_channel(item, guide):
         logo = logos.get(mapped) or logo_names.get(normalized)
         if logo:
             item['logo'] = logo
+    item.pop('epg_now', None)
+    item.pop('epg_next', None)
     rows = programmes.get(mapped) or []
     now = int(time.time())
     for row in rows:
@@ -3401,8 +3407,6 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                         candidates.update(playlist_logo_by_name.get(variant) or ())
             if len(candidates) == 1:
                 fallback = next(iter(candidates))
-        if not fallback:
-            fallback = iptv._epg_logo_for_channel(channel)
         if fallback and fallback != channel.get('logo'):
             channel['logo_fallback'] = fallback
         if not str(channel.get('logo') or '').strip() and fallback:

@@ -1245,11 +1245,14 @@ def _is_quarantined(url: str, now: int | None = None) -> bool:
 
 
 def _extinf_name(line: str, fallback: str = "Channel") -> str:
-    quoted = False
+    quote_char = None
     for i, ch in enumerate(line):
-        if ch == '"':
-            quoted = not quoted
-        elif ch == "," and not quoted:
+        if ch in ('"', "'"):
+            if quote_char is None:
+                quote_char = ch
+            elif quote_char == ch:
+                quote_char = None
+        elif ch == "," and quote_char is None:
             name = line[i + 1:].strip()
             return name or fallback
     return fallback
@@ -1264,12 +1267,9 @@ def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
             continue
         if line.startswith("#EXTINF"):
             attrs = _attrs(line)
-            # Some supplied M3U playlists use unquoted tvg-logo values.
-            # Preserve the exact source artwork URL instead of losing it.
-            if country == "ED" and not attrs.get("tvg-logo"):
-                logo_match = re.search(r'(?<![\w-])tvg-logo\s*=\s*([^\s,]+)', line, re.I)
-                if logo_match:
-                    attrs["tvg-logo"] = logo_match.group(1).strip(chr(34) + chr(39))
+            if country == "ED":
+                for match in re.finditer(r"(?<![\w-])([\w-]+)\s*=\s*([^\s,\"']+)", line):
+                    attrs.setdefault(match.group(1).lower(), match.group(2))
             name = _extinf_name(line, attrs.get("tvg-name", "Channel"))
             m3u_country = str(attrs.get("tvg-country") or attrs.get("country") or "").strip().upper()
             country_aliases = {"ARM":"AM", "RUS":"RU", "GEO":"GE", "UKR":"UA",
@@ -1301,6 +1301,8 @@ def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
                 "country": channel_country,
                 "source": source,
             }
+        elif line.startswith("#EXTGRP:") and pending and country == "ED":
+            pending["group"] = line.split(":", 1)[1].strip() or pending["group"]
         elif not line.startswith("#") and pending and line.startswith(("http://", "https://")):
             row = dict(pending)
             row["url"] = line
@@ -1309,7 +1311,7 @@ def _parse_m3u(text: str, country: str, source: str) -> list[dict]:
                 pending = None
                 continue
             row["id"] = hashlib.sha1(key_src.encode("utf-8")).hexdigest()[:16]
-            if not _looks_junk(row):
+            if country == "ED" or not _looks_junk(row):
                 out.append(row)
             pending = None
     return out
