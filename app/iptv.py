@@ -1728,10 +1728,10 @@ def _logo_name_variants(value: str) -> list[str]:
     # Preserve the original variants and only add carefully normalized ones;
     # callers reject ambiguous matches instead of assigning a wrong logo.
     quality_clean = re.sub(
-        r"\\s*(?:\\(|\\[)?(?:4k|uhd|fhd|full[ -]?hd|hd|sd|2160p?|1080p?|720p?)(?:\\)|\\])?\\s*$",
+        r"\s*(?:\(|\[)?(?:4k|uhd|fhd|full[ -]?hd|hd|sd|2160p?|1080p?|720p?)(?:\)|\])?\s*$",
         "", cleaned, flags=re.I
     ).strip()
-    quality_clean = re.sub(r"\\s+\\+\\s*\\d+\\s*(?:\\([^)]*\\))?\\s*$", "", quality_clean).strip()
+    quality_clean = re.sub(r"\s+\+\s*\d+\s*(?:\([^)]*\))?\s*$", "", quality_clean).strip()
     if quality_clean and quality_clean != cleaned and len(quality_clean) >= 3:
         raw_variants.append(quality_clean)
 

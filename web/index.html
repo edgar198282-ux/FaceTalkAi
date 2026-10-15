@@ -5839,6 +5839,30 @@ function deduplicateFreeChannels(rows){
     return {...ch,backups,backup_count:backups.length};
   });
 }
+function recoverPlaylistLogos(rows,known){
+  const normalize=value=>String(value||'').toLowerCase()
+    .replace(/\b(?:4k|uhd|fhd|full\s*hd|hd|sd|2160p|1080p|720p|50\s*fps|60\s*fps)\b/gi,'')
+    .replace(/[^\p{L}\p{N}]+/gu,' ').replace(/\s+/g,' ').trim();
+  const byId=new Map(),byName=new Map();
+  const add=(map,key,logo)=>{if(!key)return;const values=map.get(key)||new Set();values.add(logo);map.set(key,values)};
+  for(const item of known){
+    const logo=String(item?.logo||'').trim();
+    if(!/^https?:\/\//i.test(logo))continue;
+    add(byId,String(item.tvg_id||'').split('@')[0].trim().toLowerCase(),logo);
+    const name=normalize(item.name);
+    if(name.length>=3)add(byName,name,logo);
+  }
+  return rows.map(row=>{
+    const item={...row};
+    const id=String(item.tvg_id||'').split('@')[0].trim().toLowerCase();
+    const matches=(id&&byId.get(id))||byName.get(normalize(item.name));
+    if(matches?.size!==1)return item;
+    const logo=[...matches][0];
+    if(!String(item.logo||'').trim())item.logo=logo;
+    else if(item.logo!==logo&&!item.logo_fallback)item.logo_fallback=logo;
+    return item;
+  });
+}
 async function load(){
   try{
     restoreCachedChannels();
@@ -5901,9 +5925,10 @@ async function load(){
         return {...item,logo:String(matched.logo||'').trim()||item.logo,
           epg_now:matched.epg_now||item.epg_now,epg_next:matched.epg_next||item.epg_next};
       });
-      // Edo playlist is authoritative for its own artwork and EPG.
-      // Never mix FREE artwork or guide data into personal playlist channels.
-      base=base.concat(ed.channels.map(x=>({
+      let previousLogos=[];
+      try{previousLogos=JSON.parse(localStorage.getItem(CHANNEL_CACHE_KEY)||'null')?.channels||[]}catch(e){}
+      const restored=recoverPlaylistLogos(ed.channels,[...(d.channels||[]),...ed.channels,...(Array.isArray(previousLogos)?previousLogos:[])]);
+      base=base.concat(restored.map(x=>({
         ...x,country:playlistCountry(x),personal:true,provider:'Edem'
       })));
       renderNamedPlaylistChips(ed.playlists||[],ed.channels);

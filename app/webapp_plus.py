@@ -3054,7 +3054,6 @@ async def _edem_logo_catalog():
     cache = _edem_external_logo_catalog
     if now - cache['ts'] < 21600:
         return cache
-    cache['ts'] = now
     by_id, by_name = {}, {}
     urls = (iptv.RU_LOGO_ID_CATALOG_URL, iptv.RU_LOGO_CATALOG_URL)
     try:
@@ -3081,7 +3080,11 @@ async def _edem_logo_catalog():
                     by_name.setdefault(key, set()).add(logo)
     except Exception as exc:
         logging.warning('EDEM_LOGO_CATALOG_FAILED error_type=%s', type(exc).__name__)
-    cache['by_id'], cache['by_name'] = by_id, by_name
+    if by_id or by_name:
+        cache['by_id'], cache['by_name'] = by_id, by_name
+        cache['ts'] = now
+    else:
+        cache['ts'] = now - 21600 + 60
     return cache
 
 def _match_edem_catalog_logos(channels, catalog):
@@ -3380,6 +3383,7 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
     # Use independent IPTV artwork even when a supplied logo URL is broken.
     # Leave existing playlist art as primary and add a verified fallback.
     if channels:
+        _fill_edem_logos_from_catalog(channels)
         _match_edem_catalog_logos(channels, await _edem_logo_catalog())
     # Share artwork between added playlists only; never borrow Free logos.
     # This does not change stream URLs, names, country filters or ownership.
@@ -3407,6 +3411,8 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                         candidates.update(playlist_logo_by_name.get(variant) or ())
             if len(candidates) == 1:
                 fallback = next(iter(candidates))
+        if not fallback:
+            fallback = iptv._epg_logo_for_channel(channel)
         if fallback and fallback != channel.get('logo'):
             channel['logo_fallback'] = fallback
         if not str(channel.get('logo') or '').strip() and fallback:
