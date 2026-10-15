@@ -104,6 +104,7 @@ body:not(.darkMode) #abajLauncher .abajLaunchTile{color:#102b46;background-color
 body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="settings"].abajGearReady{background-image:linear-gradient(0deg,#f7fbff 0%,#f7fbfff7 13%,#f7fbff59 24%,transparent 34%),url('/static/launcher-settings-background.webp')!important}
 body:not(.darkMode) #abajLauncher .abajLaunchName{color:#10314d;text-shadow:0 1px 6px #ffffffb3}
 body:not(.darkMode) #abajLauncher .abajLaunchDesc{color:#3e607a;text-shadow:0 1px 4px #ffffffb3}
+body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"] .abajLaunchName,body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="settings"] .abajLaunchName{color:#fff;text-shadow:0 2px 7px #00162dcc,0 0 3px #00162d}
 body:not(.darkMode) #abajLauncher .abajLaunchTile:after{border-color:#58a7d2;background:linear-gradient(145deg,#ffffffed,#e0f2ffed);box-shadow:inset 0 0 0 1px #fff,0 3px 12px #25678926}
 body:not(.darkMode) #abajLauncher .abajLaunchTile:before{border-color:#17608a}
 body:not(.darkMode) #abajLauncher .abajLaunchTile:hover{border-color:#198fc6;box-shadow:0 7px 24px #167eb833}
