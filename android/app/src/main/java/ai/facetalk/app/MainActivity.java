@@ -2758,7 +2758,16 @@ public class MainActivity extends Activity {
             mobileCinemaView.setBackgroundColor(Color.BLACK);
             fullscreenContainer.addView(mobileCinemaView,new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
-            mobileCinemaPlayer=new ExoPlayer.Builder(this).build();
+            // Prefer AVC/H.264 when KinoPub provides an alternative rendition.
+            // The Honor mobile HEVC Main10 decoder reported DECODING_FAILED;
+            // do not affect the independent Android TV player.
+            androidx.media3.exoplayer.trackselection.DefaultTrackSelector mobileSelector=
+                new androidx.media3.exoplayer.trackselection.DefaultTrackSelector(this);
+            mobileSelector.setParameters(mobileSelector.buildUponParameters()
+                .setPreferredVideoMimeType(MimeTypes.VIDEO_H264)
+                .setExceedRendererCapabilitiesIfNecessary(false));
+            mobileCinemaPlayer=new ExoPlayer.Builder(this)
+                .setTrackSelector(mobileSelector).build();
             mobileCinemaView.setPlayer(mobileCinemaPlayer);
             // Report real Media3 decoder/network failures to the existing Railway
             // cinema diagnostics instead of leaving a silent black screen.
