@@ -50,15 +50,6 @@ const css=`
 @media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{display:none}}
 /* Subtle drifting cloud haze confined to the upper-left mountain picture.
    Transparent overlay: the original mountains remain visible, with no duplicate imagery. */
-/* Precisely positioned cloud movement: cinema sky and upper-left mountain TV panel. */
-#abajLauncher .abajLaunchTile .abajMountainClouds{position:absolute;display:block;pointer-events:none;z-index:2;overflow:hidden;isolation:isolate}
-#abajLauncher .abajLaunchTile[data-target="cinema"] .abajMountainClouds{left:4%;top:4%;width:81%;height:29%}
-#abajLauncher .abajLaunchTile[data-target="iptv"] .abajMountainClouds{left:37%;top:12%;width:19%;height:25%}
-#abajLauncher .abajMountainClouds:before,#abajLauncher .abajMountainClouds:after{content:'';display:block;position:absolute;left:-65%;top:12%;width:75%;height:42%;border-radius:50%;background:radial-gradient(ellipse at center,rgba(248,251,255,.56) 0%,rgba(240,247,255,.34) 33%,rgba(237,246,255,.10) 60%,transparent 76%);filter:blur(2px);animation:abajMountainCloudDrift 8s linear infinite;will-change:transform}
-#abajLauncher .abajMountainClouds:after{top:52%;width:58%;height:33%;opacity:.72;animation-duration:12s;animation-delay:-5s}
-@keyframes abajMountainCloudDrift{0%{transform:translate3d(0,0,0)}100%{transform:translate3d(245%,0,0)}}
-#abajLauncher[hidden] .abajMountainClouds:before,#abajLauncher[hidden] .abajMountainClouds:after{animation-play-state:paused}
-@media(prefers-reduced-motion:reduce){#abajLauncher .abajMountainClouds{display:none}}
 /* Keep the lighting layers over the artwork but behind the IPTV title. */
 #abajLauncher .abajLaunchTile[data-target="iptv"] .abajSceneMotion{z-index:1;isolation:isolate}
 #abajLauncher .abajLaunchTile[data-target="iptv"] .abajLaunchText{z-index:3}
@@ -131,8 +122,7 @@ for(const tile of root.querySelectorAll('.abajLaunchTile')){
 const motion=document.createElement('span');motion.className='abajSceneMotion';motion.setAttribute('aria-hidden','true');
 const accent=document.createElement('i');accent.className=tile.dataset.target==='cinema'?'abajSceneSun':tile.dataset.target==='iptv'?'abajSceneWater':'abajSceneGear';
 motion.appendChild(accent);
-if(tile.dataset.target==='cinema'){const clouds=document.createElement('i');clouds.className='abajMountainClouds';motion.appendChild(clouds);}
-if(tile.dataset.target==='iptv'){const backlight=document.createElement('i');backlight.className='abajTvBacklight';motion.appendChild(backlight);const screen=document.createElement('i');screen.className='abajTvScreenMotion';motion.appendChild(screen);const clouds=document.createElement('i');clouds.className='abajMountainClouds';motion.appendChild(clouds);}
+if(tile.dataset.target==='iptv'){const backlight=document.createElement('i');backlight.className='abajTvBacklight';motion.appendChild(backlight);const screen=document.createElement('i');screen.className='abajTvScreenMotion';motion.appendChild(screen);}
 tile.insertBefore(motion,tile.firstChild);
 }
 // A true dolphin dive must be a rendered sequence, not a rotated flat PNG.
