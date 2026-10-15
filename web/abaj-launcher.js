@@ -238,7 +238,7 @@ function createSettingsGear(tile,root){
   image.onload=()=>{
    if(failed||!tile.isConnected||image.naturalWidth!==w||image.naturalHeight!==h){failed=true;return}
    if(++loaded!==3)return;
-   const ctx=gear.getContext('2d');if(!ctx)return;repaired=repairSettingsGear(artwork,source);ctx.drawImage(repaired,0,0);
+   const ctx=gear.getContext('2d');if(!ctx)return;repaired=repairSettingsGear(artwork,source);ctx.drawImage(repaired,0,0);ctx.save();ctx.globalCompositeOperation='source-atop';const jewel=ctx.createRadialGradient(275,277,5,275,277,58);jewel.addColorStop(0,'#a33a4cbb');jewel.addColorStop(.72,'#7e2035b0');jewel.addColorStop(1,'#6b1c3000');ctx.fillStyle=jewel;ctx.beginPath();ctx.arc(275,277,58,0,Math.PI*2);ctx.fill();ctx.restore();
    ready=true;tile.insertBefore(gear,tile.querySelector('.abajLaunchText'));align();tile.classList.add('abajGearReady');
   };
   image.onerror=()=>{failed=true};image.src=url;
