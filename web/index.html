@@ -1785,6 +1785,13 @@ body:not(.darkMode) .cinemaDetailFacts{background:rgba(235,247,255,.65);border-c
 #playerView.open:not(.cinemaPlayback) .playerBrand{pointer-events:none!important}
 #playerView.open:not(.cinemaPlayback) .videoWrap:not(.frameReady) .playerTop,
 #playerView.open:not(.cinemaPlayback) .videoWrap:not(.frameReady) .playerBottom{pointer-events:auto}
+
+/* Keep IPTV loading art behind interactive controls in all fullscreen modes. */
+#playerView.open:not(.cinemaPlayback) .playerBrand{z-index:2!important;pointer-events:none!important}
+#playerView.open:not(.cinemaPlayback) .playerTop,
+#playerView.open:not(.cinemaPlayback) .playerBottom{z-index:2147483647!important}
+#playerView.open:not(.cinemaPlayback).showPureControls .playerTop,
+#playerView.open:not(.cinemaPlayback).showPureControls .playerBottom{opacity:1!important;pointer-events:auto!important}
 </style>
 
 
@@ -5672,6 +5679,36 @@ function handlePlayerSurfaceClick(event){
   showTvPlayerUi(true);
 }
 installPlayerTouchGestures();
+/* Capture IPTV taps before the loading logo/fullscreen overlays swallow clicks. */
+(function installIptvBufferingTap(){
+ const player=document.getElementById('playerView');
+ if(!player||player.dataset.bufferingTapReady)return;
+ player.dataset.bufferingTapReady='1';
+ let start=null,ignoreClickUntil=0;
+ player.addEventListener('touchstart',e=>{
+   if(nativeTv||e.touches.length!==1||!player.classList.contains('open')||player.classList.contains('cinemaPlayback'))return;
+   if(e.target.closest?.('button,select,input,.playerTop,.playerBottom,.channelRail,.playerPrimaryControls,.playerTimelineWrap'))return;
+   start={x:e.touches[0].clientX,y:e.touches[0].clientY,time:Date.now()};
+ },{capture:true,passive:true});
+ player.addEventListener('touchend',e=>{
+   if(!start||!e.changedTouches.length)return;
+   const p=e.changedTouches[0],d=Math.hypot(p.clientX-start.x,p.clientY-start.y),elapsed=Date.now()-start.time;
+   start=null;
+   if(d>14||elapsed>650||nativeTv||!player.classList.contains('open')||player.classList.contains('cinemaPlayback'))return;
+   const wrap=player.querySelector('.videoWrap');
+   if(wrap?.classList.contains('frameReady'))return;
+   ignoreClickUntil=Date.now()+600;
+   e.preventDefault();
+   e.stopPropagation();
+   if(player.classList.contains('pureFullscreen'))togglePureFullscreenControls();
+   else toggleMobileTvPlayerControls();
+ },{capture:true,passive:false});
+ player.addEventListener('click',e=>{
+   if(Date.now()>ignoreClickUntil)return;
+   if(e.target.closest?.('button,select,input,.playerTop,.playerBottom,.channelRail'))return;
+   e.stopPropagation();
+ },true);
+})();
 function addRecent(id,deferSync=false){
   recent=[id,...recent.filter(x=>x!==id)].slice(0,30);
   saveRecent(deferSync);
