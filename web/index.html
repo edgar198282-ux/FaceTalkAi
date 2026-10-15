@@ -1780,6 +1780,11 @@ body:not(.darkMode) .cinemaStatus{color:#668ba2!important}
 .cinemaFactIcon{width:24px;min-width:24px;text-align:center;font-size:18px;line-height:1.3}
 @media(max-width:760px){.cinemaDetailFacts{padding:8px 12px!important;grid-template-columns:104px minmax(0,1fr)!important;column-gap:10px!important;font-size:14px!important}.cinemaFactIcon{min-width:20px;width:20px;font-size:15px}}
 body:not(.darkMode) .cinemaDetailFacts{background:rgba(235,247,255,.65);border-color:rgba(78,121,146,.26)}
+
+/* IPTV: loading logo must never block taps or hide the playback toolbar. */
+#playerView.open:not(.cinemaPlayback) .playerBrand{pointer-events:none!important}
+#playerView.open:not(.cinemaPlayback) .videoWrap:not(.frameReady) .playerTop,
+#playerView.open:not(.cinemaPlayback) .videoWrap:not(.frameReady) .playerBottom{pointer-events:auto}
 </style>
 
 
@@ -5637,6 +5642,8 @@ function installPlayerTouchGestures(){
 }
 function dismissMobilePlayerLoading(event){
   if(event){event.preventDefault();event.stopPropagation()}
+  const activePlayer=document.getElementById('playerView');
+  if(activePlayer?.classList.contains('open')&&!activePlayer.classList.contains('cinemaPlayback')){handlePlayerSurfaceClick(null);return;}
   if(Date.now()-pureTapHandledAt<450)return;
   const player=document.getElementById('playerView');
   if(!player||!player.classList.contains('open'))return;
@@ -5655,8 +5662,7 @@ function handlePlayerSurfaceClick(event){
   const player=document.getElementById('playerView');
   if(event&&event.target&&event.target.closest&&event.target.closest('button,select,input,.channelRail'))return;
   if(player&&player.classList.contains('pureFullscreen')){
-    if(!player.querySelector('.videoWrap')?.classList.contains('frameReady'))showPureFullscreenControls();
-    else togglePureFullscreenControls();
+    togglePureFullscreenControls();
     return;
   }
   if(player&&player.classList.contains('open')&&!player.classList.contains('cinemaPlayback')){
@@ -9358,20 +9364,6 @@ function toggleMobileTvPlayerControls(){
   if(nativeTv)return;
   const player=document.getElementById('playerView');
   if(!player||!player.classList.contains('open')||player.classList.contains('cinemaPlayback'))return;
-  const loadingWrap=player.querySelector('.videoWrap');
-  const loadingBrand=player.querySelector('.playerBrand');
-  if(loadingBrand&&loadingWrap&&!loadingWrap.classList.contains('frameReady')){
-    if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
-    if(loadingBrand.style.display!=='none'){
-      loadingBrand.style.display='none';
-      document.body.classList.remove('playerClean');
-      showTvPlayerUi(true);
-    }else{
-      loadingBrand.style.display='flex';
-      document.body.classList.add('playerClean');
-    }
-    return;
-  }
   if(tvPlayerUiTimer){clearTimeout(tvPlayerUiTimer);tvPlayerUiTimer=null}
   if(document.body.classList.contains('playerClean')){
     document.body.classList.remove('playerClean');
