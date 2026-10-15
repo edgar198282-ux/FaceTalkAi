@@ -542,7 +542,7 @@ function createCinemaScene(tile,root){
   if(document.body.classList.contains('darkMode')){
    gradient.addColorStop(0,'#010b1900');gradient.addColorStop(.58,'#010b1900');gradient.addColorStop(1,'#010b19b3');
   }else{
-   gradient.addColorStop(0,'#f7fbff00');gradient.addColorStop(.32,'#f7fbff00');gradient.addColorStop(.52,'#f7fbff59');gradient.addColorStop(.74,'#f7fbfff7');gradient.addColorStop(1,'#f7fbff');
+   gradient.addColorStop(0,'#f7fbff00');gradient.addColorStop(.66,'#f7fbff00');gradient.addColorStop(.76,'#f7fbff59');gradient.addColorStop(.87,'#f7fbfff7');gradient.addColorStop(1,'#f7fbff');
   }
   ctx.fillStyle=gradient;ctx.fillRect(0,0,w,h);
  }
