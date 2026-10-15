@@ -9101,6 +9101,15 @@ async function syncMobileLandscapePlayerUi(){
 
   if(active&&landscape){
     document.body.classList.add('mobileLandscapePlayer');
+    // Cinema already uses an app-level player. Avoid stacking browser and native
+    // fullscreen transitions during rotation, which exposes partial blue/black frames.
+    if(player.classList.contains('cinemaPlayback')){
+      player.dataset.orientationFullscreen='1';
+      player.classList.add('pureFullscreen','appFullscreen');
+      document.body.classList.add('playerFullscreenActive');
+      player.classList.remove('videoFill');
+      return;
+    }
     player.dataset.orientationFullscreen='1';
     if(!player.classList.contains('pureFullscreen')){
       await enterPureFullscreen();
@@ -9117,7 +9126,10 @@ async function syncMobileLandscapePlayerUi(){
   if(player.dataset.orientationFullscreen==='1'){
     delete player.dataset.orientationFullscreen;
     if(player.classList.contains('pureFullscreen')){
-      await exitPureFullscreen();
+      if(player.classList.contains('cinemaPlayback')){
+        player.classList.remove('pureFullscreen','appFullscreen','showPureControls');
+        document.body.classList.remove('playerFullscreenActive','playerClean');
+      }else await exitPureFullscreen();
     }else if(player.classList.contains('appFullscreen')){
       setAppFullscreen(false);
     }
