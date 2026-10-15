@@ -102,9 +102,7 @@ body:not(.darkMode) #abajLauncher .abajLaunchBrand b{color:#008fc8}
 body:not(.darkMode) #abajLauncher .abajLaunchTitle{color:#386681}
 body:not(.darkMode) #abajLauncher .abajLaunchTile{color:#102b46;background-color:#f7fbff;background-image:linear-gradient(0deg,#f7fbff 0%,#f7fbfff7 13%,#f7fbff59 24%,transparent 34%),var(--tile-bg);border-color:#88bddc;box-shadow:inset 0 0 0 1px #ffffffb3,0 7px 24px #245b8226}
 body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="settings"].abajGearReady{background-image:linear-gradient(0deg,#f7fbff 0%,#f7fbfff7 13%,#f7fbff59 24%,transparent 34%),url('/static/launcher-settings-background.webp')!important}
-body:not(.darkMode) #abajLauncher .abajLaunchTile .abajLaunchText{background:linear-gradient(90deg,#f7fbfff2 0%,#f7fbffdb 75%,#f7fbff00 100%);border-radius:10px;padding:5px 10px 5px 0;max-width:calc(100% - 55px)}
 body:not(.darkMode) #abajLauncher .abajLaunchName{color:#10314d;text-shadow:0 1px 6px #ffffffb3}
-body:not(.darkMode) #abajLauncher .abajLaunchTile .abajLaunchName{color:#10314d!important;text-shadow:0 1px 5px #fff,0 0 8px #fff!important}
 body:not(.darkMode) #abajLauncher .abajLaunchDesc{color:#3e607a;text-shadow:0 1px 4px #ffffffb3}
 body:not(.darkMode) #abajLauncher .abajLaunchTile:after{border-color:#58a7d2;background:linear-gradient(145deg,#ffffffed,#e0f2ffed);box-shadow:inset 0 0 0 1px #fff,0 3px 12px #25678926}
 body:not(.darkMode) #abajLauncher .abajLaunchTile:before{border-color:#17608a}
