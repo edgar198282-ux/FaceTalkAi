@@ -36,7 +36,8 @@ const css=`
 .abajLaunchTile[data-target="cinema"] .abajSceneSun{left:35%;top:19%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff5b34d 0%,#ffbf4440 15%,#ffb12a16 39%,transparent 69%);mix-blend-mode:screen;animation:abajSunDrift 32s ease-in-out infinite}
 #abajLauncher .abajLaunchTile[data-target="cinema"].abajCinemaSceneReady{animation:none}
 .abajCinemaScene{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
-.abajCinemaScene[hidden]{display:none}
+.abajCinemaScene[hidden],.abajIptvScenes[hidden]{display:none}
+.abajIptvScenes{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
 .abajCinemaSceneReady .abajSceneSun{display:none}
 .abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff25,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
 /* Subtle blue TV backlight, confined to the right-side TV artwork. */
@@ -228,6 +229,131 @@ function createFootballScreen(tile,root){
   reset(){departing=false;sync()}
  };
 }
+function createIptvScenes(tile,root){
+ const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+ if(!ctx)return;
+ canvas.className='abajIptvScenes';canvas.setAttribute('aria-hidden','true');
+ const artwork=new Image(),reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
+ let ready=false,visible=true,suspended=false,frame=0,last=0,painted=0,elapsed=0;
+ const panels=[
+  {type:'lake',box:[294,76,153,119],corners:[294,94,447,76,447,191,294,195]},
+  {type:'concert',box:[294,202,92,87],corners:[294,204,386,202,386,288,294,287]},
+  {type:'dolphin',box:[394,198,98,94],corners:[394,201,492,198,492,291,394,289]},
+  {type:'city',box:[500,197,109,100],corners:[500,199,609,197,609,296,500,293]},
+  {type:'lion',box:[619,195,67,105],corners:[619,196,686,195,686,300,619,297]},
+  {type:'forest',box:[696,192,44,110],corners:[696,194,740,192,740,302,696,300]},
+  {type:'news',box:[593,44,147,142],corners:[593,63,740,44,740,181,593,186]}
+ ];
+ function clipPanel(p){
+  ctx.beginPath();for(let i=0;i<8;i+=2)i?ctx.lineTo(p.corners[i],p.corners[i+1]):ctx.moveTo(p.corners[i],p.corners[i+1]);ctx.closePath();ctx.clip();
+ }
+ function displacement(type,x,y,t){
+  if(type==='dolphin'){
+   const weight=Math.exp(-Math.pow((x-441)/37,4)-Math.pow((y-244)/32,4));
+   return [weight*(2.7*Math.sin(t*1.25)+1.7*Math.sin(t*2.5+(x-400)*.065)),weight*(-2.5*Math.sin(t*1.25)+1.8*Math.sin(t*2.5+(x-400)*.075))];
+  }
+  if(type==='lion'){
+   const weight=Math.exp(-Math.pow((x-652)/25,4)-Math.pow((y-250)/42,4));
+   return [weight*1.35*Math.sin(t*.85),weight*(.65*Math.sin(t*1.8)+(y-249)*.015*Math.sin(t*1.8))];
+  }
+  if(type==='forest')return [1.8*Math.sin(t*1.5+y*.075)*Math.max(0,1-(y-192)/65),.6*Math.sin(t+y*.06)];
+  return [.75*Math.sin(t*2.1+y*1.1)*Math.max(0,(y-168)/27),.3*Math.sin(t*1.8+x*.16)*Math.max(0,(y-168)/27)];
+ }
+ function mesh(p,t){
+  const [x0,y0,w,h]=p.box,n=6,points=[];
+  for(let j=0;j<=n;j++)for(let i=0;i<=n;i++){
+   const x=x0+w*i/n,y=y0+h*j/n,edge=Math.sin(Math.PI*i/n)*Math.sin(Math.PI*j/n),d=displacement(p.type,x,y,t);
+   points.push([x,y,x+d[0]*edge,y+d[1]*edge]);
+  }
+  function triangle(a,b,c){
+   const sx1=b[0]-a[0],sy1=b[1]-a[1],sx2=c[0]-a[0],sy2=c[1]-a[1],det=sx1*sy2-sx2*sy1;
+   const dx1=b[2]-a[2],dy1=b[3]-a[3],dx2=c[2]-a[2],dy2=c[3]-a[3];
+   const m0=(dx1*sy2-dx2*sy1)/det,m1=(dy1*sy2-dy2*sy1)/det,m2=(dx2*sx1-dx1*sx2)/det,m3=(dy2*sx1-dy1*sx2)/det;
+   ctx.save();ctx.beginPath();ctx.moveTo(a[2],a[3]);ctx.lineTo(b[2],b[3]);ctx.lineTo(c[2],c[3]);ctx.closePath();ctx.clip();
+   ctx.transform(m0,m1,m2,m3,a[2]-m0*a[0]-m2*a[1],a[3]-m1*a[0]-m3*a[1]);ctx.drawImage(artwork,0,0);ctx.restore();
+  }
+  for(let j=0;j<n;j++)for(let i=0;i<n;i++){
+   const a=points[j*(n+1)+i],b=points[j*(n+1)+i+1],c=points[(j+1)*(n+1)+i],d=points[(j+1)*(n+1)+i+1];
+   triangle(a,b,c);triangle(b,d,c);
+  }
+ }
+ function draw(){
+  const w=tile.clientWidth,h=tile.clientHeight;if(!ready||!w||!h)return;
+  const dpr=Math.min(window.devicePixelRatio||1,2),scale=Math.max(w/786,h/510);
+  if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}
+  const pos=getComputedStyle(tile).backgroundPosition.split(',').pop().trim().split(/\s+/),ox=(w-786*scale)*parseFloat(pos[0])/100,oy=(h-510*scale)*parseFloat(pos[1])/100,t=elapsed/1000;
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);
+  for(const p of panels){
+   ctx.save();clipPanel(p);
+   if(['lake','dolphin','lion','forest'].includes(p.type))mesh(p,t);else ctx.drawImage(artwork,0,0);
+   if(p.type==='lion'){
+    const phase=t%5.7,blink=Math.max(0,1-Math.abs(phase-4.8)/.14);
+    if(blink>0){
+     const dx=1.2*Math.sin(t*.85),dy=.6*Math.sin(t*1.8);
+     ctx.strokeStyle='#b68148';ctx.lineWidth=3.6*blink;ctx.lineCap='round';
+     for(const x of [649,665]){ctx.beginPath();ctx.moveTo(x-2.6+dx,240+dy);ctx.quadraticCurveTo(x+dx,241+dy,x+2.5+dx,240+dy);ctx.stroke()}
+    }
+   }
+   if(p.type==='dolphin'){
+    ctx.fillStyle='#b9f4ff';
+    for(let i=0;i<7;i++){
+     const phase=(t*.12+i*.143)%1,x=400+i*13+1.4*Math.sin(t+i),y=292-phase*92;
+     ctx.globalAlpha=Math.sin(phase*Math.PI)*.3;ctx.beginPath();ctx.arc(x,y,.7+(i%3)*.35,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+   }
+   if(p.type==='concert'){
+    ctx.globalCompositeOperation='screen';
+    for(let i=0;i<3;i++){
+     const x=335+Math.sin(t*.8+i*2)*34,g=ctx.createLinearGradient(335,258,x,204);
+     g.addColorStop(0,'#9deaff00');g.addColorStop(1,['#b640ff90','#40ceff90','#ffa64680'][i]);
+     ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(335,258);ctx.lineTo(x-4,202);ctx.lineTo(x+5,202);ctx.closePath();ctx.fill();
+    }
+   }
+   if(p.type==='city'||p.type==='news'){
+    ctx.globalCompositeOperation='screen';
+    const count=p.type==='city'?12:6;
+    for(let i=0;i<count;i++){
+     const x=p.type==='city'?505+(i*17)%99:600+(i*29)%130,y=p.type==='city'?238+(i*13)%45:70+(i*31)%94;
+     if(p.type==='news'&&x>621&&x<700)continue;
+     ctx.globalAlpha=.15+.35*(1+Math.sin(t*(.8+i*.11)+i*2))/2;ctx.fillStyle=p.type==='city'?'#ffd17c':'#41aaff';ctx.fillRect(x,y,1.3,2.4);
+    }
+   }
+   ctx.restore();
+  }
+  ctx.restore();
+  ctx.globalCompositeOperation='source-atop';const gradient=ctx.createLinearGradient(0,0,0,h);
+  if(document.body.classList.contains('darkMode')){
+   gradient.addColorStop(0,'#010b1900');gradient.addColorStop(.58,'#010b1900');gradient.addColorStop(1,'#010b19b3');
+  }else{
+   gradient.addColorStop(0,'#f7fbff00');gradient.addColorStop(.32,'#f7fbff00');gradient.addColorStop(.52,'#f7fbff59');gradient.addColorStop(.74,'#f7fbfff7');gradient.addColorStop(1,'#f7fbff');
+  }
+  ctx.fillStyle=gradient;ctx.fillRect(0,0,w,h);ctx.globalCompositeOperation='source-over';
+ }
+ function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected&&!reduced.matches}
+ function tick(now){
+  frame=0;if(!active()){last=0;return}
+  if(last)elapsed+=Math.min(now-last,80);last=now;
+  if(now-painted>=32){draw();painted=now}frame=requestAnimationFrame(tick);
+ }
+ function sync(){
+  if(frame)cancelAnimationFrame(frame);frame=0;last=0;painted=0;canvas.hidden=reduced.matches;
+  if(active()){draw();frame=requestAnimationFrame(tick)}
+ }
+ artwork.onload=()=>{
+  if(artwork.naturalWidth!==786||artwork.naturalHeight!==510||!tile.isConnected)return;
+  ready=true;tile.insertBefore(canvas,tile.firstChild);sync();
+ };
+ artwork.src='/static/launcher-iptv-20261014.webp';
+ new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['hidden']});
+ new MutationObserver(()=>{if(active())draw()}).observe(document.body,{attributes:true,attributeFilter:['class']});
+ if(typeof ResizeObserver!=='undefined')new ResizeObserver(sync).observe(tile);else window.addEventListener('resize',sync,{passive:true});
+ if(typeof IntersectionObserver!=='undefined')new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;sync()}).observe(tile);
+ document.addEventListener('visibilitychange',sync);
+ window.addEventListener('pagehide',()=>{suspended=true;sync()});window.addEventListener('pageshow',()=>{suspended=false;sync()});
+ if(reduced.addEventListener)reduced.addEventListener('change',sync);else reduced.addListener(sync);
+}
+
 function createCinemaScene(tile,root){
  const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
  if(!ctx)return;
@@ -379,6 +505,7 @@ if(tile.dataset.target==='iptv'){const backlight=document.createElement('i');bac
 tile.insertBefore(motion,tile.firstChild);
 }
 createCinemaScene(root.querySelector('[data-target="cinema"]'),root);
+createIptvScenes(root.querySelector('[data-target="iptv"]'),root);
 const footballScreen=createFootballScreen(root.querySelector('[data-target="iptv"]'),root);
 
 // Progressive enhancement: only replace the original settings art if BOTH layers load.
