@@ -44,6 +44,7 @@ const css=`
 /* Visible TV picture motion: broad moving light confined to the TV side of the card. */
 /* Phone recording: TV football panel x=325..418,y=650..735 within tile x=22..554,y=613..935. Confine motion to that cell only. */
 .abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{position:absolute;left:57%;top:11.5%;width:17.5%;height:26%;z-index:2;overflow:hidden;pointer-events:none;opacity:1;clip-path:inset(1.5% 1.5% 2% 1.5%)}
+.abajLaunchTile[data-target="iptv"] .abajTvLiveVideo{position:absolute;inset:0;width:100%;height:100%;z-index:3;object-fit:fill;pointer-events:none;opacity:.85;mix-blend-mode:screen}
 .abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(0,65,130,.02),rgba(10,155,235,.15) 48%,rgba(0,48,90,.02));mix-blend-mode:screen;animation:abajTvLiveBrightness 5s ease-in-out infinite alternate}
 @keyframes abajTvLiveBrightness{0%{opacity:.15}100%{opacity:.85}}
 .abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:before{content:'';position:absolute;inset:-15%;background:linear-gradient(105deg,transparent 23%,rgba(70,194,255,.02) 33%,rgba(150,226,255,.46) 48%,rgba(65,185,255,.07) 60%,transparent 76%);transform:translateX(-115%);animation:abajTvPictureSweep 5s linear infinite;mix-blend-mode:screen}
@@ -129,7 +130,55 @@ tile.insertBefore(motion,tile.firstChild);
 // Enable a seamless full-card video only if the approved asset exists.
 // The old optional dolphin .webm does not exist in this repository.
 // Do not request a missing video or cover the photo with a broken player.
-// Keep the original football artwork and the single click-to-fly ball; no duplicate football video overlay.
+// Real-time transparent video stream: moving stadium illumination on the existing football image.
+// It never paints a ball or replaces the underlying photograph.
+(function mountIptvFootballVideo(){
+ const tile=root.querySelector('.abajLaunchTile[data-target="iptv"]');
+ if(!tile||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+ const host=tile.querySelector('.abajTvScreenMotion');
+ if(!host||!HTMLCanvasElement.prototype.captureStream)return;
+ const canvas=document.createElement('canvas');canvas.width=160;canvas.height=96;
+ const ctx=canvas.getContext('2d',{alpha:true});
+ if(!ctx)return;
+ const video=document.createElement('video');
+ video.className='abajTvLiveVideo';
+ video.muted=true;video.defaultMuted=true;video.playsInline=true;
+ video.setAttribute('muted','');video.setAttribute('playsinline','');video.setAttribute('aria-hidden','true');
+ let stream;
+ try{stream=canvas.captureStream(15);video.srcObject=stream;host.appendChild(video)}
+ catch(_){return}
+ let frame=0,raf=0,last=0;
+ function paint(time){
+  raf=0;
+  if(root.hidden||!tile.isConnected)return;
+  if(time-last>=65){
+   last=time;frame++;
+   ctx.clearRect(0,0,160,96);
+   const wave=Math.sin(frame*.105),drift=Math.sin(frame*.047);
+   const glow=ctx.createLinearGradient(0,0,160,96);
+   glow.addColorStop(0,'rgba(30,160,255,0)');
+   glow.addColorStop(Math.max(.05,Math.min(.9,.45+drift*.22)),'rgba(125,225,255,'+(.08+.06*wave)+')');
+   glow.addColorStop(1,'rgba(25,125,255,0)');
+   ctx.fillStyle=glow;ctx.fillRect(0,0,160,96);
+   // A subtle moving floodlight beam; keep the original football and players visible.
+   ctx.save();ctx.translate(75+drift*32,40);ctx.rotate(-.28);
+   const beam=ctx.createLinearGradient(-22,0,22,0);
+   beam.addColorStop(0,'rgba(155,230,255,0)');
+   beam.addColorStop(.5,'rgba(155,230,255,.14)');
+   beam.addColorStop(1,'rgba(155,230,255,0)');
+   ctx.fillStyle=beam;ctx.fillRect(-22,-65,44,130);ctx.restore();
+  }
+  raf=requestAnimationFrame(paint);
+ }
+ function sync(){
+  if(root.hidden){if(raf)cancelAnimationFrame(raf);raf=0;video.pause()}
+  else{video.play().catch(()=>{});if(!raf)raf=requestAnimationFrame(paint)}
+ }
+ const observer=new MutationObserver(sync);
+ observer.observe(root,{attributes:true,attributeFilter:['hidden']});
+ sync();
+})();
+
 // Progressive enhancement: only replace the original settings art if BOTH layers load.
 const settingsTile=root.querySelector('.abajLaunchTile[data-target="settings"]');
 if(settingsTile){
