@@ -238,7 +238,7 @@ function createSettingsGear(tile,root){
   image.onload=()=>{
    if(failed||!tile.isConnected||image.naturalWidth!==w||image.naturalHeight!==h){failed=true;return}
    if(++loaded!==3)return;
-   const ctx=gear.getContext('2d');if(!ctx)return;repaired=repairSettingsGear(artwork,source);ctx.drawImage(repaired,0,0);ctx.save();ctx.globalCompositeOperation='source-atop';const jewel=ctx.createRadialGradient(275,277,5,275,277,58);jewel.addColorStop(0,'#a33a4cbb');jewel.addColorStop(.72,'#7e2035b0');jewel.addColorStop(1,'#6b1c3000');ctx.fillStyle=jewel;ctx.beginPath();ctx.arc(275,277,58,0,Math.PI*2);ctx.fill();ctx.restore();
+   const ctx=gear.getContext('2d');if(!ctx)return;repaired=repairSettingsGear(artwork,source);ctx.drawImage(repaired,0,0);ctx.save();ctx.beginPath();ctx.arc(275,277,31,0,Math.PI*2);ctx.clip();const ruby=ctx.createLinearGradient(248,248,304,306);ruby.addColorStop(0,'#f35c72');ruby.addColorStop(.35,'#ac173d');ruby.addColorStop(.75,'#6c0d2b');ruby.addColorStop(1,'#35091b');ctx.fillStyle=ruby;ctx.fillRect(244,246,64,64);ctx.beginPath();ctx.ellipse(264,262,10,5,-.65,0,Math.PI*2);ctx.fillStyle='#ffd1d5aa';ctx.fill();ctx.restore();
    ready=true;tile.insertBefore(gear,tile.querySelector('.abajLaunchText'));align();tile.classList.add('abajGearReady');
   };
   image.onerror=()=>{failed=true};image.src=url;
