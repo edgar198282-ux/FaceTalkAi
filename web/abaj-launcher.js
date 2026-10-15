@@ -42,8 +42,8 @@ const css=`
 @media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajTvBacklight{animation:none;opacity:.28}}
 /* Motion stays inside the television's existing picture panels, without changing the artwork. */
 /* Visible TV picture motion: broad moving light confined to the TV side of the card. */
-/* Phone recording: TV football panel x=325..418,y=650..735 within tile x=22..554,y=613..935. Confine motion to that cell only. */
-.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{position:absolute;left:57%;top:11.5%;width:17.5%;height:26%;z-index:2;overflow:hidden;pointer-events:none;opacity:1;clip-path:inset(1.5% 1.5% 2% 1.5%)}
+/* Current artwork has a dark upper-middle TV panel, not football. Confine the animated light to that dark panel without adding any ball. */
+.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{position:absolute;left:60.3%;top:11.5%;width:12.7%;height:25%;z-index:2;overflow:hidden;pointer-events:none;opacity:1;clip-path:inset(2% 2% 2% 2%)}
 .abajLaunchTile[data-target="iptv"] .abajTvLiveVideo{position:absolute;inset:0;width:100%;height:100%;z-index:3;object-fit:fill;pointer-events:none;opacity:.85;mix-blend-mode:screen}
 .abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(0,65,130,.02),rgba(10,155,235,.15) 48%,rgba(0,48,90,.02));mix-blend-mode:screen;animation:abajTvLiveBrightness 5s ease-in-out infinite alternate}
 @keyframes abajTvLiveBrightness{0%{opacity:.15}100%{opacity:.85}}
@@ -130,7 +130,7 @@ tile.insertBefore(motion,tile.firstChild);
 // Enable a seamless full-card video only if the approved asset exists.
 // The old optional dolphin .webm does not exist in this repository.
 // Do not request a missing video or cover the photo with a broken player.
-// Real-time transparent video stream: moving stadium illumination on the existing football image.
+// Transparent moving illumination on the existing dark TV panel; no football image is inserted.
 // It never paints a ball or replaces the underlying photograph.
 (function mountIptvFootballVideo(){
  const tile=root.querySelector('.abajLaunchTile[data-target="iptv"]');
