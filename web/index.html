@@ -17111,4 +17111,15 @@ body.darkMode .tvSearchInput::placeholder,body.dark-mode .tvSearchInput::placeho
 </body>
 </html>
 
-<style>#kinoPubAdminConnectBtn:disabled{opacity:.42;filter:grayscale(.75);cursor:not-allowed;box-shadow:none}</style>
+<style>#kinoPubAdminConnectBtn:disabled{opacity:.42;filter:grayscale(.75);cursor:not-allowed;box-shadow:none}
+/* IPTV should occupy the entire landscape viewport, without side gutters. */
+@media (orientation:landscape){
+ body.mobileLandscapePlayer .playerView.open:not(.cinemaPlayback) .videoWrap,
+ body.mobileLandscapePlayer .playerView.open:not(.cinemaPlayback) video{
+   width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;
+ }
+ body.mobileLandscapePlayer .playerView.open:not(.cinemaPlayback) video{
+   object-fit:cover!important;
+ }
+}
+</style>
