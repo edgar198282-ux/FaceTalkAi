@@ -1792,6 +1792,14 @@ body:not(.darkMode) .cinemaDetailFacts{background:rgba(235,247,255,.65);border-c
 #playerView.open:not(.cinemaPlayback) .playerBottom{z-index:2147483647!important}
 #playerView.open:not(.cinemaPlayback).showPureControls .playerTop,
 #playerView.open:not(.cinemaPlayback).showPureControls .playerBottom{opacity:1!important;pointer-events:auto!important}
+
+/* Keep IPTV and cinema loading artwork in one stable viewport during rotation. */
+@media (orientation:landscape){
+ body.mobileLandscapePlayer .playerView.open{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;transform:none!important}
+ body.mobileLandscapePlayer .playerView.open .videoWrap{min-width:0;min-height:0;overflow:hidden}
+ body.mobileLandscapePlayer .playerView.open .playerBrand{inset:0!important;width:100%!important;height:100%!important;transform:none!important}
+ body.mobileLandscapePlayer .playerView.open .playerLoadingLogo{width:min(18vh,112px)!important;height:min(18vh,112px)!important;max-width:112px!important;max-height:112px!important;object-fit:contain!important}
+}
 </style>
 
 
@@ -9111,12 +9119,11 @@ async function syncMobileLandscapePlayerUi(){
       return;
     }
     player.dataset.orientationFullscreen='1';
-    if(!player.classList.contains('pureFullscreen')){
-      await enterPureFullscreen();
-    }else{
-      player.classList.add('appFullscreen');
-      document.body.classList.add('playerFullscreenActive');
-    }
+    // For IPTV, avoid requesting a second browser/native fullscreen surface
+    // while Android is already rotating the WebView.
+    player.classList.add('pureFullscreen','appFullscreen');
+    document.body.classList.add('playerFullscreenActive');
+    player.classList.remove('videoFill');
     return;
   }
 
@@ -9126,7 +9133,7 @@ async function syncMobileLandscapePlayerUi(){
   if(player.dataset.orientationFullscreen==='1'){
     delete player.dataset.orientationFullscreen;
     if(player.classList.contains('pureFullscreen')){
-      if(player.classList.contains('cinemaPlayback')){
+      if(player.classList.contains('cinemaPlayback')||player.dataset.orientationFullscreen==='1'){
         player.classList.remove('pureFullscreen','appFullscreen','showPureControls');
         document.body.classList.remove('playerFullscreenActive','playerClean');
       }else await exitPureFullscreen();
