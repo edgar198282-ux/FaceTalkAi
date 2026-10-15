@@ -214,10 +214,12 @@ function repairSettingsGear(artwork,source){
  canvas.width=550;canvas.height=555;ctx.drawImage(artwork,0,0);
  ctx.save();ctx.globalCompositeOperation='destination-out';ctx.beginPath();
  ctx.moveTo(445,82);ctx.lineTo(505,82);ctx.lineTo(505,155);ctx.lineTo(491,155);ctx.lineTo(449,96);ctx.closePath();
- ctx.moveTo(440,483);ctx.lineTo(460,483);ctx.lineTo(460,535);ctx.lineTo(385,535);ctx.lineTo(397,507);ctx.closePath();ctx.fill();ctx.restore();
+ ctx.moveTo(440,483);ctx.lineTo(460,483);ctx.lineTo(460,535);ctx.lineTo(385,535);ctx.lineTo(397,507);ctx.closePath();
+ ctx.moveTo(83,467);ctx.lineTo(112,487);ctx.lineTo(156,513);ctx.lineTo(156,530);ctx.lineTo(75,530);ctx.closePath();ctx.fill();ctx.restore();
  ctx.save();ctx.globalCompositeOperation='destination-over';
  ctx.beginPath();ctx.moveTo(345,117);ctx.lineTo(399,92);ctx.quadraticCurveTo(415,86,438,89);ctx.quadraticCurveTo(445,89,449,96);ctx.lineTo(491,154);ctx.quadraticCurveTo(496,164,491,175);ctx.lineTo(462,213);ctx.lineTo(429,214);ctx.lineTo(421,185);ctx.lineTo(345,165);ctx.closePath();
- ctx.moveTo(290,468);ctx.lineTo(370,445);ctx.lineTo(392,492);ctx.quadraticCurveTo(397,506,387,514);ctx.lineTo(338,528);ctx.quadraticCurveTo(325,532,315,526);ctx.lineTo(284,484);ctx.closePath();ctx.clip();
+ ctx.moveTo(290,468);ctx.lineTo(370,445);ctx.lineTo(392,492);ctx.quadraticCurveTo(397,506,387,514);ctx.lineTo(338,528);ctx.quadraticCurveTo(325,532,315,526);ctx.lineTo(284,484);ctx.closePath();
+ ctx.moveTo(111,410);ctx.lineTo(166,449);ctx.lineTo(213,476);ctx.lineTo(180,509);ctx.quadraticCurveTo(170,518,158,511);ctx.lineTo(114,486);ctx.quadraticCurveTo(97,475,90,458);ctx.lineTo(101,438);ctx.closePath();ctx.clip();
  ctx.drawImage(source,850/1536*786,35/797*408,550/1536*786,555/797*408,0,0,550,555);ctx.restore();return canvas;
 }
 
