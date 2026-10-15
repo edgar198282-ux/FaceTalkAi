@@ -238,6 +238,33 @@ function createCinemaScene(tile,root){
  const ridge=new Path2D('M0 0H630V108L616 103 603 114 590 97 578 91 564 108 553 116 543 108 532 119 517 112 501 124 483 119 464 113 444 100 430 114 417 119 405 126 391 123 377 135 360 132 346 140 327 137 312 136 302 129 290 132 275 129 263 133 248 122 234 130 221 123 208 117 194 108 184 119 170 116 157 125 144 117 132 116 120 103 110 108 99 94 86 70 76 80 65 84 53 91 42 86 28 97 13 92 0 106Z');
  let ready=false,visible=true,suspended=false,frame=0,last=0,elapsed=0,w=0,h=0,dpr=1;
  const kernels=[[582,195,11,10],[602,191,12,11],[629,185,11,11],[644,190,12,11],[660,193,11,10],[679,196,11,10]].map(([x,y,kw,kh],i)=>({x,y,w:kw,h:kh,period:2.2+i*.19,delay:i*.37}));
+ const film=document.createElement('canvas'),filmCtx=film.getContext('2d');
+ const filmBands=[
+  [[456,302,329],[476,304,334],[506,310,341],[531,316,347]],
+  [[545,316,347],[579,321,352],[619,327,358],[655,333,363],[672,337,365]]
+ ];
+ function drawFilm(t){
+  if(!filmCtx)return;
+  for(const band of filmBands){
+   ctx.save();ctx.beginPath();
+   band.forEach(([x,top],i)=>i?ctx.lineTo(x,top):ctx.moveTo(x,top));
+   for(let i=band.length-1;i>=0;i--)ctx.lineTo(band[i][0],band[i][2]);
+   ctx.closePath();ctx.clip();ctx.globalAlpha=.78;
+   for(let i=0;i<band.length-1;i++){
+    const [x0,top0,bottom0]=band[i],[x1,top1,bottom1]=band[i+1];
+    for(let x=x0;x<x1;x++){
+     const p=(x-x0)/(x1-x0),top=top0+(top1-top0)*p,bottom=bottom0+(bottom1-bottom0)*p;
+     const u=((x+t*17)%film.width+film.width)%film.width;
+     ctx.save();ctx.transform(1,(top1-top0)/(x1-x0),0,(bottom-top)/32,x,top);
+     ctx.drawImage(film,Math.floor(u),0,1,32,0,0,1.15,32);ctx.restore();
+    }
+   }
+   ctx.globalAlpha=1;
+   const sheen=ctx.createLinearGradient(band[0][0],0,band[band.length-1][0],0);
+   sheen.addColorStop(0,'#ffc47532');sheen.addColorStop(.25,'#00000020');sheen.addColorStop(1,'#00000070');
+   ctx.fillStyle=sheen;ctx.fill();ctx.restore();
+  }
+ }
  function align(){
   w=tile.clientWidth;h=tile.clientHeight;if(!w||!h)return false;
   dpr=Math.min(window.devicePixelRatio||1,2);
@@ -263,6 +290,7 @@ function createCinemaScene(tile,root){
   glow.addColorStop(0,'rgba(255,247,171,.95)');glow.addColorStop(.22,'rgba(255,211,87,.62)');glow.addColorStop(1,'rgba(255,165,42,0)');
   ctx.globalAlpha=.5+strength*.5;ctx.fillStyle=glow;ctx.fillRect(277,sunY-48,96,96);
   ctx.beginPath();ctx.arc(325,sunY,8.5,0,Math.PI*2);ctx.fillStyle='#fffbd3';ctx.fill();ctx.restore();
+  drawFilm(t);
   for(const k of kernels){
    const phase=((t+k.delay)%k.period)/k.period;
    if(phase>.58)continue;
@@ -319,6 +347,11 @@ function createCinemaScene(tile,root){
    const pixels=c.getImageData(0,0,k.w,k.h),rgba=pixels.data;
    for(let i=0;i<rgba.length;i+=4)rgba[i+3]*=Math.max(0,Math.min(1,(rgba[i]-75)/45,(rgba[i+1]-42)/28,(rgba[i]-rgba[i+2]-20)/25));
    c.putImageData(pixels,0,0);
+  }
+  if(filmCtx){
+   const shots=[[0,65,220,150],[230,70,180,120],[55,190,230,153],[340,90,220,146],[240,200,180,120],[560,145,150,100]];
+   film.width=shots.length*48;film.height=32;filmCtx.fillStyle='#090c10';filmCtx.fillRect(0,0,film.width,32);
+   shots.forEach(([x,y,w,h],i)=>filmCtx.drawImage(artwork,x,y,w,h,i*48+2,0,44,32));
   }
   ready=true;tile.insertBefore(canvas,tile.firstChild);tile.classList.add('abajCinemaSceneReady');sync();
  };
