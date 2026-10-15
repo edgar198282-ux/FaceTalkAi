@@ -78,7 +78,7 @@ body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajIptvVi
 @media(min-width:651px){.abajLaunchTile[data-target="settings"]{background-size:cover,auto 90%;background-repeat:no-repeat;background-position:center,85% top}}
 @media(max-width:650px){
 #abajLauncher{height:100vh;height:100dvh;padding:0 13px max(14px,env(safe-area-inset-bottom));background-size:100% auto}
-.abajLaunchTop{min-height:90px;min-height:clamp(85px,12dvh,132px)}
+.abajLaunchTop{min-height:70px;min-height:clamp(65px,9dvh,100px)}
 .abajLaunchBrand{font-size:clamp(42px,11.4vw,67px);letter-spacing:.5px}
 .abajLaunchTitle{font-size:clamp(9px,2.8vw,14px);letter-spacing:clamp(1px,.5vw,2.5px);margin:9px 0 14px;white-space:nowrap}
 .abajLaunchTiles{display:flex;flex-direction:column;gap:10px;flex:1 0 auto;min-height:555px}
