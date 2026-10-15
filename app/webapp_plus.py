@@ -679,18 +679,20 @@ def _kinopub_walk(obj):
         for value in obj:
             yield from _kinopub_walk(value)
 
-def _kinopub_stream_from_obj(obj):
+def _kinopub_stream_from_obj(obj, preferred_format=None):
     if not isinstance(obj, dict):
         return ''
     url = obj.get('url')
     if isinstance(url, str) and url.startswith(('http://','https://')):
         return url
     if isinstance(url, dict):
-        for key in ('hls4','hls2','hls','http','dash'):
+        order = ([preferred_format] if preferred_format in ('hls','hls2','hls4','http') else []) + ['hls4','hls2','hls','http','dash']
+        for key in dict.fromkeys(order):
             value = url.get(key)
             if isinstance(value, str) and value.startswith(('http://','https://')):
                 return value
-    for key in ('hls4','hls2','hls','http','stream','stream_url','video_url'):
+    order = ([preferred_format] if preferred_format in ('hls','hls2','hls4','http') else []) + ['hls4','hls2','hls','http','stream','stream_url','video_url']
+    for key in dict.fromkeys(order):
         value = obj.get(key)
         if isinstance(value, str) and value.startswith(('http://','https://')):
             return value
@@ -1144,7 +1146,7 @@ async def api_kinopub_play(request):
                 'access_token':token,'file':file_token,'type':stream_type
             })
             if st < 400:
-                direct = _kinopub_stream_from_obj(video)
+                direct = _kinopub_stream_from_obj(video, stream_type)
                 if direct:
                     response = _kinopub_direct_stream_response(request, uid, direct)
                     if response is not None:
@@ -1159,14 +1161,14 @@ async def api_kinopub_play(request):
                         'access_token':token,'file':resolved_file,'type':stream_type
                     })
                     if st < 400:
-                        direct = _kinopub_stream_from_obj(video)
+                        direct = _kinopub_stream_from_obj(video, stream_type)
                         if direct:
                             response = _kinopub_direct_stream_response(request, uid, direct)
                             if response is not None:
                                 return response
             if requested_format != 'http':
                 for obj in _kinopub_walk(media):
-                    direct = _kinopub_stream_from_obj(obj)
+                    direct = _kinopub_stream_from_obj(obj, requested_format)
                     if direct:
                         response = _kinopub_direct_stream_response(request, uid, direct)
                         if response is not None:
@@ -1190,7 +1192,7 @@ async def api_kinopub_play(request):
                 file_token = resolved_file
             if requested_format != 'http':
                 for obj in _kinopub_walk(media):
-                    direct = _kinopub_stream_from_obj(obj)
+                    direct = _kinopub_stream_from_obj(obj, requested_format)
                     if direct:
                         response = _kinopub_direct_stream_response(request, uid, direct)
                         if response is not None:
@@ -1202,7 +1204,7 @@ async def api_kinopub_play(request):
                 'access_token':token,'file':file_token,'type':stream_type
             })
             if st < 400:
-                direct = _kinopub_stream_from_obj(video)
+                direct = _kinopub_stream_from_obj(video, stream_type)
                 if direct:
                     response = _kinopub_direct_stream_response(request, uid, direct)
                     if response is not None:
