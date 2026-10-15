@@ -17132,7 +17132,13 @@ body.darkMode .tvSearchInput::placeholder,body.dark-mode .tvSearchInput::placeho
    width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;
  }
  body.mobileLandscapePlayer .playerView.open:not(.cinemaPlayback) video{
-   object-fit:cover!important;
+   /* Preserve channel logos and broadcast captions at all four edges. */
+   object-fit:contain!important;
+   object-position:center center!important;
+ }
+ body.mobileLandscapePlayer .playerView.open:not(.cinemaPlayback) .videoWrap{
+   padding:0!important;margin:0!important;inset:0!important;
+   background:#000!important;
  }
 }
 </style>
