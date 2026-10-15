@@ -310,6 +310,9 @@ function createCinemaScene(tile,root){
   const edges=cloudCtx.createLinearGradient(0,0,630,0);
   edges.addColorStop(0,'#fff0');edges.addColorStop(.05,'#fff');edges.addColorStop(.95,'#fff');edges.addColorStop(1,'#fff0');
   cloudCtx.fillStyle=edges;cloudCtx.fillRect(0,0,630,110);
+  const cloudMask=document.createElement('canvas');cloudMask.width=630;cloudMask.height=110;
+  const maskCtx=cloudMask.getContext('2d');maskCtx.translate(0,-32);maskCtx.fillStyle='#fff';maskCtx.fill(ridge);
+  cloudCtx.drawImage(cloudMask,0,0);
   for(const k of kernels){
    k.sprite=document.createElement('canvas');k.sprite.width=k.w;k.sprite.height=k.h;
    const c=k.sprite.getContext('2d');c.drawImage(artwork,k.x-k.w/2,k.y-k.h/2,k.w,k.h,0,0,k.w,k.h);
