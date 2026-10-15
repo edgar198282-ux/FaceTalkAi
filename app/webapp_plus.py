@@ -1128,7 +1128,16 @@ async def api_kinopub_play(request):
     media_id = str(request.query.get('mid') or '').strip()
     file_token = str(request.query.get('file') or '').strip()
     requested_format = str(request.query.get('format') or '').strip().lower()
-    stream_types = ('http','hls4','hls2','hls') if requested_format == 'http' else ('hls4','hls2','hls','http')
+    # Respect an explicitly requested KinoPub stream format. Previously
+    # format=hls and format=hls2 still tried hls4 first, defeating mobile
+    # codec fallback. Keep default stream priority unchanged for TV clients.
+    stream_priorities = {
+        'http': ('http','hls4','hls2','hls'),
+        'hls': ('hls','hls2','hls4','http'),
+        'hls2': ('hls2','hls','hls4','http'),
+        'hls4': ('hls4','hls2','hls','http'),
+    }
+    stream_types = stream_priorities.get(requested_format, ('hls4','hls2','hls','http'))
     if file_token:
         for stream_type in stream_types:
             st, video = await _kinopub_api('GET','/v1/items/media-video-link',params={
