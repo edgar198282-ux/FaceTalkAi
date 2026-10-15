@@ -20,7 +20,7 @@ from PIL import Image, ImageStat
 from .db import get_setting
 
 COUNTRY_CODES = {"AM", "RU", "GE", "UA", "BY", "KZ", "UZ", "MD"}
-ADULT_KEYWORDS = re.compile(r'(^|[^a-z0-9])(18\+|xxx|adult|erotic|erotica|porn|porno|playboy|penthouse|hustler|dorcel|brazzers|redlight)([^a-z0-9]|$)', re.I)
+ADULT_KEYWORDS = re.compile(r'(^|[^a-z0-9])(18\+|xxx|adult|erotic|erotica|porn|porno|playboy|penthouse|hustler|dorcel|brazzers|redlight|взрослые|для взрослых|эротика|порно)([^a-z0-9]|$)', re.I)
 
 def _is_adult_channel(row):
     raw = ' '.join(str(row.get(k) or '') for k in ('name','group','tvg_id')).lower()

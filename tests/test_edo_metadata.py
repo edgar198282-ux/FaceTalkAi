@@ -22,7 +22,10 @@ class EdoMetadata(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.ns = dict(re=re, hashlib=hashlib, urlparse=urlparse, time=time, asyncio=asyncio,
                        COUNTRY_CODES={'AM', 'RU'}, _edem_xmltv_cache={})
-        load_functions('app/iptv.py', {'_attrs', '_extinf_name', '_normalize_name', '_channel_key', '_looks_junk', '_parse_m3u'}, self.ns)
+        load_functions('app/iptv.py', {'_attrs', '_extinf_name', '_normalize_name', '_channel_key', '_looks_junk', '_parse_m3u', '_is_adult_channel'}, self.ns)
+        tree = ast.parse((ROOT / 'app/iptv.py').read_text())
+        assignment = next(node for node in tree.body if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == 'ADULT_KEYWORDS' for target in node.targets))
+        exec(compile(ast.Module(body=[assignment], type_ignores=[]), 'adult-keywords', 'exec'), self.ns)
         load_functions('app/webapp_plus.py', {'_playlist_xmltv_url', '_edem_xmltv_guide'}, self.ns)
 
     def test_provider_headers(self):
@@ -52,6 +55,11 @@ https://example.org/three
         self.assertEqual(rows[2]['group'], '18+')
         free = self.ns['_parse_m3u'](body, 'RU', 'https://example.org/list')
         self.assertNotIn('News 576p', [row['name'] for row in free])
+
+    def test_russian_adult_provider_group(self):
+        for group in ('взрослые', 'Для взрослых', '18+', 'Adult'):
+            self.assertTrue(self.ns['_is_adult_channel']({'name': 'Channel', 'group': group}))
+        self.assertFalse(self.ns['_is_adult_channel']({'name': 'Кино HD', 'group': 'кино'}))
 
     async def test_entire_chunked_guide_is_read(self):
         for compressed in (False, True):

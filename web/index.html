@@ -4847,7 +4847,7 @@ function isAdultChannel(ch){
   if(!ch)return false;
   if(ch.adult===true)return true;
   const raw=(' '+String(ch.group||'')+' '+String(ch.name||'')+' '+String(ch.tvg_id||'')+' ').toLowerCase();
-  return /(^|[^a-z0-9])(18\+|xxx|adult|erotic|erotica|porn|porno|playboy|penthouse|hustler|dorcel|brazzers|redlight)([^a-z0-9]|$)/i.test(raw);
+  return /(^|[^a-z0-9])(18\+|xxx|adult|erotic|erotica|porn|porno|playboy|penthouse|hustler|dorcel|brazzers|redlight|взрослые|для взрослых|эротика|порно)([^a-z0-9]|$)/i.test(raw);
 }
 function visibleChannelGroups(){
   const rows=adultEnabled?channels:channels.filter(x=>!isAdultChannel(x));
