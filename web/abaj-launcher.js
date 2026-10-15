@@ -96,7 +96,7 @@ body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajIptvVi
 @media(orientation:landscape) and (max-height:520px){
 #abajLauncher{padding:8px 18px 16px}.abajLaunchTop{min-height:48px}.abajLaunchBrand{font-size:40px}.abajLaunchTitle{font-size:10px;margin:6px 0 12px}.abajLaunchTiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;min-height:180px}.abajLaunchTile,.abajLaunchTile[data-target="settings"]{min-height:180px;padding:14px}.abajLaunchName{font-size:25px}.abajLaunchDesc{font-size:12px}.abajLaunchText{max-width:100%;padding-right:0}#abajLauncher .abajLaunchTile:after,#abajLauncher .abajLaunchTile:before{display:none}
 }
-body:not(.darkMode) #abajLauncher{color:#102b46;background-color:#edf5fc;background-size:100% 34.4vw;background-image:linear-gradient(180deg,#edf6ff80 0%,#edf5fca8 70%,#edf5fc 100%),url('/static/launcher-header-20261014.webp')}
+body:not(.darkMode) #abajLauncher{color:#102b46;background-color:#edf5fc;background-size:100% 34.4vw,104% 34.4vw;background-position:center top,35% top;background-image:linear-gradient(180deg,#edf6ff80 0%,#edf5fca8 70%,#edf5fc 100%),url('/static/launcher-header-20261014.webp')}
 body:not(.darkMode) #abajLauncher .abajLaunchBrand{color:#103a5c;text-shadow:0 2px 16px #ffffffb3}
 body:not(.darkMode) #abajLauncher .abajLaunchBrand b{color:#008fc8}
 body:not(.darkMode) #abajLauncher .abajLaunchTitle{color:#386681}
