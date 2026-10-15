@@ -24,6 +24,8 @@ body.darkMode .abajSectionSwitch{background:#142a40;color:#eff8ff;border-color:#
 #abajMedia.abajMediaPicking{visibility:hidden}
 #abajMedia.abajMediaPicking #abajMediaViewer{visibility:visible}
 body.darkMode #abajMedia{background:#061426;color:#eff8ff}
+body:not(.darkMode) #abajMediaViewer{background:#edf5fc;color:#153b57}
+body.darkMode #abajMediaViewer{background:#061426;color:#eff8ff}
 #abajMedia button,#abajMedia input{font:inherit;color:inherit;border:1px solid #8ebbd7;background:#e4f2fc;border-radius:12px;padding:11px 14px;min-height:44px;cursor:pointer}
 body.darkMode #abajMedia button,body.darkMode #abajMedia input{background:#102b43;border-color:#345a77}
 #abajMedia button:focus-visible,#abajMedia input:focus-visible,.abajSectionSwitch:focus-visible{outline:3px solid #09baff!important;outline-offset:3px;box-shadow:0 0 16px #00afff70!important}
