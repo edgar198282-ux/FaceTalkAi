@@ -2766,7 +2766,13 @@ public class MainActivity extends Activity {
             mobileSelector.setParameters(mobileSelector.buildUponParameters()
                 .setPreferredVideoMimeType(MimeTypes.VIDEO_H264)
                 .setExceedRendererCapabilitiesIfNecessary(false));
-            mobileCinemaPlayer=new ExoPlayer.Builder(this)
+            // If the device's preferred HEVC decoder fails, let Media3 try an
+            // alternative installed decoder (including software fallback).
+            // Mobile-only; Android TV's renderer factory is untouched.
+            androidx.media3.exoplayer.DefaultRenderersFactory mobileRenderers=
+                new androidx.media3.exoplayer.DefaultRenderersFactory(this)
+                    .setEnableDecoderFallback(true);
+            mobileCinemaPlayer=new ExoPlayer.Builder(this,mobileRenderers)
                 .setTrackSelector(mobileSelector).build();
             mobileCinemaView.setPlayer(mobileCinemaPlayer);
             // Report real Media3 decoder/network failures to the existing Railway
