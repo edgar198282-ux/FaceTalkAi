@@ -48,6 +48,15 @@ const css=`
 @keyframes abajTvPictureSweep{0%,15%{transform:translateX(-120%)}70%,100%{transform:translateX(120%)}}
 #abajLauncher[hidden] .abajTvScreenMotion:before,#abajLauncher[hidden] .abajTvScreenMotion:after{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{display:none}}
+/* One small football rolls across the dark mini-screen; no full-screen overlay. */
+.abajLaunchTile[data-target="iptv"] .abajTvScreenBall{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;pointer-events:none;z-index:3}
+.abajLaunchTile[data-target="iptv"] .abajTvScreenBall:before{content:'';position:absolute;left:9%;top:68%;width:16%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 31% 24%,#fff 0 18%,#e1e6ec 46%,#7b8b99 75%,#26313d 100%);box-shadow:inset -1px -1px 2px #26313d,0 1px 2px #05101a;animation:abajMiniBallRoll 4.2s ease-in-out infinite alternate}
+.abajLaunchTile[data-target="iptv"] .abajTvScreenBall:after{content:'';position:absolute;left:12%;top:81%;width:13%;height:4%;border-radius:50%;background:rgba(0,0,0,.32);filter:blur(1px);animation:abajMiniBallShadow 4.2s ease-in-out infinite alternate}
+@keyframes abajMiniBallRoll{0%{transform:translate(0,0) rotate(0)}45%{transform:translate(220%,-90%) rotate(190deg)}100%{transform:translate(440%,0) rotate(390deg)}}
+@keyframes abajMiniBallShadow{0%{transform:translateX(0);opacity:.5}45%{transform:translateX(270%);opacity:.15}100%{transform:translateX(540%);opacity:.5}}
+.abajLaunchTile[data-target="iptv"].abajIptvBallLaunching .abajTvScreenBall{visibility:hidden}
+#abajLauncher[hidden] .abajTvScreenBall:before,#abajLauncher[hidden] .abajTvScreenBall:after{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajTvScreenBall{display:none}}
 /* Keep the lighting layers over the artwork but behind the IPTV title. */
 #abajLauncher .abajLaunchTile[data-target="iptv"] .abajSceneMotion{z-index:1;isolation:isolate}
 #abajLauncher .abajLaunchTile[data-target="iptv"] .abajLaunchText{z-index:3}
@@ -120,7 +129,7 @@ for(const tile of root.querySelectorAll('.abajLaunchTile')){
 const motion=document.createElement('span');motion.className='abajSceneMotion';motion.setAttribute('aria-hidden','true');
 const accent=document.createElement('i');accent.className=tile.dataset.target==='cinema'?'abajSceneSun':tile.dataset.target==='iptv'?'abajSceneWater':'abajSceneGear';
 motion.appendChild(accent);
-if(tile.dataset.target==='iptv'){const backlight=document.createElement('i');backlight.className='abajTvBacklight';motion.appendChild(backlight);const screen=document.createElement('i');screen.className='abajTvScreenMotion';motion.appendChild(screen);}
+if(tile.dataset.target==='iptv'){const backlight=document.createElement('i');backlight.className='abajTvBacklight';motion.appendChild(backlight);const screen=document.createElement('i');screen.className='abajTvScreenMotion';motion.appendChild(screen);const miniBall=document.createElement('i');miniBall.className='abajTvScreenBall';screen.appendChild(miniBall);}
 tile.insertBefore(motion,tile.firstChild);
 }
 // A true dolphin dive must be a rendered sequence, not a rotated flat PNG.
@@ -241,7 +250,8 @@ async function playCinemaGlassesTransition(tile){
 async function playIptvBallTransition(tile){
  if(iptvTransitionBusy)return false;
  iptvTransitionBusy=true;
- if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){iptvTransitionBusy=false;return true}
+ tile.classList.add('abajIptvBallLaunching');
+ if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){tile.classList.remove('abajIptvBallLaunching');iptvTransitionBusy=false;return true}
  const ball=document.createElement('span');
  ball.className='abajIptvFlyingBall';
  ball.innerHTML='<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><radialGradient id="abajBallShade" cx="32%" cy="24%" r="78%"><stop offset="0" stop-color="#fff"/><stop offset=".53" stop-color="#f5f7f9"/><stop offset=".8" stop-color="#b6c0c9"/><stop offset="1" stop-color="#263748"/></radialGradient><clipPath id="abajBallClip"><circle cx="50" cy="50" r="48"/></clipPath></defs><circle cx="50" cy="50" r="48" fill="url(#abajBallShade)"/><g clip-path="url(#abajBallClip)" fill="#101821" stroke="#283541" stroke-width="1.2"><polygon points="48,30 66,38 63,57 43,64 31,47"/><polygon points="6,15 25,8 34,23 20,39 3,34"/><polygon points="77,7 96,19 96,38 80,36 68,21"/><polygon points="8,71 27,65 36,84 25,103 3,94"/><polygon points="73,74 93,63 106,77 92,99 72,95"/></g><g clip-path="url(#abajBallClip)" fill="none" stroke="#78818a" stroke-width="2.2"><path d="M31 47 20 39M48 30 34 23M66 38 80 36M63 57 73 74M43 64 36 84M27 65 20 39M68 21 48 30M93 63 63 57"/></g><ellipse cx="35" cy="20" rx="22" ry="11" fill="#fff" opacity=".28" transform="rotate(-25 35 20)"/></svg>';
