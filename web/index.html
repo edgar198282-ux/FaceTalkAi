@@ -8885,6 +8885,10 @@ function openTvRailFocused(){
 }
 function closePlayer(){
 
+  // Stop the independent mobile Media3 overlay when leaving cinema.
+  if(!nativeTv&&window.AbajNative&&typeof AbajNative.mobileCinemaStop==='function'){
+    try{AbajNative.mobileCinemaStop()}catch(e){}
+  }
   if(isCinemaPlaybackOpen())saveCinemaProgress(true);
   clearCinemaStartupTimer();
   nativeMedia3FirstFrameHandler=null;
