@@ -2760,6 +2760,22 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
             mobileCinemaPlayer=new ExoPlayer.Builder(this).build();
             mobileCinemaView.setPlayer(mobileCinemaPlayer);
+            // Report real Media3 decoder/network failures to the existing Railway
+            // cinema diagnostics instead of leaving a silent black screen.
+            mobileCinemaPlayer.addListener(new Player.Listener(){
+                @Override public void onPlayerError(androidx.media3.common.PlaybackException error){
+                    String detail=error.getErrorCodeName()+": "+String.valueOf(error.getMessage());
+                    Log.e("AbajMobileCinema","4K playback failed: "+detail,error);
+                    if(webView!=null){
+                        String script="if(typeof cinemaDiag==='function')cinemaDiag('playback_error',"+
+                            "{provider:'KINOPUB',player:'media3_mobile',playable:false,code:"+
+                            org.json.JSONObject.quote(error.getErrorCodeName())+",message:"+
+                            org.json.JSONObject.quote(detail)+"})";
+                        webView.evaluateJavascript(script,null);
+                    }
+                    Toast.makeText(MainActivity.this,"4K: "+error.getErrorCodeName(),Toast.LENGTH_LONG).show();
+                }
+            });
             Uri uri=Uri.parse(url);
             String path=uri.getPath()==null?"":uri.getPath().toLowerCase(java.util.Locale.ROOT);
             MediaItem.Builder item=new MediaItem.Builder().setUri(uri);
