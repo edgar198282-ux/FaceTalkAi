@@ -8392,6 +8392,22 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
         });
       }
 
+      // Mobile Android WebView: HLS.js relies on MSE codec declarations and can
+      // reject HEVC 4K even when the device's hardware decoder supports it.
+      // Give the Android system video pipeline the SAME 4K URL first; do not
+      // downgrade the film or change the Android TV playback path.
+      if(!nativeTv&&String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&
+         String(data?.details||'').includes('manifestIncompatibleCodecsError')&&
+         !ch.cinemaMobileSystemTried&&attemptToken===streamAttemptToken){
+        ch.cinemaMobileSystemTried=true;
+        ch.cinemaForceHttp=true;
+        clearFirstFrameTimer();
+        if(err)err.textContent='Переключаю 4K на системный плеер Android…';
+        try{if(hls){hls.stopLoad();hls.destroy();hls=null}}catch(e){}
+        startStream(ch,preferBackup,forceProxy,false);
+        return;
+      }
+
       if(String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&String(data?.details||'').includes('manifestIncompatibleCodecsError')&&!ch.cinemaCodecFallbackTried){
         ch.cinemaCodecFallbackTried=true;
         clearFirstFrameTimer();
