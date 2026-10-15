@@ -39,6 +39,30 @@ body.darkMode #abajMedia button,body.darkMode #abajMedia input{background:#102b4
 #abajMediaLogin{position:fixed;inset:0;z-index:12000;background:#020c1df5;display:flex;align-items:center;justify-content:center;padding:20px;color:#fff}.abajMediaLoginCard{width:min(500px,100%);max-height:94vh;overflow:auto;text-align:center}.abajMediaLoginCard img{width:210px;height:210px;max-width:70vw}.abajMediaLoginCard p{line-height:1.5}
 @media(max-width:650px){#abajLauncher[data-visible="4"] .abajLaunchTiles{min-height:615px;gap:9px}#abajLauncher[data-visible="4"] .abajLaunchTile{min-height:150px;padding:14px 18px}#abajLauncher[data-visible="4"] .abajLaunchName{font-size:clamp(27px,7.3vw,36px)}#abajLauncher[data-visible="4"] .abajLaunchDesc{font-size:clamp(12px,3.4vw,16px)}.abajMediaGrid{grid-template-columns:repeat(2,minmax(0,1fr))}#abajMedia{padding-top:12px}.abajMediaAccount{flex-basis:100%}}
 @media(orientation:landscape) and (max-height:520px){#abajLauncher[data-visible="4"] .abajLaunchTiles{grid-template-columns:repeat(4,minmax(0,1fr));min-height:180px}#abajLauncher[data-visible="4"] .abajLaunchTile{min-height:180px}.abajMediaLoginCard img{width:140px;height:140px}}
+#abajLauncher .abajLaunchTile[data-target="media"].abajMediaSceneReady{background-image:linear-gradient(0deg,#03152e 0%,#06223bdb 22%,#06305040 65%),url('/static/launcher-header-20261014.webp');background-position:center,center 58%;background-size:cover}
+body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="media"].abajMediaSceneReady{background-image:linear-gradient(0deg,#f7fbff 0%,#f7fbfff5 24%,#e9f7ff65 55%,#bce4f52b 100%),url('/static/launcher-header-20261014.webp')}
+.abajMediaCardScene{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1;perspective:800px}
+.abajMediaCardScene svg{position:absolute;overflow:hidden;filter:drop-shadow(0 8px 8px #001b3d55);transform-box:fill-box}
+.abajMediaPhotoBack{left:57%;top:5%;width:37%;height:62%;animation:abajMediaBackFloat 10s ease-in-out infinite}
+.abajMediaPhotoFront{left:36%;top:1%;width:43%;height:66%;animation:abajMediaFrontFloat 8s ease-in-out infinite}
+.abajMediaCloud{left:68%;top:32%;width:25%;height:34%;animation:abajMediaCloudFloat 7s ease-in-out infinite}
+.abajMediaPlay{left:57%;top:44%;width:16%;height:26%;animation:abajMediaPlayFloat 6s ease-in-out infinite}
+.abajMediaCardScene .abajMediaPicture{transform-origin:var(--photo-center);animation:abajMediaPicturePan 15s ease-in-out infinite alternate}
+.abajMediaPhotoBack .abajMediaPicture{animation-duration:18s;animation-direction:alternate-reverse}
+.abajMediaCardScene .abajMediaWater{animation:abajMediaWater 4s linear infinite;opacity:.13}
+.abajMediaCardScene .abajMediaGlint{animation:abajMediaGlassGlint 8s ease-in-out infinite;opacity:0}
+.abajMediaPhotoBack .abajMediaGlint{animation-delay:-4s}
+.abajMediaCardGlow{position:absolute;left:52%;top:21%;width:47%;height:62%;background:radial-gradient(ellipse,#b9f8ff70,transparent 67%);animation:abajMediaCloudGlow 5s ease-in-out infinite;opacity:.25}
+@keyframes abajMediaFrontFloat{0%,100%{transform:translate(0,1%) rotate(-7deg) rotateY(-3deg)}50%{transform:translate(-2%,-5%) rotate(-4deg) rotateY(3deg)}}
+@keyframes abajMediaBackFloat{0%,100%{transform:translate(0,-2%) rotate(8deg) rotateY(4deg)}50%{transform:translate(3%,4%) rotate(5deg) rotateY(-3deg)}}
+@keyframes abajMediaCloudFloat{0%,100%{transform:translate(0,2%) scale(.98)}50%{transform:translate(-4%,-8%) scale(1.04)}}
+@keyframes abajMediaPlayFloat{0%,100%{transform:translate(0,0) rotate(-3deg)}50%{transform:translate(3%,-7%) rotate(2deg)}}
+@keyframes abajMediaPicturePan{from{transform:translate(-2px,0) scale(1.01)}to{transform:translate(3px,-2px) scale(1.055)}}
+@keyframes abajMediaWater{from{transform:translateY(0)}to{transform:translateY(8px)}}
+@keyframes abajMediaGlassGlint{0%,18%,80%,100%{opacity:0;transform:translateX(-400px)}34%,48%{opacity:.65}65%{opacity:0;transform:translateX(450px)}}
+@keyframes abajMediaCloudGlow{0%,100%{opacity:.2;transform:scale(.96)}50%{opacity:.55;transform:scale(1.07)}}
+#abajLauncher[hidden] .abajMediaCardScene *,#abajLauncher .abajLaunchTile[hidden] .abajMediaCardScene *,body.abajMediaOpen .abajMediaCardScene *,html.abajMediaMotionPaused .abajMediaCardScene *{animation-play-state:paused!important}
+@media(prefers-reduced-motion:reduce){.abajMediaCardScene *{animation:none!important}.abajMediaPhotoFront{transform:rotate(-6deg)}.abajMediaPhotoBack{transform:rotate(7deg)}}
 `;document.head.appendChild(style);
 let root,panel,viewer,login,grid,notice,search,accounts,tabs,path,more;
 let source='device',filter='all',rows=[],localRows=[],trail=[],nextPage='',loading=false,loadVersion=0,viewIndex=-1,slideshow=0,poll=0,returnFocus=null;
@@ -50,11 +74,40 @@ async function api(url,options={}){
  if(!response.ok)throw new Error(data.error||(response.status===401?(t()===strings.ru?'Войдите в ABAJ TV':'Please sign in to ABAJ TV'):t().error));
  return data;
 }
+function mountMediaCard(tile){
+ if(tile.querySelector('.abajMediaCardScene'))return;
+ const scene=make('span','abajMediaCardScene');scene.setAttribute('aria-hidden','true');
+ const atlas='/static/media-glass-atlas.webp',ns='http://www.w3.org/2000/svg';
+ function sprite(className,viewBox,inside){
+  const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox',viewBox);svg.setAttribute('class',className);svg.setAttribute('focusable','false');
+  const img=()=>{const image=document.createElementNS(ns,'image');image.setAttribute('href',atlas);image.setAttribute('width','1000');image.setAttribute('height','1000');return image};svg.appendChild(img());
+  if(inside){
+   const [x,y,w,h]=inside,id='abajMediaClip'+className;const defs=document.createElementNS(ns,'defs');
+   const clip=document.createElementNS(ns,'clipPath');clip.id=id;
+   const rect=document.createElementNS(ns,'rect');for(const [name,value] of Object.entries({x,y,width:w,height:h,rx:8}))rect.setAttribute(name,String(value));clip.appendChild(rect);defs.appendChild(clip);
+   const gradient=document.createElementNS(ns,'linearGradient');gradient.id=id+'Shine';
+   for(const [offset,opacity] of [['0','0'],['.5','.65'],['1','0']]){const stop=document.createElementNS(ns,'stop');stop.setAttribute('offset',offset);stop.setAttribute('stop-color','#eaffff');stop.setAttribute('stop-opacity',opacity);gradient.appendChild(stop)}defs.appendChild(gradient);svg.appendChild(defs);
+   const clipped=document.createElementNS(ns,'g');clipped.setAttribute('clip-path','url(#'+id+')');
+   const picture=img();picture.setAttribute('class','abajMediaPicture');picture.style.setProperty('--photo-center',(x+w/2)+'px '+(y+h/2)+'px');clipped.appendChild(picture);
+   const water=document.createElementNS(ns,'g');water.setAttribute('class','abajMediaWater');
+   for(let i=0;i<9;i++){const line=document.createElementNS(ns,'path');const yy=y+h*.66+i*8;line.setAttribute('d','M'+x+' '+yy+'q'+w*.25+' -3 '+w*.5+' 0t'+w*.5+' 0');line.setAttribute('stroke','#b9f5ff');line.setAttribute('stroke-width','1.3');line.setAttribute('fill','none');water.appendChild(line)}clipped.appendChild(water);
+   const glint=document.createElementNS(ns,'rect');for(const [name,value] of Object.entries({x:x-60,y,width:120,height:h,fill:'url(#'+id+'Shine)'}))glint.setAttribute(name,String(value));glint.setAttribute('class','abajMediaGlint');clipped.appendChild(glint);svg.appendChild(clipped);
+  }
+  scene.appendChild(svg);
+ }
+ scene.appendChild(make('i','abajMediaCardGlow'));
+ sprite('abajMediaPhotoBack','500 128 480 352',[545,182,390,255]);
+ sprite('abajMediaPhotoFront','12 128 470 352',[51,182,389,255]);
+ sprite('abajMediaCloud','20 565 470 325');
+ sprite('abajMediaPlay','590 600 310 290');
+ tile.insertBefore(scene,tile.firstChild);
+ const image=new Image();image.onload=()=>tile.classList.add('abajMediaSceneReady');image.onerror=()=>scene.remove();image.src=atlas;
+}
 function apply(){
  root=document.getElementById('abajLauncher');if(!root)return;
  for(const key of Object.keys(prefs)){const tile=root.querySelector('[data-target="'+key+'"]');if(tile)tile.hidden=!prefs[key]}
  root.dataset.visible=String(root.querySelectorAll('.abajLaunchTile:not([hidden])').length);
- const media=root.querySelector('[data-target="media"]');if(media){media.querySelector('.abajLaunchName').textContent=t().media;media.querySelector('.abajLaunchDesc').textContent=t().desc}
+ const media=root.querySelector('[data-target="media"]');if(media){mountMediaCard(media);media.querySelector('.abajLaunchName').textContent=t().media;media.querySelector('.abajLaunchDesc').textContent=t().desc}
  const switches=document.getElementById('abajSectionSwitches');if(switches){switches.querySelector('.settingsLabel').textContent=t().sections;for(const b of switches.querySelectorAll('[data-section]')){b.firstChild.textContent=t()[b.dataset.section];b.setAttribute('aria-checked',String(prefs[b.dataset.section]))}}
 }
 window.abajApplyHomeSections=apply;
@@ -137,8 +190,8 @@ async function connect(provider){
 }
 function closeLogin(){clearInterval(poll);poll=0;login.hidden=true;login.replaceChildren();panel.querySelector('.abajMediaTop button')?.focus()}
 function back(){if(!login.hidden){closeLogin();return true}if(!viewer.hidden){closeViewer();return true}if(trail.length){trail.pop();rows=[];search.value='';render();loadFiles();return true}close();return true}
-function close(){loadVersion++;loading=false;closeViewer();closeLogin();panel.hidden=true;window.abajLauncherHome?.();document.querySelector('#abajLauncher [data-target="media"]:not([hidden])')?.focus({preventScroll:true})}
-window.abajOpenMedia=()=>{if(!panel)return;translatePanel();panel.hidden=false;loadVersion++;loading=false;render();if(source!=='device')loadFiles();loadAccounts();panel.querySelector('button').focus()};
+function close(){document.body.classList.remove('abajMediaOpen');loadVersion++;loading=false;closeViewer();closeLogin();panel.hidden=true;window.abajLauncherHome?.();document.querySelector('#abajLauncher [data-target="media"]:not([hidden])')?.focus({preventScroll:true})}
+window.abajOpenMedia=()=>{if(!panel)return;document.body.classList.add('abajMediaOpen');translatePanel();panel.hidden=false;loadVersion++;loading=false;render();if(source!=='device')loadFiles();loadAccounts();panel.querySelector('button').focus()};
 window.abajMediaBack=()=>panel&&!panel.hidden?back():false;
 window.addEventListener('keydown',e=>{
  if(!panel||panel.hidden)return;const key=e.key,code=e.keyCode;const isBack=['Escape','Backspace','BrowserBack'].includes(key)||code===4;
@@ -151,6 +204,6 @@ window.addEventListener('keydown',e=>{
  if(delta){e.preventDefault();e.stopImmediatePropagation();const active=document.activeElement;let next=null;const a=active?.getBoundingClientRect();if(a){const horizontal=key==='ArrowLeft'||key==='ArrowRight';let best=Infinity;for(const b of bs){if(b===active)continue;const r=b.getBoundingClientRect(),dx=r.left+r.width/2-a.left-a.width/2,dy=r.top+r.height/2-a.top-a.height/2;const primary=(horizontal?dx:dy)*delta,secondary=Math.abs(horizontal?dy:dx);if(primary>4){const score=primary+secondary*3;if(score<best){best=score;next=b}}}}(next||bs[0])?.focus();return}
  if(['Enter','NumpadEnter',' '].includes(key)||code===23||code===66){if(document.activeElement?.tagName==='VIDEO')return;e.preventDefault();e.stopImmediatePropagation();document.activeElement?.click()}
 },true);
-document.addEventListener('visibilitychange',()=>{if(document.hidden){stopSlides();viewer?.querySelector('video')?.pause()}});
+document.addEventListener('visibilitychange',()=>{document.documentElement.classList.toggle('abajMediaMotionPaused',document.hidden);if(document.hidden){stopSlides();viewer?.querySelector('video')?.pause()}});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
