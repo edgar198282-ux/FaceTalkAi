@@ -16,7 +16,7 @@ from aiohttp import web
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from .config import DATA_DIR, PORT, ADMIN_ID, TELEGRAM_BOT_TOKEN
-from . import cinema_compat
+from . import cinema_compat, media_cloud
 from . import iptv
 from . import ai as ai_service
 from .db import get_setting, set_setting, list_settings_prefix, list_user_ids
@@ -5157,6 +5157,7 @@ async def start_webapp(bot):
     app.router.add_post('/api/tv/pair/start', api_tv_pair_start); app.router.add_get('/api/tv/pair/status', api_tv_pair_status); app.router.add_get('/api/tv/pair/open', api_tv_pair_open); app.router.add_get('/api/tv/pair/qr', api_tv_pair_qr); app.router.add_post('/api/tv/device-auth', api_tv_device_auth)
     app.router.add_get('/api/tv/devices', api_tv_devices); app.router.add_post('/api/tv/disconnect', api_tv_disconnect)
     app.router.add_get('/api/cinema/source-state', api_cinema_source_state); app.router.add_post('/api/admin/cinema/source-state', api_admin_cinema_source_state)
+    media_cloud.register(app, _user_from_request)
     app.cleanup_ctx.append(cinema_compat.cleanup)
     app.router.add_get('/api/kinopub/compat/{key}/index.m3u8', cinema_compat.playlist)
     app.router.add_get(r'/api/kinopub/compat/{key}/{index:\d+}.ts', cinema_compat.segment)
