@@ -2772,6 +2772,35 @@ public class MainActivity extends Activity {
             // Report real Media3 decoder/network failures to the existing Railway
             // cinema diagnostics instead of leaving a silent black screen.
             mobileCinemaPlayer.addListener(new Player.Listener(){
+                private boolean firstVideoFrameReported=false;
+                @Override public void onRenderedFirstFrame(){
+                    if(firstVideoFrameReported)return;
+                    firstVideoFrameReported=true;
+                    if(webView!=null)webView.evaluateJavascript(
+                        "if(typeof cinemaDiag==='function')cinemaDiag('first_video_frame',"+
+                        "{provider:'KINOPUB',player:'media3_mobile',playable:true})",null);
+                }
+                @Override public void onTracksChanged(Tracks tracks){
+                    StringBuilder video=new StringBuilder();
+                    StringBuilder audio=new StringBuilder();
+                    for(Tracks.Group group:tracks.getGroups()){
+                        for(int i=0;i<group.length;i++){
+                            if(!group.isTrackSelected(i))continue;
+                            androidx.media3.common.Format f=group.getTrackFormat(i);
+                            String detail=String.valueOf(f.sampleMimeType)+"/"+
+                                String.valueOf(f.codecs)+"/"+f.width+"x"+f.height;
+                            if(group.getType()==C.TRACK_TYPE_VIDEO)video.append(detail);
+                            if(group.getType()==C.TRACK_TYPE_AUDIO)audio.append(detail);
+                        }
+                    }
+                    if(webView!=null){
+                        String script="if(typeof cinemaDiag==='function')cinemaDiag('selected_tracks',"+
+                            "{provider:'KINOPUB',player:'media3_mobile',video:"+
+                            org.json.JSONObject.quote(video.toString())+",audio:"+
+                            org.json.JSONObject.quote(audio.toString())+"})";
+                        webView.evaluateJavascript(script,null);
+                    }
+                }
                 @Override public void onPlayerError(androidx.media3.common.PlaybackException error){
                     String detail=error.getErrorCodeName()+": "+String.valueOf(error.getMessage());
                     Log.e("AbajMobileCinema","4K playback failed: "+detail,error);
