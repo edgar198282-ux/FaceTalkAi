@@ -661,6 +661,7 @@ const home=document.createElement('button');home.id='abajLaunchHome';home.textCo
 let iptvTransitionBusy=false;
 let cinemaTransitionBusy=false;
 let settingsTransitionBusy=false;
+let mediaTransitionBusy=false;
 let transitionStage=null;
 async function runLaunchTransition(duration,paint){
  const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
@@ -699,6 +700,39 @@ async function revealLaunchDestination(){
   }
  }finally{stage.remove()}
 }
+async function playMediaLensTransition(tile){
+ mediaTransitionBusy=true;
+ if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+ const rect=tile.getBoundingClientRect(),origin={x:rect.left+rect.width*.68,y:rect.top+rect.height*.4};
+ const initial=Math.max(28,Math.min(rect.width*.18,rect.height*.32));
+ await runLaunchTransition(1450,(ctx,w,h,p)=>{
+  const travel=p*p*(3-2*p),zoom=Math.max(0,(p-.58)/.42);
+  const r=initial*(1+travel*.6)/(1-.97*zoom*zoom),x=origin.x+(w*.5-origin.x)*travel,y=origin.y+(h*.5-origin.y)*travel;
+  ctx.fillStyle='rgba(4,17,38,'+(travel*.88)+')';ctx.fillRect(0,0,w,h);
+  ctx.save();ctx.globalAlpha=Math.min(1,p*10);ctx.translate(x,y);ctx.scale(r*(.8+.2*travel),r);
+  function disk(radius,fill){ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill()}
+  for(let i=7;i>=1;i--){ctx.save();ctx.translate(i*.022*(1-travel),i*.014*(1-travel));disk(1,'#0b1725');ctx.restore()}
+  const metal=ctx.createLinearGradient(-1,-1,1,1);
+  metal.addColorStop(0,'#e2f1f7');metal.addColorStop(.2,'#3b5268');metal.addColorStop(.42,'#a6bfcc');metal.addColorStop(.55,'#162b40');metal.addColorStop(.8,'#6f91a5');metal.addColorStop(1,'#d3ebf5');disk(1,metal);disk(.94,'#132334');
+  ctx.save();ctx.rotate(p*1.8);ctx.strokeStyle='#7193a6';ctx.lineWidth=.008;
+  for(let i=0;i<72;i++){const a=i*Math.PI/36;ctx.beginPath();ctx.moveTo(Math.cos(a)*.88,Math.sin(a)*.88);ctx.lineTo(Math.cos(a)*.94,Math.sin(a)*.94);ctx.stroke()}
+  ctx.restore();disk(.85,metal);disk(.78,'#051525');
+  const glass=ctx.createRadialGradient(-.25,-.3,.02,0,0,.75);
+  glass.addColorStop(0,'#5fa8ba');glass.addColorStop(.3,'#165e80');glass.addColorStop(.7,'#0c2948');glass.addColorStop(1,'#020b18');disk(.74,glass);
+  ctx.save();ctx.beginPath();ctx.arc(0,0,.72,0,Math.PI*2);ctx.clip();
+  const opening=Math.min(1,Math.max(0,(p-.2)/.6)),hole=.1+.7*opening*opening;
+  ctx.rotate(opening*.9);
+  for(let i=0;i<8;i++){
+   const a=i*Math.PI/4,b=a+Math.PI/4;
+   ctx.beginPath();ctx.moveTo(Math.cos(a)*hole,Math.sin(a)*hole);ctx.lineTo(Math.cos(b)*hole,Math.sin(b)*hole);ctx.lineTo(Math.cos(b+.45)*1.3,Math.sin(b+.45)*1.3);ctx.lineTo(Math.cos(a+.45)*1.3,Math.sin(a+.45)*1.3);ctx.closePath();
+   ctx.fillStyle=i%2?'#213c51':'#304b60';ctx.fill();ctx.strokeStyle='#728e9c';ctx.lineWidth=.008;ctx.stroke();
+  }
+  ctx.restore();
+  ctx.save();ctx.rotate(-p*.8);ctx.strokeStyle='#b7f1ff88';ctx.lineWidth=.025;ctx.beginPath();ctx.arc(0,0,.76,-2.8,-1.3);ctx.stroke();ctx.restore();
+  ctx.restore();
+ });
+}
+
 async function playSettingsGearTransition(tile){
  settingsTransitionBusy=true;
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
@@ -735,7 +769,7 @@ function show(){settingsGear?.reset();applyLauncherLanguage();try{if(typeof clos
 function hide(){root.hidden=true;home.hidden=true}
 window.abajLauncherHome=show;
 root.addEventListener('click',async e=>{
- const b=e.target.closest('[data-target]');if(!b||iptvTransitionBusy||cinemaTransitionBusy||settingsTransitionBusy)return;
+ const b=e.target.closest('[data-target]');if(!b||iptvTransitionBusy||cinemaTransitionBusy||settingsTransitionBusy||mediaTransitionBusy)return;
  const target=b.dataset.target;
  try{
   if(target==='cinema'){
@@ -746,14 +780,18 @@ root.addEventListener('click',async e=>{
    await playIptvBallTransition(b);
    if(document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();
   }
-  if(target==='media'){window.abajOpenMedia?.();return}
+  if(target==='media'){
+   if(typeof window.abajOpenMedia!=='function')return;
+   try{await playMediaLensTransition(b)}catch(err){console.error('ABAJ media transition',err)}
+   window.abajOpenMedia();return;
+  }
   if(target==='settings'){
    await playSettingsGearTransition(b);
    if(typeof openTvSettings==='function')openTvSettings();
   }
   if(target==='settings'||target==='iptv'||document.body.classList.contains('cinemaMode'))hide();
  }catch(err){footballScreen?.reset();settingsGear?.reset();console.error('ABAJ launcher navigation',err)}
- finally{try{await revealLaunchDestination()}finally{iptvTransitionBusy=false;cinemaTransitionBusy=false;settingsTransitionBusy=false}}
+ finally{try{await revealLaunchDestination()}finally{iptvTransitionBusy=false;cinemaTransitionBusy=false;settingsTransitionBusy=false;mediaTransitionBusy=false}}
 });
 home.addEventListener('click',show);
 root.addEventListener('keydown',e=>{const keys=['ArrowRight','ArrowLeft','ArrowUp','ArrowDown'];if(!keys.includes(e.key))return;const bs=[...root.querySelectorAll('[data-target]:not([hidden])')];const i=Math.max(0,bs.indexOf(document.activeElement));const delta=(e.key==='ArrowRight'||e.key==='ArrowDown')?1:-1;bs[(i+delta+bs.length)%bs.length].focus({preventScroll:true});e.preventDefault()});
@@ -761,3 +799,4 @@ show();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,250));else setTimeout(start,250);
 })();
+
