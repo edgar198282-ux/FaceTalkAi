@@ -8396,6 +8396,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
       // Do not change the Android TV playback path.
       if(!nativeTv&&String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&
          String(data?.details||'').includes('manifestIncompatibleCodecsError')&&
+         ch.cinemaCodecFallbackTried&&
          !ch.cinemaMobileMedia3Tried&&window.AbajNative&&
          typeof AbajNative.mobileCinemaStart==='function'&&attemptToken===streamAttemptToken){
         ch.cinemaMobileMedia3Tried=true;
@@ -8413,6 +8414,7 @@ function startStream(ch,preferBackup=false,forceProxy=false,forceWebCinema=false
       // downgrade the film or change the Android TV playback path.
       if(!nativeTv&&String(ch.cinemaProvider||'').toUpperCase()==='KINOPUB'&&
          String(data?.details||'').includes('manifestIncompatibleCodecsError')&&
+         ch.cinemaCodecFallbackTried&&
          !ch.cinemaMobileSystemTried&&attemptToken===streamAttemptToken){
         ch.cinemaMobileSystemTried=true;
         ch.cinemaForceHttp=true;
