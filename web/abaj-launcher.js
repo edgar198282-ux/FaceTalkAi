@@ -40,14 +40,7 @@ const css=`
 @keyframes abajTvBacklightBreathe{from{opacity:.18}to{opacity:.66}}
 #abajLauncher[hidden] .abajTvBacklight{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajTvBacklight{animation:none;opacity:.28}}
-/* Gentle screen-only light movement. No video/canvas, opaque strip, or duplicate football. */
-.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{position:absolute;left:62.8%;top:11%;width:6.8%;height:27%;z-index:2;overflow:hidden;pointer-events:none;opacity:.65;clip-path:inset(3% round 2px);mix-blend-mode:screen}
-.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,rgba(115,207,255,.19),transparent 72%);animation:abajTvLiveBrightness 3.6s ease-in-out infinite alternate}
-@keyframes abajTvLiveBrightness{from{opacity:.12}to{opacity:.65}}
-.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:before{content:'';position:absolute;inset:-10%;background:linear-gradient(110deg,transparent 38%,rgba(170,225,255,.12) 50%,transparent 62%);transform:translateX(-120%);animation:abajTvPictureSweep 7s ease-in-out infinite}
-@keyframes abajTvPictureSweep{0%,15%{transform:translateX(-120%)}70%,100%{transform:translateX(120%)}}
-#abajLauncher[hidden] .abajTvScreenMotion:before,#abajLauncher[hidden] .abajTvScreenMotion:after{animation-play-state:paused}
-@media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{display:none}}
+.abajLaunchTile .abajFootballScreen{position:absolute;left:0;top:0;width:134px;height:133px;transform-origin:0 0;pointer-events:none;z-index:0}
 /* Subtle drifting cloud haze confined to the upper-left mountain picture.
    Transparent overlay: the original mountains remain visible, with no duplicate imagery. */
 /* Keep the lighting layers over the artwork but behind the IPTV title. */
@@ -113,6 +106,124 @@ body:not(.darkMode) #abajLauncher .abajLaunchTile:focus-visible{outline-color:#0
 body:not(.darkMode) #abajLaunchHome{background:#f3faff;color:#12628f;border-color:#58a7d2;box-shadow:0 3px 14px #25678926}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile{animation:none!important;transition:none!important}}
 `;
+function createFootballScreen(tile,root){
+ const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+ if(!ctx)return null;
+ canvas.className='abajFootballScreen';canvas.setAttribute('aria-hidden','true');
+ canvas.width=268;canvas.height=266;
+ const clean=new Image(),reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
+ let ready=false,visible=true,suspended=false,departing=false,frame=0,last=0,elapsed=0;
+ let width=0,height=0,scale=1,offsetX=0,offsetY=0,ballX=486,ballY=147;
+ const radius=19,faces=[];
+ const unit=v=>{const n=Math.hypot(...v);return v.map(x=>x/n)};
+ const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
+ const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+ const phi=(1+Math.sqrt(5))/2,vertices=[];
+ for(const a of [-1,1])for(const b of [-phi,phi])vertices.push([0,a,b],[a,b,0],[b,0,a]);
+ const adjacent=vertices.map(v=>vertices.map((w,i)=>Math.abs(Math.hypot(...v.map((x,j)=>x-w[j]))-2)<.001?i:-1).filter(i=>i>=0));
+ const cut=(a,b)=>unit(a.map((x,i)=>(2*x+b[i])/3));
+ function face(points,black){
+  const normal=unit(points.reduce((sum,p)=>sum.map((v,i)=>v+p[i]),[0,0,0]));
+  const u=unit(cross(normal,Math.abs(normal[0])<.9?[1,0,0]:[0,1,0])),v=cross(normal,u);
+  points.sort((a,b)=>Math.atan2(dot(a,v),dot(a,u))-Math.atan2(dot(b,v),dot(b,u)));
+  const outline=[];
+  points.forEach((p,i)=>{const q=points[(i+1)%points.length];for(let j=0;j<8;j++)outline.push(unit(p.map((x,k)=>x+(q[k]-x)*j/8)))});
+  faces.push({outline,black});
+ }
+ vertices.forEach((v,i)=>face(adjacent[i].map(j=>cut(v,vertices[j])),true));
+ for(let i=0;i<12;i++)for(const j of adjacent[i])for(const k of adjacent[j]){
+  if(i<j&&j<k&&adjacent[k].includes(i)){
+   const a=vertices[i],b=vertices[j],c=vertices[k];
+   face([cut(a,b),cut(b,a),cut(b,c),cut(c,b),cut(c,a),cut(a,c)],false);
+  }
+ }
+ function drawBall(x,y,angle){
+  ctx.save();ctx.translate(x,y);ctx.scale(radius,radius);
+  ctx.beginPath();ctx.arc(0,0,1,0,Math.PI*2);ctx.clip();ctx.fillStyle='#e7e7da';ctx.fillRect(-1,-1,2,2);
+  const ca=Math.cos(angle),sa=Math.sin(angle),tilt=.25,ct=Math.cos(tilt),st=Math.sin(tilt);
+  for(const face of faces){
+   const points=face.outline.map(([x,y,z])=>{const rx=x*ca+z*sa,rz=z*ca-x*sa;return [rx,y*ct-rz*st,y*st+rz*ct]});
+   const front=[];
+   points.forEach((p,i)=>{
+    const q=points[(i+1)%points.length];if(p[2]>=0)front.push(p);
+    if((p[2]>=0)!==(q[2]>=0)){const t=p[2]/(p[2]-q[2]);front.push(unit([p[0]+t*(q[0]-p[0]),p[1]+t*(q[1]-p[1]),0]))}
+   });
+   if(front.length<3)continue;
+   ctx.beginPath();front.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();
+   ctx.fillStyle=face.black?'#101c20':'#e7e7da';ctx.fill();ctx.strokeStyle='#596460';ctx.lineWidth=.015;ctx.stroke();
+  }
+  const shade=ctx.createRadialGradient(-.35,-.45,.08,0,0,1.12);
+  shade.addColorStop(0,'#ffffff55');shade.addColorStop(.48,'#ffffff00');shade.addColorStop(.85,'#09221870');shade.addColorStop(1,'#06140dd9');
+  ctx.fillStyle=shade;ctx.fillRect(-1,-1,2,2);ctx.restore();
+ }
+ function align(){
+  const style=getComputedStyle(tile),position=style.backgroundPosition.split(',').pop().trim().split(/\s+/);
+  width=tile.clientWidth;height=tile.clientHeight;if(!width||!height)return false;
+  scale=Math.max(width/786,height/510);
+  offsetX=(width-786*scale)*(parseFloat(position[0])/100);
+  offsetY=(height-510*scale)*(parseFloat(position[1])/100);
+  canvas.style.transform='translate('+(offsetX+452*scale)+'px,'+(offsetY+60*scale)+'px) scale('+scale+')';
+  return true;
+ }
+ function draw(){
+  if(!ready||!align())return;
+  const phase=elapsed/7200*Math.PI*2,bounce=7*Math.pow(Math.sin(phase*3),2);
+  const left=Math.max(486,-offsetX/scale+radius+4),right=Math.min(554,(width-offsetX)/scale-radius-4);
+  ballX=left+(right-left)*(1-Math.cos(phase))/2;ballY=147-bounce;
+  ctx.setTransform(2,0,0,2,0,0);ctx.clearRect(0,0,134,133);ctx.save();
+  // Measured inside corners in the original 786 x 510 photograph.
+  ctx.beginPath();ctx.moveTo(2,16);ctx.lineTo(132,1);ctx.lineTo(132,126);ctx.lineTo(2,130);ctx.closePath();ctx.clip();
+  ctx.drawImage(clean,0,0);
+  if(!departing){
+   ctx.save();ctx.translate(ballX-452,106);ctx.scale(1, .23);
+   const shadow=ctx.createRadialGradient(0,0,0,0,0,radius+5);
+   shadow.addColorStop(0,'rgba(7,18,5,'+(.5-bounce*.025)+')');shadow.addColorStop(1,'rgba(7,18,5,0)');
+   ctx.fillStyle=shadow;ctx.fillRect(-24,-24,48,48);ctx.restore();
+   drawBall(ballX-452,ballY-60,-(ballX-486)/radius);
+  }
+  // Match the existing card gradient, including the light theme and cover crop.
+  const gradient=ctx.createLinearGradient(0,-offsetY/scale-60,0,(height-offsetY)/scale-60);
+  if(document.body.classList.contains('darkMode')){
+   gradient.addColorStop(0,'#010b1900');gradient.addColorStop(.58,'#010b1900');gradient.addColorStop(1,'#010b19b3');
+  }else{
+   gradient.addColorStop(0,'#f7fbff00');gradient.addColorStop(.32,'#f7fbff00');gradient.addColorStop(.52,'#f7fbff59');gradient.addColorStop(.74,'#f7fbfff7');gradient.addColorStop(1,'#f7fbff');
+  }
+  ctx.fillStyle=gradient;ctx.fillRect(0,0,134,133);ctx.restore();
+ }
+ function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected}
+ function tick(now){
+  frame=0;if(!active()){last=0;return}
+  if(last&&!departing&&!reduced.matches)elapsed+=Math.min(now-last,80);
+  last=now;draw();
+  if(!reduced.matches)frame=requestAnimationFrame(tick);
+ }
+ function sync(){
+  if(frame)cancelAnimationFrame(frame);frame=0;last=0;
+  if(active()){draw();if(!reduced.matches)frame=requestAnimationFrame(tick)}
+ }
+ clean.onload=()=>{
+  if(clean.naturalWidth!==134||clean.naturalHeight!==133||!tile.isConnected)return;
+  ready=true;tile.insertBefore(canvas,tile.firstChild);sync();
+ };
+ clean.src='/static/launcher-football-clean-20261015.png';
+ new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['hidden']});
+ new MutationObserver(()=>{if(active())draw()}).observe(document.body,{attributes:true,attributeFilter:['class']});
+ if(typeof IntersectionObserver!=='undefined')new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;sync()}).observe(tile);
+ if(typeof ResizeObserver!=='undefined')new ResizeObserver(sync).observe(tile);
+ else window.addEventListener('resize',sync,{passive:true});
+ document.addEventListener('visibilitychange',sync);
+ window.addEventListener('pagehide',()=>{suspended=true;sync()});
+ window.addEventListener('pageshow',()=>{suspended=false;sync()});
+ if(reduced.addEventListener)reduced.addEventListener('change',sync);else reduced.addListener(sync);
+ return {
+  takeOff(){
+   if(!ready)return null;
+   draw();const rect=tile.getBoundingClientRect();departing=true;draw();
+   return {x:rect.left+tile.clientLeft+offsetX+ballX*scale,y:rect.top+tile.clientTop+offsetY+ballY*scale};
+  },
+  reset(){departing=false;sync()}
+ };
+}
 function start(){
 if(document.getElementById('abajLauncher'))return;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
@@ -122,15 +233,10 @@ for(const tile of root.querySelectorAll('.abajLaunchTile')){
 const motion=document.createElement('span');motion.className='abajSceneMotion';motion.setAttribute('aria-hidden','true');
 const accent=document.createElement('i');accent.className=tile.dataset.target==='cinema'?'abajSceneSun':tile.dataset.target==='iptv'?'abajSceneWater':'abajSceneGear';
 motion.appendChild(accent);
-if(tile.dataset.target==='iptv'){const backlight=document.createElement('i');backlight.className='abajTvBacklight';motion.appendChild(backlight);const screen=document.createElement('i');screen.className='abajTvScreenMotion';motion.appendChild(screen);}
+if(tile.dataset.target==='iptv'){const backlight=document.createElement('i');backlight.className='abajTvBacklight';motion.appendChild(backlight);}
 tile.insertBefore(motion,tile.firstChild);
 }
-// A true dolphin dive must be a rendered sequence, not a rotated flat PNG.
-// Enable a seamless full-card video only if the approved asset exists.
-// The old optional dolphin .webm does not exist in this repository.
-// Do not request a missing video or cover the photo with a broken player.
-// Original IPTV artwork is kept intact: no artificial video strip or duplicate ball.
-
+const footballScreen=createFootballScreen(root.querySelector('[data-target="iptv"]'),root);
 
 // Progressive enhancement: only replace the original settings art if BOTH layers load.
 const settingsTile=root.querySelector('.abajLaunchTile[data-target="settings"]');
@@ -250,8 +356,8 @@ async function playIptvBallTransition(tile){
  ball.setAttribute('aria-hidden','true');
  ball.style.perspective='550px';
  const r=tile.getBoundingClientRect();
- // The football is near the top centre of the TV screen in the original IPTV artwork.
- const x=r.left+r.width*.665,y=r.top+r.height*.285;
+ const origin=footballScreen?.takeOff();
+ const x=origin?origin.x:r.left+r.width*.665,y=origin?origin.y:r.top+r.height*.285;
  ball.style.left=x+'px';ball.style.top=y+'px';
  document.body.appendChild(ball);
  try{
@@ -273,7 +379,7 @@ async function playIptvBallTransition(tile){
  }finally{ball.remove();tile.classList.remove('abajIptvBallLaunching');document.querySelectorAll('.abajIptvFlightCurtain').forEach(el=>el.remove());iptvTransitionBusy=false}
  return true;
 }
-function show(){applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;home.hidden=true;root.querySelector('button')?.focus({preventScroll:true})}
+function show(){applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;footballScreen?.reset();home.hidden=true;root.querySelector('button')?.focus({preventScroll:true})}
 function hide(){root.hidden=true;home.hidden=true}
 window.abajLauncherHome=show;
 root.addEventListener('click',async e=>{const b=e.target.closest('[data-target]');if(!b)return;const target=b.dataset.target;try{if(target==='cinema'){if(cinemaTransitionBusy)return;await playCinemaGlassesTransition(b);if(!document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();}if(target==='iptv'){if(iptvTransitionBusy)return;await playIptvBallTransition(b)}if(target==='iptv'&&document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();if(target==='settings'&&typeof openTvSettings==='function')openTvSettings();if(target==='settings'||target==='iptv'||document.body.classList.contains('cinemaMode'))hide()}catch(err){console.error('ABAJ launcher navigation',err)}});
