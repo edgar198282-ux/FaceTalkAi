@@ -9,7 +9,9 @@ import tempfile
 import time
 from pathlib import Path
 
+import aiohttp
 from aiohttp import web
+from urllib.parse import urljoin, urlparse
 
 SEGMENT_SECONDS = 6
 MAX_PRODUCERS = 2
@@ -103,6 +105,87 @@ async def playlist(request):
                         headers={'Cache-Control': 'no-store'})
 
 
+async def _seek_source(job, start):
+    if not start or '.m3u8' not in job['source'].split('?', 1)[0]:
+        return job['source'], start
+    url = job['source']
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=35)) as session:
+        for _ in range(3):
+            async with session.get(url) as response:
+                response.raise_for_status()
+                text = await response.text()
+                url = str(response.url)
+            if '#EXTINF:' in text:
+                break
+            lines = text.splitlines()
+            next_url = next((lines[i + 1].strip() for i, line in enumerate(lines[:-1])
+                             if line.startswith('#EXT-X-STREAM-INF:')), '')
+            if not next_url:
+                raise web.HTTPBadGateway(text='Source playlist is unavailable')
+            url = urljoin(url, next_url)
+        else:
+            raise web.HTTPBadGateway(text='Source playlist nesting is invalid')
+    def absolute(value):
+        result = urljoin(url, value)
+        if urlparse(result).scheme not in ('http', 'https'):
+            raise web.HTTPBadGateway(text='Invalid source playlist URL')
+        return result
+    def rewrite(line):
+        return re.sub(r'URI="([^"]+)"', lambda m: 'URI="' + absolute(m[1]) + '"', line)
+    sequence = 0
+    headers = ['#EXTM3U']
+    segments = []
+    key = mapping = None
+    tags = []
+    position = length = 0.0
+    offset = 0
+    for line in text.splitlines():
+        line = line.strip()
+        if line.startswith('#EXT-X-MEDIA-SEQUENCE:'):
+            sequence = int(line.split(':', 1)[1])
+        elif line.startswith(('#EXT-X-VERSION:', '#EXT-X-TARGETDURATION:', '#EXT-X-INDEPENDENT-SEGMENTS')):
+            headers.append(line)
+        elif line.startswith('#EXT-X-KEY:'):
+            key = rewrite(line)
+        elif line.startswith('#EXT-X-MAP:'):
+            mapping = rewrite(line)
+        elif line.startswith('#EXTINF:'):
+            length = float(line.split(':', 1)[1].split(',')[0])
+            tags.append(line)
+        elif line.startswith('#EXT-X-BYTERANGE:'):
+            raw = line.split(':', 1)[1]
+            size, _, explicit = raw.partition('@')
+            if explicit:
+                offset = int(explicit)
+            tags.append(f'#EXT-X-BYTERANGE:{size}@{offset}')
+            offset += int(size)
+        elif line.startswith('#EXT-X-DISCONTINUITY'):
+            tags.append(line)
+        elif line and not line.startswith('#') and length:
+            segments.append((position, key, mapping, tags, absolute(line)))
+            position += length
+            length = 0
+            tags = []
+    chosen = next((i for i in range(len(segments) - 1, -1, -1)
+                   if segments[i][0] <= start), None)
+    if chosen is None:
+        raise web.HTTPBadGateway(text='Source seek point is unavailable')
+    headers.extend(['#EXT-X-PLAYLIST-TYPE:VOD', f'#EXT-X-MEDIA-SEQUENCE:{sequence + chosen}'])
+    last_key = last_map = None
+    for _, key, mapping, tags, uri in segments[chosen:]:
+        if key and key != last_key:
+            headers.append(key)
+            last_key = key
+        if mapping and mapping != last_map:
+            headers.append(mapping)
+            last_map = mapping
+        headers.extend(tags + [uri])
+    headers.append('#EXT-X-ENDLIST')
+    path = job['directory'] / 'input.m3u8'
+    path.write_text('\n'.join(headers) + '\n')
+    return str(path), max(0, start - segments[chosen][0])
+
+
 async def _produce(job, index):
     async with _producer_lock:
         await _produce_locked(job, index)
@@ -118,11 +201,15 @@ async def _produce_locked(job, index):
     for path in job['directory'].glob('*'):
         path.unlink(missing_ok=True)
     start = index * SEGMENT_SECONDS
+    source, skip = await asyncio.wait_for(_seek_source(job, start), timeout=35)
+    input_seek = ['-ss', str(skip)] if source == job['source'] else []
+    output_seek = [] if input_seek else ['-ss', str(skip)]
     output = str(job['directory'] / '%d.ts')
     command = [
         'ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error',
-        '-rw_timeout', '15000000', '-ss', str(start), '-threads', '2',
-        '-i', job['source'], '-t', str(job['duration'] - start),
+        '-rw_timeout', '15000000', '-protocol_whitelist', 'file,http,https,tcp,tls,crypto,httpproxy',
+        *input_seek, '-threads', '2', '-i', source, *output_seek,
+        '-t', str(job['duration'] - start),
         '-map', '0:v:0', '-map', '0:a:0?', '-sn', '-dn',
         '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease:force_divisible_by=2,format=yuv420p',
         '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22',
