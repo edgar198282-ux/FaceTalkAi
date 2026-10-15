@@ -201,6 +201,9 @@ public class MainActivity extends Activity {
     private View customView; private WebChromeClient.CustomViewCallback customViewCallback;
     private FrameLayout fullscreenContainer;
     private PlayerView nativeProbeView;
+    // Independent mobile cinema player. TV native playback remains unchanged.
+    private PlayerView mobileCinemaView;
+    private ExoPlayer mobileCinemaPlayer;
     private boolean nativeProbeTextureSurface=false;
     private boolean nativeCinemaPlayback=false;
     private FrameLayout nativeAdCover;
@@ -1663,6 +1666,16 @@ public class MainActivity extends Activity {
             if(!(url.startsWith("http://")||url.startsWith("https://")))return;
             runOnUiThread(()->startNativeProbe(url));
         }
+        @JavascriptInterface public void mobileCinemaStart(String rawUrl){
+            if(isTv||rawUrl==null)return;
+            String url=rawUrl.trim();
+            if(!(url.startsWith("https://")||url.startsWith("http://")))return;
+            runOnUiThread(()->startMobileCinema(url));
+        }
+        @JavascriptInterface public void mobileCinemaStop(){
+            if(isTv)return;
+            runOnUiThread(()->stopMobileCinema());
+        }
         @JavascriptInterface public void cinemaNativeStart(String rawUrl,String rawProvider){
             if(!isTv||rawUrl==null)return;
             String url=rawUrl.trim();
@@ -2735,6 +2748,42 @@ public class MainActivity extends Activity {
             nativeProbeStartedAt=0L;
         }
     }
+    private void startMobileCinema(String url){
+        if(isTv||fullscreenContainer==null)return;
+        try{
+            stopMobileCinema();
+            mobileCinemaView=new PlayerView(this);
+            mobileCinemaView.setUseController(true);
+            mobileCinemaView.setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING);
+            mobileCinemaView.setBackgroundColor(Color.BLACK);
+            fullscreenContainer.addView(mobileCinemaView,new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
+            mobileCinemaPlayer=new ExoPlayer.Builder(this).build();
+            mobileCinemaView.setPlayer(mobileCinemaPlayer);
+            Uri uri=Uri.parse(url);
+            String path=uri.getPath()==null?"":uri.getPath().toLowerCase(java.util.Locale.ROOT);
+            MediaItem.Builder item=new MediaItem.Builder().setUri(uri);
+            if(path.endsWith(".m3u8"))item.setMimeType(MimeTypes.APPLICATION_M3U8);
+            else if(path.endsWith(".mpd"))item.setMimeType(MimeTypes.APPLICATION_MPD);
+            mobileCinemaPlayer.setMediaItem(item.build());
+            mobileCinemaPlayer.prepare();
+            mobileCinemaPlayer.play();
+        }catch(Exception e){
+            Log.e("AbajMobileCinema","Media3 startup failed",e);
+            stopMobileCinema();
+        }
+    }
+    private void stopMobileCinema(){
+        if(mobileCinemaPlayer!=null){
+            try{mobileCinemaPlayer.release();}catch(Exception ignored){}
+            mobileCinemaPlayer=null;
+        }
+        if(mobileCinemaView!=null){
+            mobileCinemaView.setPlayer(null);
+            if(fullscreenContainer!=null)fullscreenContainer.removeView(mobileCinemaView);
+            mobileCinemaView=null;
+        }
+    }
     private void startNativeCinema(String url,String provider,java.util.Map<String,String> extraHeaders){
         if(!isTv||nativeProbeView==null)return;
         try{
@@ -3292,8 +3341,9 @@ public class MainActivity extends Activity {
     }
 
     private void openExternal(Uri uri){if(uri==null)return;try{String s=uri.getScheme()==null?"":uri.getScheme().toLowerCase(),h=uri.getHost()==null?"":uri.getHost().toLowerCase();if("tg".equals(s)||"t.me".equals(h)||"telegram.me".equals(h)){Intent t=new Intent(Intent.ACTION_VIEW,uri);t.setPackage("org.telegram.messenger");try{startActivity(t);return;}catch(Exception ignored){}}startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}}
-    @Override protected void onDestroy(){activityResumed=false;updateHandler.removeCallbacksAndMessages(null);try{adFrameExecutor.shutdown();}catch(Exception ignored){}try{tvWatchdogExecutor.shutdownNow();}catch(Exception ignored){}if(downloadReceiver!=null){try{unregisterReceiver(downloadReceiver);}catch(Exception ignored){}}stopNativeProbe(true);if(webView!=null)webView.destroy();super.onDestroy();}
+    @Override protected void onDestroy(){stopMobileCinema();activityResumed=false;updateHandler.removeCallbacksAndMessages(null);try{adFrameExecutor.shutdown();}catch(Exception ignored){}try{tvWatchdogExecutor.shutdownNow();}catch(Exception ignored){}if(downloadReceiver!=null){try{unregisterReceiver(downloadReceiver);}catch(Exception ignored){}}stopNativeProbe(true);if(webView!=null)webView.destroy();super.onDestroy();}
     @Override public void onBackPressed(){
+        if(mobileCinemaView!=null){stopMobileCinema();return;}
         if(customView!=null){hideCustomView();return;}
         if(isTv&&webView!=null){
             final boolean[] answered={false};
