@@ -34,6 +34,10 @@ const css=`
 
 .abajSceneMotion i{position:absolute;display:block;pointer-events:none}
 .abajLaunchTile[data-target="cinema"] .abajSceneSun{left:35%;top:19%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff5b34d 0%,#ffbf4440 15%,#ffb12a16 39%,transparent 69%);mix-blend-mode:screen;animation:abajSunDrift 32s ease-in-out infinite}
+#abajLauncher .abajLaunchTile[data-target="cinema"].abajCinemaSceneReady{animation:none}
+.abajCinemaScene{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.abajCinemaScene[hidden]{display:none}
+.abajCinemaSceneReady .abajSceneSun{display:none}
 .abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff25,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
 /* Subtle blue TV backlight, confined to the right-side TV artwork. */
 .abajLaunchTile[data-target="iptv"] .abajTvBacklight{position:absolute;z-index:2;left:45%;top:1%;width:53%;height:70%;pointer-events:none;background:radial-gradient(ellipse 70% 56% at 64% 42%,rgba(14,150,255,.35) 0%,rgba(0,100,225,.17) 49%,transparent 80%);mix-blend-mode:screen;opacity:.38;will-change:opacity;animation:abajTvBacklightBreathe 5.5s ease-in-out infinite alternate}
@@ -224,6 +228,108 @@ function createFootballScreen(tile,root){
   reset(){departing=false;sync()}
  };
 }
+function createCinemaScene(tile,root){
+ const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+ if(!ctx)return;
+ canvas.className='abajCinemaScene';canvas.setAttribute('aria-hidden','true');
+ const artwork=new Image(),reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
+ const sky=document.createElement('canvas'),skyCtx=sky.getContext('2d'),clouds=document.createElement('canvas'),cloudCtx=clouds.getContext('2d');
+ if(!skyCtx||!cloudCtx)return;
+ const ridge=new Path2D('M0 0H630V108L616 103 603 114 590 97 578 91 564 108 553 116 543 108 532 119 517 112 501 124 483 119 464 113 444 100 430 114 417 119 405 126 391 123 377 135 360 132 346 140 327 137 312 136 302 129 290 132 275 129 263 133 248 122 234 130 221 123 208 117 194 108 184 119 170 116 157 125 144 117 132 116 120 103 110 108 99 94 86 70 76 80 65 84 53 91 42 86 28 97 13 92 0 106Z');
+ let ready=false,visible=true,suspended=false,frame=0,last=0,elapsed=0,w=0,h=0,dpr=1;
+ const kernels=[[582,195,11,10],[602,191,12,11],[629,185,11,11],[644,190,12,11],[660,193,11,10],[679,196,11,10]].map(([x,y,kw,kh],i)=>({x,y,w:kw,h:kh,period:2.2+i*.19,delay:i*.37}));
+ function align(){
+  w=tile.clientWidth;h=tile.clientHeight;if(!w||!h)return false;
+  dpr=Math.min(window.devicePixelRatio||1,2);
+  if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){
+   canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+  }
+  return true;
+ }
+ function draw(){
+  if(!ready||!align())return;
+  const t=elapsed/1000,scale=Math.max(w/786,h/506),ox=(w-786*scale)/2,oy=(h-506*scale)/2;
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+  ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.drawImage(artwork,0,0);
+  ctx.save();ctx.clip(ridge);
+  ctx.drawImage(sky,0,0);
+  // Fade the moving cloud band into the fixed horizon, below the clouds.
+  ctx.save();
+  const drift=22*Math.sin(t*Math.PI*2/26);
+  ctx.drawImage(clouds,drift-630,0);ctx.drawImage(clouds,drift,0);ctx.drawImage(clouds,drift+630,0);
+  ctx.restore();
+  const sunY=132-24*Math.cos(t*Math.PI*2/14),strength=(1+Math.cos(t*Math.PI*2/14))/2;
+  const glow=ctx.createRadialGradient(325,sunY,2,325,sunY,48);
+  glow.addColorStop(0,'rgba(255,247,171,.95)');glow.addColorStop(.22,'rgba(255,211,87,.62)');glow.addColorStop(1,'rgba(255,165,42,0)');
+  ctx.globalAlpha=.5+strength*.5;ctx.fillStyle=glow;ctx.fillRect(277,sunY-48,96,96);
+  ctx.beginPath();ctx.arc(325,sunY,8.5,0,Math.PI*2);ctx.fillStyle='#fffbd3';ctx.fill();ctx.restore();
+  for(const k of kernels){
+   const phase=((t+k.delay)%k.period)/k.period;
+   if(phase>.58)continue;
+   const flight=phase/.58,lift=Math.sin(flight*Math.PI)*(16+k.delay*6),dx=Math.sin(flight*Math.PI*2)*(2+k.delay);
+   ctx.save();ctx.translate(k.x+dx,k.y-lift);ctx.rotate(Math.sin(flight*Math.PI)*(k.delay-.8)*.6);
+   ctx.beginPath();ctx.moveTo(-k.w*.48,k.h*.22);ctx.lineTo(-k.w*.5,-k.h*.16);ctx.lineTo(-k.w*.24,-k.h*.48);ctx.lineTo(k.w*.12,-k.h*.5);ctx.lineTo(k.w*.47,-k.h*.18);ctx.lineTo(k.w*.45,k.h*.25);ctx.lineTo(k.w*.12,k.h*.48);ctx.lineTo(-k.w*.25,k.h*.42);ctx.closePath();ctx.clip();
+   ctx.drawImage(k.sprite,-k.w/2,-k.h/2);ctx.restore();
+  }
+  ctx.restore();
+  const gradient=ctx.createLinearGradient(0,0,0,h);
+  if(document.body.classList.contains('darkMode')){
+   gradient.addColorStop(0,'#010b1900');gradient.addColorStop(.58,'#010b1900');gradient.addColorStop(1,'#010b19b3');
+  }else{
+   gradient.addColorStop(0,'#f7fbff00');gradient.addColorStop(.32,'#f7fbff00');gradient.addColorStop(.52,'#f7fbff59');gradient.addColorStop(.74,'#f7fbfff7');gradient.addColorStop(1,'#f7fbff');
+  }
+  ctx.fillStyle=gradient;ctx.fillRect(0,0,w,h);
+ }
+ function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected}
+ function tick(now){
+  frame=0;if(!active()){last=0;return}
+  if(last)elapsed+=Math.min(now-last,80);last=now;draw();frame=requestAnimationFrame(tick);
+ }
+ function sync(){
+  if(frame)cancelAnimationFrame(frame);frame=0;last=0;
+  canvas.hidden=reduced.matches;
+  if(active()&&!reduced.matches){draw();frame=requestAnimationFrame(tick)}
+ }
+ artwork.onload=()=>{
+  if(artwork.naturalWidth!==786||artwork.naturalHeight!==506||!tile.isConnected)return;
+  sky.width=630;sky.height=150;skyCtx.drawImage(artwork,0,0);
+  // Replace the photographed sun once; the moving disk is clipped by the mountain ridge.
+  const pixels=skyCtx.getImageData(0,0,630,150),data=pixels.data;
+  for(let y=103;y<150;y++)for(let x=295;x<357;x++){
+   const blend=Math.min(1,(x-295)/9,(357-x)/9,Math.max(0,(y-103)/7));
+   for(let c=0;c<3;c++){
+    const left=data[(y*630+285)*4+c],right=data[(y*630+365)*4+c],p=(y*630+x)*4+c;
+    data[p]=data[p]*(1-blend)+(left+(right-left)*(x-285)/80)*blend;
+   }
+  }
+  skyCtx.putImageData(pixels,0,0);
+  clouds.width=630;clouds.height=110;cloudCtx.drawImage(sky,0,0);
+  const fade=cloudCtx.createLinearGradient(0,65,0,110);
+  fade.addColorStop(0,'#fff');fade.addColorStop(1,'#fff0');
+  cloudCtx.globalCompositeOperation='destination-in';cloudCtx.fillStyle=fade;cloudCtx.fillRect(0,0,630,110);
+  const edges=cloudCtx.createLinearGradient(0,0,630,0);
+  edges.addColorStop(0,'#fff0');edges.addColorStop(.05,'#fff');edges.addColorStop(.95,'#fff');edges.addColorStop(1,'#fff0');
+  cloudCtx.fillStyle=edges;cloudCtx.fillRect(0,0,630,110);
+  for(const k of kernels){
+   k.sprite=document.createElement('canvas');k.sprite.width=k.w;k.sprite.height=k.h;
+   const c=k.sprite.getContext('2d');c.drawImage(artwork,k.x-k.w/2,k.y-k.h/2,k.w,k.h,0,0,k.w,k.h);
+   const pixels=c.getImageData(0,0,k.w,k.h),rgba=pixels.data;
+   for(let i=0;i<rgba.length;i+=4)rgba[i+3]*=Math.max(0,Math.min(1,(rgba[i]-75)/45,(rgba[i+1]-42)/28,(rgba[i]-rgba[i+2]-20)/25));
+   c.putImageData(pixels,0,0);
+  }
+  ready=true;tile.insertBefore(canvas,tile.firstChild);tile.classList.add('abajCinemaSceneReady');sync();
+ };
+ artwork.src='/static/launcher-cinema-20261014.webp';
+ new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['hidden']});
+ new MutationObserver(()=>{if(active()&&!reduced.matches)draw()}).observe(document.body,{attributes:true,attributeFilter:['class']});
+ if(typeof ResizeObserver!=='undefined')new ResizeObserver(sync).observe(tile);
+ else window.addEventListener('resize',sync,{passive:true});
+ if(typeof IntersectionObserver!=='undefined')new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;sync()}).observe(tile);
+ document.addEventListener('visibilitychange',sync);
+ window.addEventListener('pagehide',()=>{suspended=true;sync()});window.addEventListener('pageshow',()=>{suspended=false;sync()});
+ if(reduced.addEventListener)reduced.addEventListener('change',sync);else reduced.addListener(sync);
+}
+
 function start(){
 if(document.getElementById('abajLauncher'))return;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
@@ -236,6 +342,7 @@ motion.appendChild(accent);
 if(tile.dataset.target==='iptv'){const backlight=document.createElement('i');backlight.className='abajTvBacklight';motion.appendChild(backlight);}
 tile.insertBefore(motion,tile.firstChild);
 }
+createCinemaScene(root.querySelector('[data-target="cinema"]'),root);
 const footballScreen=createFootballScreen(root.querySelector('[data-target="iptv"]'),root);
 
 // Progressive enhancement: only replace the original settings art if BOTH layers load.
