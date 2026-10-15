@@ -40,14 +40,12 @@ const css=`
 @keyframes abajTvBacklightBreathe{from{opacity:.2}to{opacity:.7}}
 #abajLauncher[hidden] .abajTvBacklight{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajTvBacklight{animation:none;opacity:.28}}
-/* Motion stays inside the television's existing picture panels, without changing the artwork. */
-/* Visible TV picture motion: broad moving light confined to the TV side of the card. */
-/* Current artwork has a dark upper-middle TV panel, not football. Confine the animated light to that dark panel without adding any ball. */
-.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{position:absolute;left:62.8%;top:11%;width:6.8%;height:27%;z-index:2;overflow:hidden;pointer-events:none;opacity:1;clip-path:inset(2% 2% 2% 2%)}
-.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(0,65,130,.02),rgba(10,155,235,.15) 48%,rgba(0,48,90,.02));mix-blend-mode:screen;animation:abajTvLiveBrightness 5s ease-in-out infinite alternate}
-@keyframes abajTvLiveBrightness{0%{opacity:.15}100%{opacity:.85}}
-.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:before{content:'';position:absolute;inset:-15%;background:linear-gradient(105deg,transparent 23%,rgba(70,194,255,.02) 33%,rgba(150,226,255,.46) 48%,rgba(65,185,255,.07) 60%,transparent 76%);transform:translateX(-115%);animation:abajTvPictureSweep 5s linear infinite;mix-blend-mode:screen}
-@keyframes abajTvPictureSweep{0%{transform:translateX(-115%)}72%,100%{transform:translateX(115%)}}
+/* Gentle screen-only light movement. No video/canvas, opaque strip, or duplicate football. */
+.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{position:absolute;left:62.8%;top:11%;width:6.8%;height:27%;z-index:2;overflow:hidden;pointer-events:none;opacity:.65;clip-path:inset(3% round 2px);mix-blend-mode:screen}
+.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,rgba(115,207,255,.19),transparent 72%);animation:abajTvLiveBrightness 3.6s ease-in-out infinite alternate}
+@keyframes abajTvLiveBrightness{from{opacity:.12}to{opacity:.65}}
+.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:before{content:'';position:absolute;inset:-10%;background:linear-gradient(110deg,transparent 38%,rgba(170,225,255,.12) 50%,transparent 62%);transform:translateX(-120%);animation:abajTvPictureSweep 7s ease-in-out infinite}
+@keyframes abajTvPictureSweep{0%,15%{transform:translateX(-120%)}70%,100%{transform:translateX(120%)}}
 #abajLauncher[hidden] .abajTvScreenMotion:before,#abajLauncher[hidden] .abajTvScreenMotion:after{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{display:none}}
 /* Keep the lighting layers over the artwork but behind the IPTV title. */
