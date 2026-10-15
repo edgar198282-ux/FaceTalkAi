@@ -3175,7 +3175,27 @@ public class MainActivity extends Activity {
     }}
     private void handleWebPermission(PermissionRequest r){if(r==null)return;if(BuildConfig.PLAY_STORE_BUILD){r.deny();return;}boolean mic=false,cam=false;for(String x:r.getResources()){if(PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(x))mic=true;if(PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(x))cam=true;}boolean mg=!mic||Build.VERSION.SDK_INT<23||checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED;boolean cg=!cam||Build.VERSION.SDK_INT<23||checkSelfPermission(Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED;if(mg&&cg){r.grant(r.getResources());return;}pendingWebPermission=r;if(Build.VERSION.SDK_INT>=23)requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO,Manifest.permission.CAMERA},MEDIA_PERMISSION_REQUEST);else r.grant(r.getResources());}
     @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode!=MEDIA_PERMISSION_REQUEST||pendingWebPermission==null)return;PermissionRequest r=pendingWebPermission;pendingWebPermission=null;boolean ok=true;for(int x:grantResults)if(x!=PackageManager.PERMISSION_GRANTED)ok=false;if(ok)r.grant(r.getResources());else r.deny();}
-    @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){super.onActivityResult(requestCode,resultCode,data);if(requestCode!=FILE_CHOOSER_REQUEST||fileCallback==null)return;fileCallback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode,data));fileCallback=null;}
+    @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){
+        super.onActivityResult(requestCode,resultCode,data);
+        if(requestCode!=FILE_CHOOSER_REQUEST||fileCallback==null)return;
+        ValueCallback<Uri[]> callback=fileCallback;
+        fileCallback=null;
+        Uri[] result=null;
+        if(resultCode==Activity.RESULT_OK&&data!=null){
+            android.content.ClipData clips=data.getClipData();
+            if(clips!=null&&clips.getItemCount()>0){
+                java.util.ArrayList<Uri> selected=new java.util.ArrayList<>();
+                for(int n=0;n<clips.getItemCount();n++){
+                    Uri uri=clips.getItemAt(n).getUri();
+                    if(uri!=null&&!selected.contains(uri))selected.add(uri);
+                }
+                if(!selected.isEmpty())result=selected.toArray(new Uri[0]);
+            }
+            if(result==null&&data.getData()!=null)result=new Uri[]{data.getData()};
+            if(result==null)result=WebChromeClient.FileChooserParams.parseResult(resultCode,data);
+        }
+        callback.onReceiveValue(result);
+    }
     private void updatePictureInPictureParams(){
         if(isTv||Build.VERSION.SDK_INT<Build.VERSION_CODES.O)return;
         try{
