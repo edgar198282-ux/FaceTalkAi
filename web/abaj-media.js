@@ -13,7 +13,7 @@ const style=document.createElement('style');style.textContent=`
 #abajLauncher[data-visible="1"] .abajLaunchTiles{grid-template-columns:1fr}
 #abajLauncher[data-visible="2"] .abajLaunchTiles{grid-template-columns:repeat(2,minmax(0,1fr))}
 #abajLauncher[data-visible="4"] .abajLaunchTile{min-height:180px}
-.abajSectionSwitch{display:flex;width:100%;align-items:center;justify-content:space-between;gap:16px;border:1px solid #a7cce2;border-radius:12px;padding:12px 14px;margin:7px 0;background:#eaf6ff;color:#174866;font:inherit;font-weight:700;cursor:pointer}
+.abajSectionHeading{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;padding:8px 2px}.abajSectionHeading:after{content:'▾';transition:transform .2s}.abajSectionHeading[aria-expanded="true"]:after{transform:rotate(180deg)}.abajSectionHeading:focus-visible{outline:3px solid #09baff;outline-offset:2px}.abajSectionSwitch[hidden]{display:none!important}.abajSectionSwitch{display:flex;width:100%;align-items:center;justify-content:space-between;gap:16px;border:1px solid #a7cce2;border-radius:12px;padding:12px 14px;margin:7px 0;background:#eaf6ff;color:#174866;font:inherit;font-weight:700;cursor:pointer}
 .abajSectionSwitch i{position:relative;width:44px;height:26px;flex-shrink:0;border-radius:20px;background:#738b9a;transition:background .2s}
 .abajSectionSwitch i:before{content:'';position:absolute;left:3px;top:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:transform .2s}
 .abajSectionSwitch[aria-checked="true"] i{background:#008dc6}.abajSectionSwitch[aria-checked="true"] i:before{transform:translateX(18px)}
@@ -118,8 +118,8 @@ function init(){
  if(panel)return;
  const settings=document.querySelector('#tvSettingsModal .settingsCard');
  if(settings&&!document.getElementById('abajSectionSwitches')){
-  const section=make('div');section.id='abajSectionSwitches';section.appendChild(make('div','settingsLabel',t().sections));
-  for(const key of Object.keys(prefs)){const b=button(t()[key],()=>setPreference(key,!prefs[key]));b.className='abajSectionSwitch';b.dataset.section=key;b.setAttribute('role','switch');b.setAttribute('aria-checked',String(prefs[key]));const knob=make('i');knob.setAttribute('aria-hidden','true');b.appendChild(knob);section.appendChild(b)}
+  const section=make('div');section.id='abajSectionSwitches';const heading=button(t().sections,()=>{const expanded=heading.getAttribute('aria-expanded')==='true';heading.setAttribute('aria-expanded',String(!expanded));for(const row of section.querySelectorAll('[data-section]'))row.hidden=expanded});heading.className='settingsLabel abajSectionHeading';heading.setAttribute('aria-expanded','false');heading.setAttribute('aria-controls','abajSectionOptions');section.appendChild(heading);
+  for(const key of Object.keys(prefs)){const b=button(t()[key],()=>setPreference(key,!prefs[key]));b.className='abajSectionSwitch';b.dataset.section=key;b.setAttribute('role','switch');b.setAttribute('aria-checked',String(prefs[key]));const knob=make('i');knob.setAttribute('aria-hidden','true');b.appendChild(knob);b.hidden=true;section.appendChild(b)}
   settings.insertBefore(section,document.getElementById('settingsLangLabel'));
  }
  createPanel();apply();
