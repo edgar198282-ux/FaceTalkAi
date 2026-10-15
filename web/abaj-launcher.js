@@ -52,7 +52,7 @@ const css=`
 #abajLauncher .abajLaunchTile[data-target="iptv"] .abajSceneMotion{z-index:1;isolation:isolate}
 #abajLauncher .abajLaunchTile[data-target="iptv"] .abajLaunchText{z-index:3}
 
-.abajIptvFlightCurtain{position:fixed;inset:0;z-index:2147483646;background:#06152c;opacity:0;pointer-events:none}.abajCinemaLensWash{position:fixed;inset:0;z-index:2147483646;pointer-events:none;opacity:0;background:linear-gradient(90deg,#ff26382b 0%,#f4293b3b 49.7%,#1aafff3b 50.3%,#09b8ff30 100%)}.abaj3dRig{position:absolute;inset:0;transform-style:preserve-3d;perspective:600px}.abaj3dFront{position:absolute;left:8%;top:25%;width:84%;height:50%;display:flex;gap:7%;align-items:center;transform:translateZ(22px);transform-style:preserve-3d}.abaj3dLens{position:relative;width:46.5%;height:100%;border:11px solid #11151d;border-radius:27% 27% 38% 38%;box-shadow:inset 0 3px 7px #0009,0 2px 2px #77808a,0 6px 9px #0007;box-sizing:border-box;backface-visibility:visible}.abaj3dRed{background:linear-gradient(145deg,#ffabb880,#ff183eab 55%,#8d0929cb)}.abaj3dBlue{background:linear-gradient(145deg,#b9f4ff9c,#13b4f8bd 55%,#0643a8c9)}.abaj3dBridge{position:absolute;left:45%;top:21%;width:10%;height:23%;border-top:10px solid #16191e;border-radius:50%;z-index:2}.abaj3dArm{position:absolute;top:34%;width:12px;height:105px;background:linear-gradient(90deg,#050608,#505864,#0c0e12);border-radius:8px;transform-origin:top center;box-shadow:1px 0 3px #0008;backface-visibility:visible}.abaj3dArmLeft{left:9%;transform:translateZ(17px) rotateX(-64deg) rotateY(-16deg)}.abaj3dArmRight{right:9%;transform:translateZ(17px) rotateX(-64deg) rotateY(16deg)}.abajCinema3dGlasses{position:fixed;z-index:2147483647;width:300px;height:145px;pointer-events:none;transform:translate(-50%,-50%);transform-style:preserve-3d;will-change:transform;filter:drop-shadow(0 5px 5px #0005)}.abajIptvFlyingBall{position:fixed;z-index:2147483647;display:block;width:76px;height:76px;line-height:0;text-align:center;pointer-events:none;transform:translate(-50%,-50%);filter:drop-shadow(0 7px 8px #0009);user-select:none;transform-style:preserve-3d}
+.abajTransitionStage{position:fixed;inset:0;z-index:2147483647;display:block;width:100%;height:100%;touch-action:none;pointer-events:auto}
 .abajLaunchTile[data-target="iptv"] .abajIptvMotionVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1;border-radius:inherit}
 .abajLaunchTile[data-target="iptv"].abajIptvVideoReady{background-image:linear-gradient(0deg,#010b19b3,transparent 42%),var(--tile-bg)!important}
 body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajIptvVideoReady .abajIptvMotionVideo{opacity:.82}
@@ -111,15 +111,8 @@ body:not(.darkMode) #abajLauncher .abajLaunchTile:focus-visible{outline-color:#0
 body:not(.darkMode) #abajLaunchHome{background:#f3faff;color:#12628f;border-color:#58a7d2;box-shadow:0 3px 14px #25678926}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile{animation:none!important;transition:none!important}}
 `;
-function createFootballScreen(tile,root){
- const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
- if(!ctx)return null;
- canvas.className='abajFootballScreen';canvas.setAttribute('aria-hidden','true');
- canvas.width=268;canvas.height=266;
- const clean=new Image(),reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
- let ready=false,visible=true,suspended=false,departing=false,frame=0,last=0,elapsed=0;
- let width=0,height=0,scale=1,offsetX=0,offsetY=0,ballX=486,ballY=147;
- const radius=19,faces=[];
+function createFootballPainter(ctx,radius){
+ const faces=[];
  const unit=v=>{const n=Math.hypot(...v);return v.map(x=>x/n)};
  const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
  const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
@@ -161,6 +154,70 @@ function createFootballScreen(tile,root){
   shade.addColorStop(0,'#ffffff55');shade.addColorStop(.48,'#ffffff00');shade.addColorStop(.85,'#09221870');shade.addColorStop(1,'#06140dd9');
   ctx.fillStyle=shade;ctx.fillRect(-1,-1,2,2);ctx.restore();
  }
+ return drawBall;
+}
+function drawCinemaGlasses(ctx,w,h,origin,p){
+ const smooth=p*p*(3-2*p),focal=Math.min(w,h)*1.65,distance=1800*Math.pow(1-p,1.7)+45;
+ const cx=origin.x+(w*.5-origin.x)*smooth,cy=origin.y+(h*.5-origin.y)*smooth;
+ const yaw=-.32*(1-smooth),pitch=-.16*(1-smooth),roll=-.08*(1-smooth);
+ function project(x,y,z){
+  const eye=Math.max(0,Math.min(1,(p-.6)/.4)),viewX=x-76*eye*eye*(3-2*eye);
+  const a=viewX*Math.cos(yaw)+z*Math.sin(yaw),b=z*Math.cos(yaw)-viewX*Math.sin(yaw);
+  const c=y*Math.cos(pitch)-b*Math.sin(pitch),d=y*Math.sin(pitch)+b*Math.cos(pitch);
+  const rx=a*Math.cos(roll)-c*Math.sin(roll),ry=a*Math.sin(roll)+c*Math.cos(roll);
+  const scale=focal/Math.max(24,distance-d);
+  return [cx+rx*scale,cy+ry*scale];
+ }
+ function outline(center,rx,ry,z){
+  const points=[];
+  for(let i=0;i<64;i++){
+   const angle=i*Math.PI/32,co=Math.cos(angle),si=Math.sin(angle);
+   points.push(project(center+Math.sign(co)*Math.pow(Math.abs(co),.48)*rx,Math.sign(si)*Math.pow(Math.abs(si),.58)*ry,z));
+  }
+  return points;
+ }
+ function path(points){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath()}
+ function ring(outer,inner){path(outer);inner.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath()}
+ function arm(side){
+  const opening=Math.min(1,p*3),tip=side*(146+16*opening),depth=24+68*opening;
+  const points=[project(side*146,-26,0),project(tip,-22,depth),project(tip-side*8,2,depth+16),project(tip-side*15,8,depth+12),project(tip-side*10,-16,depth),project(side*140,-18,0)];
+  path(points);const g=ctx.createLinearGradient(points[0][0],points[0][1],points[1][0],points[1][1]);
+  g.addColorStop(0,'#4a515e');g.addColorStop(.35,'#171c25');g.addColorStop(.7,'#5e6874');g.addColorStop(1,'#10151e');ctx.fillStyle=g;ctx.fill();ctx.strokeStyle='#7d87927a';ctx.lineWidth=Math.max(.5,focal/distance*.7);ctx.stroke();
+ }
+ ctx.save();ctx.globalAlpha=Math.min(1,p*12);arm(-1);arm(1);
+ for(const center of [-76,76]){
+  const outer=outline(center,71,49,0),inner=outline(center,58,37,5),back=outline(center,71,49,-9);
+  ring(back,outline(center,58,37,-9));ctx.fillStyle='#04070c';ctx.fill('evenodd');
+  for(let i=0;i<outer.length;i++){
+   const j=(i+1)%outer.length;path([back[i],back[j],outer[j],outer[i]]);
+   ctx.fillStyle=i<32?'#101722':'#434c59';ctx.fill();
+  }
+  ring(outer,inner);const rim=ctx.createLinearGradient(cx,cy-55*focal/distance,cx,cy+55*focal/distance);
+  rim.addColorStop(0,'#727d8a');rim.addColorStop(.12,'#262d38');rim.addColorStop(.6,'#080d15');rim.addColorStop(1,'#343e4b');ctx.fillStyle=rim;ctx.fill('evenodd');
+  path(inner);const left=center<0,lens=ctx.createLinearGradient(inner[20][0],inner[20][1],inner[50][0],inner[50][1]);
+  lens.addColorStop(0,left?'#f6577459':'#49cfff66');lens.addColorStop(.45,left?'#b20c397d':'#0767bb80');lens.addColorStop(1,left?'#ff7b855c':'#9cecff59');ctx.fillStyle=lens;ctx.fill();
+  ctx.strokeStyle=left?'#ff9ba98a':'#96e4ff99';ctx.lineWidth=Math.max(.6,focal/distance*.8);ctx.stroke();
+  ctx.save();ctx.clip();const highlight=ctx.createLinearGradient(cx-w,cy-h,cx+w,cy+h);
+  highlight.addColorStop(0,'#ffffff00');highlight.addColorStop(.45,'#ffffff00');highlight.addColorStop(.48,'#ffffff38');highlight.addColorStop(.51,'#ffffff06');highlight.addColorStop(1,'#ffffff00');ctx.fillStyle=highlight;ctx.fillRect(0,0,w,h);ctx.restore();
+ }
+ const bridge=[project(-17,-23,4),project(-10,-35,4),project(10,-35,4),project(17,-23,4),project(12,-16,6),project(6,-23,6),project(-6,-23,6),project(-12,-16,6)];
+ path(bridge);ctx.fillStyle='#252d38';ctx.fill();ctx.strokeStyle='#7b8790';ctx.lineWidth=Math.max(.6,focal/distance*.65);ctx.stroke();
+ ctx.restore();
+ if(p>.86){
+  ctx.save();ctx.globalAlpha=(p-.86)/.14*.32;
+  const tint=ctx.createLinearGradient(0,0,w,0);tint.addColorStop(0,'#e92b4c');tint.addColorStop(.48,'#bd2445');tint.addColorStop(.52,'#089ed8');tint.addColorStop(1,'#37c8f2');ctx.fillStyle=tint;ctx.fillRect(0,0,w,h);ctx.restore();
+ }
+}
+
+function createFootballScreen(tile,root){
+ const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+ if(!ctx)return null;
+ canvas.className='abajFootballScreen';canvas.setAttribute('aria-hidden','true');
+ canvas.width=268;canvas.height=266;
+ const clean=new Image(),reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
+ let ready=false,visible=true,suspended=false,departing=false,frame=0,last=0,elapsed=0;
+ let width=0,height=0,scale=1,offsetX=0,offsetY=0,ballX=486,ballY=147;
+ const radius=19,drawBall=createFootballPainter(ctx,radius);
  function align(){
   const style=getComputedStyle(tile),position=style.backgroundPosition.split(',').pop().trim().split(/\s+/);
   width=tile.clientWidth;height=tile.clientHeight;if(!width||!height)return false;
@@ -224,7 +281,7 @@ function createFootballScreen(tile,root){
   takeOff(){
    if(!ready)return null;
    draw();const rect=tile.getBoundingClientRect();departing=true;draw();
-   return {x:rect.left+tile.clientLeft+offsetX+ballX*scale,y:rect.top+tile.clientTop+offsetY+ballY*scale};
+   return {x:rect.left+tile.clientLeft+offsetX+ballX*scale,y:rect.top+tile.clientTop+offsetY+ballY*scale,radius:radius*scale,angle:-(ballX-486)/radius};
   },
   reset(){departing=false;sync()}
  };
@@ -584,75 +641,83 @@ const home=document.createElement('button');home.id='abajLaunchHome';home.textCo
 // IPTV transition: the football from the sports thumbnail flies towards the viewer.
 let iptvTransitionBusy=false;
 let cinemaTransitionBusy=false;
-async function playCinemaGlassesTransition(tile){
- if(cinemaTransitionBusy)return false;
- cinemaTransitionBusy=true;
- if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){cinemaTransitionBusy=false;return true}
- const glasses=document.createElement('div');
- glasses.className='abajCinema3dGlasses';
- glasses.setAttribute('aria-hidden','true');
- glasses.innerHTML='<div class="abaj3dRig"><div class="abaj3dArm abaj3dArmLeft"></div><div class="abaj3dArm abaj3dArmRight"></div><div class="abaj3dFront"><div class="abaj3dLens abaj3dRed"></div><div class="abaj3dBridge"></div><div class="abaj3dLens abaj3dBlue"></div></div></div>';
- // Rear view with visible temples and the inner rim, as if the glasses approach the eyes.
- const lensWash=document.createElement('div');
- lensWash.className='abajCinemaLensWash';
- lensWash.setAttribute('aria-hidden','true');
- const rect=tile.getBoundingClientRect();
- glasses.style.left=(rect.left+rect.width*.5)+'px';
- glasses.style.top=(rect.top+rect.height*.48)+'px';
- document.body.appendChild(lensWash);document.body.appendChild(glasses);
+let transitionStage=null;
+async function runLaunchTransition(duration,paint){
+ const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+ if(!ctx)return;
+ canvas.className='abajTransitionStage';canvas.setAttribute('aria-hidden','true');
+ const w=window.innerWidth,h=window.innerHeight,dpr=Math.min(window.devicePixelRatio||1,2);
+ canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);document.body.appendChild(canvas);transitionStage=canvas;
+ let frame=0,timer=0;
  try{
-  const dx=innerWidth*.5-(rect.left+rect.width*.5),dy=innerHeight*.5-(rect.top+rect.height*.48);
-  const scale=Math.min(3.3,Math.max(1.9,innerWidth/300*2.3));
-  const animation=glasses.animate([
-   {transform:'translate(-50%,-50%) translate(0px,0px) scale(.12) rotateX(-19deg) rotateY(-20deg) rotateZ(-4deg)',opacity:0,offset:0},
-   {transform:'translate(-50%,-50%) translate('+dx*.25+'px,'+dy*.25+'px) scale(.46) rotateX(-12deg) rotateY(-10deg) rotateZ(-2deg)',opacity:1,offset:.28},
-   {transform:'translate(-50%,-50%) translate('+dx*.8+'px,'+dy*.8+'px) scale('+scale*.7+') rotateX(-4deg) rotateY(0deg) rotateZ(0deg)',opacity:1,offset:.78},
-   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+scale+') rotateX(0deg) rotateY(0deg) rotateZ(0deg)',opacity:1,offset:1}
-  ],{duration:1300,easing:'cubic-bezier(.2,.06,.2,1)',fill:'forwards'});
-  const wash=lensWash.animate([{opacity:0,offset:0},{opacity:0,offset:.82},{opacity:.18,offset:.94},{opacity:.62,offset:1}],{duration:1300,fill:'forwards'});
-  await Promise.race([Promise.all([animation.finished.catch(()=>{}),wash.finished.catch(()=>{})]),new Promise(resolve=>setTimeout(resolve,1600))]);
-  wash.cancel();
-  animation.cancel();
- }finally{glasses.remove();lensWash.remove();cinemaTransitionBusy=false}
- return true;
+  await new Promise((resolve,reject)=>{
+   let start=null,settled=false;
+   function finish(){if(settled)return;settled=true;cancelAnimationFrame(frame);clearTimeout(timer);resolve()}
+   function tick(now){
+    if(settled)return;if(start===null)start=now;const p=Math.min(1,(now-start)/duration);
+    try{
+     ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);paint(ctx,w,h,p);
+     const cover=Math.max(0,(p-.94)/.06);ctx.fillStyle='rgba(4,17,38,'+cover+')';ctx.fillRect(0,0,w,h);
+    }catch(err){settled=true;clearTimeout(timer);reject(err);return}
+    if(p===1)finish();else frame=requestAnimationFrame(tick);
+   }
+   timer=setTimeout(()=>{
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#041126';ctx.fillRect(0,0,w,h);finish();
+   },duration+500);
+   frame=requestAnimationFrame(tick);
+  });
+ }catch(err){canvas.remove();transitionStage=null;throw err}
+ finally{cancelAnimationFrame(frame);clearTimeout(timer)}
+}
+async function revealLaunchDestination(){
+ const stage=transitionStage;transitionStage=null;
+ if(!stage)return;
+ try{
+  if(typeof stage.animate==='function'){
+   const fade=stage.animate([{opacity:1},{opacity:0}],{duration:180,easing:'ease-out',fill:'forwards'});
+   await Promise.race([fade.finished.catch(()=>{}),new Promise(resolve=>setTimeout(resolve,250))]);fade.cancel();
+  }
+ }finally{stage.remove()}
+}
+async function playCinemaGlassesTransition(tile){
+ cinemaTransitionBusy=true;
+ if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+ const rect=tile.getBoundingClientRect(),origin={x:rect.left+rect.width*.5,y:rect.top+rect.height*.43};
+ await runLaunchTransition(1450,(ctx,w,h,p)=>drawCinemaGlasses(ctx,w,h,origin,p));
 }
 async function playIptvBallTransition(tile){
- if(iptvTransitionBusy)return false;
  iptvTransitionBusy=true;
- if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){iptvTransitionBusy=false;return true}
- const ball=document.createElement('span');
- ball.className='abajIptvFlyingBall';
- ball.innerHTML='<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><radialGradient id="abajBallShade" cx="32%" cy="24%" r="78%"><stop offset="0" stop-color="#fff"/><stop offset=".53" stop-color="#f5f7f9"/><stop offset=".8" stop-color="#b6c0c9"/><stop offset="1" stop-color="#263748"/></radialGradient><clipPath id="abajBallClip"><circle cx="50" cy="50" r="48"/></clipPath></defs><circle cx="50" cy="50" r="48" fill="url(#abajBallShade)"/><g clip-path="url(#abajBallClip)" fill="#101821" stroke="#283541" stroke-width="1.2"><polygon points="48,30 66,38 63,57 43,64 31,47"/><polygon points="6,15 25,8 34,23 20,39 3,34"/><polygon points="77,7 96,19 96,38 80,36 68,21"/><polygon points="8,71 27,65 36,84 25,103 3,94"/><polygon points="73,74 93,63 106,77 92,99 72,95"/></g><g clip-path="url(#abajBallClip)" fill="none" stroke="#78818a" stroke-width="2.2"><path d="M31 47 20 39M48 30 34 23M66 38 80 36M63 57 73 74M43 64 36 84M27 65 20 39M68 21 48 30M93 63 63 57"/></g><ellipse cx="35" cy="20" rx="22" ry="11" fill="#fff" opacity=".28" transform="rotate(-25 35 20)"/></svg>';
- ball.setAttribute('aria-hidden','true');
- ball.style.perspective='550px';
- const r=tile.getBoundingClientRect();
- const origin=footballScreen?.takeOff();
- const x=origin?origin.x:r.left+r.width*.665,y=origin?origin.y:r.top+r.height*.285;
- ball.style.left=x+'px';ball.style.top=y+'px';
- document.body.appendChild(ball);
- try{
-  const endX=window.innerWidth/2,endY=window.innerHeight/2;
-  const dx=endX-x,dy=endY-y;
-  const targetScale=Math.min(6,Math.max(3.5,Math.min(window.innerWidth,window.innerHeight)/76));
-  const curtain=document.createElement('span');curtain.className='abajIptvFlightCurtain';document.body.appendChild(curtain);
-  const spin=ball.firstElementChild.animate([{transform:'rotate(-12deg)'},{transform:'rotate(150deg)'}],{duration:1200,easing:'ease-out',fill:'forwards'});
-  const anim=ball.animate([
-   {transform:'translate(-50%,-50%) translate(0px,0px) scale(.12)',opacity:1,offset:0},
-   {transform:'translate(-50%,-50%) translate('+dx*.18+'px,'+dy*.18+'px) scale(.48)',opacity:1,offset:.32},
-   {transform:'translate(-50%,-50%) translate('+dx*.7+'px,'+dy*.7+'px) scale('+targetScale*.42+')',opacity:1,offset:.74},
-   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale*.94+')',opacity:1,offset:.94},
-   {transform:'translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+targetScale+')',opacity:1,offset:1}
-  ],{duration:1200,easing:'cubic-bezier(.2,.06,.24,1)',fill:'forwards'});
-  const cover=curtain.animate([{opacity:0,offset:0},{opacity:0,offset:.68},{opacity:1,offset:1}],{duration:1200,fill:'forwards'});
-  await Promise.race([Promise.all([anim.finished.catch(()=>{}),cover.finished.catch(()=>{})]),new Promise(resolve=>setTimeout(resolve,1550))]);
-  anim.cancel();spin.cancel();cover.cancel();curtain.remove();
- }finally{ball.remove();tile.classList.remove('abajIptvBallLaunching');document.querySelectorAll('.abajIptvFlightCurtain').forEach(el=>el.remove());iptvTransitionBusy=false}
- return true;
+ if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+ const rect=tile.getBoundingClientRect(),origin=footballScreen?.takeOff()||{x:rect.left+rect.width*.665,y:rect.top+rect.height*.285,radius:rect.width*.024,angle:0};
+ let painter=null;
+ await runLaunchTransition(1250,(ctx,w,h,p)=>{
+  if(!painter)painter=createFootballPainter(ctx,1);
+  const near=origin.radius/(Math.hypot(w,h)*.8),depth=near+(1-near)*Math.pow(1-p,1.65),radius=origin.radius/depth;
+  const travel=1-Math.pow(1-p,2),x=origin.x+(w*.5-origin.x)*travel,y=origin.y+(h*.48-origin.y)*travel-Math.sin(p*Math.PI)*Math.min(65,h*.08);
+  ctx.fillStyle='rgba(2,11,24,'+(p*.2)+')';ctx.fillRect(0,0,w,h);
+  ctx.save();ctx.translate(x,y);ctx.rotate(-.18*Math.sin(p*Math.PI));ctx.scale(radius,radius);painter(0,0,origin.angle+p*5.4);ctx.restore();
+ });
 }
 function show(){applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;footballScreen?.reset();home.hidden=true;root.querySelector('button')?.focus({preventScroll:true})}
 function hide(){root.hidden=true;home.hidden=true}
 window.abajLauncherHome=show;
-root.addEventListener('click',async e=>{const b=e.target.closest('[data-target]');if(!b)return;const target=b.dataset.target;try{if(target==='cinema'){if(cinemaTransitionBusy)return;await playCinemaGlassesTransition(b);if(!document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();}if(target==='iptv'){if(iptvTransitionBusy)return;await playIptvBallTransition(b)}if(target==='iptv'&&document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();if(target==='settings'&&typeof openTvSettings==='function')openTvSettings();if(target==='settings'||target==='iptv'||document.body.classList.contains('cinemaMode'))hide()}catch(err){console.error('ABAJ launcher navigation',err)}});
+root.addEventListener('click',async e=>{
+ const b=e.target.closest('[data-target]');if(!b||iptvTransitionBusy||cinemaTransitionBusy)return;
+ const target=b.dataset.target;
+ try{
+  if(target==='cinema'){
+   await playCinemaGlassesTransition(b);
+   if(!document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();
+  }
+  if(target==='iptv'){
+   await playIptvBallTransition(b);
+   if(document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();
+  }
+  if(target==='settings'&&typeof openTvSettings==='function')openTvSettings();
+  if(target==='settings'||target==='iptv'||document.body.classList.contains('cinemaMode'))hide();
+ }catch(err){footballScreen?.reset();console.error('ABAJ launcher navigation',err)}
+ finally{try{await revealLaunchDestination()}finally{iptvTransitionBusy=false;cinemaTransitionBusy=false}}
+});
 home.addEventListener('click',show);
 root.addEventListener('keydown',e=>{const keys=['ArrowRight','ArrowLeft','ArrowUp','ArrowDown'];if(!keys.includes(e.key))return;const bs=[...root.querySelectorAll('[data-target]')];const i=Math.max(0,bs.indexOf(document.activeElement));const delta=(e.key==='ArrowRight'||e.key==='ArrowDown')?1:-1;bs[(i+delta+bs.length)%bs.length].focus({preventScroll:true});e.preventDefault()});
 show();
