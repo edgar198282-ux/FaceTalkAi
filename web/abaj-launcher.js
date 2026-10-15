@@ -43,7 +43,7 @@ const css=`
 /* Motion stays inside the television's existing picture panels, without changing the artwork. */
 /* Visible TV picture motion: broad moving light confined to the TV side of the card. */
 /* Current artwork has a dark upper-middle TV panel, not football. Confine the animated light to that dark panel without adding any ball. */
-.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{position:absolute;left:60.3%;top:11.5%;width:12.7%;height:25%;z-index:2;overflow:hidden;pointer-events:none;opacity:1;clip-path:inset(2% 2% 2% 2%)}
+.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{position:absolute;left:62.8%;top:11%;width:6.8%;height:27%;z-index:2;overflow:hidden;pointer-events:none;opacity:1;clip-path:inset(2% 2% 2% 2%)}
 .abajLaunchTile[data-target="iptv"] .abajTvLiveVideo{position:absolute;inset:0;width:100%;height:100%;z-index:3;object-fit:fill;pointer-events:none;opacity:.85;mix-blend-mode:screen}
 .abajLaunchTile[data-target="iptv"] .abajTvScreenMotion:after{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(0,65,130,.02),rgba(10,155,235,.15) 48%,rgba(0,48,90,.02));mix-blend-mode:screen;animation:abajTvLiveBrightness 5s ease-in-out infinite alternate}
 @keyframes abajTvLiveBrightness{0%{opacity:.15}100%{opacity:.85}}
@@ -154,19 +154,26 @@ tile.insertBefore(motion,tile.firstChild);
   if(time-last>=65){
    last=time;frame++;
    ctx.clearRect(0,0,160,96);
-   const wave=Math.sin(frame*.105),drift=Math.sin(frame*.047);
-   const glow=ctx.createLinearGradient(0,0,160,96);
-   glow.addColorStop(0,'rgba(30,160,255,0)');
-   glow.addColorStop(Math.max(.05,Math.min(.9,.45+drift*.22)),'rgba(125,225,255,'+(.08+.06*wave)+')');
-   glow.addColorStop(1,'rgba(25,125,255,0)');
-   ctx.fillStyle=glow;ctx.fillRect(0,0,160,96);
-   // A subtle moving floodlight beam; keep the original football and players visible.
-   ctx.save();ctx.translate(75+drift*32,40);ctx.rotate(-.28);
-   const beam=ctx.createLinearGradient(-22,0,22,0);
-   beam.addColorStop(0,'rgba(155,230,255,0)');
-   beam.addColorStop(.5,'rgba(155,230,255,.14)');
-   beam.addColorStop(1,'rgba(155,230,255,0)');
-   ctx.fillStyle=beam;ctx.fillRect(-22,-65,44,130);ctx.restore();
+   // Visible abstract broadcast on the formerly black panel: no extra football or ball.
+   const t=frame*.045;
+   const bg=ctx.createLinearGradient(0,0,160,96);
+   bg.addColorStop(0,'#06274c');bg.addColorStop(.52,'#0a5382');bg.addColorStop(1,'#07152c');
+   ctx.fillStyle=bg;ctx.fillRect(0,0,160,96);
+   for(let i=0;i<5;i++){
+    const x=((i*47+t*17)%240)-40;
+    ctx.save();ctx.translate(x,48);ctx.rotate(-.34);
+    const beam=ctx.createLinearGradient(-17,0,17,0);
+    beam.addColorStop(0,'rgba(52,168,255,0)');
+    beam.addColorStop(.5,'rgba(112,225,255,.32)');
+    beam.addColorStop(1,'rgba(52,168,255,0)');
+    ctx.fillStyle=beam;ctx.fillRect(-17,-90,34,180);ctx.restore();
+   }
+   ctx.fillStyle='rgba(17,126,176,.52)';
+   for(let i=0;i<4;i++){
+    const y=17+i*24+Math.sin(t+i)*5;
+    ctx.fillRect(0,y,160,2);
+   }
+
   }
   raf=requestAnimationFrame(paint);
  }
