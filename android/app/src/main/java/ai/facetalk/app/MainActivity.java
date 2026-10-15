@@ -2781,8 +2781,8 @@ public class MainActivity extends Activity {
             MediaItem.Builder mediaBuilder=new MediaItem.Builder().setUri(mediaUri);
             if(mediaPath.endsWith(".mpd"))mediaBuilder.setMimeType(MimeTypes.APPLICATION_MPD);
             else if(mediaPath.endsWith(".m3u8"))mediaBuilder.setMimeType(MimeTypes.APPLICATION_M3U8);
-            else if("KINOPUB".equals(provider)&&!mediaPath.endsWith(".mp4")&&!mediaPath.endsWith(".m4v"))
-                mediaBuilder.setMimeType(MimeTypes.APPLICATION_M3U8);
+            else if(mediaPath.endsWith(".mp4")||mediaPath.endsWith(".m4v"))
+                mediaBuilder.setMimeType(MimeTypes.VIDEO_MP4);
             MediaItem mediaItem=mediaBuilder.build();
             nativeProbePlayer.setMediaSource(
                 mediaFactory.createMediaSource(mediaItem),true
