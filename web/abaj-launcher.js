@@ -278,7 +278,7 @@ async function playIptvBallTransition(tile){
   const cover=curtain.animate([{opacity:0,offset:0},{opacity:0,offset:.68},{opacity:1,offset:1}],{duration:1200,fill:'forwards'});
   await Promise.race([Promise.all([anim.finished.catch(()=>{}),cover.finished.catch(()=>{})]),new Promise(resolve=>setTimeout(resolve,1550))]);
   anim.cancel();spin.cancel();cover.cancel();curtain.remove();
- }finally{ball.remove();document.querySelectorAll('.abajIptvFlightCurtain').forEach(el=>el.remove());iptvTransitionBusy=false}
+ }finally{ball.remove();tile.classList.remove('abajIptvBallLaunching');document.querySelectorAll('.abajIptvFlightCurtain').forEach(el=>el.remove());iptvTransitionBusy=false}
  return true;
 }
 function show(){applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;home.hidden=true;root.querySelector('button')?.focus({preventScroll:true})}
