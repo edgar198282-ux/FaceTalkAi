@@ -50,10 +50,10 @@ const css=`
 @media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajTvScreenMotion{display:none}}
 /* One small football rolls across the dark mini-screen; no full-screen overlay. */
 .abajLaunchTile[data-target="iptv"] .abajTvScreenBall{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;pointer-events:none;z-index:3}
-.abajLaunchTile[data-target="iptv"] .abajTvScreenBall:before{content:'';position:absolute;left:9%;top:68%;width:16%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 31% 24%,#fff 0 18%,#e1e6ec 46%,#7b8b99 75%,#26313d 100%);box-shadow:inset -1px -1px 2px #26313d,0 1px 2px #05101a;animation:abajMiniBallRoll 4.2s ease-in-out infinite alternate}
-.abajLaunchTile[data-target="iptv"] .abajTvScreenBall:after{content:'';position:absolute;left:12%;top:81%;width:13%;height:4%;border-radius:50%;background:rgba(0,0,0,.32);filter:blur(1px);animation:abajMiniBallShadow 4.2s ease-in-out infinite alternate}
-@keyframes abajMiniBallRoll{0%{transform:translate(0,0) rotate(0)}45%{transform:translate(220%,-90%) rotate(190deg)}100%{transform:translate(440%,0) rotate(390deg)}}
-@keyframes abajMiniBallShadow{0%{transform:translateX(0);opacity:.5}45%{transform:translateX(270%);opacity:.15}100%{transform:translateX(540%);opacity:.5}}
+.abajLaunchTile[data-target="iptv"] .abajTvScreenBall:before{content:'';position:absolute;left:3%;top:58%;width:42%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 31% 24%,#fff 0 18%,#e1e6ec 46%,#7b8b99 75%,#26313d 100%);box-shadow:inset -1px -1px 2px #26313d,0 1px 2px #05101a;animation:abajMiniBallRoll 4.2s ease-in-out infinite alternate}
+.abajLaunchTile[data-target="iptv"] .abajTvScreenBall:after{content:'';position:absolute;left:8%;top:87%;width:28%;height:4%;border-radius:50%;background:rgba(0,0,0,.32);filter:blur(1px);animation:abajMiniBallShadow 4.2s ease-in-out infinite alternate}
+@keyframes abajMiniBallRoll{0%{transform:translate(0,0) rotate(0)}45%{transform:translate(65%,-75%) rotate(190deg)}100%{transform:translate(125%,0) rotate(390deg)}}
+@keyframes abajMiniBallShadow{0%{transform:translateX(0);opacity:.5}45%{transform:translateX(95%);opacity:.15}100%{transform:translateX(185%);opacity:.5}}
 .abajLaunchTile[data-target="iptv"].abajIptvBallLaunching .abajTvScreenBall{visibility:hidden}
 #abajLauncher[hidden] .abajTvScreenBall:before,#abajLauncher[hidden] .abajTvScreenBall:after{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){.abajLaunchTile[data-target="iptv"] .abajTvScreenBall{display:none}}
