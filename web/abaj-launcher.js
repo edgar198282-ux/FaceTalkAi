@@ -916,7 +916,7 @@ root.addEventListener('keydown',e=>{
  if(!bs.length)return;
  const active=bs.indexOf(document.activeElement);
  const index=active<0?0:active;
- const columns=window.getComputedStyle(root.querySelector('.abajLaunchTiles')).gridTemplateColumns.split(' ').filter(Boolean).length||2;
+ const columns=document.body.classList.contains('nativeTv')?2:(window.getComputedStyle(root.querySelector('.abajLaunchTiles')).gridTemplateColumns.split(' ').filter(Boolean).length||2);
  const step=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:e.key==='ArrowDown'?columns:-columns;
  const next=index+step;
  if(next>=0&&next<bs.length&&(Math.abs(step)!==1||Math.floor(next/columns)===Math.floor(index/columns)))selectLaunchTile(bs[next]);
