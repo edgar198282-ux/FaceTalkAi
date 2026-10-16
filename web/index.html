@@ -6895,7 +6895,22 @@ function handleAppBack(){
   if(tvSettingsOpen()){closeTvSettings();return true}
   return false;
 }
+let abajSettingsBackAt=0;
 function handleTvBack(){
+  // On TV, two Back presses within 1.8s leave Settings for the launcher.
+  if(nativeTv&&tvSettingsOpen()){
+    const now=Date.now();
+    if(now-abajSettingsBackAt<=1800){
+      abajSettingsBackAt=0;
+      closeTvSettings();
+      window.abajLauncherHome?.();
+    }else{
+      abajSettingsBackAt=now;
+      if(typeof showTvShortcut==='function')showTvShortcut('Нажмите Назад ещё раз — главный экран');
+    }
+    return true;
+  }
+  abajSettingsBackAt=0;
   if(window.abajMediaBack?.())return true;
   if(document.getElementById('iptvPlaylistMenu')){
     closeIptvPlaylistMenu();
