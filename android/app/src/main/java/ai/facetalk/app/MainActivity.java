@@ -3325,7 +3325,9 @@ public class MainActivity extends Activity {
                 if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){
                     webView.evaluateJavascript(
                         "(function(){var root=document.getElementById('abajLauncher');"+
-                        "if(!root||root.hidden)return;"+
+                        "if(!root||root.hidden){var key='"+launcherKey+"';"+
+                        "if(key==='Enter'){if(typeof tvNativeOkDown==='function')tvNativeOkDown();else if(typeof tvNativeRemote==='function')tvNativeRemote('ok');}"+
+                        "else if(typeof tvNativeRemote==='function')tvNativeRemote(key.slice(5).toLowerCase());return;}"+
                         "var bs=Array.from(root.querySelectorAll('.abajLaunchTile:not([hidden])'));"+
                         "if(!bs.length)return;"+
                         "var current=bs.indexOf(document.activeElement);"+
@@ -3338,6 +3340,9 @@ public class MainActivity extends Activity {
                         "if(next>=0&&next<bs.length&&(Math.abs(step)!==1||Math.floor(next/columns)===Math.floor(current/columns)))bs[next].focus();"+
                         "})()",null
                     );
+                }
+                if(event.getAction()==KeyEvent.ACTION_UP&&(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER)){
+                    webView.evaluateJavascript("if(typeof tvNativeOkUp==='function')tvNativeOkUp()",null);
                 }
                 return true;
             }
