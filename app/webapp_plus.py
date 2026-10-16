@@ -3255,6 +3255,30 @@ def _edem_guide_channel(item, guide):
             break
 
 _edem_named_cache = {}
+EDEM_REFRESH_SECONDS = 24 * 60 * 60
+
+
+async def _read_edem_snapshot(key, url):
+    try:
+        saved = json.loads(await get_setting(f'edem_snapshot:{key}', '{}'))
+        if (isinstance(saved, dict) and saved.get('url') == url
+                and isinstance(saved.get('channels'), list) and saved['channels']
+                and all(isinstance(row, dict) for row in saved['channels'])):
+            saved['ts'] = int(saved.get('ts') or 0)
+            return saved
+    except (ValueError, TypeError):
+        pass
+    return None
+
+
+async def _save_edem_snapshot(key, snapshot):
+    if not snapshot.get('channels'):
+        return
+    try:
+        await set_setting(f'edem_snapshot:{key}', json.dumps(snapshot, ensure_ascii=False))
+    except Exception as exc:
+        logging.warning('EDEM_SNAPSHOT_SAVE_FAILED error_type=%s', type(exc).__name__)
+
 
 async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
     legacy = await _load_edem_legacy_for_uid(uid, force)
@@ -3292,8 +3316,12 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
             continue
         key = f'{owner}:{playlist_id}'
         cached = _edem_named_cache.get(key)
+        if not cached or cached.get('url') != url:
+            cached = await _read_edem_snapshot(key, url)
+            if cached:
+                _edem_named_cache[key] = cached
         now = int(time.time())
-        if force or not cached or cached.get('url') != url or now - cached.get('ts', 0) >= 600:
+        if force or not cached or cached.get('url') != url or now - cached.get('ts', 0) >= EDEM_REFRESH_SECONDS:
             try:
                 body = None
                 async with aiohttp.ClientSession(headers={'User-Agent':'AbajTV/1.0'}) as session:
@@ -3348,6 +3376,7 @@ async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
                     _keep_edem_logos(compiled, cached.get('channels'))
                 cached = {'url': url, 'ts': now, 'channels': compiled}
                 _edem_named_cache[key] = cached
+                await _save_edem_snapshot(key, cached)
             except (aiohttp.ClientError, TimeoutError, ValueError) as exc:
                 logging.warning("EDEM_PLAYLIST_ERROR id=%s error_type=%s", playlist_id, type(exc).__name__)
                 if cached and cached.get('url') == url and cached.get('channels'):
@@ -3516,6 +3545,7 @@ async def api_iptv_edem_channels(request):
         'active': data.get('active', True),
         'expires_at': int(data.get('expires_at') or 0),
         'days_left': data.get('days_left'),
+        'refresh_interval_seconds': EDEM_REFRESH_SECONDS,
         'channels': safe,
         'playlists': data.get('playlists') or [],
         'count': len(safe),
