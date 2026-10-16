@@ -1,6 +1,6 @@
 /* ABAJ TV Premium Dark launcher — isolated UI layer */
 (()=>{'use strict';
-const tvAnimationFrameMs=1000/15; // cap heavy canvas scene redraws on Android TV
+const tvAnimationFrameMs=1000/12; // Android TV low-cost scene rendering
 const css=`
 #abajLauncher{position:fixed;inset:0;z-index:9000;box-sizing:border-box;overflow-y:auto;display:flex;flex-direction:column;padding:18px 28px 28px;color:#f6fbff;background:#020b18 url('/static/launcher-header-20261014.webp') center top / 100% auto no-repeat;font-family:Arial,sans-serif;overscroll-behavior:contain;scrollbar-width:none}
 #abajLauncher[hidden],#abajLaunchHome[hidden]{display:none!important}
@@ -424,7 +424,7 @@ function createIptvScenes(tile,root){
  }
  function draw(){
   const w=tile.clientWidth,h=tile.clientHeight;if(!ready||!w||!h)return;
-  const dpr=Math.min(window.devicePixelRatio||1,2),scale=Math.max(w/786,h/510);
+  const dpr=(document.body.classList.contains('nativeTv')?1:Math.min(window.devicePixelRatio||1,2)),scale=Math.max(w/786,h/510);
   if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}
   const pos=getComputedStyle(tile).backgroundPosition.split(',').pop().trim().split(/\s+/),ox=(w-786*scale)*parseFloat(pos[0])/100,oy=(h-510*scale)*parseFloat(pos[1])/100,t=elapsed/1000;
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);
@@ -538,7 +538,7 @@ function createCinemaScene(tile,root){
  }
  function align(){
   w=tile.clientWidth;h=tile.clientHeight;if(!w||!h)return false;
-  dpr=Math.min(window.devicePixelRatio||1,2);
+  dpr=document.body.classList.contains('nativeTv')?1:Math.min(window.devicePixelRatio||1,2);
   if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){
    canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
   }
@@ -561,7 +561,7 @@ function createCinemaScene(tile,root){
   glow.addColorStop(0,'rgba(255,247,171,.95)');glow.addColorStop(.22,'rgba(255,211,87,.62)');glow.addColorStop(1,'rgba(255,165,42,0)');
   ctx.globalAlpha=.5+strength*.5;ctx.fillStyle=glow;ctx.fillRect(277,sunY-48,96,96);
   ctx.beginPath();ctx.arc(325,sunY,8.5,0,Math.PI*2);ctx.fillStyle='#fffbd3';ctx.fill();ctx.restore();
-  drawFilm(t);
+  if(!document.body.classList.contains('nativeTv'))drawFilm(t);
   for(const k of kernels){
    const phase=((t+k.delay)%k.period)/k.period;
    if(phase>.58)continue;
