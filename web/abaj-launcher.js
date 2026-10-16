@@ -224,13 +224,33 @@ function repairSettingsGear(artwork,source){
  ctx.moveTo(290,468);ctx.lineTo(370,445);ctx.lineTo(392,492);ctx.quadraticCurveTo(397,506,387,514);ctx.lineTo(338,528);ctx.quadraticCurveTo(325,532,315,526);ctx.lineTo(284,484);ctx.closePath();
  ctx.moveTo(111,410);ctx.lineTo(166,449);ctx.lineTo(213,476);ctx.lineTo(180,509);ctx.quadraticCurveTo(170,518,158,511);ctx.lineTo(114,486);ctx.quadraticCurveTo(97,475,90,458);ctx.lineTo(101,438);ctx.closePath();ctx.clip();
  ctx.drawImage(source,850/1536*786,35/797*408,550/1536*786,555/797*408,0,0,550,555);ctx.restore();
- ctx.save();ctx.translate(245.5,282);ctx.scale(50.5,56);ctx.beginPath();ctx.arc(0,0,1,0,Math.PI*2);ctx.clip();
+ drawSettingsJewel(ctx);return canvas;
+}
+
+function drawSettingsJewel(ctx){
+ ctx.save();ctx.translate(245.5,282);
+ ctx.save();ctx.scale(73,83);
+ const rim=ctx.createLinearGradient(-1,-1,1,1);
+ rim.addColorStop(0,'#18374d');rim.addColorStop(.18,'#b9ccd9');rim.addColorStop(.32,'#8fa5b7');rim.addColorStop(.48,'#29445b');rim.addColorStop(.65,'#122b40');rim.addColorStop(.85,'#3f6179');rim.addColorStop(1,'#9bcde1');
+ ctx.beginPath();ctx.arc(0,0,1,0,Math.PI*2);ctx.fillStyle=rim;ctx.fill();
+ const bevel=ctx.createRadialGradient(0,0,.7,0,0,1);
+ bevel.addColorStop(0,'#030a17c0');bevel.addColorStop(.09,'#07101b30');bevel.addColorStop(.35,'#ffffff00');bevel.addColorStop(.76,'#ffffff00');bevel.addColorStop(.92,'#e0f5ff7a');bevel.addColorStop(1,'#08162eaa');ctx.fillStyle=bevel;ctx.fill();
+ ctx.lineWidth=.0025;
+ for(let i=0;i<48;i++){ctx.beginPath();ctx.arc(0,0,.75+i*.0048,0,Math.PI*2);ctx.strokeStyle=i%3?'#d3e9f10b':'#05142112';ctx.stroke()}
+ ctx.restore();
+ ctx.beginPath();ctx.ellipse(0,0,52,58,0,0,Math.PI*2);ctx.fillStyle='#151323';ctx.fill();
+ const edge=ctx.createLinearGradient(-50,-56,50,56);edge.addColorStop(0,'#b7c7df');edge.addColorStop(.4,'#27384e');edge.addColorStop(.75,'#637c96');edge.addColorStop(1,'#bddbea');
+ ctx.lineWidth=1.2;ctx.strokeStyle=edge;ctx.stroke();
+ ctx.scale(50.5,56);ctx.beginPath();ctx.arc(0,0,1,0,Math.PI*2);ctx.clip();
  const ruby=ctx.createLinearGradient(-.8,-1,.7,1);
- ruby.addColorStop(0,'#542049f5');ruby.addColorStop(.22,'#923875ef');ruby.addColorStop(.48,'#702051f3');ruby.addColorStop(.76,'#8b2d67ef');ruby.addColorStop(1,'#471537f5');ctx.fillStyle=ruby;ctx.fillRect(-1,-1,2,2);
+ ruby.addColorStop(0,'#3c1435');ruby.addColorStop(.22,'#863269');ruby.addColorStop(.48,'#57163e');ruby.addColorStop(.76,'#92326c');ruby.addColorStop(1,'#3f102d');ctx.fillStyle=ruby;ctx.fillRect(-1,-1,2,2);
+ const transmission=ctx.createLinearGradient(-.7,.8,.65,-.4);
+ transmission.addColorStop(0,'#f3a5d951');transmission.addColorStop(.18,'#db61ae2e');transmission.addColorStop(.52,'#c3529b00');transmission.addColorStop(1,'#c3529b00');ctx.fillStyle=transmission;ctx.fillRect(-1,-1,2,2);
  const reflection=ctx.createLinearGradient(-1,-.6,1,.4);
- reflection.addColorStop(0,'#ead6ed00');reflection.addColorStop(.3,'#ead6ed00');reflection.addColorStop(.4,'#ead6ed32');reflection.addColorStop(.52,'#ead6ed12');reflection.addColorStop(.63,'#ead6ed00');reflection.addColorStop(1,'#ead6ed00');ctx.fillStyle=reflection;ctx.fillRect(-1,-1,2,2);
- ctx.beginPath();ctx.arc(0,0,.975,0,Math.PI*2);ctx.lineWidth=.05;ctx.strokeStyle='#321026b3';ctx.stroke();
- ctx.beginPath();ctx.arc(0,0,.94,3.6,4.8);ctx.lineWidth=.018;ctx.strokeStyle='#d4a4d46b';ctx.stroke();ctx.restore();return canvas;
+ reflection.addColorStop(0,'#f3e5f400');reflection.addColorStop(.3,'#f3e5f400');reflection.addColorStop(.37,'#f3e5f45c');reflection.addColorStop(.43,'#f3e5f422');reflection.addColorStop(.55,'#f3e5f400');reflection.addColorStop(1,'#f3e5f400');ctx.fillStyle=reflection;ctx.fillRect(-1,-1,2,2);
+ ctx.beginPath();ctx.arc(0,0,.975,0,Math.PI*2);ctx.lineWidth=.04;ctx.strokeStyle='#321026b3';ctx.stroke();
+ ctx.beginPath();ctx.arc(0,0,.94,3.65,4.7);ctx.lineWidth=.022;ctx.strokeStyle='#f7d8efb0';ctx.stroke();
+ ctx.beginPath();ctx.arc(0,0,.91,.5,1.35);ctx.lineWidth=.015;ctx.strokeStyle='#ed97d28c';ctx.stroke();ctx.restore();
 }
 
 function createSettingsGear(tile,root){
@@ -261,7 +281,7 @@ function createSettingsGear(tile,root){
   },
   paint(ctx,x,y,radius,angle,opening){
    if(!ready)return;
-   const scale=radius/245;ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(scale,scale);ctx.drawImage(repaired,-275,-277.5,550,555);ctx.restore();
+   const scale=radius/245;ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(scale,scale);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(repaired,-275,-277.5,550,555);ctx.translate(-275,-277.5);drawSettingsJewel(ctx);ctx.restore();
    if(opening>0){
     const glow=ctx.createRadialGradient(x,y,0,x,y,radius*.48);
     glow.addColorStop(0,'rgba(4,17,38,'+opening+')');glow.addColorStop(.65,'rgba(12,104,160,'+(opening*.8)+')');glow.addColorStop(1,'#19caff00');ctx.fillStyle=glow;ctx.fillRect(x-radius*.5,y-radius*.5,radius,radius);
@@ -670,11 +690,11 @@ let cinemaTransitionBusy=false;
 let settingsTransitionBusy=false;
 let mediaTransitionBusy=false;
 let transitionStage=null;
-async function runLaunchTransition(duration,paint){
+async function runLaunchTransition(duration,paint,pixelRatioLimit=2){
  const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
  if(!ctx)return;
  canvas.className='abajTransitionStage';canvas.setAttribute('aria-hidden','true');
- const w=window.innerWidth,h=window.innerHeight,dpr=Math.min(window.devicePixelRatio||1,2);
+ const w=window.innerWidth,h=window.innerHeight,dpr=Math.min(window.devicePixelRatio||1,pixelRatioLimit);
  canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);document.body.appendChild(canvas);transitionStage=canvas;
  let frame=0,timer=0;
  try{
@@ -751,7 +771,7 @@ async function playSettingsGearTransition(tile){
   const glow=ctx.createRadialGradient(x,y,radius*.16,x,y,radius*1.2);
   glow.addColorStop(0,'#54dcff00');glow.addColorStop(.5,'rgba(55,195,255,'+(.12+opening*.28)+')');glow.addColorStop(1,'#148aff00');ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
   settingsGear?.paint(ctx,x,y,radius,origin.angle+p*p*Math.PI*2,opening);
- });
+ },3);
 }
 async function playCinemaGlassesTransition(tile){
  cinemaTransitionBusy=true;
