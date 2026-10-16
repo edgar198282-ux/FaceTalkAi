@@ -3910,8 +3910,13 @@ function moveAdminFocus(action){
   return focusAdminControl(els[i]);
 }
 function openAdminFromTvSettings(){
-  closeTvSettings();
-  requestAnimationFrame(()=>openAdmin());
+  const modal=document.getElementById('tvSettingsModal');
+  if(modal){modal.classList.remove('open');modal.style.display='none';}
+  const launcher=document.getElementById('abajLauncher');
+  if(launcher)launcher.hidden=true;
+  openAdmin();
+  const panel=document.getElementById('adminPanel');
+  if(panel){panel.style.zIndex='9300';requestAnimationFrame(()=>{const first=panel.querySelector('button:not([disabled])');first?.focus({preventScroll:true});});}
 }
 function openAdmin(){
   const panel=document.getElementById('adminPanel');
