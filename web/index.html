@@ -4869,17 +4869,16 @@ function fixTvSettingsSectionFocus(modal){
   }
 }
 function openTvSettings(){
-  paintTvSettings();
-  refreshAppUpdateState();
-  loadEdemStatus();
-  loadMyDevices();
-  checkAdmin();
   const modal=document.getElementById('tvSettingsModal');
   if(modal){
     cinemaSourceIgnoreUntil=Date.now()+450;
     modal.style.removeProperty('display');
     modal.classList.add('open');
-    fixTvSettingsSectionFocus(modal);
+    try{fixTvSettingsSectionFocus(modal)}catch(e){console.error('Settings focus',e)}
+    for(const task of [paintTvSettings,refreshAppUpdateState,loadEdemStatus,loadMyDevices,checkAdmin]){
+      try{Promise.resolve(task()).catch(e=>console.error('Settings initialization',e))}
+      catch(e){console.error('Settings initialization',e)}
+    }
     const card=modal.querySelector('.settingsCard');
     if(card)card.scrollTop=0;
     if(nativeTv)setTimeout(()=>{
