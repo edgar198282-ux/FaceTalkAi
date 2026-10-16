@@ -1,5 +1,6 @@
 /* ABAJ TV Premium Dark launcher — isolated UI layer */
 (()=>{'use strict';
+const tvAnimationFrameMs=1000/15; // cap heavy canvas scene redraws on Android TV
 const css=`
 #abajLauncher{position:fixed;inset:0;z-index:9000;box-sizing:border-box;overflow-y:auto;display:flex;flex-direction:column;padding:18px 28px 28px;color:#f6fbff;background:#020b18 url('/static/launcher-header-20261014.webp') center top / 100% auto no-repeat;font-family:Arial,sans-serif;overscroll-behavior:contain;scrollbar-width:none}
 #abajLauncher[hidden],#abajLaunchHome[hidden]{display:none!important}
@@ -23,6 +24,10 @@ const css=`
 #abajLauncher .abajLaunchTile:focus-visible{outline:2px solid #b5efff!important;outline-offset:3px;border-color:#d5f5ff;box-shadow:0 0 20px #12bdff80!important}
 .abajLaunchTile:active{transform:scale(.992)}
 #abajLauncher .abajLaunchTile:focus{outline:3px solid #c8f6ff!important;outline-offset:-4px;border-color:#fff!important;box-shadow:0 0 0 3px #00c8ff,0 0 26px #00c8ffbb,inset 0 0 18px #00baff55!important}
+/* Android TV: keep all scenes animated but avoid costly full-card background repaints. */
+body.nativeTv #abajLauncher .abajLaunchTile[data-target="cinema"],
+body.nativeTv #abajLauncher .abajLaunchTile[data-target="iptv"]{animation:none!important}
+body.nativeTv #abajLauncher .abajLaunchTile{transition:border-color .18s,box-shadow .18s}
 /* Lightweight animated scene accents: only composited transforms/opacity. */
 .abajLaunchTile .abajSceneMotion{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;border-radius:inherit}
 /* Subtle camera movement of the original artwork, without duplicate figures. */
@@ -337,7 +342,7 @@ function createFootballScreen(tile,root){
  }
  function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected}
  function tick(now){
-  frame=0;if(!active()){last=0;return}
+  frame=0;if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now;if(!active()){last=0;return}
   if(last&&!departing&&!reduced.matches)elapsed+=Math.min(now-last,80);
   last=now;draw();
   if(!reduced.matches)frame=requestAnimationFrame(tick);
@@ -472,9 +477,9 @@ function createIptvScenes(tile,root){
  }
  function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected&&!reduced.matches}
  function tick(now){
-  frame=0;if(!active()){last=0;return}
+  frame=0;if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now;if(!active()){last=0;return}
   if(last)elapsed+=Math.min(now-last,80);last=now;
-  if(now-painted>=32){draw();painted=now}frame=requestAnimationFrame(tick);
+  if(now-painted>=(document.body.classList.contains('nativeTv')?tvAnimationFrameMs:32)){draw();painted=now}frame=requestAnimationFrame(tick);
  }
  function sync(){
   if(frame)cancelAnimationFrame(frame);frame=0;last=0;painted=0;canvas.hidden=reduced.matches;
@@ -576,8 +581,8 @@ function createCinemaScene(tile,root){
  }
  function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected}
  function tick(now){
-  frame=0;if(!active()){last=0;return}
-  if(last)elapsed+=Math.min(now-last,80);last=now;draw();frame=requestAnimationFrame(tick);
+  frame=0;if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now;if(!active()){last=0;return}
+  if(last)elapsed+=Math.min(now-last,80);last=now;if(!document.body.classList.contains('nativeTv')||!tick.lastPaint||now-tick.lastPaint>=tvAnimationFrameMs){draw();tick.lastPaint=now}frame=requestAnimationFrame(tick);
  }
  function sync(){
   if(frame)cancelAnimationFrame(frame);frame=0;last=0;
