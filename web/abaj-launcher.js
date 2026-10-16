@@ -35,6 +35,22 @@ body.nativeTv #abajLauncher .abajLaunchTile{transition:border-color .18s,box-sha
  border-color:#fff!important;
  box-shadow:0 0 0 3px #04e6ff,0 0 0 6px #d846ff,0 0 18px #00cfff99,inset 0 0 10px #d846ff66!important;
 }
+/* TV launcher: compact 2x2 grid, fully visible on short 720p/1080p screens. */
+body.nativeTv #abajLauncher{height:100vh;height:100dvh;overflow:hidden;padding:clamp(8px,1.5vh,18px) clamp(12px,2vw,28px) clamp(12px,2.5vh,26px)}
+body.nativeTv #abajLauncher .abajLaunchTop{min-height:clamp(50px,13vh,110px)}
+body.nativeTv #abajLauncher .abajLaunchBrand{font-size:clamp(32px,6.5vh,70px)}
+body.nativeTv #abajLauncher .abajLaunchTitle{margin:clamp(4px,1vh,12px) 0 clamp(8px,2vh,18px);font-size:clamp(10px,1.5vh,17px)}
+body.nativeTv #abajLauncher .abajLaunchTiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:clamp(8px,1.5vh,18px);flex:1;min-height:0}
+body.nativeTv #abajLauncher .abajLaunchTile,
+body.nativeTv #abajLauncher .abajLaunchTile[data-target="settings"]{min-height:0;height:100%;padding:clamp(10px,2vh,22px);border-radius:clamp(12px,2vh,24px)}
+body.nativeTv #abajLauncher .abajLaunchName{font-size:clamp(20px,3.5vh,42px)}
+body.nativeTv #abajLauncher .abajLaunchDesc{font-size:clamp(11px,1.8vh,18px)}
+/* Match the cinema/movie selection: thin multicolor neon ring, not a white box. */
+body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible){
+ outline:none!important;border-color:transparent!important;
+ box-shadow:0 0 0 2px #19dcff,0 0 0 4px #a954ff,0 0 10px #03d5ff99!important;
+}
+body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible)::selection{background:transparent}
 /* Lightweight animated scene accents: only composited transforms/opacity. */
 .abajLaunchTile .abajSceneMotion{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;border-radius:inherit}
 /* Subtle camera movement of the original artwork, without duplicate figures. */
