@@ -3315,6 +3315,32 @@ public class MainActivity extends Activity {
                 }
                 return true;
             }
+            if(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER||
+               code==KeyEvent.KEYCODE_DPAD_UP||code==KeyEvent.KEYCODE_DPAD_DOWN||
+               code==KeyEvent.KEYCODE_DPAD_LEFT||code==KeyEvent.KEYCODE_DPAD_RIGHT){
+                String launcherKey=code==KeyEvent.KEYCODE_DPAD_UP?"ArrowUp":
+                    code==KeyEvent.KEYCODE_DPAD_DOWN?"ArrowDown":
+                    code==KeyEvent.KEYCODE_DPAD_LEFT?"ArrowLeft":
+                    code==KeyEvent.KEYCODE_DPAD_RIGHT?"ArrowRight":"Enter";
+                if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){
+                    webView.evaluateJavascript(
+                        "(function(){var root=document.getElementById('abajLauncher');"+
+                        "if(!root||root.hidden)return;"+
+                        "var bs=Array.from(root.querySelectorAll('.abajLaunchTile:not([hidden])'));"+
+                        "if(!bs.length)return;"+
+                        "var current=bs.indexOf(document.activeElement);"+
+                        "if(current<0){bs[0].focus();return;}"+
+                        "var key='"+launcherKey+"';"+
+                        "if(key==='Enter'){bs[current].click();return;}"+
+                        "var columns=window.getComputedStyle(root.querySelector('.abajLaunchTiles')).gridTemplateColumns.split(' ').filter(Boolean).length||2;"+
+                        "var step=key==='ArrowRight'?1:key==='ArrowLeft'?-1:key==='ArrowDown'?columns:-columns;"+
+                        "var next=current+step;"+
+                        "if(next>=0&&next<bs.length&&(Math.abs(step)!==1||Math.floor(next/columns)===Math.floor(current/columns)))bs[next].focus();"+
+                        "})()",null
+                    );
+                }
+                return true;
+            }
             if(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER){
                 if(event.getAction()==KeyEvent.ACTION_DOWN){
                     if(event.getRepeatCount()==0){
