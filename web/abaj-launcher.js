@@ -225,14 +225,12 @@ function repairSettingsGear(artwork,source){
  ctx.moveTo(111,410);ctx.lineTo(166,449);ctx.lineTo(213,476);ctx.lineTo(180,509);ctx.quadraticCurveTo(170,518,158,511);ctx.lineTo(114,486);ctx.quadraticCurveTo(97,475,90,458);ctx.lineTo(101,438);ctx.closePath();ctx.clip();
  ctx.drawImage(source,850/1536*786,35/797*408,550/1536*786,555/797*408,0,0,550,555);ctx.restore();
  ctx.save();ctx.translate(245.5,282);ctx.scale(50.5,56);ctx.beginPath();ctx.arc(0,0,1,0,Math.PI*2);ctx.clip();
- const ruby=ctx.createLinearGradient(-.65,-1,.65,1);
- ruby.addColorStop(0,'#da293de8');ruby.addColorStop(.18,'#b00825f2');ruby.addColorStop(.5,'#730719f5');ruby.addColorStop(.78,'#a50920f2');ruby.addColorStop(1,'#35040df5');ctx.fillStyle=ruby;ctx.fillRect(-1,-1,2,2);
- const depth=ctx.createRadialGradient(.28,.43,.04,0,0,1);
- depth.addColorStop(0,'#ef142b85');depth.addColorStop(.58,'#d50c2720');depth.addColorStop(.86,'#39040c40');depth.addColorStop(1,'#230308c0');ctx.fillStyle=depth;ctx.fillRect(-1,-1,2,2);
- const reflection=ctx.createRadialGradient(-.34,-.48,0,-.25,-.35,.72);
- reflection.addColorStop(0,'#fff0edb0');reflection.addColorStop(.19,'#f9a19b65');reflection.addColorStop(.6,'#ef455118');reflection.addColorStop(1,'#ef455100');ctx.fillStyle=reflection;ctx.fillRect(-1,-1,2,2);
- ctx.beginPath();ctx.ellipse(-.27,-.56,.38,.09,-.35,0,Math.PI*2);ctx.fillStyle='#fff4ef6b';ctx.fill();
- ctx.beginPath();ctx.arc(0,0,.94,.12,1.45);ctx.lineWidth=.025;ctx.strokeStyle='#f57c7c8c';ctx.stroke();ctx.restore();return canvas;
+ const ruby=ctx.createLinearGradient(-.8,-1,.7,1);
+ ruby.addColorStop(0,'#542049f5');ruby.addColorStop(.22,'#923875ef');ruby.addColorStop(.48,'#702051f3');ruby.addColorStop(.76,'#8b2d67ef');ruby.addColorStop(1,'#471537f5');ctx.fillStyle=ruby;ctx.fillRect(-1,-1,2,2);
+ const reflection=ctx.createLinearGradient(-1,-.6,1,.4);
+ reflection.addColorStop(0,'#ead6ed00');reflection.addColorStop(.3,'#ead6ed00');reflection.addColorStop(.4,'#ead6ed32');reflection.addColorStop(.52,'#ead6ed12');reflection.addColorStop(.63,'#ead6ed00');reflection.addColorStop(1,'#ead6ed00');ctx.fillStyle=reflection;ctx.fillRect(-1,-1,2,2);
+ ctx.beginPath();ctx.arc(0,0,.975,0,Math.PI*2);ctx.lineWidth=.05;ctx.strokeStyle='#321026b3';ctx.stroke();
+ ctx.beginPath();ctx.arc(0,0,.94,3.6,4.8);ctx.lineWidth=.018;ctx.strokeStyle='#d4a4d46b';ctx.stroke();ctx.restore();return canvas;
 }
 
 function createSettingsGear(tile,root){
