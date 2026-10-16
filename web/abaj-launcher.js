@@ -28,6 +28,13 @@ const css=`
 body.nativeTv #abajLauncher .abajLaunchTile[data-target="cinema"],
 body.nativeTv #abajLauncher .abajLaunchTile[data-target="iptv"]{animation:none!important}
 body.nativeTv #abajLauncher .abajLaunchTile{transition:border-color .18s,box-shadow .18s}
+/* TV focus: luminous cinema-style neon outline without heavy blur animations. */
+#abajLauncher .abajLaunchTile:focus,
+#abajLauncher .abajLaunchTile:focus-visible{
+ outline:3px solid #f5eaff!important;outline-offset:-4px;
+ border-color:#fff!important;
+ box-shadow:0 0 0 3px #04e6ff,0 0 0 6px #d846ff,0 0 18px #00cfff99,inset 0 0 10px #d846ff66!important;
+}
 /* Lightweight animated scene accents: only composited transforms/opacity. */
 .abajLaunchTile .abajSceneMotion{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;border-radius:inherit}
 /* Subtle camera movement of the original artwork, without duplicate figures. */
@@ -798,12 +805,14 @@ async function playIptvBallTransition(tile){
   ctx.save();ctx.translate(x,y);ctx.rotate(-.18*Math.sin(p*Math.PI));ctx.scale(radius,radius);painter(0,0,origin.angle+p*5.4);ctx.restore();
  });
 }
-function show(){settingsGear?.reset();applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;window.abajApplyHomeSections?.();footballScreen?.reset();home.hidden=true;root.querySelector('button:not([hidden])')?.focus({preventScroll:true})}
+let lastLaunchTarget='cinema';
+function show(){settingsGear?.reset();applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;window.abajApplyHomeSections?.();footballScreen?.reset();home.hidden=true;const previous=[...root.querySelectorAll('.abajLaunchTile:not([hidden])')].find(b=>b.dataset.target===lastLaunchTarget);(previous||root.querySelector('.abajLaunchTile:not([hidden])'))?.focus({preventScroll:true})}
 function hide(){root.hidden=true;home.hidden=true}
 window.abajLauncherHome=show;
 root.addEventListener('click',async e=>{
  const b=e.target.closest('[data-target]');if(!b||iptvTransitionBusy||cinemaTransitionBusy||settingsTransitionBusy||mediaTransitionBusy)return;
  const target=b.dataset.target;
+ lastLaunchTarget=target;
  try{
   if(target==='cinema'){
    await playCinemaGlassesTransition(b);
