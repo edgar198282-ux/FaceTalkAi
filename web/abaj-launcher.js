@@ -223,7 +223,16 @@ function repairSettingsGear(artwork,source){
  ctx.beginPath();ctx.moveTo(345,117);ctx.lineTo(399,92);ctx.quadraticCurveTo(415,86,438,89);ctx.quadraticCurveTo(445,89,449,96);ctx.lineTo(491,154);ctx.quadraticCurveTo(496,164,491,175);ctx.lineTo(462,213);ctx.lineTo(429,214);ctx.lineTo(421,185);ctx.lineTo(345,165);ctx.closePath();
  ctx.moveTo(290,468);ctx.lineTo(370,445);ctx.lineTo(392,492);ctx.quadraticCurveTo(397,506,387,514);ctx.lineTo(338,528);ctx.quadraticCurveTo(325,532,315,526);ctx.lineTo(284,484);ctx.closePath();
  ctx.moveTo(111,410);ctx.lineTo(166,449);ctx.lineTo(213,476);ctx.lineTo(180,509);ctx.quadraticCurveTo(170,518,158,511);ctx.lineTo(114,486);ctx.quadraticCurveTo(97,475,90,458);ctx.lineTo(101,438);ctx.closePath();ctx.clip();
- ctx.drawImage(source,850/1536*786,35/797*408,550/1536*786,555/797*408,0,0,550,555);ctx.restore();return canvas;
+ ctx.drawImage(source,850/1536*786,35/797*408,550/1536*786,555/797*408,0,0,550,555);ctx.restore();
+ ctx.save();ctx.translate(245.5,282);ctx.scale(50.5,56);ctx.beginPath();ctx.arc(0,0,1,0,Math.PI*2);ctx.clip();
+ const ruby=ctx.createLinearGradient(-.65,-1,.65,1);
+ ruby.addColorStop(0,'#f2688fe8');ruby.addColorStop(.18,'#c61950f2');ruby.addColorStop(.5,'#760b30f5');ruby.addColorStop(.78,'#a60c3af2');ruby.addColorStop(1,'#350719f5');ctx.fillStyle=ruby;ctx.fillRect(-1,-1,2,2);
+ const depth=ctx.createRadialGradient(.28,.43,.04,0,0,1);
+ depth.addColorStop(0,'#ff365a85');depth.addColorStop(.58,'#e51b4920');depth.addColorStop(.86,'#39041940');depth.addColorStop(1,'#230315c0');ctx.fillStyle=depth;ctx.fillRect(-1,-1,2,2);
+ const reflection=ctx.createRadialGradient(-.34,-.48,0,-.25,-.35,.72);
+ reflection.addColorStop(0,'#ffe5f0b0');reflection.addColorStop(.19,'#ffafcc65');reflection.addColorStop(.6,'#ff729b18');reflection.addColorStop(1,'#ff729b00');ctx.fillStyle=reflection;ctx.fillRect(-1,-1,2,2);
+ ctx.beginPath();ctx.ellipse(-.27,-.56,.38,.09,-.35,0,Math.PI*2);ctx.fillStyle='#fff0f56b';ctx.fill();
+ ctx.beginPath();ctx.arc(0,0,.94,.12,1.45);ctx.lineWidth=.025;ctx.strokeStyle='#ff9aba8c';ctx.stroke();ctx.restore();return canvas;
 }
 
 function createSettingsGear(tile,root){
