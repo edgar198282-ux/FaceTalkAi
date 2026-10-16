@@ -3909,7 +3909,9 @@ function moveAdminFocus(action){
   }
   return focusAdminControl(els[i]);
 }
+let adminOpenedFromLauncherSettings=false;
 function openAdminFromTvSettings(){
+  adminOpenedFromLauncherSettings=true;
   const modal=document.getElementById('tvSettingsModal');
   if(modal){modal.classList.remove('open');modal.style.display='none';}
   const launcher=document.getElementById('abajLauncher');
@@ -3932,6 +3934,7 @@ function openAdmin(){
 function closeAdmin(){
   const panel=document.getElementById('adminPanel');
   if(panel)panel.classList.remove('open');
+  if(adminOpenedFromLauncherSettings){adminOpenedFromLauncherSettings=false;window.abajLauncherHome?.();}
 }
 function getKinoPubInfo(){
   try{
@@ -4878,6 +4881,7 @@ function openTvSettings(){
   const modal=document.getElementById('tvSettingsModal');
   if(modal){
     cinemaSourceIgnoreUntil=Date.now()+450;
+    modal.style.removeProperty('display');
     modal.classList.add('open');
     fixTvSettingsSectionFocus(modal);
     const card=modal.querySelector('.settingsCard');
