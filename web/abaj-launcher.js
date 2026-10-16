@@ -58,6 +58,12 @@ body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible)::selection
 #abajLauncher .abajLaunchTile:is(:focus,:focus-visible) .abajFocusOrbit{opacity:1}
 @keyframes abajOrbitTravel{to{stroke-dashoffset:-100}}
 body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible){outline:none!important;border-color:#1de7ff!important;box-shadow:0 0 0 1px #15cfff,0 0 9px #00bfff77!important}
+/* Match the moving multicolor outline used by cinema posters. */
+#abajLauncher .abajFocusOrbit .abajOrbitRunner{stroke:url(#abajLaunchRainbow);stroke-width:2.6;stroke-dasharray:72 28;animation:abajOrbitTravel 3.2s linear infinite}
+#abajLauncher .abajLaunchTile:is(:focus,:focus-visible),#abajLauncher .abajLaunchTile.abajSelectedTile{
+ outline:none!important;border-color:#2ceaff!important;box-shadow:0 0 0 1px #2ceaff,0 0 8px #00cfff88!important
+}
+#abajLauncher .abajLaunchTile.abajSelectedTile .abajFocusOrbit{opacity:1}
 /* Lightweight animated scene accents: only composited transforms/opacity. */
 .abajLaunchTile .abajSceneMotion{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;border-radius:inherit}
 /* Subtle camera movement of the original artwork, without duplicate figures. */
@@ -671,7 +677,7 @@ function start(){
 if(document.getElementById('abajLauncher'))return;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
 const root=document.createElement('section');root.id='abajLauncher';root.setAttribute('aria-label','ABAJ TV — главная');root.innerHTML=`<div class="abajLaunchTop"><div class="abajLaunchBrand">ABAJ<b>TV</b></div></div><div class="abajLaunchTitle">ВАШ МИР КИНО И ТЕЛЕВИДЕНИЯ</div><div class="abajLaunchTiles"><button class="abajLaunchTile" data-target="cinema" style="--tile-bg:url('/static/launcher-cinema-20261014.webp')"><span class="abajLaunchIcon">🎞</span><span class="abajLaunchText"><span class="abajLaunchName">Кинотеатр</span><span class="abajLaunchDesc">Фильмы, сериалы, мультфильмы</span></span></button><button class="abajLaunchTile" data-target="iptv" style="--tile-bg:url('/static/launcher-iptv-20261014.webp')"><span class="abajLaunchIcon">▣</span><span class="abajLaunchText"><span class="abajLaunchName">IPTV</span><span class="abajLaunchDesc">Каналы и прямые эфиры</span></span></button><button class="abajLaunchTile" data-target="media" style="--tile-bg:url('/static/launcher-media.svg')"><span class="abajLaunchText"><span class="abajLaunchName">Медиа</span><span class="abajLaunchDesc">Ваши фото, видео и облака</span></span></button><button class="abajLaunchTile" data-target="settings" style="--tile-bg:url('/static/launcher-settings-20261014.webp')"><span class="abajLaunchIcon">⚙</span><span class="abajLaunchText"><span class="abajLaunchName">Настройки</span><span class="abajLaunchDesc">Параметры и управление</span></span></button></div><div class="abajLaunchFoot"></div>`;
-root.querySelectorAll('.abajLaunchTile').forEach(tile=>{const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('class','abajFocusOrbit');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');for(const runner of [false,true]){const rect=document.createElementNS(ns,'rect');rect.setAttribute('x','0.8');rect.setAttribute('y','0.8');rect.setAttribute('width','98.4');rect.setAttribute('height','98.4');rect.setAttribute('rx','5');rect.setAttribute('ry','5');rect.setAttribute('pathLength','100');if(runner)rect.setAttribute('class','abajOrbitRunner');svg.appendChild(rect)}tile.appendChild(svg)});
+root.querySelectorAll('.abajLaunchTile').forEach(tile=>{const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('class','abajFocusOrbit');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');const defs=document.createElementNS(ns,'defs'),gradient=document.createElementNS(ns,'linearGradient');gradient.setAttribute('id','abajLaunchRainbow');gradient.setAttribute('x1','0%');gradient.setAttribute('y1','0%');gradient.setAttribute('x2','100%');gradient.setAttribute('y2','100%');for(const [offset,color] of [['0%','#22dfff'],['30%','#67f6a4'],['55%','#ffe46d'],['78%','#ff77c7'],['100%','#25dfff']]){const stop=document.createElementNS(ns,'stop');stop.setAttribute('offset',offset);stop.setAttribute('stop-color',color);gradient.appendChild(stop)}defs.appendChild(gradient);svg.appendChild(defs);for(const runner of [false,true]){const rect=document.createElementNS(ns,'rect');rect.setAttribute('x','0.8');rect.setAttribute('y','0.8');rect.setAttribute('width','98.4');rect.setAttribute('height','98.4');rect.setAttribute('rx','5');rect.setAttribute('ry','5');rect.setAttribute('pathLength','100');if(runner)rect.setAttribute('class','abajOrbitRunner');svg.appendChild(rect)}tile.appendChild(svg)});
 
 document.body.appendChild(root);
 for(const tile of root.querySelectorAll('.abajLaunchTile:not([data-target="media"])')){
@@ -831,7 +837,8 @@ async function playIptvBallTransition(tile){
  });
 }
 let lastLaunchTarget='cinema';
-function show(){settingsGear?.reset();applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;window.abajApplyHomeSections?.();footballScreen?.reset();home.hidden=true;const previous=[...root.querySelectorAll('.abajLaunchTile:not([hidden])')].find(b=>b.dataset.target===lastLaunchTarget);(previous||root.querySelector('.abajLaunchTile:not([hidden])'))?.focus({preventScroll:true})}
+function selectLaunchTile(tile){if(!tile)return;root.querySelectorAll('.abajLaunchTile').forEach(b=>b.classList.toggle('abajSelectedTile',b===tile));lastLaunchTarget=tile.dataset.target||lastLaunchTarget;tile.focus({preventScroll:true})}
+function show(){settingsGear?.reset();applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;window.abajApplyHomeSections?.();footballScreen?.reset();home.hidden=true;const visible=[...root.querySelectorAll('.abajLaunchTile:not([hidden])')];const target=document.body.classList.contains('cinemaMode')?'cinema':lastLaunchTarget;const previous=visible.find(b=>b.dataset.target===target)||visible[0];selectLaunchTile(previous);requestAnimationFrame(()=>{if(!root.hidden&&previous?.isConnected)selectLaunchTile(previous)})}
 function hide(){root.hidden=true;home.hidden=true}
 window.abajLauncherHome=show;
 root.addEventListener('click',async e=>{
@@ -872,11 +879,11 @@ root.addEventListener('keydown',e=>{
  const columns=window.getComputedStyle(root.querySelector('.abajLaunchTiles')).gridTemplateColumns.split(' ').filter(Boolean).length||2;
  const step=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:e.key==='ArrowDown'?columns:-columns;
  const next=index+step;
- if(next>=0&&next<bs.length&&(Math.abs(step)!==1||Math.floor(next/columns)===Math.floor(index/columns)))bs[next].focus({preventScroll:true});
- else if(active<0)bs[0].focus({preventScroll:true});
+ if(next>=0&&next<bs.length&&(Math.abs(step)!==1||Math.floor(next/columns)===Math.floor(index/columns)))selectLaunchTile(bs[next]);
+ else if(active<0)selectLaunchTile(bs[0]);
  e.preventDefault();e.stopPropagation();
 });
-root.addEventListener('focusin',e=>{if(e.target.matches('.abajLaunchTile'))root.dataset.tvFocus='true'});
+root.addEventListener('focusin',e=>{if(e.target.matches('.abajLaunchTile')){root.dataset.tvFocus='true';selectLaunchTile(e.target)}});
 root.addEventListener('focusout',e=>{if(e.target.matches('.abajLaunchTile'))root.dataset.tvFocus='false'});
 show();
 }
