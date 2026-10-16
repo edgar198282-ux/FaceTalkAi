@@ -4812,6 +4812,45 @@ async function refreshAppUpdateState(){
 function manualAppUpdate(){
   window.location.href='facetalk://check-update';
 }
+function fixTvSettingsSectionFocus(modal){
+  if(!nativeTv||!modal)return;
+  const card=modal.querySelector('.settingsCard');
+  if(!card)return;
+  const candidates=[...card.querySelectorAll('button,select,[role="button"],[role="combobox"],[tabindex]')];
+  let section=candidates.find(el=>/Разделы на главной/i.test(el.textContent||''));
+  if(!section){
+    const label=[...card.querySelectorAll('div,span,label')].find(el=>el.children.length===0&&/Разделы на главной/i.test(el.textContent||''));
+    section=label?.closest('button,[role="button"],[role="combobox"],.settingsAction,.settingRow')||label?.parentElement;
+  }
+  if(!section)return;
+  if(!section.matches('button,select,[tabindex]'))section.setAttribute('tabindex','0');
+  if(section.dataset.tvFocusFixed)return;
+  section.dataset.tvFocusFixed='1';
+  section.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){
+      if(section.tagName!=='BUTTON'&&section.tagName!=='SELECT'){e.preventDefault();e.stopPropagation();section.click()}
+    }
+  });
+  // Prevent the global TV arrow handler from skipping the section selector.
+  if(!modal.dataset.tvSectionFocusBound){
+    modal.dataset.tvSectionFocusBound='1';
+    modal.addEventListener('keydown',e=>{
+      if(!modal.classList.contains('open')||!['ArrowDown','ArrowUp'].includes(e.key))return;
+      const current=document.activeElement;
+      const all=[...card.querySelectorAll('button,select,[role="button"],[role="combobox"],[tabindex]')].filter(el=>{
+        if(el.disabled||el.closest('[hidden]'))return false;
+        const box=el.getBoundingClientRect();return box.width>4&&box.height>4;
+      });
+      const idx=all.indexOf(current);
+      if(idx<0)return;
+      const next=all[idx+(e.key==='ArrowDown'?1:-1)];
+      if(!next)return;
+      e.preventDefault();e.stopImmediatePropagation();
+      next.focus({preventScroll:true});
+      next.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
+    },true);
+  }
+}
 function openTvSettings(){
   paintTvSettings();
   refreshAppUpdateState();
@@ -4822,6 +4861,7 @@ function openTvSettings(){
   if(modal){
     cinemaSourceIgnoreUntil=Date.now()+450;
     modal.classList.add('open');
+    fixTvSettingsSectionFocus(modal);
     const card=modal.querySelector('.settingsCard');
     if(card)card.scrollTop=0;
     if(nativeTv)setTimeout(()=>{
