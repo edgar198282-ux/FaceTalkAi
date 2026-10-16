@@ -3324,8 +3324,17 @@ public class MainActivity extends Activity {
                     code==KeyEvent.KEYCODE_DPAD_RIGHT?"ArrowRight":"Enter";
                 if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){
                     webView.evaluateJavascript(
-                        "(function(){var root=document.getElementById('abajLauncher');"+
-                        "if(!root||root.hidden){var key='"+launcherKey+"';"+
+                        "(function(){var key='"+launcherKey+"';"+
+                        "var modal=document.getElementById('tvSettingsModal');"+
+                        "if(modal&&modal.classList.contains('open')){"+
+                        "var card=modal.querySelector('.settingsCard')||modal;"+
+                        "var items=Array.from(card.querySelectorAll('button,select,input,[tabindex], [role=button]')).filter(function(el){var r=el.getBoundingClientRect();return !el.disabled&&r.width>2&&r.height>2&&getComputedStyle(el).visibility!=='hidden';});"+
+                        "var i=items.indexOf(document.activeElement);"+
+                        "if(key==='Enter'){var active=items[i<0?0:i];if(active){active.focus();active.click();}return;}"+
+                        "if(key==='ArrowDown'||key==='ArrowUp'){var n=i+(key==='ArrowDown'?1:-1);if(i<0)n=0;if(n>=0&&n<items.length){items[n].focus();items[n].scrollIntoView({block:'nearest'});}return;}"+
+                        "return;}"+
+                        "var root=document.getElementById('abajLauncher');"+
+                        "if(!root||root.hidden){"+
                         "if(key==='Enter'){if(typeof tvNativeOkDown==='function')tvNativeOkDown();else if(typeof tvNativeRemote==='function')tvNativeRemote('ok');}"+
                         "else if(typeof tvNativeRemote==='function')tvNativeRemote(key.slice(5).toLowerCase());return;}"+
                         "var bs=Array.from(root.querySelectorAll('.abajLaunchTile:not([hidden])'));"+
