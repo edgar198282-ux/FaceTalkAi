@@ -843,7 +843,7 @@ async function playIptvBallTransition(tile){
 }
 let lastLaunchTarget='cinema';
 function selectLaunchTile(tile){if(!tile)return;root.querySelectorAll('.abajLaunchTile').forEach(b=>b.classList.toggle('abajSelectedTile',b===tile));lastLaunchTarget=tile.dataset.target||lastLaunchTarget;tile.focus({preventScroll:true})}
-function show(){settingsGear?.reset();applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;window.abajApplyHomeSections?.();footballScreen?.reset();home.hidden=true;const visible=[...root.querySelectorAll('.abajLaunchTile:not([hidden])')];const target=document.body.classList.contains('cinemaMode')?'cinema':lastLaunchTarget;const previous=visible.find(b=>b.dataset.target===target)||visible[0];selectLaunchTile(previous);requestAnimationFrame(()=>{if(!root.hidden&&previous?.isConnected)selectLaunchTile(previous)})}
+function show(){settingsGear?.reset();applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;window.abajApplyHomeSections?.();footballScreen?.reset();home.hidden=true;const visible=[...root.querySelectorAll('.abajLaunchTile:not([hidden])')];const target=lastLaunchTarget;const previous=visible.find(b=>b.dataset.target===target)||visible[0];selectLaunchTile(previous);requestAnimationFrame(()=>{if(!root.hidden&&previous?.isConnected)selectLaunchTile(previous)})}
 function hide(){root.hidden=true;home.hidden=true}
 window.abajLauncherHome=show;
 root.addEventListener('click',async e=>{
@@ -866,6 +866,8 @@ root.addEventListener('click',async e=>{
   }
   if(target==='settings'){
    await playSettingsGearTransition(b);
+   // Settings must not leave the cinema screen active behind the modal.
+   if(document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();
    if(typeof openTvSettings==='function')openTvSettings();
   }
   if(target==='settings'||target==='iptv'||document.body.classList.contains('cinemaMode'))hide();
