@@ -342,7 +342,7 @@ function createFootballScreen(tile,root){
  }
  function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected}
  function tick(now){
-  frame=0;if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now;if(!active()){last=0;return}
+  frame=0;if(!active()){last=0;return}if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now
   if(last&&!departing&&!reduced.matches)elapsed+=Math.min(now-last,80);
   last=now;draw();
   if(!reduced.matches)frame=requestAnimationFrame(tick);
@@ -477,7 +477,7 @@ function createIptvScenes(tile,root){
  }
  function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected&&!reduced.matches}
  function tick(now){
-  frame=0;if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now;if(!active()){last=0;return}
+  frame=0;if(!active()){last=0;return}if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now
   if(last)elapsed+=Math.min(now-last,80);last=now;
   if(now-painted>=(document.body.classList.contains('nativeTv')?tvAnimationFrameMs:32)){draw();painted=now}frame=requestAnimationFrame(tick);
  }
@@ -581,8 +581,8 @@ function createCinemaScene(tile,root){
  }
  function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected}
  function tick(now){
-  frame=0;if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now;if(!active()){last=0;return}
-  if(last)elapsed+=Math.min(now-last,80);last=now;if(!document.body.classList.contains('nativeTv')||!tick.lastPaint||now-tick.lastPaint>=tvAnimationFrameMs){draw();tick.lastPaint=now}frame=requestAnimationFrame(tick);
+  frame=0;if(!active()){last=0;return}if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now
+  if(last)elapsed+=Math.min(now-last,80);last=now;draw();frame=requestAnimationFrame(tick);
  }
  function sync(){
   if(frame)cancelAnimationFrame(frame);frame=0;last=0;
