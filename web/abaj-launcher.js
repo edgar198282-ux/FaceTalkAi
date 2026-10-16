@@ -898,10 +898,15 @@ root.addEventListener('click',async e=>{
    window.abajOpenMedia();return;
   }
   if(target==='settings'){
-   await playSettingsGearTransition(b);
-   // Settings must not leave the cinema screen active behind the modal.
+   try{await playSettingsGearTransition(b)}catch(err){console.error('ABAJ settings transition',err)}
    if(document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();
    if(typeof openTvSettings==='function')openTvSettings();
+   else if(typeof window.openTvSettings==='function')window.openTvSettings();
+   else {
+    const modal=document.getElementById('tvSettingsModal');
+    if(modal){modal.style.removeProperty('display');modal.classList.add('open')}
+   }
+   settingsGear?.reset();
   }
   if(target==='iptv'||document.body.classList.contains('cinemaMode'))hide();
  }catch(err){footballScreen?.reset();settingsGear?.reset();console.error('ABAJ launcher navigation',err)}
