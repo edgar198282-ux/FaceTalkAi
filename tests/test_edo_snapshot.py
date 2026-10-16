@@ -1,4 +1,8 @@
 import ast
+import os
+import base64
+import gzip
+import hashlib
 import json
 import logging
 import time
@@ -21,9 +25,32 @@ class EdoSnapshot(unittest.IsolatedAsyncioTestCase):
                        urlparse=urlparse, get_setting=get, set_setting=put,
                        EDEM_REFRESH_SECONDS=86400, _edem_named_cache={})
         tree = ast.parse((Path(__file__).resolve().parents[1] / 'app/webapp_plus.py').read_text())
-        names = {'_read_edem_snapshot', '_save_edem_snapshot', '_load_edem_playlist_for_uid'}
+        names = {'_read_edem_snapshot', '_save_edem_snapshot', '_load_edem_playlist_for_uid', '_import_edem_recovery'}
         nodes = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name in names]
         exec(compile(ast.Module(body=nodes, type_ignores=[]), 'edo', 'exec'), self.ns)
+
+    async def test_recovery_import_preserves_identity_and_is_idempotent(self):
+        source = {'id': 'one', 'name': 'Edo', 'url': 'https://example.org/old'}
+        other = {'id': 'two', 'name': 'Other', 'url': 'https://example.org/other'}
+        self.db['edem_named_playlists:0'] = json.dumps([source, other])
+        self.ns.update(os=os, base64=base64, hashlib=hashlib,
+                       _normalize_edem_logo_urls=lambda rows, url: rows,
+                       _unique_edem_channel_ids=lambda rows: rows,
+                       iptv=types.SimpleNamespace(_parse_m3u=lambda *args: [{'id': 'channel', 'name': 'One'}],
+                                                  _is_adult_channel=lambda ch: False))
+        recovery = {'id': 'one', 'url': 'https://example.org/new',
+                    'm3u_gzip': base64.b64encode(gzip.compress(b'#EXTM3U')).decode()}
+        with patch.dict(os.environ, {'EDEM_PLAYLIST_RECOVERY': json.dumps(recovery)}):
+            await self.ns['_import_edem_recovery']()
+            entries = json.loads(self.db['edem_named_playlists:0'])
+            self.assertEqual(entries[0], {**source, 'url': recovery['url']})
+            self.assertEqual(entries[1], other)
+            saved = dict(self.db)
+            await self.ns['_import_edem_recovery']()
+            self.assertEqual(self.db, saved)
+        snapshot = json.loads(self.db['edem_snapshot:0:public:one'])
+        self.assertEqual(snapshot['channels'][0]['playlist_id'], 'public:one')
+        self.assertEqual(snapshot['channels'][0]['id'], hashlib.sha256(b'public:one:channel').hexdigest()[:20])
 
     async def test_snapshot_survives_restart_and_rejects_changed_source(self):
         snapshot = {'url': 'https://example.org/list', 'ts': int(time.time()),

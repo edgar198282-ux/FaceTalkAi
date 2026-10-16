@@ -3280,6 +3280,47 @@ async def _save_edem_snapshot(key, snapshot):
         logging.warning('EDEM_SNAPSHOT_SAVE_FAILED error_type=%s', type(exc).__name__)
 
 
+async def _import_edem_recovery():
+    raw = (os.getenv('EDEM_PLAYLIST_RECOVERY', '') + os.getenv('EDEM_PLAYLIST_RECOVERY_PART2', '')).strip()
+    if not raw:
+        return
+    digest = hashlib.sha256(raw.encode()).hexdigest()
+    if await get_setting('edem_recovery_applied', '') == digest:
+        return
+    try:
+        import gzip
+        recovery = json.loads(raw)
+        source_id = str(recovery['id'])
+        url = str(recovery['url']).strip()
+        if urlparse(url).scheme not in ('http', 'https'):
+            raise ValueError('invalid source URL')
+        entries = json.loads(await get_setting('edem_named_playlists:0', '[]'))
+        entry = next((item for item in entries if str(item.get('id')) == source_id), None)
+        if entry is None:
+            raise ValueError('configured playlist not found')
+        body = gzip.decompress(base64.b64decode(recovery['m3u_gzip'], validate=True)).decode('utf-8-sig')
+        rows = _normalize_edem_logo_urls(_unique_edem_channel_ids(iptv._parse_m3u(body, 'ED', url)), url)
+        if not rows:
+            raise ValueError('empty playlist')
+        playlist_id = 'public:' + source_id
+        for item in rows:
+            item['id'] = hashlib.sha256((playlist_id + ':' + str(item.get('id') or '')).encode()).hexdigest()[:20]
+            item.update(status='ONLINE', latency_ms=0, backup_count=0, candidate_count=1,
+                        personal=True, provider='Edem', playlist_id=playlist_id,
+                        playlist_name=entry['name'], public_playlist=True,
+                        adult=bool(iptv._is_adult_channel(item)))
+        snapshot = {'url': url, 'ts': int(time.time()), 'channels': rows}
+        key = '0:' + playlist_id
+        await set_setting('edem_snapshot:' + key, json.dumps(snapshot, ensure_ascii=False))
+        entry['url'] = url
+        await set_setting('edem_named_playlists:0', json.dumps(entries, ensure_ascii=False))
+        await set_setting('edem_recovery_applied', digest)
+        _edem_named_cache[key] = snapshot
+        logging.info('EDEM_RECOVERY_IMPORTED id=%s channels=%s interval_seconds=%s', playlist_id, len(rows), EDEM_REFRESH_SECONDS)
+    except Exception as exc:
+        logging.error('EDEM_RECOVERY_FAILED error_type=%s', type(exc).__name__)
+
+
 async def _load_edem_playlist_for_uid(uid: int, force: bool = False):
     legacy = await _load_edem_legacy_for_uid(uid, force)
     raw = await get_setting(f'edem_named_playlists:{uid}', '[]')
@@ -5182,6 +5223,7 @@ async def abaj_source_access_middleware(request, handler):
 
 
 async def start_webapp(bot):
+    await _import_edem_recovery()
     app = web.Application(client_max_size=100*1024*1024, middlewares=[api_error_middleware, abaj_source_access_middleware]); app['bot']=bot
     app.router.add_get('/', index)
     app.router.add_get('/site', abaj_site)
