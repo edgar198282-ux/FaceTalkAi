@@ -80,6 +80,9 @@ body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible){
 #abajLauncher .abajFocusOrbit .abajOrbitRunner{stroke-width:4!important;stroke-dasharray:none!important}
 /* Keep the launcher visible behind its own settings panel. */
 body.nativeTv #tvSettingsModal.open{z-index:9100!important}
+/* Settings is modal: suspend launcher selection glow while the panel is open. */
+body:has(#tvSettingsModal.open) #abajLauncher .abajFocusOrbit{opacity:0!important}
+body:has(#tvSettingsModal.open) #abajLauncher .abajLaunchTile{outline:none!important;box-shadow:none!important}
 /* Lightweight animated scene accents: only composited transforms/opacity. */
 .abajLaunchTile .abajSceneMotion{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;border-radius:inherit}
 /* Subtle camera movement of the original artwork, without duplicate figures. */
