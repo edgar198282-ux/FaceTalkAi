@@ -80,6 +80,8 @@ body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible){
 #abajLauncher .abajFocusOrbit .abajOrbitRunner{stroke-width:4!important;stroke-dasharray:none!important}
 /* Keep the launcher visible behind its own settings panel. */
 body.nativeTv #tvSettingsModal.open{z-index:9100!important}
+body:not(.nativeTv) #tvSettingsModal.open{z-index:9100!important}
+#abajLauncher.abajTransitionRunning *{animation-play-state:paused!important}
 /* Settings is modal: suspend launcher selection glow while the panel is open. */
 body:has(#tvSettingsModal.open) #abajLauncher .abajFocusOrbit{opacity:0!important}
 body:has(#tvSettingsModal.open) #abajLauncher .abajLaunchTile{outline:none!important;box-shadow:none!important}
@@ -397,7 +399,7 @@ function createFootballScreen(tile,root){
  }
  function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected}
  function tick(now){
-  frame=0;if(!active()){last=0;return}if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now
+  frame=0;if(!active()){last=0;return}if(root.classList.contains('abajTransitionRunning')){last=0;frame=requestAnimationFrame(tick);return}if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now
   if(last&&!departing&&!reduced.matches)elapsed+=Math.min(now-last,80);
   last=now;draw();
   if(!reduced.matches)frame=requestAnimationFrame(tick);
@@ -532,7 +534,7 @@ function createIptvScenes(tile,root){
  }
  function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected&&!reduced.matches}
  function tick(now){
-  frame=0;if(!active()){last=0;return}if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now
+  frame=0;if(!active()){last=0;return}if(root.classList.contains('abajTransitionRunning')){last=0;frame=requestAnimationFrame(tick);return}if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now
   if(last)elapsed+=Math.min(now-last,80);last=now;
   if(now-painted>=(document.body.classList.contains('nativeTv')?tvAnimationFrameMs:32)){draw();painted=now}frame=requestAnimationFrame(tick);
  }
@@ -655,7 +657,7 @@ function createCinemaScene(tile,root){
  }
  function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected}
  function tick(now){
-  frame=0;if(!active()){last=0;return}if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now
+  frame=0;if(!active()){last=0;return}if(root.classList.contains('abajTransitionRunning')){last=0;frame=requestAnimationFrame(tick);return}if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now
   if(last)elapsed+=Math.min(now-last,80);last=now;draw();frame=requestAnimationFrame(tick);
  }
  function sync(){
@@ -778,6 +780,7 @@ async function runLaunchTransition(duration,paint,pixelRatioLimit=2){
  canvas.className='abajTransitionStage';canvas.setAttribute('aria-hidden','true');
  const w=window.innerWidth,h=window.innerHeight,dpr=Math.min(window.devicePixelRatio||1,document.body.classList.contains('nativeTv')?1:pixelRatioLimit);
  canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);document.body.appendChild(canvas);transitionStage=canvas;
+ root.classList.add('abajTransitionRunning');
  let frame=0,timer=0;
  try{
   await new Promise((resolve,reject)=>{
@@ -797,7 +800,7 @@ async function runLaunchTransition(duration,paint,pixelRatioLimit=2){
    frame=requestAnimationFrame(tick);
   });
  }catch(err){canvas.remove();transitionStage=null;throw err}
- finally{cancelAnimationFrame(frame);clearTimeout(timer)}
+ finally{cancelAnimationFrame(frame);clearTimeout(timer);root.classList.remove('abajTransitionRunning')}
 }
 async function revealLaunchDestination(){
  const stage=transitionStage;transitionStage=null;
@@ -859,14 +862,14 @@ async function playCinemaGlassesTransition(tile){
  cinemaTransitionBusy=true;
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
  const rect=tile.getBoundingClientRect(),origin={x:rect.left+rect.width*.5,y:rect.top+rect.height*.43};
- await runLaunchTransition(760,(ctx,w,h,p)=>drawCinemaGlasses(ctx,w,h,origin,p));
+ await runLaunchTransition(1500,(ctx,w,h,p)=>drawCinemaGlasses(ctx,w,h,origin,p));
 }
 async function playIptvBallTransition(tile){
  iptvTransitionBusy=true;
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
  const rect=tile.getBoundingClientRect(),origin=footballScreen?.takeOff()||{x:rect.left+rect.width*.665,y:rect.top+rect.height*.285,radius:rect.width*.024,angle:0};
  let painter=null;
- await runLaunchTransition(700,(ctx,w,h,p)=>{
+ await runLaunchTransition(1400,(ctx,w,h,p)=>{
   if(!painter)painter=createFootballPainter(ctx,1);
   const near=origin.radius/(Math.hypot(w,h)*.8),depth=near+(1-near)*Math.pow(1-p,1.65),radius=origin.radius/depth;
   const travel=1-Math.pow(1-p,2),x=origin.x+(w*.5-origin.x)*travel,y=origin.y+(h*.48-origin.y)*travel-Math.sin(p*Math.PI)*Math.min(65,h*.08);
