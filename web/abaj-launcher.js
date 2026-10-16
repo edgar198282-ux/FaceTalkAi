@@ -78,6 +78,8 @@ body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible){
 #abajLauncher .abajFocusOrbit{inset:0!important;width:100%!important;height:100%!important;overflow:hidden!important;border-radius:inherit;z-index:8}
 #abajLauncher .abajFocusOrbit rect:not(.abajOrbitRunner){display:none}
 #abajLauncher .abajFocusOrbit .abajOrbitRunner{stroke-width:4!important;stroke-dasharray:none!important}
+/* Keep the launcher visible behind its own settings panel. */
+body.nativeTv #tvSettingsModal.open{z-index:9100!important}
 /* Lightweight animated scene accents: only composited transforms/opacity. */
 .abajLaunchTile .abajSceneMotion{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;border-radius:inherit}
 /* Subtle camera movement of the original artwork, without duplicate figures. */
@@ -879,7 +881,7 @@ root.addEventListener('click',async e=>{
    if(document.body.classList.contains('cinemaMode')&&typeof toggleCinemaMode==='function')await toggleCinemaMode();
    if(typeof openTvSettings==='function')openTvSettings();
   }
-  if(target==='settings'||target==='iptv'||document.body.classList.contains('cinemaMode'))hide();
+  if(target==='iptv'||document.body.classList.contains('cinemaMode'))hide();
  }catch(err){footballScreen?.reset();settingsGear?.reset();console.error('ABAJ launcher navigation',err)}
  finally{try{await revealLaunchDestination()}finally{iptvTransitionBusy=false;cinemaTransitionBusy=false;settingsTransitionBusy=false;mediaTransitionBusy=false}}
 });
