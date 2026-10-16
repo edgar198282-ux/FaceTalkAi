@@ -3343,7 +3343,7 @@ public class MainActivity extends Activity {
                         "if(current<0){bs[0].focus();return;}"+
                         "var key='"+launcherKey+"';"+
                         "if(key==='Enter'){bs[current].click();return;}"+
-                        "var columns=window.getComputedStyle(root.querySelector('.abajLaunchTiles')).gridTemplateColumns.split(' ').filter(Boolean).length||2;"+
+                        "var columns=2;"+
                         "var step=key==='ArrowRight'?1:key==='ArrowLeft'?-1:key==='ArrowDown'?columns:-columns;"+
                         "var next=current+step;"+
                         "if(next>=0&&next<bs.length&&(Math.abs(step)!==1||Math.floor(next/columns)===Math.floor(current/columns)))bs[next].focus();"+
