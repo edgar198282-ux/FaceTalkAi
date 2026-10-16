@@ -22,6 +22,7 @@ const css=`
 .abajLaunchTile:hover{border-color:#b5eaff;box-shadow:0 0 18px #16a9ef42}
 #abajLauncher .abajLaunchTile:focus-visible{outline:2px solid #b5efff!important;outline-offset:3px;border-color:#d5f5ff;box-shadow:0 0 20px #12bdff80!important}
 .abajLaunchTile:active{transform:scale(.992)}
+#abajLauncher .abajLaunchTile:focus{outline:3px solid #c8f6ff!important;outline-offset:-4px;border-color:#fff!important;box-shadow:0 0 0 3px #00c8ff,0 0 26px #00c8ffbb,inset 0 0 18px #00baff55!important}
 /* Lightweight animated scene accents: only composited transforms/opacity. */
 .abajLaunchTile .abajSceneMotion{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;border-radius:inherit}
 /* Subtle camera movement of the original artwork, without duplicate figures. */
@@ -821,7 +822,23 @@ root.addEventListener('click',async e=>{
  finally{try{await revealLaunchDestination()}finally{iptvTransitionBusy=false;cinemaTransitionBusy=false;settingsTransitionBusy=false;mediaTransitionBusy=false}}
 });
 home.addEventListener('click',show);
-root.addEventListener('keydown',e=>{const keys=['ArrowRight','ArrowLeft','ArrowUp','ArrowDown'];if(!keys.includes(e.key))return;const bs=[...root.querySelectorAll('[data-target]:not([hidden])')];const i=Math.max(0,bs.indexOf(document.activeElement));const delta=(e.key==='ArrowRight'||e.key==='ArrowDown')?1:-1;bs[(i+delta+bs.length)%bs.length].focus({preventScroll:true});e.preventDefault()});
+root.addEventListener('keydown',e=>{
+ if(root.hidden)return;
+ const keys=['ArrowRight','ArrowLeft','ArrowUp','ArrowDown'];
+ if(!keys.includes(e.key))return;
+ const bs=[...root.querySelectorAll('.abajLaunchTile:not([hidden])')];
+ if(!bs.length)return;
+ const active=bs.indexOf(document.activeElement);
+ const index=active<0?0:active;
+ const columns=window.getComputedStyle(root.querySelector('.abajLaunchTiles')).gridTemplateColumns.split(' ').filter(Boolean).length||2;
+ const step=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:e.key==='ArrowDown'?columns:-columns;
+ const next=index+step;
+ if(next>=0&&next<bs.length&&(Math.abs(step)!==1||Math.floor(next/columns)===Math.floor(index/columns)))bs[next].focus({preventScroll:true});
+ else if(active<0)bs[0].focus({preventScroll:true});
+ e.preventDefault();e.stopPropagation();
+});
+root.addEventListener('focusin',e=>{if(e.target.matches('.abajLaunchTile'))root.dataset.tvFocus='true'});
+root.addEventListener('focusout',e=>{if(e.target.matches('.abajLaunchTile'))root.dataset.tvFocus='false'});
 show();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,250));else setTimeout(start,250);
