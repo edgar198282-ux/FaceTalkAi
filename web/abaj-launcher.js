@@ -817,7 +817,7 @@ async function playMediaLensTransition(tile){
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
  const rect=tile.getBoundingClientRect(),origin={x:rect.left+rect.width*.68,y:rect.top+rect.height*.4};
  const initial=Math.max(28,Math.min(rect.width*.18,rect.height*.32));
- await runLaunchTransition(760,(ctx,w,h,p)=>{
+ await runLaunchTransition(1200,(ctx,w,h,p)=>{
   const travel=p*p*(3-2*p),zoom=Math.max(0,(p-.58)/.42);
   const r=initial*(1+travel*.6)/(1-.97*zoom*zoom),x=origin.x+(w*.5-origin.x)*travel,y=origin.y+(h*.5-origin.y)*travel;
   ctx.fillStyle='rgba(4,17,38,'+(travel*.88)+')';ctx.fillRect(0,0,w,h);
@@ -849,7 +849,7 @@ async function playSettingsGearTransition(tile){
  settingsTransitionBusy=true;
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
  const rect=tile.getBoundingClientRect(),origin=settingsGear?.takeOff()||{x:rect.left+rect.width*.75,y:rect.top+rect.height*.4,radius:rect.height*.3,angle:0};
- await runLaunchTransition(720,(ctx,w,h,p)=>{
+ await runLaunchTransition(1200,(ctx,w,h,p)=>{
   const travel=p*p*(3-2*p),x=origin.x+(w*.5-origin.x)*travel,y=origin.y+(h*.5-origin.y)*travel;
   const depth=.075+.925*Math.pow(1-p,1.9),radius=origin.radius/depth,opening=Math.max(0,Math.min(1,(p-.57)/.36));
   ctx.fillStyle='rgba(4,17,38,'+(opening*.98)+')';ctx.fillRect(0,0,w,h);
