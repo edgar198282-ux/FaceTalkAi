@@ -591,6 +591,25 @@ function createCinemaScene(tile,root){
    ctx.fillStyle=sheen;ctx.fill();ctx.restore();
   }
  }
+ // TV-friendly filmstrip: move pre-rendered frames in a few draw calls,
+ // instead of hundreds of per-pixel canvas transforms on every frame.
+ function drawFilmTv(t){
+  if(!film.width)return;
+  const shift=(t*34)%film.width;
+  for(const band of filmBands){
+   const left=band[0][0],right=band[band.length-1][0];
+   const top=band[0][1],bottom=band[0][2];
+   const slope=(band[band.length-1][1]-top)/(right-left);
+   ctx.save();
+   ctx.beginPath();
+   band.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));
+   for(let i=band.length-1;i>=0;i--)ctx.lineTo(band[i][0],band[i][2]);
+   ctx.closePath();ctx.clip();ctx.globalAlpha=.78;
+   ctx.transform(1,slope,0,(bottom-top)/32,left,top);
+   for(let x=-shift-film.width;x<right-left+film.width;x+=film.width)ctx.drawImage(film,x,0);
+   ctx.restore();
+  }
+ }
  function align(){
   w=tile.clientWidth;h=tile.clientHeight;if(!w||!h)return false;
   dpr=document.body.classList.contains('nativeTv')?1:Math.min(window.devicePixelRatio||1,2);
@@ -616,7 +635,7 @@ function createCinemaScene(tile,root){
   glow.addColorStop(0,'rgba(255,247,171,.95)');glow.addColorStop(.22,'rgba(255,211,87,.62)');glow.addColorStop(1,'rgba(255,165,42,0)');
   ctx.globalAlpha=.5+strength*.5;ctx.fillStyle=glow;ctx.fillRect(277,sunY-48,96,96);
   ctx.beginPath();ctx.arc(325,sunY,8.5,0,Math.PI*2);ctx.fillStyle='#fffbd3';ctx.fill();ctx.restore();
-  if(!document.body.classList.contains('nativeTv'))drawFilm(t);
+  if(document.body.classList.contains('nativeTv'))drawFilmTv(t);else drawFilm(t);
   for(const k of kernels){
    const phase=((t+k.delay)%k.period)/k.period;
    if(phase>.58)continue;
