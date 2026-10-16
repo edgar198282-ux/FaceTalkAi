@@ -324,7 +324,7 @@ function createSettingsGear(tile,root){
  }
  for(const [image,url,w,h] of [[background,'/static/launcher-settings-background.webp',1536,797],[artwork,'/static/launcher-gear-foreground.png',550,555],[source,'/static/launcher-settings-20261014.webp',786,408]]){
   image.onload=()=>{
-   if(failed||!tile.isConnected||image.naturalWidth!==w||image.naturalHeight!==h){failed=true;return}
+   if(failed||!tile.isConnected||!image.naturalWidth||!image.naturalHeight){failed=true;return}
    if(++loaded!==3)return;
    const ctx=gear.getContext('2d');if(!ctx)return;repaired=repairSettingsGear(artwork,source);ctx.drawImage(repaired,0,0);
    ready=true;tile.insertBefore(gear,tile.querySelector('.abajLaunchText'));align();tile.classList.add('abajGearReady');
