@@ -1,6 +1,6 @@
 /* ABAJ TV Premium Dark launcher — isolated UI layer */
 (()=>{'use strict';
-const tvAnimationFrameMs=1000/12; // Android TV low-cost scene rendering
+const tvAnimationFrameMs=1000/24; // smoother TV motion, heavy film drawing remains disabled
 const css=`
 #abajLauncher{position:fixed;inset:0;z-index:9000;box-sizing:border-box;overflow-y:auto;display:flex;flex-direction:column;padding:18px 28px 28px;color:#f6fbff;background:#020b18 url('/static/launcher-header-20261014.webp') center top / 100% auto no-repeat;font-family:Arial,sans-serif;overscroll-behavior:contain;scrollbar-width:none}
 #abajLauncher[hidden],#abajLaunchHome[hidden]{display:none!important}
@@ -51,6 +51,13 @@ body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible){
  box-shadow:0 0 0 2px #19dcff,0 0 0 4px #a954ff,0 0 10px #03d5ff99!important;
 }
 body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible)::selection{background:transparent}
+/* Moving neon cursor: the bright segment travels around the whole rounded tile. */
+#abajLauncher .abajFocusOrbit{position:absolute;inset:0;width:100%;height:100%;z-index:8;pointer-events:none;overflow:visible;opacity:0}
+#abajLauncher .abajFocusOrbit rect{fill:none;stroke:#25eaff;stroke-width:1.2;vector-effect:non-scaling-stroke}
+#abajLauncher .abajFocusOrbit .abajOrbitRunner{stroke:#f0a4ff;stroke-width:3.5;stroke-linecap:round;stroke-dasharray:18 82;stroke-dashoffset:0;animation:abajOrbitTravel 2.4s linear infinite}
+#abajLauncher .abajLaunchTile:is(:focus,:focus-visible) .abajFocusOrbit{opacity:1}
+@keyframes abajOrbitTravel{to{stroke-dashoffset:-100}}
+body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible){outline:none!important;border-color:#1de7ff!important;box-shadow:0 0 0 1px #15cfff,0 0 9px #00bfff77!important}
 /* Lightweight animated scene accents: only composited transforms/opacity. */
 .abajLaunchTile .abajSceneMotion{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;border-radius:inherit}
 /* Subtle camera movement of the original artwork, without duplicate figures. */
@@ -664,6 +671,8 @@ function start(){
 if(document.getElementById('abajLauncher'))return;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
 const root=document.createElement('section');root.id='abajLauncher';root.setAttribute('aria-label','ABAJ TV — главная');root.innerHTML=`<div class="abajLaunchTop"><div class="abajLaunchBrand">ABAJ<b>TV</b></div></div><div class="abajLaunchTitle">ВАШ МИР КИНО И ТЕЛЕВИДЕНИЯ</div><div class="abajLaunchTiles"><button class="abajLaunchTile" data-target="cinema" style="--tile-bg:url('/static/launcher-cinema-20261014.webp')"><span class="abajLaunchIcon">🎞</span><span class="abajLaunchText"><span class="abajLaunchName">Кинотеатр</span><span class="abajLaunchDesc">Фильмы, сериалы, мультфильмы</span></span></button><button class="abajLaunchTile" data-target="iptv" style="--tile-bg:url('/static/launcher-iptv-20261014.webp')"><span class="abajLaunchIcon">▣</span><span class="abajLaunchText"><span class="abajLaunchName">IPTV</span><span class="abajLaunchDesc">Каналы и прямые эфиры</span></span></button><button class="abajLaunchTile" data-target="media" style="--tile-bg:url('/static/launcher-media.svg')"><span class="abajLaunchText"><span class="abajLaunchName">Медиа</span><span class="abajLaunchDesc">Ваши фото, видео и облака</span></span></button><button class="abajLaunchTile" data-target="settings" style="--tile-bg:url('/static/launcher-settings-20261014.webp')"><span class="abajLaunchIcon">⚙</span><span class="abajLaunchText"><span class="abajLaunchName">Настройки</span><span class="abajLaunchDesc">Параметры и управление</span></span></button></div><div class="abajLaunchFoot"></div>`;
+root.querySelectorAll('.abajLaunchTile').forEach(tile=>{const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('class','abajFocusOrbit');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');for(const runner of [false,true]){const rect=document.createElementNS(ns,'rect');rect.setAttribute('x','0.8');rect.setAttribute('y','0.8');rect.setAttribute('width','98.4');rect.setAttribute('height','98.4');rect.setAttribute('rx','5');rect.setAttribute('ry','5');rect.setAttribute('pathLength','100');if(runner)rect.setAttribute('class','abajOrbitRunner');svg.appendChild(rect)}tile.appendChild(svg)});
+
 document.body.appendChild(root);
 for(const tile of root.querySelectorAll('.abajLaunchTile:not([data-target="media"])')){
 const motion=document.createElement('span');motion.className='abajSceneMotion';motion.setAttribute('aria-hidden','true');
