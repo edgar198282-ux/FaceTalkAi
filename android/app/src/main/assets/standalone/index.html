@@ -3782,9 +3782,9 @@ async function loadEdemStatus(){
         :(appLang==='en'
           ?'More than 3000 channels are available after activation in the bot'
           :'Доступны более 3000 каналов после активации в боте');
-      freeInfo.style.display=isFree?'block':'none';
+      freeInfo.style.display=window.ABAJ_STANDALONE?'none':(isFree?'block':'none');
     }
-    if(activationBotLink)activationBotLink.style.display=(isPaid||isAdminUnlimited)?'none':'flex';
+    if(activationBotLink)activationBotLink.style.display=window.ABAJ_STANDALONE?'flex':((isPaid||isAdminUnlimited)?'none':'flex');
     if(until){
       if(edemStatus.active&&edemStatus.days_left==null)until.textContent=t.unlimited;
       else if(edemStatus.active&&edemStatus.expires_at)until.textContent=new Date(edemStatus.expires_at*1000).toLocaleDateString(appLang==='hy'?'hy-AM':appLang==='en'?'en-US':'ru-RU');
@@ -3794,6 +3794,12 @@ async function loadEdemStatus(){
     if(devicesValue){
       const limit=Number(edemStatus.device_limit||0);
       devicesValue.textContent=limit>0?(Number(edemStatus.device_count||0)+' / '+limit):(appLang==='hy'?'անսահմանափակ':(appLang==='en'?'unlimited':'без лимита'));
+    }
+    if(window.ABAJ_STANDALONE){
+      if(status)status.textContent=appLang==='hy'?'Տեղային աղբյուրներ':(appLang==='en'?'Local sources':'Локальные источники');
+      if(until)until.textContent='—';
+      if(devicesLabel)devicesLabel.textContent=appLang==='hy'?'Սարք':(appLang==='en'?'Device':'Устройство');
+      if(devicesValue)devicesValue.textContent=appLang==='hy'?'Այս սարքը':(appLang==='en'?'This device':'Это устройство');
     }
     await loadGlobalCinemaSource();
   }catch(e){}
@@ -4709,11 +4715,10 @@ function paintTvSettings(){
   if(appearanceLight)appearanceLight.classList.toggle('active',appAppearanceMode==='light');
   if(appearanceDark)appearanceDark.classList.toggle('active',appAppearanceMode==='dark');
   if(activationBotLink){
-    activationBotLink.textContent=appLang==='hy'
-      ?'🤖 Ակտիվացման համար անցեք բոտ՝ @FaceTalkID_bot'
-      :(appLang==='en'
-        ?'🤖 For activation, open the bot @FaceTalkID_bot'
-        :'🤖 Для активации переходите в бот @FaceTalkID_bot');
+    activationBotLink.textContent=window.ABAJ_STANDALONE
+      ?(appLang==='hy'?'📺 Կարգավորել IPTV / KinoPub':(appLang==='en'?'📺 Set up IPTV / KinoPub':'📺 Подключить IPTV / KinoPub'))
+      :(appLang==='hy'?'🤖 Ակտիվացման համար անցեք բոտ՝ @FaceTalkID_bot'
+        :(appLang==='en'?'🤖 For activation, open the bot @FaceTalkID_bot':'🤖 Для активации переходите в бот @FaceTalkID_bot'));
   }
   applyAppLanguage();
 }
@@ -4754,6 +4759,11 @@ function relinkTelegramApp(){
   }
 }
 function openActivationBot(){
+  if(window.ABAJ_STANDALONE){
+    if(typeof window.abajStandaloneOpenSources==='function')window.abajStandaloneOpenSources();
+    else alert('Откройте настройки ABAJ TV и добавьте IPTV-плейлист или подключите KinoPub. Для автономной версии Telegram-бот не требуется.');
+    return;
+  }
   const url='https://t.me/FaceTalkID_bot';
   try{
     if(window.AbajNative&&typeof AbajNative.openUrl==='function'){
