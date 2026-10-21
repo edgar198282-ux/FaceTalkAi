@@ -396,8 +396,10 @@ if(!mounted){const button=document.createElement('button');button.className='sta
    const code=String(result.code||result.device_code||'');
    const userCode=String(result.user_code||'');
    if(!code||!userCode)throw Error('Сервис KinoPub не прислал код');
-   const verifyUrl=String(result.verification_uri||result.verification_url||'https://kino.pub/device');
-   if(!/^https:\/\/(?:kino\.pub|www\.kino\.pub)\//.test(verifyUrl))throw Error('Неожиданный адрес активации KinoPub');
+   // KinoPub's API may return a legacy or alternate verification URL.
+   // Device approval is always available through the canonical documented
+   // https://kino.pub/device. Do not follow arbitrary untrusted API URLs.
+   const verifyUrl='https://kino.pub/device';
    kpPending={code,userCode,verifyUrl,expiresAt:Date.now()+Math.max(60,Number(result.expires_in)||600)*1000,
     intervalMs:Math.max(5000,Number(result.interval||5)*1000)};
    kpStatus.textContent='Ожидаем подтверждения в KinoPub…';
