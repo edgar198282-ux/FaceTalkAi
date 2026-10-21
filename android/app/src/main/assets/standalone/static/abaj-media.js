@@ -43,8 +43,8 @@ body.darkMode #abajMedia button,body.darkMode #abajMedia input{background:#102b4
 #abajMediaLogin{position:fixed;inset:0;z-index:12000;background:#020c1df5;display:flex;align-items:center;justify-content:center;padding:20px;color:#fff}.abajMediaLoginCard{width:min(500px,100%);max-height:94vh;overflow:auto;text-align:center}.abajMediaLoginCard img{width:210px;height:210px;max-width:70vw}.abajMediaLoginCard p{line-height:1.5}
 @media(max-width:650px){#abajLauncher[data-visible="4"] .abajLaunchTiles{min-height:615px;gap:9px}#abajLauncher[data-visible="4"] .abajLaunchTile{min-height:150px;padding:14px 18px}#abajLauncher[data-visible="4"] .abajLaunchName{font-size:clamp(27px,7.3vw,36px)}#abajLauncher[data-visible="4"] .abajLaunchDesc{font-size:clamp(12px,3.4vw,16px)}.abajMediaGrid{grid-template-columns:repeat(2,minmax(0,1fr))}#abajMedia{padding-top:12px}.abajMediaAccount{flex-basis:100%}}
 @media(orientation:landscape) and (max-height:520px){#abajLauncher[data-visible="4"] .abajLaunchTiles{grid-template-columns:repeat(4,minmax(0,1fr));min-height:180px}#abajLauncher[data-visible="4"] .abajLaunchTile{min-height:180px}.abajMediaLoginCard img{width:140px;height:140px}}
-#abajLauncher .abajLaunchTile[data-target="media"].abajMediaSceneReady{background-image:linear-gradient(0deg,#03152e 0%,#06223bdb 22%,#06305040 65%),url('/static/launcher-header-20261014.webp');background-position:center,center 58%;background-size:cover}
-body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="media"].abajMediaSceneReady{background-image:linear-gradient(0deg,#f7fbff 0%,#f7fbfff5 12%,#e9f7ff65 27%,#bce4f52b 50%),url('/static/launcher-header-20261014.webp')}
+#abajLauncher .abajLaunchTile[data-target="media"].abajMediaSceneReady{background-image:linear-gradient(0deg,#03152e 0%,#06223bdb 22%,#06305040 65%),url('static/launcher-header-20261014.webp');background-position:center,center 58%;background-size:cover}
+body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="media"].abajMediaSceneReady{background-image:linear-gradient(0deg,#f7fbff 0%,#f7fbfff5 12%,#e9f7ff65 27%,#bce4f52b 50%),url('static/launcher-header-20261014.webp')}
 .abajMediaCardScene{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1;perspective:800px}
 .abajMediaCardScene svg{position:absolute;overflow:hidden;filter:drop-shadow(0 8px 8px #001b3d55);transform-box:fill-box}
 .abajMediaPhotoBack{left:57%;top:5%;width:37%;height:62%;animation:abajMediaBackFloat 10s ease-in-out infinite}
@@ -81,7 +81,7 @@ async function api(url,options={}){
 function mountMediaCard(tile){
  if(tile.querySelector('.abajMediaCardScene'))return;
  const scene=make('span','abajMediaCardScene');scene.setAttribute('aria-hidden','true');
- const atlas='/static/media-glass-atlas.webp',ns='http://www.w3.org/2000/svg';
+ const atlas='static/media-glass-atlas.webp',ns='http://www.w3.org/2000/svg';
  function sprite(className,viewBox,inside){
   const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox',viewBox);svg.setAttribute('class',className);svg.setAttribute('focusable','false');
   const img=()=>{const image=document.createElementNS(ns,'image');image.setAttribute('href',atlas);image.setAttribute('width','1000');image.setAttribute('height','1000');return image};svg.appendChild(img());
