@@ -679,6 +679,11 @@ if(!mounted){const button=document.createElement('button');button.className='sta
   kpConnect.hidden=connected;
   kpDisconnect.hidden=!connected;
   kpCodeBox.hidden=!kpPending||connected;
+  const advanced=el.querySelector('#standaloneKpAdvanced');
+  if(advanced){
+   advanced.hidden=connected;
+   if(connected)advanced.open=false;
+  }
   if(kpPending){
    kpCodeText.textContent=kpPending.userCode;
    kpStatus.textContent='Ожидаем подтверждения в KinoPub…';
