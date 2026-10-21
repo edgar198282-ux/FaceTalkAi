@@ -212,3 +212,46 @@ test('KinoPub playback reports real watch position remotely, not a fake watched 
  const local=(await (await x.win.fetch('/api/cinema/progress?item_id=432&media_id=med1')).json()).progress;
  assert.equal(local.position,123);
 });
+
+
+test('KinoPub catalog uses ratings, never IMDb numeric identifier as a score',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/items',JSON.stringify({items:[{
+  id:55,title:'Чистые руки',original_title:'Clean Hands',year:2026,
+  imdb:36271247,imdb_rating:6.7,kinopoisk:123456,kp_rating:7.2,
+  duration:{minutes:97},genres:[{id:4,title:'Триллер'},{id:8,title:'Драма'}],
+  countries:[{id:1,title:'США'}],directors:[{name:'Гай Моше'}],
+  actors:[{name:'Актёр 1',id:100}],posters:{medium:'https://poster.example/p.jpg'}
+ }]}));
+ const result=await (await x.win.fetch('/api/kinopub/catalog?type=movie')).json();
+ assert.equal(result.items.length,1);
+ const item=result.items[0];
+ assert.equal(item.rating,'6.7');assert.equal(item.imdb,'6.7');
+ assert.equal(item.imdb_id,'36271247');
+ assert.equal(item.kp,'7.2');assert.equal(item.kp_id,'123456');
+ assert.equal(item.duration,'97 мин');
+ assert.equal(item.genre,'Триллер, Драма');
+ assert.equal(item.country,'США');assert.equal(item.director,'Гай Моше');
+ assert.equal(item.actors,'Актёр 1');
+ assert.equal(item.poster,'https://poster.example/p.jpg');
+ assert.ok(!JSON.stringify(item).includes('[object Object]'));
+});
+test('KinoPub detailed title supplies genre and episode runtime without exposing object text',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/items/55',JSON.stringify({item:{
+  id:55,title:'The Fix',imdb:'tt09601292',imdb_rating:5.5,
+  kinopoisk_rating:6.2,genre:[{title:'Action'}],
+  runtime:{seconds:5340},directors:[{name:'Director One'}],
+  videos:[{id:1234,number:1,duration:5340,files:[{file:'abc',quality:'1080p'}]}]
+ }}));
+ const response=await x.win.fetch('/api/kinopub/item?id=55');
+ assert.equal(response.status,200);
+ const detail=await response.json();
+ assert.equal(detail.item.imdb_id,'tt09601292');
+ assert.equal(detail.item.rating,'5.5');
+ assert.equal(detail.item.genre,'Action');
+ assert.equal(detail.item.duration,'89 мин');
+ assert.equal(detail.media_rows[0].items[0].duration,5340);
+ assert.equal(detail.item.director,'Director One');
+ assert.ok(!JSON.stringify(detail.item).includes('[object Object]'));
+});
