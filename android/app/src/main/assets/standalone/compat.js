@@ -139,14 +139,19 @@ for(const selector of targets){
  if(!holder)continue;
  const button=document.createElement('button');button.className='standaloneConfigBtn';button.textContent='⚙ Источники (без сервера)';
  button.style.cssText='position:relative;right:auto;bottom:auto;z-index:auto;display:block;margin:12px auto;width:fit-content';
- button.onclick=()=>{el.hidden=false;paint()};holder.appendChild(button);mounted++;
+ button.onclick=()=>window.abajStandaloneOpenSources();holder.appendChild(button);mounted++;
 }
-if(!mounted){const button=document.createElement('button');button.className='standaloneConfigBtn';button.textContent='⚙ Источники';button.onclick=()=>{el.hidden=false;paint()};document.body.appendChild(button)}
+if(!mounted){const button=document.createElement('button');button.className='standaloneConfigBtn';button.textContent='⚙ Источники';button.onclick=()=>window.abajStandaloneOpenSources();document.body.appendChild(button)}
  const close=()=>{el.hidden=true};
  el.querySelector('#standaloneClose').onclick=close;
  const paint=()=>{const lists=sources();el.querySelector('#standaloneRows').innerHTML=lists.map((x,i)=>'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><span>'+safe(x.name)+'</span><button class="danger" data-remove="'+safe(x.id)+'">Удалить</button></div>').join('')||'<small>Дополнительные плейлисты ещё не добавлены</small>';
  el.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{save('playlists',sources().filter(x=>x.id!==b.dataset.remove));save('playlist-cache-'+b.dataset.remove,null);paint();if(typeof window.load==='function')window.load()});
  const c=kpClient();el.querySelector('#standaloneClientId').value=c.client_id;el.querySelector('#standaloneClientSecret').value=c.client_secret;el.querySelector('#standaloneKpStatus').textContent=cinemaStatus()?'KinoPub подключён':'Для входа введите параметры своего OAuth-клиента';};
+ window.abajStandaloneOpenSources=()=>{
+  el.hidden=false;
+  paint();
+  try{el.querySelector('#standaloneListUrl').focus({preventScroll:true})}catch(e){}
+ };
  el.querySelector('#standaloneAdd').onclick=()=>{const name=el.querySelector('#standaloneListName').value.trim(),url=el.querySelector('#standaloneListUrl').value.trim();if(!name||!URL_OK(url)){alert('Укажи название и ссылку M3U');return}save('playlists',[...sources(),{id:'list'+Date.now(),name,url}]);el.querySelector('#standaloneListName').value='';el.querySelector('#standaloneListUrl').value='';paint();window.load?.()};
  el.querySelector('#standaloneRefresh').onclick=()=>{save('free-cache',null);for(const x of sources())save('playlist-cache-'+x.id,null);window.load?.();close()};
  el.querySelector('#standaloneKpOut').onclick=()=>{save('kino-token',null);paint()};
