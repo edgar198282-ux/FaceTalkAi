@@ -38,6 +38,9 @@ jobs:
           Path('/tmp/abaj-standalone.js').write_text(js)
           PY
           node --check /tmp/abaj-standalone.js
+          node --check android/app/src/main/assets/standalone/compat.js
+          test -s android/app/src/main/assets/standalone/static/abaj-launcher.js
+          test -s android/app/src/main/assets/standalone/static/abaj-media.js
           test -s android/app/src/main/java/ai/facetalk/app/StandaloneNetworkBridge.java
       - name: Restore existing signing key
         run: |
