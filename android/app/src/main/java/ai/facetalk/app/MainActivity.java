@@ -2492,7 +2492,7 @@ public class MainActivity extends Activity {
         fullscreenContainer.addView(webView,new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(fullscreenContainer);
         webView.addJavascriptInterface(new AbajNativeBridge(),"AbajNative");
-        if(BuildConfig.STANDALONE_BUILD)webView.addJavascriptInterface(new StandaloneNetworkBridge(this,webView),"StandaloneNetwork");
+        if(BuildConfig.STANDALONE_BUILD)webView.addJavascriptInterface(new StandaloneNetworkBridge(this,webView,isTv),"StandaloneNetwork");
         maintainStorage();
         WebSettings s=webView.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setMediaPlaybackRequiresUserGesture(false); s.setCacheMode(WebSettings.LOAD_DEFAULT); s.setAllowFileAccess(true); s.setAllowContentAccess(true); if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP)s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW); s.setUserAgentString(s.getUserAgentString()+" AbajTV-Android/"+BuildConfig.VERSION_NAME);
         if(isTv){
@@ -2925,7 +2925,7 @@ public class MainActivity extends Activity {
     }
 
     private void startTvHangWatchdog(){
-        if(!isTv)return;
+        if(!isTv||BuildConfig.STANDALONE_BUILD)return;
         lastWebHeartbeatAt=System.currentTimeMillis();
         tvWatchdogExecutor.scheduleAtFixedRate(()->{
             if(!activityResumed||webView==null)return;
