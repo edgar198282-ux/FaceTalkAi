@@ -14611,7 +14611,9 @@ function closeCinemaDetail(){
   }
   closeCinemaDetailInternal();
 }
+let standaloneKinoPlaybackError='';
 async function resolveKinoPubInternalStream(item,media=null){
+  standaloneKinoPlaybackError='';
   const direct=String(media?.url||item?.url||item?.stream||item?.stream_url||'').trim();
   const id=String(item?.id||'').trim();
   const mid=kinoMediaId(media);
@@ -14627,13 +14629,21 @@ async function resolveKinoPubInternalStream(item,media=null){
     if(typeof nativeTv==='undefined'||!nativeTv)params.set('compat','1080');
     params.set('direct','1');
     const r=await fetch('/api/kinopub/play?'+params.toString(),{headers:authHeaders(),cache:'no-store'});
-    if(!r.ok)return null;
+    if(!r.ok){
+      const info=await r.json().catch(()=>({}));
+      const code=String(info.error||'stream_unavailable');
+      standaloneKinoPlaybackError='KinoPub: '+code+' (HTTP '+r.status+')';
+      return null;
+    }
     const d=await r.json();
+    if(d&&!d.ok)standaloneKinoPlaybackError='KinoPub: '+String(d.error||'stream_unavailable');
     if(d&&d.ok){
       const url=new URL(String(d.url||''),location.origin);
       if(/^https?:$/.test(url.protocol))return {...d,url:url.href};
     }
-  }catch(e){}
+  }catch(e){
+    standaloneKinoPlaybackError='KinoPub: ошибка запроса видеопотока';
+  }
   return null;
 }
 
@@ -14793,7 +14803,8 @@ async function watchCinemaDetail(){
     if(detail)detail.classList.add('open');
     const err=document.getElementById('cinemaDetailError');
     if(err){
-      err.textContent=appLang==='hy'?'Տեսահոսքը ժամանակավորապես հասանելի չէ։ Փորձեք կրկին։':(appLang==='en'?'Video stream is temporarily unavailable. Try again.':'Видеопоток временно недоступен. Попробуйте ещё раз.');
+      err.textContent=standaloneKinoPlaybackError||(
+        appLang==='hy'?'Տեսահոսքը ժամանակավորապես հասանելի չէ։ Փորձեք կրկին։':(appLang==='en'?'Video stream is temporarily unavailable. Try again.':'Видеопоток временно недоступен. Попробуйте ещё раз.'));
       err.style.display='block';
       setTimeout(()=>{if(err)err.style.display='none'},3500);
     }
