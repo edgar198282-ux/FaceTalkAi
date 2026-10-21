@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ABAJ TV Standalone</title>
+<style>
+:root{--sky:#e6f4ff;--blue:#118be0;--navy:#102b50;--card:#fff;--ink:#122945;--muted:#5d7995;--border:#badcf5;--pink:#d91ab9}
+*{box-sizing:border-box}html,body{margin:0;height:100%;font:15px/1.42 system-ui,-apple-system,Roboto,Arial,sans-serif;color:var(--ink);background:var(--sky)}
+body.dark{--sky:#0b1525;--card:#14283f;--ink:#f4f8ff;--muted:#a1bbd1;--border:#38566e;--navy:#f3f8ff}
+main{min-height:100%;padding:18px 16px 94px;max-width:1160px;margin:auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.logo{font-size:clamp(28px,6vw,42px);font-weight:950;letter-spacing:1.2px;line-height:1.2;background:linear-gradient(100deg,#ff3d8b,#d18c00,#1fba54,#04abd8,#9b29ed);background-clip:text;-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 1px 5px #30bfff80)}
+.sub{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.3px}
+.tag{border:1px solid var(--border);background:var(--card);padding:7px 10px;border-radius:999px;font-size:11px;font-weight:800;color:var(--muted)}
+section{display:none}section.active{display:block}
+.hero{min-height:165px;padding:22px;border-radius:23px;background:radial-gradient(ellipse at 80% 20%,#b1e9ff85,transparent 55%),linear-gradient(125deg,#06457c,#1072ca 52%,#3f9ff8);color:white;box-shadow:0 12px 28px #0067be2a;overflow:hidden;position:relative;margin-bottom:18px}
+.hero:after{content:"";position:absolute;right:-30px;bottom:-48px;width:230px;height:140px;border-radius:45% 55% 25% 25%;background:linear-gradient(120deg,#e1f4ff70,#3268aeaa);transform:rotate(-23deg)}
+.hero h1{font-size:24px;max-width:550px;margin:0 0 8px;position:relative;z-index:1}.hero p{max-width:520px;font-size:13px;color:#d9eeff;margin:0;position:relative;z-index:1}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.tile{min-height:132px;border:1px solid var(--border);border-radius:19px;padding:18px;text-align:left;background:var(--card);color:var(--ink);box-shadow:0 6px 20px #1756a20e;cursor:pointer}
+.tile .emoji{font-size:29px;display:block;margin-bottom:9px}.tile strong{display:block;font-size:16px}.tile small{display:block;margin-top:4px;color:var(--muted)}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 4px 14px #135aa412}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:13px;flex-wrap:wrap}
+.bar h2,h2{margin:0;font-size:19px}h3{font-size:16px;margin:0 0 8px}
+.muted{color:var(--muted);font-size:13px}
+button,input,select{font:inherit}button{cursor:pointer}
+.action{border:0;background:var(--blue);color:white;border-radius:11px;padding:11px 15px;font-weight:700}
+.action.secondary{background:#e3f2ff;color:#07528c}.action.warn{background:#d94c5c}.action:disabled{opacity:.55}
+input,select{width:100%;background:var(--sky);border:1px solid var(--border);color:var(--ink);padding:12px 13px;border-radius:12px;outline:none;min-width:0}
+input:focus,select:focus,button:focus-visible,.channel:focus-visible{outline:3px solid #f5bd4d;outline-offset:1px}
+.controls{display:flex;gap:9px;flex-wrap:wrap}.controls>*{flex:1}.controls>button{flex:0 0 auto}
+.player{position:relative;background:#080d16;border-radius:14px;overflow:hidden;margin:10px 0;display:none;min-height:180px}.player video{display:block;width:100%;max-height:55vh}
+.player.open{display:block}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:9px;margin-top:14px}
+.channel{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:13px;background:var(--card);padding:10px;text-align:left;color:var(--ink);min-height:74px}
+.channel img{width:46px;height:46px;object-fit:contain;border-radius:9px;background:#edf7ff}
+.channel .txt{flex:1;min-width:0}.channel strong{display:block;font-size:13px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.channel small{font-size:11px;color:var(--muted);white-space:nowrap;text-overflow:ellipsis;overflow:hidden;display:block}
+.star{border:0;background:transparent;color:#eda900;font-size:24px;padding:0 3px;flex:none}
+.poster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin:14px 0}
+.poster{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card);color:var(--ink);padding:0;text-align:left}
+.poster img{aspect-ratio:2/3;object-fit:cover;width:100%;background:#214a74}
+.poster .title{padding:8px;font-weight:700;line-height:1.3;font-size:12px;min-height:45px}
+.setting{display:grid;gap:8px;margin:13px 0}
+.nav{position:fixed;z-index:50;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:4px;background:#0d3d70ee;backdrop-filter:blur(15px);padding:10px max(10px,env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom))}
+.nav button{background:transparent;color:#d4ebff;border:0;border-radius:12px;padding:9px 15px;font-weight:700;min-width:85px}
+.nav button.current{background:#fff;color:#06518e}
+.toast{position:fixed;bottom:86px;left:50%;transform:translateX(-50%);border-radius:13px;color:white;background:#153d64;padding:11px 17px;z-index:80;box-shadow:0 6px 18px #0004;max-width:90vw;display:none}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hidden{display:none!important}.tiny{font-size:12px;color:var(--muted)}
+@media(max-width:650px){.tiles{grid-template-columns:1fr}.tile{min-height:77px;display:grid;grid-template-columns:44px 1fr;align-items:center;gap:0 6px;padding:11px 16px}.tile .emoji{grid-row:span 2;margin:0}.tile small{grid-column:2;margin:0}.hero{min-height:145px}.hero h1{font-size:21px}.nav button{min-width:70px;padding:9px 8px;font-size:12px}.list{grid-template-columns:1fr 1fr}.channel{min-width:0;padding:8px}.channel img{width:33px;height:33px}}
+@media(max-width:375px){.list{grid-template-columns:1fr}}
+@media(min-width:1100px){main{font-size:18px}.tile{min-height:180px}.channel{min-height:90px}.nav button{font-size:17px}}
+</style>
+</head>
+<body>
+<main>
+<header><div><div class="logo">ABAJ TV</div><div class="sub">STANDALONE · БЕЗ RAILWAY</div></div><span class="tag" id="netState">Локальный интерфейс</span></header>
+<section id="home" class="active">
+<div class="hero"><h1>Твои каналы и фильмы. Без собственного сервера.</h1><p>Прямое подключение к IPTV и KinoPub. Интерфейс, плейлисты и настройки сохранены на устройстве.</p></div>
+<div class="tiles">
+<button class="tile" onclick="show('iptv')"><span class="emoji">📺</span><strong>IPTV</strong><small>Free TV · Edo · свои M3U</small></button>
+<button class="tile" onclick="show('cinema')"><span class="emoji">🎬</span><strong>Кинотеатр</strong><small>KinoPub · фильмы · сериалы</small></button>
+<button class="tile" onclick="show('settings')"><span class="emoji">⚙️</span><strong>Настройки</strong><small>Источники · язык · тема</small></button>
+</div>
+<div class="panel"><h3>Воспроизведение на устройстве</h3><div class="muted">ABAJ TV обращается напрямую к источникам. Приложение не зависит от доступности Railway. Для каналов и фильмов нужен интернет и действующие права доступа у провайдера.</div></div>
+</section>
+<section id="iptv">
+<div class="bar"><h2>📺 IPTV</h2><span class="tag" id="count">0 каналов</span></div>
+<div class="panel"><div class="controls">
+<select id="playlistSelect" onchange="selectPlaylist()"></select>
+<button class="action secondary" onclick="refreshPlaylist(true)">↻ Обновить</button>
+</div>
+<div class="controls" style="margin-top:9px"><input id="search" placeholder="Поиск каналов" oninput="renderChannels()"><select id="group" onchange="renderChannels()" aria-label="Категория" style="max-width:145px"><option value="">Все</option></select><button class="action secondary" id="favOnly" onclick="toggleFavOnly()">☆</button></div>
+<div class="player" id="webPlayer"><video id="video" controls playsinline></video></div>
+<div class="row" style="margin-top:10px"><span class="muted" id="nowPlaying">Выбери канал</span><button class="action secondary" onclick="stopPlay()">■ Стоп</button></div>
+<div class="list" id="channels"></div>
+</div>
+</section>
+<section id="cinema">
+<div class="bar"><h2>🎬 KinoPub</h2><span class="tag" id="kpState">Не подключён</span></div>
+<div class="panel" id="kpAuthPanel">
+<h3>Подключение KinoPub</h3>
+<p class="muted">Авторизация напрямую в KinoPub с кодом устройства, без Railway. Необходима активная подписка.</p>
+<div id="kpAuthStatus"></div><button class="action" onclick="startKinoPub()">Получить код входа</button>
+<p class="tiny">Для подтверждения открой kino.pub/device на телефоне.</p>
+</div>
+<div class="panel hidden" id="kpCatalogPanel">
+<div class="controls"><input id="movieSearch" placeholder="Поиск фильма" onkeydown="if(event.key==='Enter')loadMovies()"><select id="movieType" onchange="loadMovies()" style="max-width:155px"><option value="movie">Фильмы</option><option value="serial">Сериалы</option><option value="">Все</option></select><button class="action" onclick="loadMovies()">Найти</button></div>
+<div class="poster-grid" id="movies"></div>
+<div class="controls"><button class="action secondary" onclick="moviePage=Math.max(1,moviePage-1);loadMovies()">←</button><span class="tag" id="moviePage">1</span><button class="action secondary" onclick="moviePage++;loadMovies()">→</button></div>
+</div>
+<div class="panel hidden" id="movieDetail"><div class="bar"><h3 id="movieName">Фильм</h3><button class="action secondary" onclick="document.getElementById('movieDetail').classList.add('hidden')">×</button></div><p class="muted" id="movieSummary"></p><div id="movieOptions"></div></div>
+</section>
+<section id="settings"><h2>⚙️ Настройки</h2>
+<div class="panel"><h3>IPTV-плейлисты</h3><div class="setting"><label for="newListName">Название</label><input id="newListName" placeholder="Например, Edo"><label for="newListUrl">Ссылка M3U / M3U8</label><input id="newListUrl" type="url" placeholder="https://.../playlist.m3u8"></div>
+<div class="controls"><button class="action" onclick="addPlaylist()">+ Добавить</button><button class="action warn" onclick="deletePlaylist()">Удалить выбранный</button></div><p class="muted">Пароли и приватные ссылки IPTV не публикуются в GitHub — вводятся непосредственно на устройстве.</p></div>
+<div class="panel"><h3>Оформление</h3><div class="controls"><select id="theme" onchange="saveTheme()"><option value="light">Светлая</option><option value="dark">Тёмная</option></select><select id="language" onchange="localStorage.setItem('abaj-lang',this.value);toast('Язык сохранён')"><option value="ru">Русский</option><option value="hy">Հայերեն</option><option value="en">English</option></select></div></div>
+<div class="panel"><h3>KinoPub</h3><p class="muted">Для личной авторизации используется код устройства. При необходимости параметры OAuth-клиента можно изменить.</p><div class="setting"><label>Client ID</label><input id="clientId" value="xbmc"><label>Client Secret</label><input id="clientSecret" type="password" placeholder="Ключ клиента KinoPub"></div>
+<div class="controls"><button class="action secondary" onclick="saveClient()">Сохранить</button><button class="action warn" onclick="disconnectKinoPub()">Отключить KinoPub</button></div></div>
+<div class="panel"><h3>ABAJ TV Standalone</h3><p class="muted">Отдельное тестовое приложение. Не удаляет и не изменяет основную установленную ABAJ TV. Установка и обновление происходят отдельно.</p></div>
+</section>
+</main>
+<div class="nav"><button id="nav-home" onclick="show('home')" class="current">⌂ Главная</button><button id="nav-iptv" onclick="show('iptv')">▣ IPTV</button><button id="nav-cinema" onclick="show('cinema')">▷ Кино</button><button id="nav-settings" onclick="show('settings')">⚙ Настройки</button></div>
+<div class="toast" id="toast"></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id), ESC=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const safeUrl=u=>/^https?:\/\//i.test(String(u||'').trim());
+const FREE={id:'free',name:'Free TV · Armenia',url:'https://iptv-org.github.io/iptv/countries/am.m3u'};
+let playlists=readJSON('abaj-playlists',[FREE]), selected=localStorage.getItem('abaj-selected')||'free';
+let channels=[], favorites=readJSON('abaj-favs',[]), favOnly=false, moviePage=1,kpToken=readJSON('abaj-kp-token',{}),oauthPoll=null,latestItems=[];
+let callbacks=new Map(), requestIndex=0;
+function readJSON(k,fallback){try{return JSON.parse(localStorage.getItem(k))??fallback}catch(e){return fallback}}
+function save(k,obj){localStorage.setItem(k,JSON.stringify(obj))}
+function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(window._toast);window._toast=setTimeout(()=>e.style.display='none',3600)}
+function show(id){document.querySelectorAll('main section').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('current',x.id==='nav-'+id));window.scrollTo(0,0);if(id==='cinema')refreshKpUI();if(id==='iptv'&&!channels.length)refreshPlaylist(false)}
+function request(url,method='GET',body=''){if(!safeUrl(url))return Promise.reject(Error('Неверная ссылка'));if(!window.StandaloneNetwork)return Promise.reject(Error('Android bridge не подключён'));const id='r'+(++requestIndex);return new Promise((resolve,reject)=>{const timeout=setTimeout(()=>{callbacks.delete(id);reject(Error('Время ожидания истекло'))},40000);callbacks.set(id,{resolve,reject,timeout});window.StandaloneNetwork.request(id,url,method,body)})}
+window.__abajStandaloneResponse=(id,status,body)=>{const cb=callbacks.get(id);if(!cb)return;clearTimeout(cb.timeout);callbacks.delete(id);if(status>=200&&status<300)cb.resolve(body);else cb.reject(Error('HTTP '+status+': '+String(body).slice(0,200)))};
+function query(o){return Object.entries(o).filter(([k,v])=>v!==undefined&&v!==null&&v!=='').map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&')}
+function nativePlay(url,cinema=false){if(!safeUrl(url))throw Error('Некорректный URL потока');const api=window.AbajNative;
+if(api){const isTv=/\b(TV|AndroidTV)\b/i.test(navigator.userAgent)||matchMedia('(min-width:1100px)').matches;
+try{if(isTv){if(cinema&&api.cinemaNativeStart)api.cinemaNativeStart(url,'KINOPUB');else api.nativeProbeStart(url)}else api.mobileCinemaStart(url);return}catch(e){}}
+const w=$('webPlayer');w.classList.add('open');const v=$('video');v.src=url;v.play().catch(()=>toast('Ошибка воспроизведения'))}
+function stopPlay(){const api=window.AbajNative;if(api){try{api.nativeProbeStop();api.mobileCinemaStop()}catch(e){}}const v=$('video');v.pause();v.removeAttribute('src');v.load();$('webPlayer').classList.remove('open');$('nowPlaying').textContent='Воспроизведение остановлено'}
+function updateSelect(){const sel=$('playlistSelect');if(!playlists.some(p=>p.id===selected))selected='free';sel.innerHTML=playlists.map(p=>'<option value="'+ESC(p.id)+'">'+ESC(p.name)+'</option>').join('');sel.value=selected}
+function selectPlaylist(){selected=$('playlistSelect').value;localStorage.setItem('abaj-selected',selected);refreshPlaylist(true)}
+function parseM3U(content){const list=[];let entry={};for(const raw of content.replace(/\r/g,'').split('\n')){const l=raw.trim();if(l.startsWith('#EXTINF:')){const attrs={};for(const m of l.matchAll(/([\w-]+)="([^"]*)"/g))attrs[m[1]]=m[2];const comma=l.lastIndexOf(',');entry={name:comma>=0?l.slice(comma+1).trim():'Канал',logo:attrs['tvg-logo']||'',group:attrs['group-title']||'Другие',id:attrs['tvg-id']||''}}else if(l&&!l.startsWith('#')&&safeUrl(l)){list.push({...entry,url:l,name:entry.name||'Канал'});entry={}}}return list}
+async function refreshPlaylist(force){const p=playlists.find(p=>p.id===selected);if(!p)return;updateSelect();$('channels').innerHTML='<p class="muted">Загружаем каналы…</p>';let cache=readJSON('abaj-cache-'+p.id,null);if(cache&&!force&&Date.now()-cache.time<86400000){channels=cache.items;renderChannels();return}
+try{const text=await request(p.url);channels=parseM3U(text);if(!channels.length)throw Error('В плейлисте нет каналов');try{save('abaj-cache-'+p.id,{time:Date.now(),items:channels})}catch(e){localStorage.removeItem('abaj-cache-'+p.id)}
+toast('Загружено каналов: '+channels.length);renderChannels()}catch(e){if(cache?.items?.length){channels=cache.items;renderChannels();toast('Источник недоступен — показан кэш')}else{$('channels').innerHTML='<p class="muted">'+ESC(e.message)+'</p>';toast(e.message)}}}
+function toggleFavOnly(){favOnly=!favOnly;$('favOnly').textContent=favOnly?'★':'☆';renderChannels()}
+function renderChannels(){const q=$('search').value.trim().toLowerCase();const groups=[...new Set(channels.map(c=>c.group||'Другие'))].sort();const grp=$('group'),prev=grp.value;grp.innerHTML='<option value="">Все</option>'+groups.map(s=>'<option>'+ESC(s)+'</option>').join('');grp.value=groups.includes(prev)?prev:'';
+let rows=channels.filter(c=>(!q||c.name.toLowerCase().includes(q))&&(!grp.value||c.group===grp.value)&&(!favOnly||favorites.includes(c.url)));$('count').textContent=rows.length+' / '+channels.length+' каналов';
+$('channels').innerHTML=rows.slice(0,400).map(c=>'<div class="channel"><button class="star" data-fav="'+ESC(c.url)+'" aria-label="Избранное">'+(favorites.includes(c.url)?'★':'☆')+'</button><button class="channel" style="border:0;flex:1;min-width:0;padding:0" data-play="'+ESC(c.url)+'">'+(c.logo?'<img loading="lazy" src="'+ESC(c.logo)+'" onerror="this.style.display=\'none\'">':'<span style="font-size:24px">📺</span>')+'<span class="txt"><strong>'+ESC(c.name)+'</strong><small>'+ESC(c.group)+'</small></span></button></div>').join('')+(rows.length>400?'<p class="muted">Показаны первые 400. Уточни поиск.</p>':'');
+$('channels').querySelectorAll('[data-play]').forEach(b=>b.onclick=()=>{const c=channels.find(c=>c.url===b.dataset.play);if(!c)return;localStorage.setItem('abaj-last-channel',c.url);$('nowPlaying').textContent=c.name;nativePlay(c.url)});
+$('channels').querySelectorAll('[data-fav]').forEach(b=>b.onclick=()=>{const u=b.dataset.fav;favorites=favorites.includes(u)?favorites.filter(v=>v!==u):[...favorites,u];save('abaj-favs',favorites);renderChannels()})}
+function addPlaylist(){const name=$('newListName').value.trim(),url=$('newListUrl').value.trim();if(!name||!safeUrl(url)){toast('Укажи название и правильную ссылку');return}const id='list'+Date.now();playlists.push({id,name,url});save('abaj-playlists',playlists);selected=id;updateSelect();localStorage.setItem('abaj-selected',id);$('newListName').value='';$('newListUrl').value='';show('iptv');refreshPlaylist(true)}
+function deletePlaylist(){if(selected==='free'){toast('Базовый Free TV нельзя удалить');return}playlists=playlists.filter(p=>p.id!==selected);save('abaj-playlists',playlists);selected='free';updateSelect();localStorage.setItem('abaj-selected',selected);refreshPlaylist(true)}
+function saveTheme(){const val=$('theme').value;document.body.classList.toggle('dark',val==='dark');localStorage.setItem('abaj-theme',val)}
+function client(){return{client_id:localStorage.getItem('abaj-kp-client-id')||'xbmc',client_secret:localStorage.getItem('abaj-kp-client-secret')||''}}
+function saveClient(){localStorage.setItem('abaj-kp-client-id',$('clientId').value.trim());localStorage.setItem('abaj-kp-client-secret',$('clientSecret').value.trim());toast('Параметры сохранены')}
+const kpBase='https://api.service-kp.com';
+async function kp(path,params={},method='GET'){const url=kpBase+path+'?'+query(params);const response=await request(url,method);let data;try{data=JSON.parse(response)}catch(e){throw Error('Неверный ответ KinoPub')}if(data.error)throw Error(data.error_description||data.error);return data}
+function refreshKpUI(){let connected=!!kpToken.access_token;$('kpAuthPanel').classList.toggle('hidden',connected);$('kpCatalogPanel').classList.toggle('hidden',!connected);$('kpState').textContent=connected?'Подключён':'Не подключён';if(connected&&latestItems.length===0)loadMovies()}
+async function startKinoPub(){const auth=$('kpAuthStatus');const conf=client();if(!conf.client_secret){auth.textContent='Укажи Client Secret в настройках или подключи официальный OAuth-клиент KinoPub.';return}auth.textContent='Запрашиваем код…';
+try{const data=await kp('/oauth2/device',{grant_type:'device_code',...conf},'POST');const code=data.code||data.device_code,displayCode=data.user_code;if(!code||!displayCode)throw Error('KinoPub не прислал код');const url=data.verification_uri||'https://kino.pub/device';auth.innerHTML='<p>Открой на телефоне <b>'+ESC(url)+'</b></p><p style="font-size:28px;font-weight:800">'+ESC(displayCode)+'</p><span class="muted">Ожидаем подтверждения…</span>';
+clearInterval(oauthPoll);const until=Date.now()+(Number(data.expires_in)||600)*1000;let busy=false;oauthPoll=setInterval(async()=>{if(busy)return;if(Date.now()>until){clearInterval(oauthPoll);auth.textContent='Код истёк, запроси новый';return}busy=true;try{const d=await kp('/oauth2/device',{grant_type:'device_token',...conf,code},'POST');if(d.access_token){kpToken={access_token:d.access_token,refresh_token:d.refresh_token||'',expires_at:Date.now()+1000*(Number(d.expires_in)||3600)};save('abaj-kp-token',kpToken);clearInterval(oauthPoll);refreshKpUI();toast('KinoPub подключён')}}catch(e){if(!/authorization_pending|slow_down/i.test(e.message)){clearInterval(oauthPoll);auth.textContent=e.message}}finally{busy=false}},Math.max(3000,(Number(data.interval)||5)*1000))}catch(e){auth.textContent=e.message}}
+async function token(){if(!kpToken.access_token)throw Error('Сначала войди в KinoPub');if(kpToken.expires_at&&Date.now()>kpToken.expires_at-90000&&kpToken.refresh_token){try{const r=await kp('/oauth2/token',{grant_type:'refresh_token',...client(),refresh_token:kpToken.refresh_token},'POST');if(r.access_token){kpToken={access_token:r.access_token,refresh_token:r.refresh_token||kpToken.refresh_token,expires_at:Date.now()+1000*(Number(r.expires_in)||3600)};save('abaj-kp-token',kpToken)}}catch(e){toast('Не удалось продлить сеанс KinoPub')}}return kpToken.access_token}
+function extractItems(v){if(Array.isArray(v))return v;for(const k of ['items','data','results','movies','serials'])if(v?.[k]){const a=extractItems(v[k]);if(a.length)return a}return[]}
+function img(item){let p=item.posters||item.poster||item.thumbnail||'';if(typeof p==='object')p=p.medium||p.big||p.small||p.url||'';return safeUrl(p)?p:''}
+async function loadMovies(){const list=$('movies');list.innerHTML='<p class="muted">Загружаем KinoPub…</p>';$('moviePage').textContent=String(moviePage);try{const a=await token(),s=$('movieSearch').value.trim(),kind=$('movieType').value,path=s?'/v1/items/search':'/v1/items';const params={access_token:a,page:moviePage,perpage:30,type:kind};if(s)params.q=s;const result=await kp(path,params);latestItems=extractItems(result);list.innerHTML=latestItems.map((m,i)=>'<button class="poster" data-item="'+i+'">'+(img(m)?'<img loading="lazy" src="'+ESC(img(m))+'">':'<div style="height:180px;background:#12395d"></div>')+'<div class="title">'+ESC(m.title||m.name||m.original_title||'Фильм')+'</div></button>').join('')||'<p class="muted">Ничего не найдено</p>';list.querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>openMovie(latestItems[Number(b.dataset.item)]))}catch(e){list.innerHTML='<p class="muted">'+ESC(e.message)+'</p>';toast(e.message)}}
+function findFile(v){if(!v||typeof v!=='object')return null;if(typeof v.file==='string'&&v.file)return v.file;for(const key of ['files','videos','items','seasons','episodes','data']){if(v[key]){for(const x of Array.isArray(v[key])?v[key]:[v[key]]){const f=findFile(x);if(f)return f}}}return null}
+function findMid(v){if(!v||typeof v!=='object')return null;if(v.media_id||v.mid)return v.media_id||v.mid;for(const k of ['files','videos','items','seasons','episodes','data'])if(v[k])for(const x of Array.isArray(v[k])?v[k]:[v[k]]){const m=findMid(x);if(m)return m}return null}
+function findStream(v){if(typeof v==='string'&&safeUrl(v))return v;if(!v||typeof v!=='object')return null;for(const k of ['url','hls4','hls2','hls','http','dash','stream','video_url','data']){const s=findStream(v[k]);if(s)return s}return null}
+async function openMovie(item){const id=item.id||item.item_id;if(!id){toast('Нет ID фильма');return}const box=$('movieDetail');box.classList.remove('hidden');$('movieName').textContent=item.title||item.name||'Фильм';$('movieSummary').textContent=item.plot||item.description||'';$('movieOptions').innerHTML='<p class="muted">Получаем данные фильма…</p>';try{const a=await token(),m=await kp('/v1/items/'+encodeURIComponent(id),{access_token:a});const detail=m.item||m.data||m;const file=findFile(detail),mid=findMid(detail);$('movieOptions').innerHTML='<p class="muted">Воспроизведение зависит от подписки и доступных форматов KinoPub.</p><button class="action" id="startFilm">▶ Смотреть</button>';document.getElementById('startFilm').onclick=()=>playFilm(file,mid,id)}catch(e){$('movieOptions').innerHTML=ESC(e.message)}box.scrollIntoView({behavior:'smooth'})}
+async function playFilm(file,mid,id){toast('Получаем ссылку на видео…');try{const a=await token();let f=file;if(!f&&mid){const media=await kp('/v1/items/media-links',{access_token:a,mid});f=findFile(media)}if(!f)throw Error('Файл видео не найден: выбери серию через KinoPub');let url;for(const type of ['hls4','hls2','hls','http']){try{const result=await kp('/v1/items/media-video-link',{access_token:a,file:f,type});url=findStream(result);if(url)break}catch(e){}}if(!url)throw Error('KinoPub не выдал ссылку видео');$('nowPlaying').textContent='KinoPub #'+id;nativePlay(url,true)}catch(e){toast(e.message)}}
+function disconnectKinoPub(){clearInterval(oauthPoll);kpToken={};localStorage.removeItem('abaj-kp-token');latestItems=[];refreshKpUI();toast('KinoPub отключён')}
+(function init(){$('theme').value=localStorage.getItem('abaj-theme')||'light';saveTheme();$('language').value=localStorage.getItem('abaj-lang')||'ru';$('clientId').value=client().client_id;$('clientSecret').value=client().client_secret;updateSelect();$('netState').textContent=window.StandaloneNetwork?'Без Railway':'Нет Android bridge';refreshKpUI()})();
+</script>
+</body></html>
