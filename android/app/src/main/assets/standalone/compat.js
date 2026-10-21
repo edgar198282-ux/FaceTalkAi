@@ -114,7 +114,7 @@ async function api(path,opts){
 }
 const originalFetch=window.fetch.bind(window);
 window.fetch=function(input,opts){const path=typeof input==='string'?input:input?.url||'';if(path.startsWith('/api/'))return api(path,opts);return originalFetch(input,opts)};
-function safe(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;':'&quot;',"'":'&#39;'}[c]))}
+function safe(t){return String(t||'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]||ch))}
 function settings(){
  if(document.getElementById('standaloneConfig'))return;
  const css=document.createElement('style');css.textContent=`
