@@ -548,7 +548,7 @@ function settings(){
  `;
  document.head.appendChild(css);
  const el=document.createElement('div');el.id='standaloneConfig';el.hidden=true;
- el.innerHTML='<div class="standaloneSheet"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">ABAJ TV · Источники</h2><button id="standaloneClose">✕</button></div><h3>Сохранённые IPTV-плейлисты <span id="standaloneSavedCount"></span></h3><div class="savedPlaylists" id="standaloneRows"></div><h3 id="standaloneEditorTitle">Добавить плейлист</h3><label>Название плейлиста</label><input id="standaloneListName" placeholder="Например, Free TV"><label>Прямая ссылка M3U</label><input id="standaloneListUrl" placeholder="https://..."><button id="standaloneAdd">Добавить плейлист</button> <button id="standaloneCancel" hidden>Отмена</button><div id="standalonePlaylistStatus" aria-live="polite"></div><small>Ссылки сохраняются только на этом устройстве. Основной сервер не используется.</small><hr><h3>KinoPub</h3><p id="standaloneKpStatus" aria-live="polite" style="font-weight:700">Нажми «Войти» для получения кода устройства</p><div id="standaloneKpCode" hidden style="padding:12px;background:#d9efff;border-radius:14px;margin:12px 0"><small>1. Открой на телефоне kino.pub/device</small><div id="standaloneKpUserCode" style="font-size:30px;font-weight:900;letter-spacing:3px;margin:6px 0"></div><small>2. Введи этот код и подтверди устройство. ABAJ TV подключится автоматически.</small><button id="standaloneKpCopy" type="button">Копировать код</button> <button id="standaloneKpVisit" type="button">Открыть сайт</button></div><button id="standaloneConnect">Войти в KinoPub</button> <button id="standaloneKpOut" class="danger">Выйти</button><small>Нужна действующая учётная запись KinoPub. Токен хранится только на этом устройстве.</small><details id="standaloneKpAdvanced" style="margin-top:12px"><summary style="cursor:pointer;font-weight:800">Дополнительные настройки OAuth</summary><label>OAuth Client ID</label><input id="standaloneClientId" autocomplete="off"><label>OAuth Client Secret</label><input type="password" id="standaloneClientSecret" autocomplete="off"><button id="standaloneKpSaveClient" type="button">Сохранить параметры</button> <button id="standaloneKpResetClient" type="button">Сбросить</button><small>Нужны только если KinoPub выдал тебе отдельные параметры клиента.</small></details><hr><button id="standaloneRefresh">Обновить каналы</button></div>';
+ el.innerHTML='<div class="standaloneSheet"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">ABAJ TV · Источники</h2><button id="standaloneClose">✕</button></div><h3>Сохранённые IPTV-плейлисты <span id="standaloneSavedCount"></span></h3><div class="savedPlaylists" id="standaloneRows"></div><h3 id="standaloneEditorTitle">Добавить плейлист</h3><label>Название плейлиста</label><input id="standaloneListName" placeholder="Например, Free TV"><label>Прямая ссылка M3U</label><input id="standaloneListUrl" placeholder="https://..."><button id="standaloneAdd">Добавить плейлист</button> <button id="standaloneCancel" hidden>Отмена</button><div id="standalonePlaylistStatus" aria-live="polite"></div><small>Ссылки сохраняются только на этом устройстве. Основной сервер не используется.</small><hr><h3>KinoPub</h3><p id="standaloneKpStatus" aria-live="polite" style="font-weight:700">Нажми «Войти» для получения кода устройства</p><div id="standaloneKpCode" hidden style="padding:12px;background:#d9efff;border-radius:14px;margin:12px 0"><small>1. Открой на телефоне kino.pub/device</small><div id="standaloneKpUserCode" style="font-size:30px;font-weight:900;letter-spacing:3px;margin:6px 0"></div><small>2. Введи этот код и подтверди устройство. ABAJ TV подключится автоматически.</small><button id="standaloneKpCopy" type="button">Копировать код</button> <button id="standaloneKpVisit" type="button">Открыть сайт</button></div><button id="standaloneConnect">Войти в KinoPub</button> <button id="standaloneKpSync">↻ Синхронизировать избранное и историю</button> <button id="standaloneKpOut" class="danger">Выйти</button><small>Нужна действующая учётная запись KinoPub. Токен хранится только на этом устройстве.</small><details id="standaloneKpAdvanced" style="margin-top:12px"><summary style="cursor:pointer;font-weight:800">Дополнительные настройки OAuth</summary><label>OAuth Client ID</label><input id="standaloneClientId" autocomplete="off"><label>OAuth Client Secret</label><input type="password" id="standaloneClientSecret" autocomplete="off"><button id="standaloneKpSaveClient" type="button">Сохранить параметры</button> <button id="standaloneKpResetClient" type="button">Сбросить</button><small>Нужны только если KinoPub выдал тебе отдельные параметры клиента.</small></details><hr><button id="standaloneRefresh">Обновить каналы</button></div>';
  document.body.appendChild(el);
  const targets=['#tvSettingsModal .settingsCard','#settingsModal .settingsCard'];
 let mounted=0;
@@ -678,6 +678,7 @@ if(!mounted){const button=document.createElement('button');button.className='sta
   const connected=cinemaStatus();
   kpConnect.hidden=connected;
   kpDisconnect.hidden=!connected;
+  el.querySelector('#standaloneKpSync').hidden=!connected;
   kpCodeBox.hidden=!kpPending||connected;
   const advanced=el.querySelector('#standaloneKpAdvanced');
   if(advanced){
@@ -763,7 +764,24 @@ if(!mounted){const button=document.createElement('button');button.className='sta
  kpDisconnect.onclick=()=>{
   stopKpPoll();
   localStorage.removeItem(key('kino-token'));
+  // Never show a previous KinoPub account's library to someone who signs in later.
+  invalidateKpCache();
+  for(const section of ['history','watching','bookmarks','progress','folders'])
+   localStorage.removeItem(key('cinema-'+section));
   paintKp();
+ };
+ el.querySelector('#standaloneKpSync').onclick=async()=>{
+  const btn=el.querySelector('#standaloneKpSync');
+  btn.disabled=true;
+  kpStatus.textContent='Синхронизируем избранное и историю с KinoPub…';
+  invalidateKpCache();
+  try{
+   const [history,bookmarks]=await Promise.all([kinoHistory(),kinoBookmarksFlat()]);
+   kpStatus.textContent='✓ Синхронизация: история '+history.length+', избранное '+bookmarks.length;
+   try{window.refreshCinemaLibraryCounts?.()}catch(e){}
+  }catch(e){
+   kpStatus.textContent='Ошибка синхронизации: '+String(e.message||e).slice(0,150);
+  }finally{btn.disabled=false}
  };
  el.querySelector('#standaloneKpCopy').onclick=async()=>{
   const code=kpPending?.userCode||'';
