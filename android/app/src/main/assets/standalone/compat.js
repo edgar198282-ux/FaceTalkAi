@@ -550,16 +550,8 @@ function settings(){
  const el=document.createElement('div');el.id='standaloneConfig';el.hidden=true;
  el.innerHTML='<div class="standaloneSheet"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">ABAJ TV · Источники</h2><button id="standaloneClose">✕</button></div><h3>Сохранённые IPTV-плейлисты <span id="standaloneSavedCount"></span></h3><div class="savedPlaylists" id="standaloneRows"></div><h3 id="standaloneEditorTitle">Добавить плейлист</h3><label>Название плейлиста</label><input id="standaloneListName" placeholder="Например, Free TV"><label>Прямая ссылка M3U</label><input id="standaloneListUrl" placeholder="https://..."><button id="standaloneAdd">Добавить плейлист</button> <button id="standaloneCancel" hidden>Отмена</button><div id="standalonePlaylistStatus" aria-live="polite"></div><small>Ссылки сохраняются только на этом устройстве. Основной сервер не используется.</small><hr><h3>KinoPub</h3><p id="standaloneKpStatus" aria-live="polite" style="font-weight:700">Нажми «Войти» для получения кода устройства</p><div id="standaloneKpCode" hidden style="padding:12px;background:#d9efff;border-radius:14px;margin:12px 0"><small>1. Открой на телефоне kino.pub/device</small><div id="standaloneKpUserCode" style="font-size:30px;font-weight:900;letter-spacing:3px;margin:6px 0"></div><small>2. Введи этот код и подтверди устройство. ABAJ TV подключится автоматически.</small><button id="standaloneKpCopy" type="button">Копировать код</button> <button id="standaloneKpVisit" type="button">Открыть сайт</button></div><button id="standaloneConnect">Войти в KinoPub</button> <button id="standaloneKpSync">↻ Синхронизировать избранное и историю</button> <button id="standaloneKpOut" class="danger">Выйти</button><small>Нужна действующая учётная запись KinoPub. Токен хранится только на этом устройстве.</small><details id="standaloneKpAdvanced" style="margin-top:12px"><summary style="cursor:pointer;font-weight:800">Дополнительные настройки OAuth</summary><label>OAuth Client ID</label><input id="standaloneClientId" autocomplete="off"><label>OAuth Client Secret</label><input type="password" id="standaloneClientSecret" autocomplete="off"><button id="standaloneKpSaveClient" type="button">Сохранить параметры</button> <button id="standaloneKpResetClient" type="button">Сбросить</button><small>Нужны только если KinoPub выдал тебе отдельные параметры клиента.</small></details><hr><button id="standaloneRefresh">Обновить каналы</button></div>';
  document.body.appendChild(el);
- const targets=['#tvSettingsModal .settingsCard','#settingsModal .settingsCard'];
-let mounted=0;
-for(const selector of targets){
- const holder=document.querySelector(selector);
- if(!holder)continue;
- const button=document.createElement('button');button.className='standaloneConfigBtn';button.textContent='⚙ Источники (без сервера)';
- button.style.cssText='position:relative;right:auto;bottom:auto;z-index:auto;display:block;margin:12px auto;width:fit-content';
- button.onclick=()=>window.abajStandaloneOpenSources();holder.appendChild(button);mounted++;
-}
-if(!mounted){const button=document.createElement('button');button.className='standaloneConfigBtn';button.textContent='⚙ Источники';button.onclick=()=>window.abajStandaloneOpenSources();document.body.appendChild(button)}
+ // The original "Подключить IPTV / KinoPub" button is the only entry point.
+ // Do not inject a second "Источники (без сервера)" button at the bottom.
  const close=()=>{el.hidden=true;cancelEdit()};
  el.querySelector('#standaloneClose').onclick=close;
  let editingId=null;
