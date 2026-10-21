@@ -685,7 +685,10 @@ function settings(){
  #standaloneConfig .danger{background:#be4161}
  #standaloneConfig label{font-size:13px;font-weight:700;display:block}
  #standaloneConfig small{color:#486d88;display:block;margin:8px 0}
- .standaloneConfigBtn{position:fixed;z-index:9100;right:12px;bottom:14px;font-size:13px;box-shadow:0 4px 16px #0005}
+ /* Standalone: hide server updater, old version and subscription-only status. */
+ #tvSettingsModal #appUpdateBtn,
+ #tvSettingsModal #appVersionText,
+ #tvSettingsModal #standaloneLegacyStatus { display:none!important; }
  `;
  document.head.appendChild(css);
  const el=document.createElement('div');el.id='standaloneConfig';el.hidden=true;
