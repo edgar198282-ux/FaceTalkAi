@@ -255,3 +255,98 @@ test('KinoPub detailed title supplies genre and episode runtime without exposing
  assert.equal(detail.item.director,'Director One');
  assert.ok(!JSON.stringify(detail.item).includes('[object Object]'));
 });
+
+test('KinoPub: film Watch endpoint resolves mobile-friendly HLS stream instead of HTTP 404',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/items/55',JSON.stringify({item:{
+  id:55,title:'Movie',videos:[{id:100,files:[
+   {file:'film-4k',quality:'2160p',codec:'hevc'},
+   {file:'film-1080',quality:'1080p',codec:'h264'}
+  ]}]
+ }}));
+ x.samples.set('/v1/items/media-video-link',JSON.stringify({url:{hls:'https://cdn.example.com/film/1080/manifest.m3u8'}}));
+ const r=await x.win.fetch('/api/kinopub/play?id=55&compat=1080&format=hls&direct=1');
+ assert.equal(r.status,200);
+ const body=await r.json();
+ assert.equal(body.ok,true);
+ assert.equal(body.url,'https://cdn.example.com/film/1080/manifest.m3u8');
+ const api=x.requests.find(req=>req.path==='/v1/items/media-video-link');
+ assert.ok(api,'Must call KinoPub video link API');
+ assert.equal(new URL(api.url).searchParams.get('file'),'film-1080');
+ assert.equal(new URL(api.url).searchParams.get('type'),'hls');
+});
+
+test('KinoPub: TV 4K playback selects higher resolution stream',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/items/55',JSON.stringify({item:{
+  id:55,title:'4K movie',videos:[{id:100,files:[
+   {file:'film-4k',quality:'2160p',codec:'hevc'},
+   {file:'film-1080',quality:'1080p',codec:'h264'}
+  ]}]
+ }}));
+ x.samples.set('/v1/items/media-video-link',JSON.stringify({url:{hls4:'https://cdn.example.com/film/4k/master.m3u8'}}));
+ const r=await x.win.fetch('/api/kinopub/play?id=55&format=hls4&direct=1');
+ assert.equal(r.status,200);
+ assert.equal((await r.json()).url,'https://cdn.example.com/film/4k/master.m3u8');
+ const api=x.requests.find(req=>req.path==='/v1/items/media-video-link');
+ assert.equal(new URL(api.url).searchParams.get('file'),'film-4k');
+ assert.equal(new URL(api.url).searchParams.get('type'),'hls4');
+});
+
+test('KinoPub: series selected episode stays selected by media id',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/items/33',JSON.stringify({item:{
+  id:33,title:'Series',seasons:[{number:2,episodes:[
+   {id:101,number:1,files:[{file:'series-episode-1',quality:'1080p'}]},
+   {id:102,number:2,files:[{file:'series-episode-2',quality:'1080p'}]}
+  ]}]
+ }}));
+ x.samples.set('/v1/items/media-video-link',JSON.stringify({url:'https://cdn.example.com/series/e2.m3u8'}));
+ const r=await x.win.fetch('/api/kinopub/play?id=33&mid=102&format=hls&compat=1080');
+ assert.equal(r.status,200);
+ assert.equal((await r.json()).ok,true);
+ const media=x.requests.find(req=>req.path==='/v1/items/media-video-link');
+ assert.equal(new URL(media.url).searchParams.get('file'),'series-episode-2');
+});
+
+test('KinoPub film sections route to separate provider categories including 4K and documentary',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/items',JSON.stringify({items:[
+  {id:23,title:'4K Movie',type:'movie',quality:'4k'},
+  {id:24,title:'Documentary',type:'documovie'}
+ ]}));
+ const four=await x.win.fetch('/api/kinopub/section?section=4k&type=movies&page=2');
+ assert.equal(four.status,200);
+ const p=x.requests.find(req=>req.path==='/v1/items');
+ assert.equal(new URL(p.url).searchParams.get('quality'),'4k');
+ const doc=await x.win.fetch('/api/kinopub/section?section=docmovies');
+ assert.equal(doc.status,200);
+ const d=x.requests.filter(req=>req.path==='/v1/items').at(-1);
+ assert.equal(new URL(d.url).searchParams.get('type'),'documovie');
+ const bad=await x.win.fetch('/api/kinopub/section?section=series');
+ assert.equal(bad.status,200);
+ assert.equal(new URL(x.requests.at(-1).url).searchParams.get('type'),'serial');
+});
+
+test('KinoPub cartoons and anime filter by the actual genre IDs',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/genres',JSON.stringify({items:[
+  {id:11,title:'Аниме'}, {id:12,title:'Мультфильмы'}
+ ]}));
+ x.samples.set('/v1/items',JSON.stringify({items:[{id:1,title:'Мультфильм',genre:'Мультфильмы',type:'movie'}]}));
+ await x.win.fetch('/api/kinopub/section?section=cartoons&page=2');
+ const first=x.requests.filter(req=>req.path==='/v1/items').at(-1);
+ assert.equal(new URL(first.url).searchParams.get('genre'),'12');
+ await x.win.fetch('/api/kinopub/section?section=anime&page=2');
+ const second=x.requests.filter(req=>req.path==='/v1/items').at(-1);
+ assert.equal(new URL(second.url).searchParams.get('genre'),'11');
+});
+
+test('KinoPub collections open via provider collections/view endpoint',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/collections/view',JSON.stringify({items:[{id:321,title:'Included in collection',type:'movie'}]}));
+ const result=await x.win.fetch('/api/kinopub/collection?id=45&page=1');
+ assert.equal(result.status,200);
+ assert.equal((await result.json()).items[0].title,'Included in collection');
+ assert.ok(x.requests.some(req=>req.path==='/v1/collections/view'));
+});
