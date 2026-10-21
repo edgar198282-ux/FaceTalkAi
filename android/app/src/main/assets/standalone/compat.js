@@ -640,7 +640,7 @@ function kpDeepFindFile(root,compat1080=false,selectedMid=''){
    files.push({file:node.file.trim(),q,codec:String(node.codec||'').toLowerCase(),mid:media||ownMid});
   }
   for(const key of ['videos','seasons','episodes','files','items','data','media','links']){
-   if(node[key])walk(node[key],depth+1,(/videos|seasons|episodes|media/.test(key)?ownMid:media));
+   if(node[key])walk(node[key],depth+1,(/videos|seasons|episodes|media|files/.test(key)?ownMid:media));
   }
  }
  walk(root);
