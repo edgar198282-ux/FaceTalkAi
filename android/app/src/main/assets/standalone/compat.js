@@ -4,7 +4,7 @@ window.ABAJ_STANDALONE=true;
 const STORAGE='abaj_standalone_playlists';
 const key=(k)=>'abaj-standalone-'+k;
 const read=(k,def)=>{try{const v=JSON.parse(localStorage.getItem(key(k)));return v??def}catch(e){return def}};
-const save=(k,v)=>localStorage.setItem(key(k),JSON.stringify(v));
+const save=(k,v)=>{localStorage.setItem(key(k),JSON.stringify(v));return true};
 const URL_OK=u=>/^https?:\/\//i.test(String(u||''));
 const bridge=window.StandaloneNetwork;
 const pending=new Map();let seq=0;
@@ -30,7 +30,32 @@ function parseM3U(raw,name='TV',id='free',country='AM'){
  }
  return arr;
 }
-const sources=()=>read('playlists',[]);
+const sources=()=>{
+ const v=read('playlists',[]);
+ return Array.isArray(v)?v.filter(x=>x&&typeof x.id==='string'&&typeof x.name==='string'&&typeof x.url==='string'):[];
+};
+const playlistCache=new Map();
+const playlistHealth=new Map();
+let playlistsRevision=0;
+function clearPlaylistCache(id){for(const k of playlistCache.keys())if(k.startsWith(id+'|'))playlistCache.delete(k)}
+function refreshSavedPlaylistMenu(){
+ try{window.renderNamedPlaylistChips?.(sources(),[])}catch(e){}
+}
+function announcePlaylist(message,error=false){
+ const el=document.getElementById('standalonePlaylistStatus');
+ if(el){el.textContent=message;el.style.color=error?'#a62b4d':'#206b48'}
+}
+function refreshAppPlaylists(selectId){
+ const revision=++playlistsRevision;
+ refreshSavedPlaylistMenu();
+ const work=typeof window.load==='function'?Promise.resolve(window.load()):Promise.resolve();
+ work.then(()=>{
+  if(revision!==playlistsRevision)return;
+  if(selectId&&typeof window.setSourceFilter==='function')window.setSourceFilter(null,'playlist:'+selectId);
+  window.abajStandaloneRefreshRows?.();
+ }).catch(e=>announcePlaylist('Ошибка обновления списка: '+e.message,true));
+ return work;
+}
 const freeUrl='https://iptv-org.github.io/iptv/countries/am.m3u';
 const freeList=async()=>{
  const cache=read('free-cache',null);
@@ -41,15 +66,33 @@ const freeList=async()=>{
 const customList=async()=>{
  const lists=sources(), all=[];
  const results=await Promise.all(lists.map(async x=>{
-  const cache=read('playlist-cache-'+x.id,null);
-  if(cache&&Date.now()-cache.t<3600000)return cache.items;
-  try{const items=parseM3U(await nativeRequest(x.url),x.name,x.id,'').slice(0,12000);
-   try{save('playlist-cache-'+x.id,{t:Date.now(),items})}catch(e){}
+  const cacheKey=x.id+'|'+x.url,cache=playlistCache.get(cacheKey);
+  if(cache&&Date.now()-cache.time<60*60*1000){
+   playlistHealth.set(x.id,{count:cache.items.length,ok:true,cached:true});
+   return cache.items;
+  }
+  playlistHealth.set(x.id,{count:0,loading:true});
+  window.abajStandaloneRefreshRows?.();
+  try{
+   const raw=await nativeRequest(x.url);
+   if(!raw.trimStart().startsWith('#EXTM3U'))throw Error('Ответ не является M3U');
+   const items=parseM3U(raw,x.name,x.id,'').slice(0,30000);
+   if(!items.length)throw Error('В M3U нет телеканалов');
+   playlistCache.set(cacheKey,{time:Date.now(),items});
+   playlistHealth.set(x.id,{count:items.length,ok:true});
    return items;
-  }catch(e){return cache?.items||[]}
+  }catch(e){
+   playlistHealth.set(x.id,{count:cache?.items.length||0,ok:false,error:String(e.message||e)});
+   return cache?.items||[];
+  }finally{
+   window.abajStandaloneRefreshRows?.();
+  }
  }));
- results.forEach(a=>all.push(...a));
- return{channels:all,playlists:lists.map(x=>({id:x.id,name:x.name,url:x.url}))};
+ for(const result of results)for(const ch of result){
+  if(all.length>=70000)break;
+  all.push(ch);
+ }
+ return {channels:all,playlists:lists.map(x=>({id:x.id,name:x.name}))};
 };
 let channelCache=[];
 const reply=(o,status=200)=>new Response(JSON.stringify(o),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
@@ -120,6 +163,18 @@ function settings(){
  const css=document.createElement('style');css.textContent=`
  #standaloneConfig{position:fixed;z-index:99000;inset:0;background:#001c32aa;align-items:center;justify-content:center;padding:15px}
  #standaloneConfig[hidden]{display:none!important}
+ #standaloneConfig:not([hidden]){display:flex}
+ #standaloneConfig .standaloneSheet{overscroll-behavior:contain}
+ #standaloneConfig .savedPlaylists{max-height:260px;overflow:auto;margin-bottom:10px}
+ #standaloneConfig .savedRow{padding:10px 0;border-bottom:1px solid #cadee8;display:flex;align-items:center;justify-content:space-between;gap:8px}
+ #standaloneConfig .savedDetails{min-width:0;flex:1}
+ #standaloneConfig .savedDetails b,#standaloneConfig .savedDetails small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ #standaloneConfig .savedActions{display:flex;gap:6px;flex:none}
+ #standaloneConfig .savedActions button{font-size:13px;padding:8px}
+ #standaloneConfig button:focus-visible{outline:3px solid #e8aa15}
+ #standaloneConfig #standaloneCancel{background:#64859d}
+ #standaloneConfig #standalonePlaylistStatus{min-height:20px;font-size:13px;font-weight:700;margin-top:10px}
+ 
  #standaloneConfig .standaloneSheet{background:#f2f9ff;color:#133b5a;border:2px solid #63b6e9;border-radius:20px;max-height:85vh;overflow:auto;max-width:520px;width:100%;padding:22px;box-shadow:0 15px 70px #0007;font-family:system-ui,sans-serif}
  #standaloneConfig input{width:100%;padding:11px;border:1px solid #87b5db;background:white;color:#13263a;border-radius:10px;margin:5px 0 12px;font-size:15px}
  #standaloneConfig button,.standaloneConfigBtn{background:#1287d2;color:white;border:0;border-radius:12px;padding:11px 14px;font-weight:800}
@@ -130,7 +185,7 @@ function settings(){
  `;
  document.head.appendChild(css);
  const el=document.createElement('div');el.id='standaloneConfig';el.hidden=true;
- el.innerHTML='<div class="standaloneSheet"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">ABAJ TV · Источники</h2><button id="standaloneClose">✕</button></div><h3>IPTV / Edo</h3><div id="standaloneRows"></div><label>Название плейлиста</label><input id="standaloneListName" placeholder="Edo IPTV"><label>Прямая ссылка M3U</label><input id="standaloneListUrl" placeholder="https://..."><button id="standaloneAdd">Добавить плейлист</button><small>Ссылки сохраняются только на этом устройстве. Основной сервер не используется.</small><hr><h3>KinoPub</h3><label>OAuth Client ID</label><input id="standaloneClientId" value="xbmc"><label>OAuth Client Secret</label><input type="password" id="standaloneClientSecret" placeholder="Секрет официального OAuth-клиента"><button id="standaloneConnect">Подключить KinoPub</button> <button id="standaloneKpOut" class="danger">Выйти</button><p id="standaloneKpStatus"></p><small>У каждого пользователя должна быть своя учётная запись KinoPub.</small><hr><button id="standaloneRefresh">Обновить каналы</button></div>';
+ el.innerHTML='<div class="standaloneSheet"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">ABAJ TV · Источники</h2><button id="standaloneClose">✕</button></div><h3>Сохранённые IPTV-плейлисты <span id="standaloneSavedCount"></span></h3><div class="savedPlaylists" id="standaloneRows"></div><h3 id="standaloneEditorTitle">Добавить плейлист</h3><label>Название плейлиста</label><input id="standaloneListName" placeholder="Например, Free TV"><label>Прямая ссылка M3U</label><input id="standaloneListUrl" placeholder="https://..."><button id="standaloneAdd">Добавить плейлист</button> <button id="standaloneCancel" hidden>Отмена</button><div id="standalonePlaylistStatus" aria-live="polite"></div><small>Ссылки сохраняются только на этом устройстве. Основной сервер не используется.</small><hr><h3>KinoPub</h3><label>OAuth Client ID</label><input id="standaloneClientId" value="xbmc"><label>OAuth Client Secret</label><input type="password" id="standaloneClientSecret" placeholder="Секрет официального OAuth-клиента"><button id="standaloneConnect">Подключить KinoPub</button> <button id="standaloneKpOut" class="danger">Выйти</button><p id="standaloneKpStatus"></p><small>У каждого пользователя должна быть своя учётная запись KinoPub.</small><hr><button id="standaloneRefresh">Обновить каналы</button></div>';
  document.body.appendChild(el);
  const targets=['#tvSettingsModal .settingsCard','#settingsModal .settingsCard'];
 let mounted=0;
@@ -142,18 +197,111 @@ for(const selector of targets){
  button.onclick=()=>window.abajStandaloneOpenSources();holder.appendChild(button);mounted++;
 }
 if(!mounted){const button=document.createElement('button');button.className='standaloneConfigBtn';button.textContent='⚙ Источники';button.onclick=()=>window.abajStandaloneOpenSources();document.body.appendChild(button)}
- const close=()=>{el.hidden=true};
+ const close=()=>{el.hidden=true;cancelEdit()};
  el.querySelector('#standaloneClose').onclick=close;
- const paint=()=>{const lists=sources();el.querySelector('#standaloneRows').innerHTML=lists.map((x,i)=>'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><span>'+safe(x.name)+'</span><button class="danger" data-remove="'+safe(x.id)+'">Удалить</button></div>').join('')||'<small>Дополнительные плейлисты ещё не добавлены</small>';
- el.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{save('playlists',sources().filter(x=>x.id!==b.dataset.remove));save('playlist-cache-'+b.dataset.remove,null);paint();if(typeof window.load==='function')window.load()});
- const c=kpClient();el.querySelector('#standaloneClientId').value=c.client_id;el.querySelector('#standaloneClientSecret').value=c.client_secret;el.querySelector('#standaloneKpStatus').textContent=cinemaStatus()?'KinoPub подключён':'Для входа введите параметры своего OAuth-клиента';};
+ let editingId=null;
+ const nameInput=el.querySelector('#standaloneListName');
+ const urlInput=el.querySelector('#standaloneListUrl');
+ const addButton=el.querySelector('#standaloneAdd');
+ const cancelButton=el.querySelector('#standaloneCancel');
+ const editorTitle=el.querySelector('#standaloneEditorTitle');
+ function cancelEdit(){
+  editingId=null;
+  nameInput.value='';
+  urlInput.value='';
+  addButton.textContent='Добавить плейлист';
+  editorTitle.textContent='Добавить плейлист';
+  cancelButton.hidden=true;
+ }
+ function editPlaylist(id){
+  const item=sources().find(p=>p.id===id);
+  if(!item)return;
+  editingId=id;
+  nameInput.value=item.name;
+  urlInput.value=item.url;
+  editorTitle.textContent='Изменить плейлист';
+  addButton.textContent='Сохранить изменения';
+  cancelButton.hidden=false;
+  editorTitle.scrollIntoView({block:'nearest',behavior:'smooth'});
+  nameInput.focus();
+ }
+ function paintRows(){
+  const lists=sources(),host=el.querySelector('#standaloneRows');
+  host.replaceChildren();
+  el.querySelector('#standaloneSavedCount').textContent='('+lists.length+')';
+  if(!lists.length){
+   const empty=document.createElement('small');
+   empty.textContent='Плейлистов пока нет. Добавь первый ниже.';
+   host.appendChild(empty);
+  }
+  for(const item of lists){
+   const row=document.createElement('div');row.className='savedRow';
+   const info=document.createElement('div');info.className='savedDetails';
+   const title=document.createElement('b');title.textContent=item.name;
+   const detail=document.createElement('small');
+   const h=playlistHealth.get(item.id);
+   let hostName='';
+   try{hostName=new URL(item.url).hostname}catch(e){}
+   const state=h?.loading?'Загрузка…':h?.ok?(h.count+' каналов'):(h?.error?'Ошибка загрузки':'Не загружен');
+   detail.textContent=hostName+' · '+state;
+   if(h?.error)detail.title=h.error;
+   info.append(title,detail);
+   const actions=document.createElement('div');actions.className='savedActions';
+   const edit=document.createElement('button');edit.textContent='Изменить';
+   edit.onclick=()=>editPlaylist(item.id);
+   const remove=document.createElement('button');remove.className='danger';remove.textContent='Удалить';
+   remove.onclick=()=>{
+    const next=sources().filter(p=>p.id!==item.id);
+    try{save('playlists',next)}catch(e){announcePlaylist('Не удалось удалить: '+e.message,true);return}
+    clearPlaylistCache(item.id);playlistHealth.delete(item.id);
+    if(editingId===item.id)cancelEdit();
+    if(localStorage.getItem('abaj_tv_source_filter')==='playlist:'+item.id)
+     localStorage.setItem('abaj_tv_source_filter','free');
+    paintRows();announcePlaylist('Плейлист удалён');
+    refreshAppPlaylists();
+   };
+   actions.append(edit,remove);row.append(info,actions);host.appendChild(row);
+  }
+ }
+ window.abajStandaloneRefreshRows=paintRows;
+ const paint=()=>{
+  paintRows();
+  const c=kpClient();
+  el.querySelector('#standaloneClientId').value=c.client_id;
+  el.querySelector('#standaloneClientSecret').value=c.client_secret;
+  el.querySelector('#standaloneKpStatus').textContent=cinemaStatus()?'KinoPub подключён':'Для входа введите параметры своего OAuth-клиента';
+ };
  window.abajStandaloneOpenSources=()=>{
   el.hidden=false;
   paint();
-  try{el.querySelector('#standaloneListUrl').focus({preventScroll:true})}catch(e){}
  };
- el.querySelector('#standaloneAdd').onclick=()=>{const name=el.querySelector('#standaloneListName').value.trim(),url=el.querySelector('#standaloneListUrl').value.trim();if(!name||!URL_OK(url)){alert('Укажи название и ссылку M3U');return}save('playlists',[...sources(),{id:'list'+Date.now(),name,url}]);el.querySelector('#standaloneListName').value='';el.querySelector('#standaloneListUrl').value='';paint();window.load?.()};
- el.querySelector('#standaloneRefresh').onclick=()=>{save('free-cache',null);for(const x of sources())save('playlist-cache-'+x.id,null);window.load?.();close()};
+ cancelButton.onclick=cancelEdit;
+ addButton.onclick=()=>{
+  const name=nameInput.value.trim(),url=urlInput.value.trim();
+  let valid=false;
+  try{valid=['http:','https:'].includes(new URL(url).protocol)}catch(e){}
+  if(!name||!valid){announcePlaylist('Укажи название и правильную ссылку http(s)',true);return}
+  const lists=sources();
+  if(lists.some(x=>x.url===url&&x.id!==editingId)){
+   announcePlaylist('Такой адрес уже добавлен. Нажми «Изменить» в сохранённом плейлисте.',true);return;
+  }
+  const old=editingId?lists.find(x=>x.id===editingId):null;
+  if(editingId&&!old){cancelEdit();announcePlaylist('Плейлист не найден. Повтори сохранение.',true);return}
+  const id=old?.id||'list'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
+  const changedUrl=!!old&&old.url!==url;
+  const updated=old?lists.map(x=>x.id===id?{...x,name,url}:x):[...lists,{id,name,url}];
+  try{save('playlists',updated)}
+  catch(e){announcePlaylist('Не удалось сохранить: '+e.message,true);return}
+  if(changedUrl){clearPlaylistCache(id);playlistHealth.delete(id)}
+  cancelEdit();paintRows();
+  announcePlaylist(old?'Изменения сохранены. Обновляем каналы…':'Плейлист добавлен. Обновляем каналы…');
+  refreshAppPlaylists(id);
+ };
+ el.querySelector('#standaloneRefresh').onclick=()=>{
+  playlistCache.clear();playlistHealth.clear();
+  announcePlaylist('Обновляем все плейлисты…');
+  refreshAppPlaylists();paintRows();
+ };
  el.querySelector('#standaloneKpOut').onclick=()=>{save('kino-token',null);paint()};
  el.querySelector('#standaloneConnect').onclick=async()=>{
   const c={client_id:el.querySelector('#standaloneClientId').value.trim(),client_secret:el.querySelector('#standaloneClientSecret').value.trim()};
