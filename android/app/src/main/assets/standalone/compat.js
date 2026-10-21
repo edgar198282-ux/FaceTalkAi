@@ -222,14 +222,16 @@ function kpWideImages(item,portrait=''){
    for(const k of ['wide','backdrop','background','fanart','original','full','big','large','url','src'])
     append(value[k]);
  };
- for(const key of ['backdrop','background','fanart','poster_wide','wide_poster','backdrops','backgrounds','screenshots','stills','gallery'])
+ for(const key of ['backdrop','background','fanart','poster_wide','wide_poster','backdrops','backgrounds'])
   from(item[key]);
+ // A dedicated wide poster has priority over generic screenshots.
  for(const key of ['posters','images','cover']){
   const group=item[key];
   if(group&&typeof group==='object'&&!Array.isArray(group))
    for(const k of ['wide','backdrop','background','fanart','landscape','horizontal'])
     from(group[k]);
  }
+ for(const key of ['screenshots','stills','gallery'])from(item[key]);
  return out.slice(0,4);
 }
 function normalizeKp(x){
