@@ -132,3 +132,16 @@ test('KinoPub: cancelled auth cannot register a token after disconnect',async()=
  assert.equal(x.storage.has('abaj-standalone-kino-token'),false);
  assert.equal(x.scheduled.some(t=>t.active&&t.ms===5000),false);
 });
+
+test('KinoPub accepts device code even when provider reports unexpected activation URL',async()=>{
+ const x=setup();x.win.abajStandaloneOpenSources();
+ x.samples.set('device_code',JSON.stringify({
+  code:'device-token-xyz',user_code:'KINO42',
+  verification_uri:'https://alternate.example.org/login',expires_in:600,interval:5
+ }));
+ await x.get('standaloneConnect').onclick();
+ assert.equal(x.get('standaloneKpCode').hidden,false);
+ assert.equal(x.get('standaloneKpUserCode').textContent,'KINO42');
+ assert.match(x.get('standaloneKpStatus').textContent,/Ожидаем подтверждения/);
+ assert.ok(x.scheduled.some(t=>t.active&&t.ms===5000));
+});
