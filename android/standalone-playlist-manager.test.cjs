@@ -34,22 +34,23 @@ function setup(){
   querySelector(){return null},
   addEventListener(event,cb){handlers[event]=cb}
  };
- const samples=new Map(),scheduled=[];let menu=[],loads=0;
+ const samples=new Map(),scheduled=[],requests=[];let menu=[],loads=0;
  const fakeSetTimeout=(fn,ms)=>{const job={fn,ms,active:true};scheduled.push(job);return job};
  const fakeClearTimeout=job=>{if(job)job.active=false};
  const win={
   fetch:async()=>new Response('{}'),
   renderNamedPlaylistChips:(lists)=>{menu=lists.map(x=>x.name)},
   load:async()=>{loads++},
-  StandaloneNetwork:{request(id,url){
-   const grant=new URL(url).searchParams.get('grant_type');
-   const raw=samples.has(url)?samples.get(url):samples.get(grant);
+  StandaloneNetwork:{request(id,url,method,body){
+   const parsed=new URL(url),grant=parsed.searchParams.get('grant_type');
+   requests.push({url,method,body,path:parsed.pathname});
+   const raw=samples.has(url)?samples.get(url):(samples.has(parsed.pathname)?samples.get(parsed.pathname):samples.get(grant));
    win.__abajStandaloneResponse(id,raw===undefined?404:200,raw??'Not found');
   }}
  };
  vm.runInNewContext(script,{window:win,document,localStorage,Response,URL,URLSearchParams,console,setTimeout:fakeSetTimeout,clearTimeout:fakeClearTimeout,Date,Math,Promise,Error},{filename:'compat.js'});
  handlers.DOMContentLoaded();
- return{get:id=>elements.get(id),storage,win,samples,scheduled,menu:()=>menu,loads:()=>loads};
+ return{get:id=>elements.get(id),storage,win,samples,requests,scheduled,menu:()=>menu,loads:()=>loads};
 }
 function add(x,name,url){
  x.get('standaloneListName').value=name;
@@ -144,4 +145,70 @@ test('KinoPub accepts device code even when provider reports unexpected activati
  assert.equal(x.get('standaloneKpUserCode').textContent,'KINO42');
  assert.match(x.get('standaloneKpStatus').textContent,/Ожидаем подтверждения/);
  assert.ok(x.scheduled.some(t=>t.active&&t.ms===5000));
+});
+
+function connected(x){
+ x.storage.set('abaj-standalone-kino-token',JSON.stringify({
+  access_token:'my-personal-token',refresh_token:'refresh-token',
+  expires_at:Date.now()+3600000
+ }));
+}
+test('KinoPub history imports remote watched titles into standalone',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/history',JSON.stringify({history:[
+  {item:{id:101,title:'Movie watched on KinoPub',poster:'https://img.test/poster.jpg'},last_seen:1720000000},
+  {item:{id:102,title:'Series watched on KinoPub'},last_seen:1720000100}
+ ]}));
+ const response=await x.win.fetch('/api/cinema/library?section=history');
+ assert.equal(response.status,200);
+ const body=await response.json();
+ assert.equal(body.items.length,2);
+ assert.equal(body.items[0].title,'Movie watched on KinoPub');
+ assert.equal(body.items[0].watched_at,1720000000);
+ assert.equal(JSON.parse(x.storage.get('abaj-standalone-cinema-history')).length,2);
+});
+test('KinoPub folder sync reads remote bookmarks and writes to selected folder',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/bookmarks',JSON.stringify({
+  bookmarks:[{id:'42',title:'My favourites on KinoPub',count:1}]
+ }));
+ x.samples.set('/v1/bookmarks/42',JSON.stringify({
+  items:[{id:1234,title:'KinoPub favourite film'}]
+ }));
+ x.samples.set('/v1/bookmarks/get-item-folders',JSON.stringify({folders:[]}));
+ x.samples.set('/v1/bookmarks/add',JSON.stringify({status:200}));
+ const lib=await (await x.win.fetch('/api/cinema/library?section=bookmarks')).json();
+ assert.ok(lib.folders.some(f=>f.id==='kp:42'&&f.title==='My favourites on KinoPub'));
+ const selected=await (await x.win.fetch('/api/cinema/library?section=bookmarks&folder=kp%3A42')).json();
+ assert.equal(selected.items.length,1);
+ assert.equal(selected.items[0].title,'KinoPub favourite film');
+ const saved=await x.win.fetch('/api/cinema/bookmark-folders',{
+  method:'POST',body:JSON.stringify({item:{id:555,title:'New favourite'},folders:['kp:42'],original:[]})
+ });
+ assert.equal(saved.status,200);
+ assert.equal((await saved.json()).added,true);
+ const addReq=x.requests.find(req=>req.path==='/v1/bookmarks/add');
+ assert.ok(addReq,'KinoPub remote bookmarks/add must be called');
+ assert.equal(addReq.method,'POST');
+ assert.match(addReq.body,/folder=42/);
+ assert.match(addReq.body,/item=555/);
+});
+test('KinoPub playback reports real watch position remotely, not a fake watched title',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/watching/marktime',JSON.stringify({status:200}));
+ const response=await x.win.fetch('/api/cinema/progress',{
+  method:'POST',body:JSON.stringify({
+   item_id:'432',media_id:'med1',position:123,duration:3600,season:2,episode:3
+  })
+ });
+ assert.equal(response.status,200);
+ assert.equal((await response.json()).remote_updated,true);
+ const req=x.requests.find(x=>x.path==='/v1/watching/marktime');
+ assert.ok(req);
+ assert.equal(new URL(req.url).searchParams.get('id'),'432');
+ assert.equal(new URL(req.url).searchParams.get('time'),'123');
+ assert.equal(new URL(req.url).searchParams.get('season'),'2');
+ assert.equal(new URL(req.url).searchParams.get('video'),'3');
+ const local=(await (await x.win.fetch('/api/cinema/progress?item_id=432&media_id=med1')).json()).progress;
+ assert.equal(local.position,123);
 });
