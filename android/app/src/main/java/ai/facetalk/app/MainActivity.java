@@ -3016,7 +3016,7 @@ public class MainActivity extends Activity {
     private String ensureAuthNonce(){String n=prefs.getString("app_auth_nonce","");if(n==null||n.trim().isEmpty()){n=UUID.randomUUID().toString().replace("-","");prefs.edit().putString("app_auth_nonce",n).apply();}return n;}
     private boolean hasSignedAuth(){return !prefs.getString("ft_uid","").isEmpty()&&!prefs.getString("ft_ts","").isEmpty()&&!prefs.getString("ft_sig","").isEmpty();}
     private void loadOrAuthorize(){
-        if(BuildConfig.STANDALONE_BUILD){webView.loadUrl("file:///android_asset/standalone/index.html");return;}
+        if(BuildConfig.STANDALONE_BUILD){webView.loadUrl("file:///android_asset/standalone/index.html?source="+(isTv?"android_tv":"android")+(isTv?"&tv=1":""));return;}
         String init=prefs.getString("telegram_init_data","");
         if(!isTv&&!hasSignedAuth()){
             String nonce=ensureAuthNonce();
