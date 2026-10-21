@@ -1,0 +1,90 @@
+name: ABAJ TV Standalone - isolated APK
+on:
+  push:
+    branches:
+      - abajtv-standalone-test
+    paths:
+      - 'android/**'
+      - '.github/workflows/abajtv-standalone-apk.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: abajtv-standalone-only
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Validate standalone HTML and JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          p=Path('android/app/src/main/assets/standalone/index.html')
+          text=p.read_text()
+          assert len(text)>5000 and '<html' in text and '</html>' in text
+          js=text.split('<script>')[-1].split('</script>')[0]
+          Path('/tmp/abaj-standalone.js').write_text(js)
+          PY
+          node --check /tmp/abaj-standalone.js
+          test -s android/app/src/main/java/ai/facetalk/app/StandaloneNetworkBridge.java
+      - name: Restore existing signing key
+        run: |
+          base64 -d android/facetalk-upload-key.jks.b64 > android/facetalk-upload-key.jks
+          keytool -list -keystore android/facetalk-upload-key.jks -storepass FaceTalk2026 -alias facetalk >/dev/null
+      - name: Build independent signed APK
+        working-directory: android
+        run: |
+          gradle --no-daemon :app:assembleRelease \
+            -PSTANDALONE_BUILD=true \
+            -PAPP_ID=ai.abaj.tv.standalone \
+            -PAPP_VERSION_CODE=$(date -u +%s) \
+            -PAPP_VERSION_NAME=1.0.standalone \
+            -PWEB_APP_URL=https://example.invalid
+      - name: Verify APK and isolated applicationId
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          unzip -t "$APK" >/dev/null
+          AAPT=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -name aapt -type f | sort -V | tail -1)
+          APKSIGNER=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -name apksigner -type f | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | tee /tmp/badging.txt
+          grep -q "package: name='ai.abaj.tv.standalone'" /tmp/badging.txt
+          unzip -l "$APK" | grep -q 'assets/standalone/index.html'
+          "$APKSIGNER" verify --verbose "$APK"
+          mkdir -p dist
+          cp "$APK" dist/AbajTV-Standalone.apk
+          sha256sum dist/AbajTV-Standalone.apk > dist/SHA256SUMS.txt
+      - name: Upload test APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AbajTV-Standalone-test
+          path: dist/*
+          retention-days: 30
+          if-no-files-found: error
+      - name: Publish isolated pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="abajtv-standalone-latest"
+          gh release delete "$TAG" --cleanup-tag --yes || true
+          gh release create "$TAG" \
+            dist/AbajTV-Standalone.apk \
+            dist/SHA256SUMS.txt \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "ABAJ TV Standalone Test" \
+            --notes "Standalone test build using packaged UI. Different app ID: ai.abaj.tv.standalone. Does not replace original ABAJ TV or publish to Railway."
