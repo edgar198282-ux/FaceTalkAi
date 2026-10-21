@@ -624,6 +624,202 @@ async function kinoApi(p,q,opts){
  return null;
 }
 
+
+// Direct KinoPub endpoints used by the original ABAJ TV interface.
+// These do not go through Railway, and never use another user's token.
+function kpDeepFindFile(root,compat1080=false,selectedMid=''){
+ const seen=new Set(),files=[],all=[];
+ function walk(node,depth=0,media=''){
+  if(!node||depth>10||typeof node!=='object'||seen.has(node))return;
+  seen.add(node);
+  if(Array.isArray(node)){for(const x of node)walk(x,depth+1,media);return}
+  const ownMid=String(node.media_id||node.mid||node.id||media);
+  if(typeof node.file==='string'&&node.file.trim()){
+   const quality=String(node.quality??node.h??node.height??node.resolution??'');
+   const q=Number((quality.match(/2160|1440|1080|720|480|360/)||[])[0]||Number(quality)||0);
+   files.push({file:node.file.trim(),q,codec:String(node.codec||'').toLowerCase(),mid:media||ownMid});
+  }
+  for(const key of ['videos','seasons','episodes','files','items','data','media','links']){
+   if(node[key])walk(node[key],depth+1,(/videos|seasons|episodes|media/.test(key)?ownMid:media));
+  }
+ }
+ walk(root);
+ if(!files.length)return '';
+ const filtered=selectedMid?files.filter(f=>String(f.mid)===String(selectedMid)):[];
+ const available=filtered.length?filtered:files;
+ const allowed=compat1080?available.filter(f=>f.q>0&&f.q<=1080):available;
+ const choices=allowed.length?allowed:available;
+ choices.sort((a,b)=>{
+  const aq=compat1080?Math.min(a.q||1080,1080):a.q;
+  const bq=compat1080?Math.min(b.q||1080,1080):b.q;
+  return bq-aq || Number(/h264|avc/.test(b.codec))-Number(/h264|avc/.test(a.codec));
+ });
+ return choices[0].file;
+}
+function kpDirectVideoUrl(obj,prefer='hls'){
+ const seen=new Set();
+ const order=[prefer,'hls','hls2','hls4','http','dash','stream','video_url','stream_url','url','link'];
+ function find(v,depth=0){
+  if(typeof v==='string')return URL_OK(v)?v:'';
+  if(!v||typeof v!=='object'||depth>8||seen.has(v))return '';
+  seen.add(v);
+  if(Array.isArray(v)){for(const row of v){const found=find(row,depth+1);if(found)return found}return ''}
+  for(const key of order){
+   if(v[key]!=null){const found=find(v[key],depth+1);if(found)return found}
+  }
+  if(v.data)return find(v.data,depth+1);
+  return '';
+ }
+ return find(obj);
+}
+async function kpResolvePlayback(query){
+ if(!cinemaStatus())return reply({ok:false,error:'kinopub_auth_required'},401);
+ const id=String(query.get('id')||'').trim(),mid=String(query.get('mid')||'').trim();
+ let file=String(query.get('file')||'').trim();
+ if(!id&&!mid&&!file)return reply({ok:false,error:'missing_item_or_media_id'},400);
+ const compat1080=query.get('compat')==='1080';
+ const requested=(query.get('format')||'hls').toLowerCase();
+ const priority={
+  hls:['hls','hls2','http','hls4'],
+  hls2:['hls2','hls','http','hls4'],
+  hls4:['hls4','hls2','hls','http'],
+  http:['http','hls','hls2','hls4']
+ }[requested]||['hls','hls2','http','hls4'];
+ let lastError='';
+ try{
+  const token=await access();
+  let item=null;
+  if(id&&/^\d+$/.test(id)){
+   const payload=await kpCached('/v1/items/'+encodeURIComponent(id),{},30000,'item:');
+   item=payload?.item||payload;
+  }
+  if(!file&&item)file=kpDeepFindFile(item,compat1080,mid);
+  if(!file&&mid){
+   try{
+    const media=await kp('/v1/items/media-links',{access_token:token,mid});
+    file=kpDeepFindFile(media,compat1080,mid);
+    if(!file){const direct=kpDirectVideoUrl(media,requested);if(direct)return reply({ok:true,url:direct,headers:{},provider:'KINOPUB'})}
+   }catch(e){lastError=String(e.message||e)}
+  }
+  if(!file&&item){
+   const direct=kpDirectVideoUrl(item,requested);
+   if(direct)return reply({ok:true,url:direct,headers:{},provider:'KINOPUB'});
+  }
+  if(!file)return reply({ok:false,error:'kinopub_media_file_not_found',detail:lastError},404);
+  for(const type of priority){
+   try{
+    const link=await kp('/v1/items/media-video-link',{access_token:token,file,type});
+    const url=kpDirectVideoUrl(link,type);
+    if(url)return reply({ok:true,url,headers:{},provider:'KINOPUB',format:type});
+   }catch(e){lastError=String(e.message||e)}
+  }
+  return reply({ok:false,error:'kinopub_stream_not_found',detail:lastError},502);
+ }catch(e){return reply({ok:false,error:'kinopub_stream_failed',detail:String(e.message||e).slice(0,180)},502)}
+}
+async function kpGenreSection(section){
+ const raw=await kpCached('/v1/genres',{},30*60*1000,'genres:');
+ const genres=extractKp(raw);
+ return genres.filter(g=>{
+  const s=String(g.title||g.name||'').toLowerCase();
+  return section==='anime'?(/аниме|anime/.test(s)):(/мульт|cartoon|animation|animated/.test(s)&&!/аниме|anime/.test(s));
+ }).map(g=>String(g.id||'')).filter(Boolean).join(',');
+}
+function kpSectionFilter(raw,section,requested=''){
+ const type=String(raw.type||raw.raw_type||'').toLowerCase();
+ const group=String(raw.group||'').toLowerCase();
+ const genres=kpLabelRows(raw.genres||raw.genre).toLowerCase();
+ const isAnime=/аниме|anime/.test(genres)||group==='anime';
+ const isCartoon=/мульт|cartoon|animation/.test(genres)||group==='cartoons';
+ const isSerial=/serial|series|tvshow|docuserial|docseries/.test(type);
+ if(section==='anime')return isAnime;
+ if(section==='cartoons')return isCartoon&&!isAnime;
+ if(section==='movies')return !isSerial&&!isAnime&&!isCartoon;
+ if(section==='series')return isSerial&&!isAnime&&!isCartoon;
+ if(section==='docmovies')return /documovie|documentary|docmovie/.test(type);
+ if(section==='docseries')return /docuserial|documentaryseries|docseries/.test(type);
+ if(section==='tvshows')return type==='tvshow';
+ if(section==='concerts')return type==='concert';
+ if(requested==='series'||requested==='serial')return isSerial;
+ if(requested==='movies'||requested==='movie')return !isSerial;
+ return true;
+}
+async function kpLoadSection(query,catalog=false){
+ if(!cinemaStatus())return reply({ok:false,error:'kinopub_auth_required',items:[]},401);
+ const section=(query.get('section')||'movies').toLowerCase(),q=query.get('q')||'';
+ const requested=query.get('type')||'',sort=query.get('sort')||'';
+ const page=Math.max(1,Math.min(1000,Number(query.get('page')||1)||1));
+ const perpage=Math.max(10,Math.min(60,Number(query.get('perpage')||40)||40));
+ const apiType=/series|serial/.test(requested)?'serial':(/movies|movie/.test(requested)?'movie':'');
+ let path=q?'/v1/items/search':'/v1/items',params={page,perpage};
+ if(catalog){
+  if(q)params.q=q;
+  else params.sort='updated-';
+  if(apiType)params.type=apiType;
+  if(query.get('genre'))params.genre=query.get('genre');
+  if(query.get('actor')){params.actor=query.get('actor');delete params.q}
+ }else if(section==='collections')path='/v1/collections';
+ else if(['fresh','popular','hot'].includes(section)){
+  path='/v1/items/'+section;
+  params.type=apiType||'movie';
+ }else if(section==='4k'){
+  params.quality='4k';
+  if(apiType)params.type=apiType;
+ }else if(section==='cartoons'||section==='anime'){
+  try{const ids=await kpGenreSection(section);params.genre=ids|| (section==='anime'?'аниме':'мультфильм')}
+  catch(e){params.genre=section==='anime'?'аниме':'мультфильм'}
+ }else{
+  const types={movies:'movie',series:'serial',docmovies:'documovie',docseries:'docuserial',
+   tvshows:'tvshow',concerts:'concert'};
+  params.type=types[section]||apiType||'movie';
+ }
+ const mappedSort={new:'created-',popular:'views-',hot:'rating-'}[sort]||sort;
+ if(mappedSort)params.sort=mappedSort;
+ const readPage=async(rpath,rparams)=>{
+  const data=await kp(rpath,{access_token:await access(),...rparams});
+  const originals=extractKp(data),items=originals.filter(x=>catalog||section==='collections'||section==='4k'||kpSectionFilter(x,section,requested));
+  return {data,items};
+ };
+ try{
+  let {data,items}=await readPage(path,params);
+  if(!items.length&&['fresh','popular','hot'].includes(section)){
+   const sortMap={fresh:'updated-',popular:'views-',hot:'rating-'};
+   ({data,items}=await readPage('/v1/items',{page,perpage,type:apiType||'movie',sort:sortMap[section]}));
+  }
+  // Some provider pages are smaller than requested. Load up to three extras
+  // to avoid a nearly-empty first screen, without a server-side background job.
+  if(page===1&&items.length<Math.min(perpage,30)&&section!=='collections'){
+   const seen=new Set(items.map(x=>String(x.id)));
+   for(let next=2;next<=4&&items.length<Math.min(perpage,30);next++){
+    let other;try{other=await readPage(path,{...params,page:next})}catch(e){break}
+    if(!other.items.length)break;
+    let added=0;
+    for(const x of other.items){const key=String(x.id);if(!seen.has(key)){seen.add(key);items.push(x);added++}}
+    if(!added)break;
+   }
+  }
+  let list=items.map(item=>section==='collections'?{
+    ...normalizeKp(item),kind:'collection',source:'KINOPUB_COLLECTION'
+   }:normalizeKp(item));
+  const rawTotal=Number(data.total??data.pagination?.total);
+  const total=Number.isFinite(rawTotal)&&rawTotal>0?rawTotal:null;
+  return reply({ok:true,items:list,count:list.length,page,perpage,total,
+   has_more:!!list.length&&(total==null||page*perpage<total)});
+ }catch(e){
+  return reply({ok:false,error:'kinopub_section_unavailable',detail:String(e.message||e).slice(0,200),items:[]},502);
+ }
+}
+async function kpCollectionItems(q){
+ if(!cinemaStatus())return reply({ok:false,error:'kinopub_auth_required'},401);
+ const id=q.get('id')||'';
+ if(!/^\d+$/.test(id))return reply({ok:false,error:'invalid_collection_id'},400);
+ try{
+  const page=Math.max(1,Number(q.get('page')||1));
+  const data=await kp('/v1/collections/view',{access_token:await access(),id,page,perpage:40});
+  const items=extractKp(data).map(normalizeKp);
+  return reply({ok:true,items,count:items.length,total:data.total??null,page});
+ }catch(e){return reply({ok:false,error:'kinopub_collection_unavailable',detail:String(e.message||e)},502)}
+}
+
 async function api(path,opts){
  const u=new URL(path,'https://abaj.local'),p=u.pathname,q=u.searchParams,method=(opts?.method||'GET').toUpperCase();
  if(p==='/api/me')return reply({id:1,is_admin:false,language:localStorage.getItem('abaj_lang')||'ru',source_permissions:{iptv:true,cinema:true}});
@@ -640,16 +836,9 @@ async function api(path,opts){
  if(p==='/api/iptv/refresh'){save('free-cache',null);for(const x of sources())save('playlist-cache-'+x.id,null);return reply({ok:true})}
  if(p==='/api/cinema/source-state')return reply({source:'kinopub',cinema_enabled:true,playback_allowed:true});
  if(p==='/api/kinopub/status')return reply({ok:true,authenticated:cinemaStatus(),pending:false,owner:false,verification_uri:'https://kino.pub/device'});
- if(p==='/api/kinopub/catalog'||p==='/api/kinopub/section'){
-  try{const token=await access(),query=q.get('q')||'',section=q.get('section')||'movies',kind=q.get('type')||(/series/.test(section)?'serial':'movie');
-    const pg=Number(q.get('page')||1),perpage=Number(q.get('perpage')||40);
-    const params={access_token:token,page:pg,perpage,type:/serial|series/i.test(kind)?'serial':'movie'};
-    if(query)params.q=query;if(q.get('sort'))params.sort=q.get('sort');
-    const data=await kp(query?'/v1/items/search':'/v1/items',params);
-    const list=extractKp(data).map(normalizeKp);
-    return reply({ok:true,items:list,total:Number(data.total||data.pagination?.total||list.length),has_more:list.length>=perpage});
-  }catch(e){return reply({error:String(e.message),items:[]},502)}
- }
+ if(p==='/api/kinopub/catalog'||p==='/api/kinopub/section')return kpLoadSection(q,p.endsWith('/catalog'));
+ if(p==='/api/kinopub/play')return kpResolvePlayback(q);
+ if(p==='/api/kinopub/collection')return kpCollectionItems(q);
  if(p==='/api/kinopub/item')return kpItemDetail(q.get('id'));
  if(p==='/api/kinopub/overview')return reply({ok:true,movies_total:0,series_total:0});
  if(p==='/api/kinopub/auth/start'||p==='/api/kinopub/auth/poll')return reply({ok:false,error:'Use standalone KinoPub device login in local settings'},400);
