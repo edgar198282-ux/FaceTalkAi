@@ -34,6 +34,20 @@ const sources=()=>{
  const v=read('playlists',[]);
  return Array.isArray(v)?v.filter(x=>x&&typeof x.id==='string'&&typeof x.name==='string'&&typeof x.url==='string'):[];
 };
+// Earlier standalone versions cached thousands of full channel objects in
+// WebView localStorage. This exhausted the quota and prevented saving a second
+// playlist. Remove ONLY obsolete channel caches; keep user playlists/settings.
+try{
+ const remove=[];
+ for(let i=0;i<localStorage.length;i++){
+  const k=localStorage.key(i);
+  if(k&&(
+    k.startsWith('abaj-standalone-playlist-cache-')||
+    k==='abajtv_channels_cache_v6'
+  ))remove.push(k);
+ }
+ remove.forEach(k=>localStorage.removeItem(k));
+}catch(e){}
 const playlistCache=new Map();
 const playlistHealth=new Map();
 let playlistsRevision=0;
