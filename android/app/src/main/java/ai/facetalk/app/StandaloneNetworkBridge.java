@@ -14,10 +14,14 @@ import java.nio.charset.StandardCharsets;
 public final class StandaloneNetworkBridge {
     private final Activity activity;
     private final WebView webView;
-    StandaloneNetworkBridge(Activity activity, WebView webView) {
+    private final boolean tv;
+    StandaloneNetworkBridge(Activity activity, WebView webView, boolean isTv) {
         this.activity = activity;
         this.webView = webView;
+        this.tv = isTv;
     }
+    @JavascriptInterface
+    public boolean isTvDevice() { return tv; }
     @JavascriptInterface
     public void request(String requestId, String rawUrl, String method, String body) {
         if (requestId == null || !requestId.matches("[a-zA-Z0-9_-]{1,64}")) return;
