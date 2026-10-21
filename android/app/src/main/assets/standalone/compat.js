@@ -138,6 +138,352 @@ function normalizeKp(x){
 }
 function extractKp(data){if(Array.isArray(data))return data;for(const k of ['items','data','results','movies','serials'])if(data&&data[k]){const a=extractKp(data[k]);if(a.length)return a}return []}
 function getItemUrl(id){return channelCache.find(x=>String(x.id)===String(id))?.url||''}
+
+/* KinoPub personal favourites, history, and playback progress.
+ * Synced directly to the signed-in individual's KinoPub account, not Railway.
+ * A small local cache handles temporarily unavailable external sources.
+ */
+const cinemaStorage={
+ get(section){const v=read('cinema-'+section,[]);return Array.isArray(v)?v:[]},
+ put(section,items,limit=250){
+  const safeRows=(Array.isArray(items)?items:[]).slice(0,limit);
+  try{save('cinema-'+section,safeRows)}catch(e){}
+  return safeRows;
+ }
+};
+const kpRemoteCache=new Map();
+function invalidateKpCache(prefix){
+ for(const k of kpRemoteCache.keys())if(!prefix||k.startsWith(prefix))kpRemoteCache.delete(k);
+}
+async function kpCached(path,params={},ttl=45000,cachePrefix='kp:'){
+ const token=await access();
+ const cacheKey=cachePrefix+path+'?'+new URLSearchParams(params).toString();
+ const entry=kpRemoteCache.get(cacheKey);
+ if(entry&&Date.now()-entry.ts<ttl)return entry.value;
+ const value=await kp(path,{access_token:token,...params});
+ kpRemoteCache.set(cacheKey,{ts:Date.now(),value});
+ return value;
+}
+function arrayOf(raw,keys=['items','data','results']){
+ if(Array.isArray(raw))return raw;
+ if(!raw||typeof raw!=='object')return [];
+ for(const name of keys){
+  if(raw[name]!==undefined){const a=arrayOf(raw[name],keys);if(a.length)return a}
+ }
+ return [];
+}
+function kinoCard(input){
+ const raw=input&&typeof input==='object'?input:{};
+ const item=raw.item&&typeof raw.item==='object'?raw.item:raw;
+ const obj=normalizeKp(item);
+ if(!obj.id)return null;
+ const title=String(obj.title||item.original_title||'').trim();
+ if(!title)return null;
+ const card={...obj,title,source:'KINOPUB'};
+ let poster=item.poster||item.posters||item.cover||'';
+ if(poster&&typeof poster==='object')poster=poster.big||poster.medium||poster.small||poster.url||poster.poster||'';
+ if(typeof poster==='string'&&URL_OK(poster))card.poster=poster;
+ const t=Number(raw.last_seen||raw.watched_at||raw.updated_at||0);
+ if(Number.isFinite(t)&&t>0)card.watched_at=t;
+ return card;
+}
+function cardsFrom(raw,keys,limit=300){
+ const unique=new Map();
+ for(const entry of arrayOf(raw,keys)){
+  const card=kinoCard(entry);
+  if(card&&!unique.has(String(card.id)))unique.set(String(card.id),card);
+  if(unique.size>=limit)break;
+ }
+ return [...unique.values()];
+}
+function mergeCinemaRows(newRows,oldRows,limit=250){
+ const result=new Map();
+ for(const row of [...newRows,...oldRows]){
+  const id=String(row?.id||'').trim();
+  if(!id||result.has(id))continue;
+  result.set(id,row);
+ }
+ return [...result.values()].slice(0,limit);
+}
+function readLocalFolders(){
+ const value=read('cinema-folders',{});
+ return value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+}
+function saveLocalFolders(value){
+ try{save('cinema-folders',value);return true}catch(e){return false}
+}
+function folderKey(folder){return String(folder?.id||'').trim()}
+function defaultFolderTitle(){return 'Избранное на устройстве (не KinoPub)'}
+async function kpFolders(){
+ const response=await kpCached('/v1/bookmarks',{},30000,'folders:');
+ const raw=arrayOf(response,['bookmarks','folders','items','data']);
+ return raw.map(row=>{
+  const id=String(row?.id??row?.bookmark_id??row?.folder_id??'').trim();
+  return id?{id:'kp:'+id,title:String(row.title||row.name||'Избранное'),
+   count:Number(row.count??row.items_count??row.total??0)||0,
+   kind:'bookmark_folder',source:'KINOPUB'}:null
+ }).filter(Boolean);
+}
+async function kpFolderItems(folderId,limit=300){
+ const id=String(folderId||'').replace(/^kp:/,'');
+ if(!id)return [];
+ const all=[],seen=new Set();
+ for(let page=1;page<=5&&all.length<limit;page++){
+  const payload=await kpCached('/v1/bookmarks/'+encodeURIComponent(id),
+   {page,perpage:100},45000,'folderitems:');
+  const batch=cardsFrom(payload,['items','data','results'],100);
+  if(!batch.length)break;
+  for(const item of batch){
+   const k=String(item.id);
+   if(!seen.has(k)){seen.add(k);all.push(item)}
+  }
+  if(batch.length<100)break;
+ }
+ return all.slice(0,limit);
+}
+async function kpSelectedFolders(itemId){
+ const payload=await kp('/v1/bookmarks/get-item-folders',
+  {access_token:await access(),item:String(itemId)});
+ const list=arrayOf(payload,['folders','items','data']);
+ return new Set(list.map(x=>'kp:'+String(x?.id??x?.folder_id??'')).filter(x=>x!=='kp:'));
+}
+async function kpChangeBookmark(folderId,itemId,add){
+ const path=add?'/v1/bookmarks/add':'/v1/bookmarks/remove-item';
+ const form=new URLSearchParams({item:String(itemId),folder:String(folderId).replace(/^kp:/,'')}).toString();
+ const url=kpBase+path+'?'+new URLSearchParams({access_token:await access()}).toString();
+ const raw=await nativeRequest(url,'POST',form);
+ let response;
+ try{response=JSON.parse(raw)}catch(e){response={}}
+ if(response.error||Number(response.status||200)>=400)
+  throw Error(String(response.error_description||response.error||response.message||'KinoPub rejected bookmark change'));
+ return response;
+}
+async function kinoHistory(){
+ const local=cinemaStorage.get('history');
+ let remote=[];
+ try{
+  for(let page=1;page<=3;page++){
+   const payload=await kpCached('/v1/history',{page,perpage:100},25000,'history:');
+   const batch=cardsFrom(payload,['history','items','data','results'],100);
+   remote.push(...batch);
+   if(batch.length<100)break;
+  }
+  const merged=mergeCinemaRows(remote,local,200);
+  cinemaStorage.put('history',merged,200);
+  return merged;
+ }catch(e){
+  if(local.length)return local;
+  throw e;
+ }
+}
+async function kinoBookmarksFlat(){
+ const local=cinemaStorage.get('bookmarks');
+ let remote=[];
+ try{
+  const folders=await kpFolders();
+  for(const folder of folders.slice(0,25)){
+   const rows=await kpFolderItems(folder.id,300);
+   remote=mergeCinemaRows(remote,rows,300);
+  }
+  const custom=readLocalFolders();
+  for(const obj of Object.values(custom))
+   remote=mergeCinemaRows(remote,obj.items||[],300);
+  // Local favourites are deliberately separate: deleting a movie in
+  // KinoPub must not be silently undone by uploading an old local cache.
+  return mergeCinemaRows(remote,local,300);
+ }catch(e){
+  if(local.length)return local;
+  throw e;
+ }
+}
+async function kinoLibrary(section,query){
+ if(!cinemaStatus())return reply({ok:false,error:'kinopub_auth_required'},401);
+ try{
+  if(section==='history'){
+   const rows=await kinoHistory();
+   return reply({ok:true,section,items:rows,count:rows.length});
+  }
+  if(section==='watching'){
+   const watching=cinemaStorage.get('watching');
+   const rows=mergeCinemaRows(watching,await kinoHistory(),100);
+   return reply({ok:true,section,items:rows,count:rows.length});
+  }
+  if(section==='bookmarks'){
+   const id=String(query.get('folder')||'').trim();
+   if(id){
+    let rows=[];
+    if(id==='personal')rows=cinemaStorage.get('bookmarks');
+    else if(id.startsWith('kp:'))rows=await kpFolderItems(id);
+    else rows=readLocalFolders()[id]?.items||[];
+    return reply({ok:true,section,items:rows,count:rows.length});
+   }
+   if(query.get('flat')==='1'){
+    const rows=await kinoBookmarksFlat();
+    return reply({ok:true,section,items:rows,count:rows.length});
+   }
+   const remote=await kpFolders();
+   const local=readLocalFolders();
+   const folders=[
+    ...remote,
+    {id:'personal',title:defaultFolderTitle(),kind:'bookmark_folder',
+     count:cinemaStorage.get('bookmarks').length,source:'LOCAL'},
+    ...Object.entries(local).map(([fid,entry])=>({id:fid,title:entry.title||'Папка на устройстве',count:(entry.items||[]).length,kind:'bookmark_folder',source:'LOCAL'}))
+   ];
+   return reply({ok:true,section,folders,items:[],count:folders.reduce((n,f)=>n+Number(f.count||0),0)});
+  }
+  return reply({ok:false,error:'invalid_section'},400);
+ }catch(e){
+  return reply({ok:false,error:'kinopub_sync_unavailable',detail:String(e.message||e).slice(0,140)},502);
+ }
+}
+async function kinoFolderPicker(query,opts){
+ if(!cinemaStatus())return reply({ok:false,error:'kinopub_auth_required'},401);
+ if((opts?.method||'GET').toUpperCase()==='DELETE'){
+  const id=String(query.get('folder_id')||'');
+  if(!id||id.startsWith('kp:'))return reply({ok:false,error:'kinopub_folder_not_deletable'},403);
+  if(id==='personal'){
+   cinemaStorage.put('bookmarks',[],300);
+   return reply({ok:true,deleted:id});
+  }
+  const all=readLocalFolders();
+  if(!all[id])return reply({ok:false,error:'folder_not_found'},404);
+  delete all[id];saveLocalFolders(all);
+  return reply({ok:true,deleted:id});
+ }
+ if((opts?.method||'GET').toUpperCase()==='GET'){
+  try{
+   const folders=await kpFolders();
+   const selected=query.get('item_id')?await kpSelectedFolders(query.get('item_id')):new Set();
+   const id=String(query.get('item_id')||'');
+   const local=readLocalFolders();
+   for(const [fid,entry] of Object.entries(local)){
+    folders.push({id:fid,title:entry.title||'Папка на устройстве',count:(entry.items||[]).length,
+     selected:!!id&&(entry.items||[]).some(x=>String(x.id)===id),kind:'bookmark_folder',source:'LOCAL'});
+   }
+   folders.push({id:'personal',title:defaultFolderTitle(),count:cinemaStorage.get('bookmarks').length,
+    selected:!!id&&cinemaStorage.get('bookmarks').some(x=>String(x.id)===id),kind:'bookmark_folder',source:'LOCAL'});
+   return reply({ok:true,folders:folders.map(f=>({...f,selected:f.selected??selected.has(f.id)}))});
+  }catch(e){return reply({ok:false,error:'kinopub_bookmarks_unavailable',detail:String(e.message||e).slice(0,140)},502)}
+ }
+ let request={};
+ try{request=JSON.parse(opts?.body||'{}')}catch(e){}
+ const item=kinoCard(request.item);
+ if(!item)return reply({ok:false,error:'bad_item'},400);
+ const wanted=new Set(Array.isArray(request.folders)?request.folders.map(String):[]);
+ try{
+  const available=await kpFolders();
+  const allowed=new Set(available.map(f=>f.id));
+  const remoteCurrent=await kpSelectedFolders(item.id);
+  // Only mutate explicitly selected and existing KinoPub folders. Never
+  // overwrite other accounts or all folders with a stale picker payload.
+  for(const folder of available){
+   const isWanted=wanted.has(folder.id),has=remoteCurrent.has(folder.id);
+   if(isWanted===has)continue;
+   await kpChangeBookmark(folder.id,item.id,isWanted);
+  }
+  invalidateKpCache('folders:');
+  invalidateKpCache('folderitems:');
+  const local=readLocalFolders();
+  const newTitle=String(request.create_title||'').trim().slice(0,80);
+  let created='';
+  if(newTitle){
+   created='local:'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
+   local[created]={title:newTitle+' (на устройстве)',items:[]};
+   wanted.add(created);
+  }
+  const personal=cinemaStorage.get('bookmarks').filter(x=>String(x.id)!==String(item.id));
+  if(wanted.has('personal'))personal.unshift(item);
+  cinemaStorage.put('bookmarks',personal,300);
+  for(const [fid,entry] of Object.entries(local)){
+   if(!entry||typeof entry!=='object')continue;
+   const rows=(Array.isArray(entry.items)?entry.items:[]).filter(x=>String(x.id)!==String(item.id));
+   if(wanted.has(fid))rows.unshift(item);
+   entry.items=rows.slice(0,300);
+  }
+  saveLocalFolders(local);
+  const selected=[...wanted].filter(f=>allowed.has(f)||f==='personal'||Object.prototype.hasOwnProperty.call(local,f));
+  return reply({ok:true,added:selected.length>0,selected,created});
+ }catch(e){
+  return reply({ok:false,error:'kinopub_bookmarks_write_failed',detail:String(e.message||e).slice(0,140)},502);
+ }
+}
+async function kinoWatch(body){
+ const item=kinoCard(body?.item);
+ if(!item)return reply({ok:false,error:'bad_item'},400);
+ const card={...item,watched_at:Math.floor(Date.now()/1000)};
+ if(body.media_id)card.media_id=body.media_id;
+ if(body.season!=null)card.season=body.season;
+ if(body.episode!=null)card.episode=body.episode;
+ for(const section of ['history','watching'])
+  cinemaStorage.put(section,mergeCinemaRows([card],cinemaStorage.get(section),section==='watching'?100:200),section==='watching'?100:200);
+ invalidateKpCache('history:');
+ return reply({ok:true});
+}
+async function kinoProgress(opts,query){
+ if(!cinemaStatus())return reply({ok:false,error:'kinopub_auth_required'},401);
+ if((opts?.method||'GET').toUpperCase()==='GET'){
+  const itemId=String(query.get('item_id')||'').trim();
+  const mediaId=String(query.get('media_id')||'').trim();
+  if(!itemId)return reply({ok:false,error:'missing_item_id'},400);
+  const all=read('cinema-progress',{});
+  const local=all[itemId+'|'+mediaId]||{};
+  if(Number(local.position)>0)return reply({ok:true,progress:local});
+  // Retrieve remote resume only when no local position exists.
+  if(/^\d+$/.test(itemId)){
+   try{
+    const result=await kpCached('/v1/watching',{id:itemId},25000,'watching:');
+    const entry=result?.item||result?.data?.item||result||{};
+    const seconds=Number(entry.time??entry.position??entry.marktime??0);
+    if(Number.isFinite(seconds)&&seconds>0)
+     return reply({ok:true,progress:{item_id:itemId,media_id:mediaId,position:seconds,duration:0,from:'KINOPUB'}});
+   }catch(e){}
+  }
+  return reply({ok:true,progress:local});
+ }
+ let body={};try{body=JSON.parse(opts?.body||'{}')}catch(e){}
+ const id=String(body.item_id||''),mediaId=String(body.media_id||'');
+ const pos=Number(body.position||0),duration=Number(body.duration||0);
+ if(!id||!Number.isFinite(pos)||pos<0||!Number.isFinite(duration)||duration<0)
+  return reply({ok:false,error:'bad_progress'},400);
+ const done=duration>0&&pos/duration>=.96;
+ const data={item_id:id,media_id:mediaId,position:done?0:pos,duration,completed:done,
+  season:body.season??null,episode:body.episode??null,updated_at:Math.floor(Date.now()/1000)};
+ const all=read('cinema-progress',{});
+ all[id+'|'+mediaId]=data;
+ const keys=Object.keys(all);
+ if(keys.length>600)for(const k of keys.slice(0,keys.length-450))delete all[k];
+ try{save('cinema-progress',all)}catch(e){}
+ // The provider expects video number (episode) and season (for serials).
+ // Report only actual playback positions; never mark an untouched title.
+ if(!/^\d+$/.test(id)||pos<=0)return reply({ok:true,progress:data,remote_updated:false});
+ try{
+  const params={access_token:await access(),id,time:Math.floor(pos),
+   video:Math.max(1,Number(body.episode)||1)};
+  if(Number(body.season)>0)params.season=Number(body.season);
+  const result=await kp('/v1/watching/marktime',params);
+  if(result?.error||Number(result?.status||200)>=400)
+   throw Error(String(result.error||result.message||'marktime failed'));
+  invalidateKpCache('watching:');
+  invalidateKpCache('history:');
+  return reply({ok:true,progress:data,remote_updated:true});
+ }catch(e){
+  return reply({ok:true,progress:data,remote_updated:false,
+   sync_warning:String(e.message||e).slice(0,120)});
+ }
+}
+async function kinoApi(p,q,opts){
+ if(p==='/api/cinema/library'&&(opts?.method||'GET').toUpperCase()==='GET')
+  return kinoLibrary(q.get('section')||'history',q);
+ if(p==='/api/cinema/bookmark-folders')return kinoFolderPicker(q,opts);
+ if(p==='/api/cinema/library/watch'){
+  if(!cinemaStatus())return reply({ok:false,error:'kinopub_auth_required'},401);
+  let body={};try{body=JSON.parse(opts?.body||'{}')}catch(e){}
+  return kinoWatch(body);
+ }
+ if(p==='/api/cinema/progress')return kinoProgress(opts,q);
+ return null;
+}
+
 async function api(path,opts){
  const u=new URL(path,'https://abaj.local'),p=u.pathname,q=u.searchParams,method=(opts?.method||'GET').toUpperCase();
  if(p==='/api/me')return reply({id:1,is_admin:false,language:localStorage.getItem('abaj_lang')||'ru',source_permissions:{iptv:true,cinema:true}});
@@ -166,9 +512,8 @@ async function api(path,opts){
  }
  if(p==='/api/kinopub/overview')return reply({ok:true,movies_total:0,series_total:0});
  if(p==='/api/kinopub/auth/start'||p==='/api/kinopub/auth/poll')return reply({ok:false,error:'Use standalone KinoPub device login in local settings'},400);
- if(p==='/api/cinema/library')return reply({ok:true,items:[],folders:[],count:0});
- if(p==='/api/cinema/bookmark-folders')return reply({ok:true,folders:[]});
- if(p==='/api/cinema/progress')return reply({ok:true});
+ if(p==='/api/cinema/library'||p==='/api/cinema/bookmark-folders'||p==='/api/cinema/progress'||p==='/api/cinema/library/watch')
+  return kinoApi(p,q,opts);
  if(p==='/api/app-release')return reply({available:false,version_code:0});
  if(p.startsWith('/api/admin/'))return reply({ok:false,error:'Unavailable in standalone build'},403);
  return reply({ok:false,error:'Standalone endpoint not implemented: '+p},404);
