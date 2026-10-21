@@ -350,3 +350,41 @@ test('KinoPub collections open via provider collections/view endpoint',async()=>
  assert.equal((await result.json()).items[0].title,'Included in collection');
  assert.ok(x.requests.some(req=>req.path==='/v1/collections/view'));
 });
+
+
+test('KinoPub film detail selects a real landscape poster from posters.wide and keeps small portrait separately',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/items/903',JSON.stringify({item:{
+  id:903,title:'KinoPub film 903',posters:{
+   big:'https://images.test/portrait-903.jpg',
+   small:'https://images.test/portrait-small.jpg',
+   wide:'https://images.test/cinematic-wide-903.jpg'
+  },
+  screenshots:['https://images.test/still-903.jpg'],
+  duration:105
+ }}));
+ const reply=await x.win.fetch('/api/kinopub/item?id=903');
+ assert.equal(reply.status,200);
+ const data=await reply.json();
+ assert.equal(data.item.poster,'https://images.test/portrait-903.jpg');
+ assert.equal(data.item.backdrop,'https://images.test/cinematic-wide-903.jpg');
+ assert.equal(data.item.backdrops[0],data.item.backdrop);
+ assert.ok(data.item.backdrops.includes('https://images.test/still-903.jpg'));
+ assert.ok(!data.item.backdrops.includes(data.item.poster));
+});
+test('KinoPub detail with only a portrait has no fake widescreen backdrop',async()=>{
+ const x=setup();connected(x);
+ x.samples.set('/v1/items/904',JSON.stringify({item:{
+  id:904,title:'No wide art',posters:{big:'https://images.test/only-portrait.jpg'}
+ }}));
+ const reply=await x.win.fetch('/api/kinopub/item?id=904');
+ const data=await reply.json();
+ assert.equal(data.item.poster,'https://images.test/only-portrait.jpg');
+ assert.equal(data.item.backdrop,'');
+ assert.equal(data.item.backdrops.length,0);
+});
+test('Standalone mobile movie detail hides duplicate centered poster, keeping the main image area',()=>{
+ const html=fs.readFileSync('app/src/main/assets/standalone/index.html','utf8');
+ assert.ok(html.includes('body:not(.nativeTv) .cinemaDetailHero.posterFallback .cinemaDetailHeroPoster{display:none!important}'));
+ assert.ok(html.includes("heroPoster.style.display=(!bg&&poster&&nativeTv)?'block':'none';"));
+});
