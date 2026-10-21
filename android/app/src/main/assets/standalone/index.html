@@ -1515,6 +1515,8 @@ body:not(.cinemaKinopub) #cinemaKpFilters,body:not(.cinemaKinopub) #cinemaLoadMo
   transform:translateX(-50%);border-radius:6px;box-shadow:0 12px 36px rgba(0,0,0,.46);display:none
 }
 .cinemaDetailHero.posterFallback .cinemaDetailHeroPoster{display:block}
+/* Mobile uses a full-bleed background plus the small side poster, never a centered vertical duplicate. */
+body:not(.nativeTv) .cinemaDetailHero.posterFallback .cinemaDetailHeroPoster{display:none!important}
 .nativeTv .cinemaDetailHero{min-height:80.6vh}
 .nativeTv .cinemaDetailHeroPoster{top:3%;height:86%;max-width:48%}
 .cinemaDetailHero::after{
@@ -14462,7 +14464,7 @@ function renderCinemaDetail(item){
   if(heroPoster){
     try{heroPoster.fetchPriority='high'}catch(e){}
     heroPoster.src=poster||'';
-    heroPoster.style.display=(!bg&&poster)?'block':'none';
+    heroPoster.style.display=(!bg&&poster&&nativeTv)?'block':'none';
   }
   const rawDisplayTitle=cinemaDisplayTitle(item);
   let originalForTitle=cinemaPublicText(cinemaDetailText(item,'original_title','originalTitle','title_original','original','original_name'));
