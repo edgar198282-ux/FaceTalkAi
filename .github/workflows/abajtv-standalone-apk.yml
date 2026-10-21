@@ -39,6 +39,7 @@ jobs:
           PY
           node --check /tmp/abaj-standalone.js
           node --check android/app/src/main/assets/standalone/compat.js
+          (cd android && node --test standalone-playlist-manager.test.cjs)
           test -s android/app/src/main/assets/standalone/static/abaj-launcher.js
           test -s android/app/src/main/assets/standalone/static/abaj-media.js
           test -s android/app/src/main/java/ai/facetalk/app/StandaloneNetworkBridge.java
