@@ -3147,6 +3147,7 @@ let aiDubOriginalVolume=1;
 let filteredNow=[];
 let tvRenderLimit=nativeTv?120:Number.POSITIVE_INFINITY;
 const TV_RENDER_BATCH=120;
+let standaloneRenderLimit=240;
 let tvLogoObserver=null;
 function bindVisibleChannelLogos(){
   if(!nativeTv)return;
@@ -5875,6 +5876,8 @@ function channelQuality(ch){
 
 const CHANNEL_CACHE_KEY='abajtv_channels_cache_v6';
 function cacheChannels(){
+  // In Standalone large M3U lists exceed WebView localStorage quota; keep them in memory.
+  if(window.ABAJ_STANDALONE)return;
   try{
     const slim=channels.map(x=>({
       id:x.id,name:x.name,group:x.group,country:x.country,logo:x.logo,status:x.status,tvg_id:x.tvg_id,
@@ -5886,6 +5889,7 @@ function cacheChannels(){
   }catch(e){}
 }
 function restoreCachedChannels(){
+  if(window.ABAJ_STANDALONE)return false;
   try{
     const cached=JSON.parse(localStorage.getItem(CHANNEL_CACHE_KEY)||'null');
     if(!cached||!Array.isArray(cached.channels)||!cached.channels.length)return false;
@@ -5984,6 +5988,7 @@ function recoverPlaylistLogos(rows,known){
   });
 }
 async function load(){
+  const generation=window.ABAJ_STANDALONE?(window.__abajStandaloneLoadGen=(window.__abajStandaloneLoadGen||0)+1):0;
   try{
     restoreCachedChannels();
     const edemStatusPromise=fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'})
@@ -6015,6 +6020,7 @@ async function load(){
         ed={...ed,channels:lastGood.map(x=>({...x,playlist_id:x.playlist_id||fallbackId})),playlists:Array.isArray(savedPlaylists)&&savedPlaylists.length?savedPlaylists:[{id:fallbackId,name:'Едо'}]};
       }
     }
+    if(window.ABAJ_STANDALONE&&generation!==window.__abajStandaloneLoadGen)return;
     let base=(d.channels||[]).filter(x=>{
       const key=(String(x&&x.name||'')+' '+String(x&&x.tvg_id||'')).toLowerCase();
       if(key.includes('shoghakat')||key.includes('շողակաթ'))return false;
@@ -6452,7 +6458,7 @@ function render(){
   }
   const channelNumberMap=new Map(filteredNow.map((x,i)=>[x.id,i+1]));
   const grouped={};
-  const renderRows=nativeTv?filteredNow.slice(0,tvRenderLimit):filteredNow;
+  const renderRows=nativeTv?filteredNow.slice(0,tvRenderLimit):(window.ABAJ_STANDALONE?filteredNow.slice(0,standaloneRenderLimit):filteredNow);
   renderRows.forEach(x=>{
     const k=x.group||'Other';
     (grouped[k]||(grouped[k]=[])).push(x);
@@ -6490,7 +6496,13 @@ function render(){
       '</div>';
     });
   });
+  if(window.ABAJ_STANDALONE&&!nativeTv&&filteredNow.length>standaloneRenderLimit){
+    const remain=filteredNow.length-standaloneRenderLimit;
+    out+='<button type="button" id="standaloneMoreChannels" style="display:block;width:95%;margin:15px auto;padding:15px;border:2px solid #4cb2ea;border-radius:14px;background:#e5f4ff;color:#124e73;font-weight:800">Показать ещё 240 · осталось '+remain+'</button>';
+  }
   document.getElementById('list').innerHTML=out||'<div class="empty">'+esc(t.noChannels)+'</div>';
+  const more=document.getElementById('standaloneMoreChannels');
+  if(more)more.onclick=()=>{standaloneRenderLimit+=240;render()};
   bindVisibleChannelLogos();
   bindTvFocus();
 }
