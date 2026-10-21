@@ -2867,17 +2867,9 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
   <div class="settingsCard">
     <div class="settingsTitle" id="settingsTitle">⚙ Настройки</div>
     <button class="settingsAction" id="settingsAdminBtn" onclick="openAdminFromTvSettings()" style="display:none;background:#0b5f9e">🛠 Админ-панель</button>
-    <button class="settingsAction" id="appUpdateBtn" onclick="manualAppUpdate()" style="display:none;background:#123b78;margin-top:0;margin-bottom:8px">🔄 Проверить обновление</button>
-    <div id="appVersionText" class="deviceMeta" style="display:none;text-align:center;margin:-2px 0 8px"></div>
     <button id="activationBotLink" onclick="openActivationBot()" style="width:100%;border:0;border-radius:14px;background:#0d87e7;color:#fff;padding:12px 14px;margin:0 0 10px;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px">
       🤖 Для активации переходите в бот @FaceTalkID_bot
     </button>
-    <div class="adminRow" style="display:block;margin-bottom:10px;background:#eaf6ff">
-      <div style="display:flex;justify-content:space-between;gap:12px"><b id="settingsStatusLabel">Статус</b><b id="settingsStatusValue" style="color:#16865b">—</b></div>
-      <div id="settingsFreeInfo" style="display:none;margin-top:8px;font-size:14px;line-height:1.35;font-weight:800">Доступны более 3000 каналов после активации в боте</div>
-      <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px"><span id="settingsUntilLabel">Доступ до</span><b id="settingsUntilValue">—</b></div>
-      <div style="display:flex;justify-content:space-between;gap:12px;margin-top:8px"><span id="settingsDevicesLabel">Устройства</span><b id="settingsDevicesValue">0 / 3</b></div>
-    </div>
     <div class="settingsLabel" id="settingsLangLabel">Язык</div>
     <div class="settingsLang">
       <button id="langHyBtn" onclick="setAppLanguage('hy')">🇦🇲 Հայերեն</button>
