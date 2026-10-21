@@ -132,7 +132,16 @@ function settings(){
  const el=document.createElement('div');el.id='standaloneConfig';el.hidden=true;
  el.innerHTML='<div class="standaloneSheet"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">ABAJ TV · Источники</h2><button id="standaloneClose">✕</button></div><h3>IPTV / Edo</h3><div id="standaloneRows"></div><label>Название плейлиста</label><input id="standaloneListName" placeholder="Edo IPTV"><label>Прямая ссылка M3U</label><input id="standaloneListUrl" placeholder="https://..."><button id="standaloneAdd">Добавить плейлист</button><small>Ссылки сохраняются только на этом устройстве. Основной сервер не используется.</small><hr><h3>KinoPub</h3><label>OAuth Client ID</label><input id="standaloneClientId" value="xbmc"><label>OAuth Client Secret</label><input type="password" id="standaloneClientSecret" placeholder="Секрет официального OAuth-клиента"><button id="standaloneConnect">Подключить KinoPub</button> <button id="standaloneKpOut" class="danger">Выйти</button><p id="standaloneKpStatus"></p><small>У каждого пользователя должна быть своя учётная запись KinoPub.</small><hr><button id="standaloneRefresh">Обновить каналы</button></div>';
  document.body.appendChild(el);
- const open=document.createElement('button');open.className='standaloneConfigBtn';open.textContent='⚙ Источники';open.onclick=()=>{el.hidden=false;paint()};document.body.appendChild(open);
+ const targets=['#tvSettingsModal .settingsCard','#settingsModal .settingsCard'];
+let mounted=0;
+for(const selector of targets){
+ const holder=document.querySelector(selector);
+ if(!holder)continue;
+ const button=document.createElement('button');button.className='standaloneConfigBtn';button.textContent='⚙ Источники (без сервера)';
+ button.style.cssText='position:relative;right:auto;bottom:auto;z-index:auto;display:block;margin:12px auto;width:fit-content';
+ button.onclick=()=>{el.hidden=false;paint()};holder.appendChild(button);mounted++;
+}
+if(!mounted){const button=document.createElement('button');button.className='standaloneConfigBtn';button.textContent='⚙ Источники';button.onclick=()=>{el.hidden=false;paint()};document.body.appendChild(button)}
  const close=()=>{el.hidden=true};
  el.querySelector('#standaloneClose').onclick=close;
  const paint=()=>{const lists=sources();el.querySelector('#standaloneRows').innerHTML=lists.map((x,i)=>'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><span>'+safe(x.name)+'</span><button class="danger" data-remove="'+safe(x.id)+'">Удалить</button></div>').join('')||'<small>Дополнительные плейлисты ещё не добавлены</small>';
