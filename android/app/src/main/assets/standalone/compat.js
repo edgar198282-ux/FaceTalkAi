@@ -112,7 +112,11 @@ let channelCache=[];
 const reply=(o,status=200)=>new Response(JSON.stringify(o),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const cinemaStatus=()=>!!read('kino-token',{}).access_token;
 const kpBase='https://api.service-kp.com';
-const kpClient=()=>read('kino-client',null)||{client_id:'xbmc',client_secret:''};
+// Reuse the pre-existing public Kodi OAuth client configured in the original ABAJ TV.
+// It is not a private credential or a dedicated ABAJ TV OAuth registration.
+// For distributed production builds request a dedicated client from KinoPub.
+const kpBundledClient={client_id:"xbmc",client_secret:"cgg3gtifu46urtfp2zp1nqtba0k2ezxh"};
+const kpClient=()=>{const configured=read('kino-client',null);return configured?.client_id&&configured?.client_secret?configured:kpBundledClient};
 async function kp(path,params={},method='GET'){
  const u=kpBase+path+'?'+new URLSearchParams(params).toString();
  const raw=await nativeRequest(u,method,'');
@@ -199,7 +203,7 @@ function settings(){
  `;
  document.head.appendChild(css);
  const el=document.createElement('div');el.id='standaloneConfig';el.hidden=true;
- el.innerHTML='<div class="standaloneSheet"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">ABAJ TV · Источники</h2><button id="standaloneClose">✕</button></div><h3>Сохранённые IPTV-плейлисты <span id="standaloneSavedCount"></span></h3><div class="savedPlaylists" id="standaloneRows"></div><h3 id="standaloneEditorTitle">Добавить плейлист</h3><label>Название плейлиста</label><input id="standaloneListName" placeholder="Например, Free TV"><label>Прямая ссылка M3U</label><input id="standaloneListUrl" placeholder="https://..."><button id="standaloneAdd">Добавить плейлист</button> <button id="standaloneCancel" hidden>Отмена</button><div id="standalonePlaylistStatus" aria-live="polite"></div><small>Ссылки сохраняются только на этом устройстве. Основной сервер не используется.</small><hr><h3>KinoPub</h3><label>OAuth Client ID</label><input id="standaloneClientId" value="xbmc"><label>OAuth Client Secret</label><input type="password" id="standaloneClientSecret" placeholder="Секрет официального OAuth-клиента"><button id="standaloneConnect">Подключить KinoPub</button> <button id="standaloneKpOut" class="danger">Выйти</button><p id="standaloneKpStatus"></p><small>У каждого пользователя должна быть своя учётная запись KinoPub.</small><hr><button id="standaloneRefresh">Обновить каналы</button></div>';
+ el.innerHTML='<div class="standaloneSheet"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">ABAJ TV · Источники</h2><button id="standaloneClose">✕</button></div><h3>Сохранённые IPTV-плейлисты <span id="standaloneSavedCount"></span></h3><div class="savedPlaylists" id="standaloneRows"></div><h3 id="standaloneEditorTitle">Добавить плейлист</h3><label>Название плейлиста</label><input id="standaloneListName" placeholder="Например, Free TV"><label>Прямая ссылка M3U</label><input id="standaloneListUrl" placeholder="https://..."><button id="standaloneAdd">Добавить плейлист</button> <button id="standaloneCancel" hidden>Отмена</button><div id="standalonePlaylistStatus" aria-live="polite"></div><small>Ссылки сохраняются только на этом устройстве. Основной сервер не используется.</small><hr><h3>KinoPub</h3><p id="standaloneKpStatus" aria-live="polite" style="font-weight:700">Нажми «Войти» для получения кода устройства</p><div id="standaloneKpCode" hidden style="padding:12px;background:#d9efff;border-radius:14px;margin:12px 0"><small>1. Открой на телефоне kino.pub/device</small><div id="standaloneKpUserCode" style="font-size:30px;font-weight:900;letter-spacing:3px;margin:6px 0"></div><small>2. Введи этот код и подтверди устройство. ABAJ TV подключится автоматически.</small><button id="standaloneKpCopy" type="button">Копировать код</button> <button id="standaloneKpVisit" type="button">Открыть сайт</button></div><button id="standaloneConnect">Войти в KinoPub</button> <button id="standaloneKpOut" class="danger">Выйти</button><small>Нужна действующая учётная запись KinoPub. Токен хранится только на этом устройстве.</small><details id="standaloneKpAdvanced" style="margin-top:12px"><summary style="cursor:pointer;font-weight:800">Дополнительные настройки OAuth</summary><label>OAuth Client ID</label><input id="standaloneClientId" autocomplete="off"><label>OAuth Client Secret</label><input type="password" id="standaloneClientSecret" autocomplete="off"><button id="standaloneKpSaveClient" type="button">Сохранить параметры</button> <button id="standaloneKpResetClient" type="button">Сбросить</button><small>Нужны только если KinoPub выдал тебе отдельные параметры клиента.</small></details><hr><button id="standaloneRefresh">Обновить каналы</button></div>';
  document.body.appendChild(el);
  const targets=['#tvSettingsModal .settingsCard','#settingsModal .settingsCard'];
 let mounted=0;
@@ -283,7 +287,7 @@ if(!mounted){const button=document.createElement('button');button.className='sta
   const c=kpClient();
   el.querySelector('#standaloneClientId').value=c.client_id;
   el.querySelector('#standaloneClientSecret').value=c.client_secret;
-  el.querySelector('#standaloneKpStatus').textContent=cinemaStatus()?'KinoPub подключён':'Для входа введите параметры своего OAuth-клиента';
+  paintKp();
  };
  window.abajStandaloneOpenSources=()=>{
   el.hidden=false;
@@ -316,26 +320,135 @@ if(!mounted){const button=document.createElement('button');button.className='sta
   announcePlaylist('Обновляем все плейлисты…');
   refreshAppPlaylists();paintRows();
  };
- el.querySelector('#standaloneKpOut').onclick=()=>{save('kino-token',null);paint()};
- el.querySelector('#standaloneConnect').onclick=async()=>{
-  const c={client_id:el.querySelector('#standaloneClientId').value.trim(),client_secret:el.querySelector('#standaloneClientSecret').value.trim()};
-  save('kino-client',c);const st=el.querySelector('#standaloneKpStatus');
-  if(!c.client_id||!c.client_secret){st.textContent='Нужны Client ID и Client Secret для авторизации';return}
-  st.textContent='Запрашиваем код KinoPub…';
+
+ let kpPending=null,kpPollTimer=null,kpGeneration=0,kpBusy=false;
+ const kpStatus=el.querySelector('#standaloneKpStatus');
+ const kpCodeBox=el.querySelector('#standaloneKpCode');
+ const kpCodeText=el.querySelector('#standaloneKpUserCode');
+ const kpConnect=el.querySelector('#standaloneConnect');
+ const kpDisconnect=el.querySelector('#standaloneKpOut');
+ function clearKpPoll(){if(kpPollTimer){clearTimeout(kpPollTimer);kpPollTimer=null}}
+ function stopKpPoll(){kpGeneration++;clearKpPoll();kpPending=null;kpBusy=false}
+ function paintKp(){
+  const connected=cinemaStatus();
+  kpConnect.hidden=connected;
+  kpDisconnect.hidden=!connected;
+  kpCodeBox.hidden=!kpPending||connected;
+  if(kpPending){
+   kpCodeText.textContent=kpPending.userCode;
+   kpStatus.textContent='Ожидаем подтверждения в KinoPub…';
+  }else if(connected)kpStatus.textContent='✓ KinoPub подключён';
+  else kpStatus.textContent='Нажми «Войти в KinoPub», чтобы получить код';
+ }
+ // Keep authorization polling even when the settings sheet is closed or a mobile
+ // browser is opened for device approval. Stop only on logout, expiry, or failure.
+ function scheduleKpPoll(generation,delayMs){
+  clearKpPoll();
+  if(generation!==kpGeneration||!kpPending)return;
+  kpPollTimer=setTimeout(()=>pollKp(generation),delayMs);
+ }
+ async function pollKp(generation){
+  if(generation!==kpGeneration||!kpPending||kpBusy)return;
+  if(Date.now()>=kpPending.expiresAt){
+   stopKpPoll();kpStatus.textContent='Код истёк. Нажми «Войти», чтобы получить новый.';paintKp();return;
+  }
+  kpBusy=true;
+  let nextDelay=kpPending.intervalMs;
   try{
-   const x=await kp('/oauth2/device',{grant_type:'device_code',...c},'POST');
-   const code=x.code||x.device_code;if(!code||!x.user_code)throw Error('KinoPub не прислал код');
-   st.innerHTML='Открой <b>kino.pub/device</b> и введи код <b>'+safe(x.user_code)+'</b><br>Ожидаем подтверждение…';
-   const expiry=Date.now()+Number(x.expires_in||600)*1000;
-   const delay=Math.max(3500,Number(x.interval||5)*1000);
-   const loop=async()=>{if(el.hidden)return;if(Date.now()>expiry){st.textContent='Код истёк. Попробуй снова.';return}
-    try{const t=await kp('/oauth2/device',{grant_type:'device_token',...c,code},'POST');
-     if(t.access_token){save('kino-token',{access_token:t.access_token,refresh_token:t.refresh_token||'',expires_at:Date.now()+Number(t.expires_in||3600)*1000});st.textContent='KinoPub подключён';if(typeof window.loadCinemaCatalog==='function')window.loadCinemaCatalog(true);return}
-    }catch(e){if(!/authorization_pending|slow_down/i.test(e.message)){st.textContent=e.message;return}}
-    setTimeout(loop,delay)};
-   setTimeout(loop,delay)
-  }catch(e){st.textContent=e.message}
+   const config=kpClient();
+   const result=await kp('/oauth2/device',{grant_type:'device_token',...config,code:kpPending.code},'POST');
+   if(generation!==kpGeneration)return;
+   if(result.access_token){
+    const token={access_token:result.access_token,refresh_token:result.refresh_token||'',
+     expires_at:Date.now()+Number(result.expires_in||3600)*1000};
+    try{save('kino-token',token)}catch(e){stopKpPoll();kpStatus.textContent='Не удалось сохранить вход KinoPub';return}
+    stopKpPoll();
+    paintKp();
+    try{window.loadGlobalCinemaSource?.()}catch(e){}
+    try{window.loadCinemaCatalog?.(true)}catch(e){}
+    return;
+   }
+   if(result.error==='slow_down')nextDelay+=5000;
+   else if(result.error&&result.error!=='authorization_pending')
+    throw Error(result.error_description||result.error);
+  }catch(e){
+   if(generation!==kpGeneration)return;
+   const msg=String(e.message||e);
+   if(/slow_down/i.test(msg))nextDelay+=5000;
+   else if(/authorization_pending/i.test(msg)){}
+   else if(/expired|invalid_grant|access_denied|authorization_declined/i.test(msg)){
+    stopKpPoll();paintKp();kpStatus.textContent='Код не подтверждён или истёк. Запроси новый.';return;
+   }else{
+    // Transient connectivity errors should not discard the active device code.
+    kpStatus.textContent='Ожидаем KinoPub (повторное подключение)…';
+    nextDelay=Math.max(nextDelay,10000);
+   }
+  }finally{kpBusy=false}
+  if(generation===kpGeneration&&kpPending)scheduleKpPoll(generation,nextDelay);
+ }
+ kpConnect.onclick=async()=>{
+  if(kpBusy)return;
+  stopKpPoll();kpConnect.disabled=true;kpStatus.textContent='Получаем код KinoPub…';
+  const current=kpGeneration;
+  try{
+   const result=await kp('/oauth2/device',{grant_type:'device_code',...kpClient()},'POST');
+   if(current!==kpGeneration)return;
+   const code=String(result.code||result.device_code||'');
+   const userCode=String(result.user_code||'');
+   if(!code||!userCode)throw Error('Сервис KinoPub не прислал код');
+   const verifyUrl=String(result.verification_uri||result.verification_url||'https://kino.pub/device');
+   if(!/^https:\/\/(?:kino\.pub|www\.kino\.pub)\//.test(verifyUrl))throw Error('Неожиданный адрес активации KinoPub');
+   kpPending={code,userCode,verifyUrl,expiresAt:Date.now()+Math.max(60,Number(result.expires_in)||600)*1000,
+    intervalMs:Math.max(5000,Number(result.interval||5)*1000)};
+   kpStatus.textContent='Ожидаем подтверждения в KinoPub…';
+   paintKp();scheduleKpPoll(current,kpPending.intervalMs);
+  }catch(e){
+   if(current===kpGeneration){
+    paintKp();kpStatus.textContent='Не удалось получить код KinoPub: '+String(e.message||e).slice(0,220);
+   }
+  }finally{kpConnect.disabled=false}
  };
+ kpDisconnect.onclick=()=>{
+  stopKpPoll();
+  localStorage.removeItem(key('kino-token'));
+  paintKp();
+ };
+ el.querySelector('#standaloneKpCopy').onclick=async()=>{
+  const code=kpPending?.userCode||'';
+  if(!code)return;
+  let copied=false;
+  try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(code);copied=true}}catch(e){}
+  if(!copied){
+   const inp=document.createElement('input');inp.value=code;document.body.appendChild(inp);
+   inp.select();try{copied=!!document.execCommand('copy')}catch(e){}
+   inp.remove();
+  }
+  if(!copied)kpStatus.textContent='Код: '+code+' (введи его на kino.pub/device)';
+  else kpStatus.textContent='Код скопирован: '+code;
+ };
+ el.querySelector('#standaloneKpVisit').onclick=()=>{
+  if(!kpPending)return;
+  // Android's WebView URL handler opens external HTTPS links in the browser.
+  window.location.href=kpPending.verifyUrl;
+ };
+ el.querySelector('#standaloneKpSaveClient').onclick=()=>{
+  const c={client_id:el.querySelector('#standaloneClientId').value.trim(),
+   client_secret:el.querySelector('#standaloneClientSecret').value.trim()};
+  if(!c.client_id||!c.client_secret){kpStatus.textContent='Заполни оба параметра OAuth либо нажми «Сбросить»';return}
+  try{save('kino-client',c);stopKpPoll();paintKp();kpStatus.textContent='Параметры OAuth сохранены'}
+  catch(e){kpStatus.textContent='Ошибка сохранения OAuth'}
+ };
+ el.querySelector('#standaloneKpResetClient').onclick=()=>{
+  localStorage.removeItem(key('kino-client'));stopKpPoll();
+  const c=kpClient();el.querySelector('#standaloneClientId').value=c.client_id;
+  el.querySelector('#standaloneClientSecret').value=c.client_secret;
+  paintKp();kpStatus.textContent='Параметры KinoPub восстановлены';
+ };
+ document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&kpPending&&!kpBusy&&Date.now()<kpPending.expiresAt)
+   scheduleKpPoll(kpGeneration,Math.max(1000,kpPending.intervalMs));
+ });
+ paintKp();
 }
 document.addEventListener('DOMContentLoaded',settings);
 })();
