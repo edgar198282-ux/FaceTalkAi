@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b2b7a"/>
+      <stop offset=".48" stop-color="#087cff"/>
+      <stop offset="1" stop-color="#25c7ff"/>
+    </linearGradient>
+    <linearGradient id="tv" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#69e5ff"/>
+      <stop offset=".45" stop-color="#0c8dff"/>
+      <stop offset="1" stop-color="#063cbb"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  <rect x="88" y="110" width="336" height="245" rx="70" fill="#04163e" stroke="#83efff" stroke-width="14" filter="url(#glow)"/>
+  <path d="M178 314 L256 170 L340 314" fill="none" stroke="url(#tv)" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M242 220 L242 307 L320 264 Z" fill="#bdf9ff" filter="url(#glow)"/>
+  <path d="M194 104 L151 58M318 104 L361 58" stroke="#90f3ff" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="148" cy="54" r="18" fill="#d8fbff" stroke="#087cff" stroke-width="9"/>
+  <circle cx="364" cy="54" r="18" fill="#d8fbff" stroke="#087cff" stroke-width="9"/>
+  <text x="256" y="430" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="74" font-weight="900" fill="#fff">ABAJ TV</text>
+</svg>
