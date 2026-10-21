@@ -13703,7 +13703,7 @@ function cinemaDetailFact(label,value){
 }
 function formatCinemaRatingNumber(value){
   const n=Number(String(value??'').replace(',','.'));
-  if(!Number.isFinite(n)||n<=0)return '';
+  if(!Number.isFinite(n)||n<=0||n>10)return '';
   return (Math.round(n*10)/10).toFixed(1);
 }
 function openCinemaExternalRating(url){
@@ -13722,7 +13722,9 @@ function cinemaImdbUrl(id){
   if(!value)return '';
   if(/^tt\d+$/i.test(value))return 'https://www.imdb.com/title/'+value.toLowerCase()+'/';
   value=value.replace(/\D/g,'');
-  if(!value)return '';
+  // Movie IDs have at least five digits; a score such as 6.7 must not be
+  // converted into an unrelated IMDb title URL.
+  if(value.length<5||value.length>12)return '';
   return 'https://www.imdb.com/title/tt'+value.padStart(7,'0')+'/';
 }
 function cinemaKpUrl(id){
