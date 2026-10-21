@@ -197,10 +197,46 @@ function kpImage(value){
  }
  return '';
 }
+// KinoPub's horizontal artwork is separate from portrait posters.
+// A portrait poster must never be mistaken for a backdrop.
+function kpWideImages(item,portrait=''){
+ const out=[],seen=new Set();
+ const append=url=>{
+  if(typeof url!=='string')return;
+  const value=url.trim();
+  if(!URL_OK(value)||value===portrait||seen.has(value))return;
+  seen.add(value);out.push(value);
+ };
+ const from=value=>{
+  if(typeof value==='string'){append(value);return}
+  if(Array.isArray(value)){
+   for(const row of value.slice(0,8)){
+    if(typeof row==='string')append(row);
+    else if(row&&typeof row==='object')
+     for(const k of ['wide','backdrop','background','fanart','original','full','big','large','url','src'])
+      append(row[k]);
+   }
+   return;
+  }
+  if(value&&typeof value==='object')
+   for(const k of ['wide','backdrop','background','fanart','original','full','big','large','url','src'])
+    append(value[k]);
+ };
+ for(const key of ['backdrop','background','fanart','poster_wide','wide_poster','backdrops','backgrounds','screenshots','stills','gallery'])
+  from(item[key]);
+ for(const key of ['posters','images','cover']){
+  const group=item[key];
+  if(group&&typeof group==='object'&&!Array.isArray(group))
+   for(const k of ['wide','backdrop','background','fanart','landscape','horizontal'])
+    from(group[k]);
+ }
+ return out.slice(0,4);
+}
 function normalizeKp(x){
  const item=x&&typeof x==='object'?x:{};
  const pics=item.posters||item.poster||item.cover||{};
  const poster=kpImage(pics);
+ const wides=kpWideImages(item,poster);
  const origId=item.imdb_id||item.imdb||'';
  const imdbId=/^(?:tt)?\d{5,12}$/i.test(String(origId))?String(origId):'';
  const kpId=item.kp_id||item.kinopoisk_id||item.kinopoisk||'';
@@ -215,7 +251,8 @@ function normalizeKp(x){
  return {...item,
   id:String(item.id||''),title:String(item.title||item.name||''),
   original_title:String(item.original_title||''),poster,poster_url:poster,
-  backdrop:kpImage(item.backdrop)||kpImage(item.background),
+  backdrop:wides[0]||'',
+  backdrops:wides,
   description:String(item.plot||item.description||''),
   rating,imdb:rating,imdb_id:imdbId,
   kp,kp_id:String(kpId||''),
