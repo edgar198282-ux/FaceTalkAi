@@ -1,0 +1,87 @@
+name: ABAJ TV Free - one auto-updating M3U
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/abaj_free_playlist.py'
+      - '.github/workflows/abaj-free-playlist.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: abaj-free-public-playlist
+  cancel-in-progress: false
+
+jobs:
+  update-free-m3u:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Read original ABAJ TV Free sources (not Edo)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin \
+            abajtv-new-railway:refs/remotes/origin/abajtv-new-railway
+          git show refs/remotes/origin/abajtv-new-railway:app/iptv.py > "$RUNNER_TEMP/abaj-iptv.py"
+          python -m py_compile tools/abaj_free_playlist.py
+
+      - name: Retain previous playlist on source outages
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin iptv-free >/dev/null 2>&1; then
+            git fetch --no-tags --depth=1 origin iptv-free:refs/remotes/origin/iptv-free
+            git show refs/remotes/origin/iptv-free:all.m3u > "$RUNNER_TEMP/previous.m3u" || true
+            echo "OUTPUT_EXISTS=1" >> "$GITHUB_ENV"
+          else
+            echo "OUTPUT_EXISTS=0" >> "$GITHUB_ENV"
+          fi
+
+      - name: Merge public Free M3U sources and deduplicate streams
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/abaj-free-output"
+          python tools/abaj_free_playlist.py \
+            --source "$RUNNER_TEMP/abaj-iptv.py" \
+            --output "$RUNNER_TEMP/abaj-free-output/all.m3u" \
+            --stats "$RUNNER_TEMP/abaj-free-output/status.json" \
+            --previous "$RUNNER_TEMP/previous.m3u"
+          test "$(grep -c '^#EXTINF:' "$RUNNER_TEMP/abaj-free-output/all.m3u")" -ge 800
+          wc -l "$RUNNER_TEMP/abaj-free-output/all.m3u"
+
+      - name: Publish only on independent public iptv-free branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "abaj-tv-free-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$OUTPUT_EXISTS" = "1" ]; then
+            git switch -C iptv-free refs/remotes/origin/iptv-free
+          else
+            git checkout --orphan iptv-free
+            git rm -rf --quiet . || true
+          fi
+          cp "$RUNNER_TEMP/abaj-free-output/all.m3u" all.m3u
+          cp "$RUNNER_TEMP/abaj-free-output/status.json" status.json
+          git add -- all.m3u status.json
+          if git diff --cached --quiet; then
+            echo "Playlist unchanged"
+          else
+            git commit -m "Auto-update ABAJ TV Free M3U $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push origin HEAD:refs/heads/iptv-free
+          fi
+          echo "Public M3U: https://raw.githubusercontent.com/edgar198282-ux/FaceTalkAi/iptv-free/all.m3u" >> "$GITHUB_STEP_SUMMARY"
+          echo "Public status: https://raw.githubusercontent.com/edgar198282-ux/FaceTalkAi/iptv-free/status.json" >> "$GITHUB_STEP_SUMMARY"
