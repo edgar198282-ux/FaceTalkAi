@@ -131,13 +131,153 @@ async function access(){
  }
  return t.access_token;
 }
+// Keep exactly the metadata contract used by the original ABAJ TV server.
+function kpLabelRows(input, keys=['title','name','label']){
+ if(input==null)return '';
+ const rows=Array.isArray(input)?input:[input];
+ return rows.map(row=>{
+  if(row==null)return '';
+  if(typeof row==='string'||typeof row==='number')return String(row).trim();
+  if(typeof row==='object'){
+   for(const key of keys)if(typeof row[key]==='string'&&row[key].trim())return row[key].trim();
+  }
+  return '';
+ }).filter(Boolean).join(', ');
+}
+function kpRating(value){
+ if(value&&typeof value==='object'){
+  for(const key of ['rating','value','score','average'])
+   if(value[key]!=null){value=value[key];break}
+ }
+ const n=Number(String(value??'').trim().replace(',','.'));
+ return Number.isFinite(n)&&n>0&&n<=10?String(Math.round(n*10)/10):'';
+}
+function kpDuration(value){
+ if(value==null||value==='')return '';
+ if(typeof value==='object'){
+  if(Array.isArray(value)){
+   for(const x of value){const d=kpDuration(x);if(d)return d}
+   return '';
+  }
+  const hours=Number(value.hours??value.hour??value.h??0);
+  const minutes=Number(value.minutes??value.minute??value.min??0);
+  if(hours>0&&hours<24&&minutes>=0&&minutes<60)
+   return Math.round(hours*60+minutes)+' мин';
+  if(minutes>0&&minutes<=600)return Math.round(minutes)+' мин';
+  const secs=value.seconds??value.sec??value.s;
+  if(secs!=null&&Number(secs)>0)return Math.ceil(Number(secs)/60)+' мин';
+  for(const key of ['duration','runtime','length','time','value']){
+   const nested=value[key];
+   if(nested!=null&&nested!==value){const d=kpDuration(nested);if(d)return d}
+  }
+  return '';
+ }
+ const raw=String(value).trim();
+ if(!raw||/object Object|\[object/i.test(raw))return '';
+ const hhmm=raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+ if(hhmm){
+  const minutes=hhmm[3]
+   ?Number(hhmm[1])*60+Number(hhmm[2])+Number(hhmm[3])/60
+   :Number(hhmm[1])*60+Number(hhmm[2]);
+  return Math.round(minutes)+' мин';
+ }
+ if(/^\d+(?:\.\d+)?$/.test(raw)){
+  const n=Number(raw);
+  if(n<=0)return '';
+  return (n>600?Math.round(n/60):Math.round(n))+' мин';
+ }
+ return raw.length<=36?raw:'';
+}
+function kpImage(value){
+ if(typeof value==='string')return URL_OK(value)?value:'';
+ if(!value||typeof value!=='object')return '';
+ for(const key of ['big','medium','large','original','full','small','url','poster','src']){
+  const url=value[key];
+  if(typeof url==='string'&&URL_OK(url))return url;
+ }
+ return '';
+}
 function normalizeKp(x){
- const item=x||{},pics=item.posters||item.poster||{},pic=(typeof pics==='string'?pics:(pics.medium||pics.big||pics.small||pics.url||''))||'';
- return {...item,id:item.id,title:item.title||item.name||'',poster:pic,poster_url:pic,
- kind:/serial|series/i.test(String(item.type||''))?'series':'movie',source:'KINOPUB'};
+ const item=x&&typeof x==='object'?x:{};
+ const pics=item.posters||item.poster||item.cover||{};
+ const poster=kpImage(pics);
+ const origId=item.imdb_id||item.imdb||'';
+ const imdbId=/^(?:tt)?\d{5,12}$/i.test(String(origId))?String(origId):'';
+ const kpId=item.kp_id||item.kinopoisk_id||item.kinopoisk||'';
+ const rating=kpRating(item.imdb_rating??item.rating?.imdb??item.rating?.imdb_rating??item.rating);
+ const kp=kpRating(item.kinopoisk_rating??item.kp_rating??item.rating?.kinopoisk??item.rating?.kp);
+ const actorsRaw=Array.isArray(item.actors)?item.actors:(Array.isArray(item.cast)?item.cast:[]);
+ const actor_cards=actorsRaw.slice(0,24).map(p=>{
+  const name=kpLabelRows(p,['name','title','full_name','original_name']);
+  return name?{id:String(p?.id||''),name,search_name:String(p?.original_name||p?.name||name),image:kpImage(p?.photo||p?.poster||p?.image)}:null;
+ }).filter(Boolean);
+ const duration=kpDuration(item.duration||item.runtime||item.suggest_duration);
+ return {...item,
+  id:String(item.id||''),title:String(item.title||item.name||''),
+  original_title:String(item.original_title||''),poster,poster_url:poster,
+  backdrop:kpImage(item.backdrop)||kpImage(item.background),
+  description:String(item.plot||item.description||''),
+  rating,imdb:rating,imdb_id:imdbId,
+  kp,kp_id:String(kpId||''),
+  country:kpLabelRows(item.countries||item.country),
+  genre:kpLabelRows(item.genres||item.genre),
+  director:kpLabelRows(item.directors||item.director,['name','title','full_name']),
+  actors:kpLabelRows(item.actors||item.cast||item.actor,['name','title','full_name']),
+  actor_cards,
+  translation:kpLabelRows(item.translations||item.translation||item.voice),
+  duration,
+  kind:/serial|series|tvshow|docuserial/i.test(String(item.type||''))?'series':'movie',
+  source:'KINOPUB'
+ };
 }
 function extractKp(data){if(Array.isArray(data))return data;for(const k of ['items','data','results','movies','serials'])if(data&&data[k]){const a=extractKp(data[k]);if(a.length)return a}return []}
 function getItemUrl(id){return channelCache.find(x=>String(x.id)===String(id))?.url||''}
+
+
+function kpMediaArray(value){
+ if(Array.isArray(value))return value.filter(x=>x&&typeof x==='object');
+ if(value&&typeof value==='object'){
+  for(const key of ['items','videos','episodes','data']){
+   if(Array.isArray(value[key]))return value[key].filter(x=>x&&typeof x==='object');
+  }
+ }
+ return [];
+}
+function kpMediaRows(item){
+ const rows=[];
+ const videos=kpMediaArray(item.videos);
+ if(videos.length)rows.push({title:videos.length===1?'Фильм':'Видео',items:videos});
+ if(Array.isArray(item.seasons)){
+  for(const [idx,season] of item.seasons.entries()){
+   if(!season||typeof season!=='object')continue;
+   const episodes=kpMediaArray(season.episodes||season.videos);
+   if(episodes.length){
+    const number=season.number??idx+1;
+    rows.push({title:String(season.title||'Сезон '+number),season:number,
+     items:episodes.map(ep=>({...ep,season:ep.season??number}))});
+   }
+  }
+ }
+ if(!rows.length&&Array.isArray(item.files))rows.push({title:'Фильм',items:[item]});
+ return rows.map(row=>({...row,items:row.items.map(m=>({
+  id:m.media_id||m.mid||m.id,number:m.number,season:m.season,
+  title:m.title||m.name,duration:m.duration,watching:m.watching,
+  files:Array.isArray(m.files)?m.files:[],audios:Array.isArray(m.audios)?m.audios:[],
+  subtitles:Array.isArray(m.subtitles)?m.subtitles:[]
+ }))}));
+}
+async function kpItemDetail(itemId){
+ if(!cinemaStatus())return reply({ok:false,error:'kinopub_auth_required'},401);
+ if(!/^\d+$/.test(String(itemId)))return reply({ok:false,error:'bad_item_id'},400);
+ try{
+  const result=await kpCached('/v1/items/'+encodeURIComponent(itemId),{},60000,'item:');
+  const raw=result.item&&typeof result.item==='object'?result.item:result;
+  const item=normalizeKp(raw);
+  const similar=Array.isArray(raw.similar)?raw.similar:(Array.isArray(raw.related)?raw.related:[]);
+  return reply({ok:true,item,media_rows:kpMediaRows(raw),
+   related:similar.slice(0,24).map(normalizeKp)});
+ }catch(e){return reply({ok:false,error:'kinopub_item_unavailable',detail:String(e.message||e).slice(0,140)},502)}
+}
 
 /* KinoPub personal favourites, history, and playback progress.
  * Synced directly to the signed-in individual's KinoPub account, not Railway.
@@ -510,6 +650,7 @@ async function api(path,opts){
     return reply({ok:true,items:list,total:Number(data.total||data.pagination?.total||list.length),has_more:list.length>=perpage});
   }catch(e){return reply({error:String(e.message),items:[]},502)}
  }
+ if(p==='/api/kinopub/item')return kpItemDetail(q.get('id'));
  if(p==='/api/kinopub/overview')return reply({ok:true,movies_total:0,series_total:0});
  if(p==='/api/kinopub/auth/start'||p==='/api/kinopub/auth/poll')return reply({ok:false,error:'Use standalone KinoPub device login in local settings'},400);
  if(p==='/api/cinema/library'||p==='/api/cinema/bookmark-folders'||p==='/api/cinema/progress'||p==='/api/cinema/library/watch')
