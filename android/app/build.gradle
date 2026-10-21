@@ -6,7 +6,8 @@ def webUrl = providers.gradleProperty('WEB_APP_URL').orElse('https://facetalkai-
 def vCode = providers.gradleProperty('APP_VERSION_CODE').orElse('1').get().toInteger()
 def vName = providers.gradleProperty('APP_VERSION_NAME').orElse('1.0.0').get()
 def playStoreBuild = providers.gradleProperty('PLAY_STORE_BUILD').orElse('false').get().toBoolean()
-def appId = providers.gradleProperty('APP_ID').orElse(playStoreBuild ? 'ai.abaj.tv' : 'ai.facetalk.app').get()
+def standaloneBuild = providers.gradleProperty('STANDALONE_BUILD').orElse('false').get().toBoolean()
+def appId = providers.gradleProperty('APP_ID').orElse(standaloneBuild ? 'ai.abaj.tv.standalone' : (playStoreBuild ? 'ai.abaj.tv' : 'ai.facetalk.app')).get()
 def signingStoreFile = providers.gradleProperty('SIGNING_STORE_FILE').orElse('facetalk-upload-key.jks').get()
 def signingStorePassword = providers.gradleProperty('SIGNING_STORE_PASSWORD').orElse('FaceTalk2026').get()
 def signingKeyAlias = providers.gradleProperty('SIGNING_KEY_ALIAS').orElse('facetalk').get()
@@ -24,6 +25,7 @@ android {
         versionName vName
         buildConfigField 'String', 'WEB_APP_URL', '"' + webUrl + '"'
         buildConfigField 'boolean', 'PLAY_STORE_BUILD', playStoreBuild.toString()
+        buildConfigField 'boolean', 'STANDALONE_BUILD', standaloneBuild.toString()
     }
 
     signingConfigs {
