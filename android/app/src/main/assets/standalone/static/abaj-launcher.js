@@ -2,7 +2,7 @@
 (()=>{'use strict';
 const tvAnimationFrameMs=1000/24; // smoother TV motion, heavy film drawing remains disabled
 const css=`
-#abajLauncher{position:fixed;inset:0;z-index:9000;box-sizing:border-box;overflow-y:auto;display:flex;flex-direction:column;padding:18px 28px 28px;color:#f6fbff;background:#020b18 url('/static/launcher-header-20261014.webp') center top / 100% auto no-repeat;font-family:Arial,sans-serif;overscroll-behavior:contain;scrollbar-width:none}
+#abajLauncher{position:fixed;inset:0;z-index:9000;box-sizing:border-box;overflow-y:auto;display:flex;flex-direction:column;padding:18px 28px 28px;color:#f6fbff;background:#020b18 url('static/launcher-header-20261014.webp') center top / 100% auto no-repeat;font-family:Arial,sans-serif;overscroll-behavior:contain;scrollbar-width:none}
 #abajLauncher[hidden],#abajLaunchHome[hidden]{display:none!important}
 #abajLauncher::-webkit-scrollbar{display:none}
 #abajLauncher *{box-sizing:border-box}
@@ -119,7 +119,7 @@ body:has(#tvSettingsModal.open) #abajLauncher .abajLaunchTile{outline:none!impor
 .abajLaunchTile[data-target="iptv"] .abajIptvMotionVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:1;border-radius:inherit}
 .abajLaunchTile[data-target="iptv"].abajIptvVideoReady{background-image:linear-gradient(0deg,#010b19b3,transparent 42%),var(--tile-bg)!important}
 body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajIptvVideoReady .abajIptvMotionVideo{opacity:.82}
-.abajLaunchTile[data-target="settings"].abajGearReady{background-image:linear-gradient(0deg,#010b19b3,transparent 42%),url('/static/launcher-settings-background.webp')!important;background-size:cover,cover!important;background-position:center,center!important}
+.abajLaunchTile[data-target="settings"].abajGearReady{background-image:linear-gradient(0deg,#010b19b3,transparent 42%),url('static/launcher-settings-background.webp')!important;background-size:cover,cover!important;background-position:center,center!important}
 .abajLaunchTile[data-target="settings"].abajGearReady .abajSceneMotion:before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 37% 68% at 75% 42%,#031b34e8 0%,#04203aa8 52%,transparent 100%);opacity:.42}
 .abajLaunchTile[data-target="settings"].abajGearReady .abajSceneGear{display:none}
 .abajLaunchTile[data-target="settings"] .abajGearForeground{display:none;position:absolute;z-index:1;left:55.34%;top:4.39%;width:35.81%;height:69.01%;background:none;pointer-events:none;transform-origin:center center}
@@ -159,12 +159,12 @@ body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"].abajIptvVi
 @media(orientation:landscape) and (max-height:520px){
 #abajLauncher{padding:8px 18px 16px}.abajLaunchTop{min-height:48px}.abajLaunchBrand{font-size:40px}.abajLaunchTitle{font-size:10px;margin:6px 0 12px}.abajLaunchTiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;min-height:180px}.abajLaunchTile,.abajLaunchTile[data-target="settings"]{min-height:180px;padding:14px}.abajLaunchName{font-size:25px}.abajLaunchDesc{font-size:12px}.abajLaunchText{max-width:100%;padding-right:0}#abajLauncher .abajLaunchTile:after,#abajLauncher .abajLaunchTile:before{display:none}
 }
-body:not(.darkMode) #abajLauncher{color:#102b46;background-color:#edf5fc;background-size:100% 34.4vw,104% 34.4vw;background-position:center top,15% top;background-image:linear-gradient(180deg,#edf6ff80 0%,#edf5fca8 70%,#edf5fc 100%),url('/static/launcher-header-20261014.webp')}
+body:not(.darkMode) #abajLauncher{color:#102b46;background-color:#edf5fc;background-size:100% 34.4vw,104% 34.4vw;background-position:center top,15% top;background-image:linear-gradient(180deg,#edf6ff80 0%,#edf5fca8 70%,#edf5fc 100%),url('static/launcher-header-20261014.webp')}
 body:not(.darkMode) #abajLauncher .abajLaunchBrand{color:#103a5c;text-shadow:0 2px 16px #ffffffb3}
 body:not(.darkMode) #abajLauncher .abajLaunchBrand b{color:#008fc8}
 body:not(.darkMode) #abajLauncher .abajLaunchTitle{color:#386681}
 body:not(.darkMode) #abajLauncher .abajLaunchTile{color:#102b46;background-color:#f7fbff;background-image:linear-gradient(0deg,#f7fbff 0%,#f7fbfff7 13%,#f7fbff59 24%,transparent 34%),var(--tile-bg);border-color:#88bddc;box-shadow:inset 0 0 0 1px #ffffffb3,0 7px 24px #245b8226}
-body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="settings"].abajGearReady{background-image:linear-gradient(0deg,#f7fbff 0%,#f7fbfff7 13%,#f7fbff59 24%,transparent 34%),url('/static/launcher-settings-background.webp')!important}
+body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="settings"].abajGearReady{background-image:linear-gradient(0deg,#f7fbff 0%,#f7fbfff7 13%,#f7fbff59 24%,transparent 34%),url('static/launcher-settings-background.webp')!important}
 body:not(.darkMode) #abajLauncher .abajLaunchName{color:#10314d;text-shadow:0 1px 6px #ffffffb3}
 body:not(.darkMode) #abajLauncher .abajLaunchDesc{color:#3e607a;text-shadow:0 1px 4px #ffffffb3}
 body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="iptv"] .abajLaunchName,body:not(.darkMode) #abajLauncher .abajLaunchTile[data-target="settings"] .abajLaunchName{color:#fff;text-shadow:0 2px 7px #00162dcc,0 0 3px #00162d}
@@ -324,7 +324,7 @@ function createSettingsGear(tile,root){
   const scale=Math.max(w/1536,h/797),ox=(w-1536*scale)/2,oy=(h-797*scale)/2;
   gear.style.left=(ox+850*scale)+'px';gear.style.top=(oy+35*scale)+'px';gear.style.width=(550*scale)+'px';gear.style.height=(555*scale)+'px';
  }
- for(const [image,url,w,h] of [[background,'/static/launcher-settings-background.webp',1536,797],[artwork,'/static/launcher-gear-foreground.png',550,555],[source,'/static/launcher-settings-20261014.webp',786,408]]){
+ for(const [image,url,w,h] of [[background,'static/launcher-settings-background.webp',1536,797],[artwork,'static/launcher-gear-foreground.png',550,555],[source,'static/launcher-settings-20261014.webp',786,408]]){
   image.onload=()=>{
    if(failed||!tile.isConnected||!image.naturalWidth||!image.naturalHeight){failed=true;return}
    if(++loaded!==3)return;
@@ -412,7 +412,7 @@ function createFootballScreen(tile,root){
   if(clean.naturalWidth!==134||clean.naturalHeight!==133||!tile.isConnected)return;
   ready=true;tile.insertBefore(canvas,tile.firstChild);sync();
  };
- clean.src='/static/launcher-football-clean-20261015.png';
+ clean.src='static/launcher-football-clean-20261015.png';
  new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['hidden']});
  new MutationObserver(()=>{if(active())draw()}).observe(document.body,{attributes:true,attributeFilter:['class']});
  if(typeof IntersectionObserver!=='undefined')new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;sync()}).observe(tile);
@@ -546,7 +546,7 @@ function createIptvScenes(tile,root){
   if(artwork.naturalWidth!==786||artwork.naturalHeight!==510||!tile.isConnected)return;
   ready=true;tile.insertBefore(canvas,tile.firstChild);sync();
  };
- artwork.src='/static/launcher-iptv-20261014.webp';
+ artwork.src='static/launcher-iptv-20261014.webp';
  new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['hidden']});
  new MutationObserver(()=>{if(active())draw()}).observe(document.body,{attributes:true,attributeFilter:['class']});
  if(typeof ResizeObserver!=='undefined')new ResizeObserver(sync).observe(tile);else window.addEventListener('resize',sync,{passive:true});
@@ -702,7 +702,7 @@ function createCinemaScene(tile,root){
   }
   ready=true;tile.insertBefore(canvas,tile.firstChild);tile.classList.add('abajCinemaSceneReady');sync();
  };
- artwork.src='/static/launcher-cinema-20261014.webp';
+ artwork.src='static/launcher-cinema-20261014.webp';
  new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['hidden']});
  new MutationObserver(()=>{if(active()&&!reduced.matches)draw()}).observe(document.body,{attributes:true,attributeFilter:['class']});
  if(typeof ResizeObserver!=='undefined')new ResizeObserver(sync).observe(tile);
@@ -716,7 +716,7 @@ function createCinemaScene(tile,root){
 function start(){
 if(document.getElementById('abajLauncher'))return;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
-const root=document.createElement('section');root.id='abajLauncher';root.setAttribute('aria-label','ABAJ TV — главная');root.innerHTML=`<div class="abajLaunchTop"><div class="abajLaunchBrand">ABAJ<b>TV</b></div></div><div class="abajLaunchTitle">ВАШ МИР КИНО И ТЕЛЕВИДЕНИЯ</div><div class="abajLaunchTiles"><button class="abajLaunchTile" data-target="cinema" style="--tile-bg:url('/static/launcher-cinema-20261014.webp')"><span class="abajLaunchIcon">🎞</span><span class="abajLaunchText"><span class="abajLaunchName">Кинотеатр</span><span class="abajLaunchDesc">Фильмы, сериалы, мультфильмы</span></span></button><button class="abajLaunchTile" data-target="iptv" style="--tile-bg:url('/static/launcher-iptv-20261014.webp')"><span class="abajLaunchIcon">▣</span><span class="abajLaunchText"><span class="abajLaunchName">IPTV</span><span class="abajLaunchDesc">Каналы и прямые эфиры</span></span></button><button class="abajLaunchTile" data-target="media" style="--tile-bg:url('/static/launcher-media.svg')"><span class="abajLaunchText"><span class="abajLaunchName">Медиа</span><span class="abajLaunchDesc">Ваши фото, видео и облака</span></span></button><button class="abajLaunchTile" data-target="settings" style="--tile-bg:url('/static/launcher-settings-20261014.webp')"><span class="abajLaunchIcon">⚙</span><span class="abajLaunchText"><span class="abajLaunchName">Настройки</span><span class="abajLaunchDesc">Параметры и управление</span></span></button></div><div class="abajLaunchFoot"></div>`;
+const root=document.createElement('section');root.id='abajLauncher';root.setAttribute('aria-label','ABAJ TV — главная');root.innerHTML=`<div class="abajLaunchTop"><div class="abajLaunchBrand">ABAJ<b>TV</b></div></div><div class="abajLaunchTitle">ВАШ МИР КИНО И ТЕЛЕВИДЕНИЯ</div><div class="abajLaunchTiles"><button class="abajLaunchTile" data-target="cinema" style="--tile-bg:url('static/launcher-cinema-20261014.webp')"><span class="abajLaunchIcon">🎞</span><span class="abajLaunchText"><span class="abajLaunchName">Кинотеатр</span><span class="abajLaunchDesc">Фильмы, сериалы, мультфильмы</span></span></button><button class="abajLaunchTile" data-target="iptv" style="--tile-bg:url('static/launcher-iptv-20261014.webp')"><span class="abajLaunchIcon">▣</span><span class="abajLaunchText"><span class="abajLaunchName">IPTV</span><span class="abajLaunchDesc">Каналы и прямые эфиры</span></span></button><button class="abajLaunchTile" data-target="media" style="--tile-bg:url('static/launcher-media.svg')"><span class="abajLaunchText"><span class="abajLaunchName">Медиа</span><span class="abajLaunchDesc">Ваши фото, видео и облака</span></span></button><button class="abajLaunchTile" data-target="settings" style="--tile-bg:url('static/launcher-settings-20261014.webp')"><span class="abajLaunchIcon">⚙</span><span class="abajLaunchText"><span class="abajLaunchName">Настройки</span><span class="abajLaunchDesc">Параметры и управление</span></span></button></div><div class="abajLaunchFoot"></div>`;
 root.querySelectorAll('.abajLaunchTile').forEach(tile=>{const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('class','abajFocusOrbit');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');const defs=document.createElementNS(ns,'defs'),gradient=document.createElementNS(ns,'linearGradient');gradient.setAttribute('id','abajLaunchRainbow');gradient.setAttribute('x1','0%');gradient.setAttribute('y1','0%');gradient.setAttribute('x2','100%');gradient.setAttribute('y2','100%');const spin=document.createElementNS(ns,'animateTransform');spin.setAttribute('attributeName','gradientTransform');spin.setAttribute('type','rotate');spin.setAttribute('from','0 0.5 0.5');spin.setAttribute('to','360 0.5 0.5');spin.setAttribute('dur','3s');spin.setAttribute('repeatCount','indefinite');gradient.setAttribute('gradientUnits','objectBoundingBox');gradient.appendChild(spin);for(const [offset,color] of [['0%','#22dfff'],['30%','#67f6a4'],['55%','#ffe46d'],['78%','#ff77c7'],['100%','#25dfff']]){const stop=document.createElementNS(ns,'stop');stop.setAttribute('offset',offset);stop.setAttribute('stop-color',color);gradient.appendChild(stop)}defs.appendChild(gradient);svg.appendChild(defs);for(const runner of [false,true]){const rect=document.createElementNS(ns,'rect');rect.setAttribute('x','0.35');rect.setAttribute('y','0.35');rect.setAttribute('width','99.3');rect.setAttribute('height','99.3');rect.setAttribute('rx','5');rect.setAttribute('ry','5');rect.setAttribute('pathLength','100');if(runner)rect.setAttribute('class','abajOrbitRunner');svg.appendChild(rect)}tile.appendChild(svg)});
 
 document.body.appendChild(root);
