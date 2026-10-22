@@ -102,6 +102,10 @@ body:has(#tvSettingsModal.open) #abajLauncher .abajLaunchTile{outline:none!impor
 .abajCinemaScene[hidden],.abajIptvScenes[hidden]{display:none}
 .abajIptvScenes{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
 .abajCinemaSceneReady .abajSceneSun{display:none}
+#abajLauncher .abajLaunchTile[data-target="cinema"] .abajPopcornSpark{position:absolute;width:7px;height:7px;border-radius:2px 5px 4px 5px;background:#fff1c4;box-shadow:0 0 5px #ffdc9866;opacity:0;pointer-events:none;animation:abajPopcornLeap 3.4s ease-out infinite;animation-delay:var(--kernel-delay,0s)}
+@keyframes abajPopcornLeap{0%,12%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(.6);opacity:0}19%{opacity:.9}38%{transform:translate3d(-8px,-24px,0) rotate(95deg) scale(.95);opacity:.86}63%{transform:translate3d(-17px,-40px,0) rotate(220deg) scale(.75);opacity:.35}76%{transform:translate3d(-21px,-45px,0) rotate(300deg) scale(.55);opacity:0}}
+#abajLauncher[hidden] .abajPopcornSpark{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){#abajLauncher .abajPopcornSpark{animation:none!important;opacity:0!important}}
 .abajLaunchTile[data-target="iptv"] .abajSceneWater{left:47%;top:37%;width:18%;height:17%;border-radius:50%;background:radial-gradient(ellipse,#64d9ff25,transparent 72%);mix-blend-mode:screen;animation:abajWaterSwim 9s ease-in-out infinite alternate}
 /* Subtle blue TV backlight, confined to the right-side TV artwork. */
 .abajLaunchTile[data-target="iptv"] .abajTvBacklight{position:absolute;z-index:2;left:45%;top:1%;width:53%;height:70%;pointer-events:none;background:radial-gradient(ellipse 70% 56% at 64% 42%,rgba(14,150,255,.35) 0%,rgba(0,100,225,.17) 49%,transparent 80%);mix-blend-mode:screen;opacity:.38;will-change:opacity;animation:abajTvBacklightBreathe 5.5s ease-in-out infinite alternate}
@@ -637,7 +641,7 @@ function createCinemaScene(tile,root){
   glow.addColorStop(0,'rgba(255,247,171,.95)');glow.addColorStop(.22,'rgba(255,211,87,.62)');glow.addColorStop(1,'rgba(255,165,42,0)');
   ctx.globalAlpha=.5+strength*.5;ctx.fillStyle=glow;ctx.fillRect(277,sunY-48,96,96);
   ctx.beginPath();ctx.arc(325,sunY,8.5,0,Math.PI*2);ctx.fillStyle='#fffbd3';ctx.fill();ctx.restore();
-  if(document.body.classList.contains('nativeTv'))drawFilmTv(t);else drawFilm(t);
+  drawFilmTv(t);
   for(const k of kernels){
    const phase=((t+k.delay)%k.period)/k.period;
    if(phase>.58)continue;
@@ -667,6 +671,7 @@ function createCinemaScene(tile,root){
  }
  artwork.onload=()=>{
   if(artwork.naturalWidth!==786||artwork.naturalHeight!==506||!tile.isConnected)return;
+  try{
   sky.width=630;sky.height=150;skyCtx.drawImage(artwork,0,0);
   // Replace the photographed sun once; the moving disk is clipped by the mountain ridge.
   const pixels=skyCtx.getImageData(0,0,630,150),data=pixels.data;
@@ -701,7 +706,9 @@ function createCinemaScene(tile,root){
    shots.forEach(([x,y,w,h],i)=>filmCtx.drawImage(artwork,x,y,w,h,i*48+2,0,44,32));
   }
   ready=true;tile.insertBefore(canvas,tile.firstChild);tile.classList.add('abajCinemaSceneReady');sync();
+  }catch(error){console.warn('ABAJ cinema scene fallback',error);canvas.remove();tile.classList.remove('abajCinemaSceneReady');}
  };
+ artwork.onerror=()=>{tile.classList.remove('abajCinemaSceneReady')};
  artwork.src='static/launcher-cinema-20261014.webp';
  new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['hidden']});
  new MutationObserver(()=>{if(active()&&!reduced.matches)draw()}).observe(document.body,{attributes:true,attributeFilter:['class']});
@@ -725,6 +732,13 @@ const motion=document.createElement('span');motion.className='abajSceneMotion';m
 const accent=document.createElement('i');accent.className=tile.dataset.target==='cinema'?'abajSceneSun':tile.dataset.target==='iptv'?'abajSceneWater':'abajSceneGear';
 motion.appendChild(accent);
 if(tile.dataset.target==='iptv'){const backlight=document.createElement('i');backlight.className='abajTvBacklight';motion.appendChild(backlight);}
+if(tile.dataset.target==='cinema'){
+ for(const [left,top,delay] of [[71,40,-.3],[76,36,-1.4],[81,42,-2.4],[84,37,-.9]]){
+  const spark=document.createElement('i');spark.className='abajPopcornSpark';
+  spark.style.cssText='left:'+left+'%;top:'+top+'%;--kernel-delay:'+delay+'s';
+  motion.appendChild(spark);
+ }
+}
 tile.insertBefore(motion,tile.firstChild);
 }
 createCinemaScene(root.querySelector('[data-target="cinema"]'),root);
