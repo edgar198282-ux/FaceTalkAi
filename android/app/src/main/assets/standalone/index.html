@@ -5999,10 +5999,12 @@ async function load(){
     const edemStatusPromise=fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'})
       .then(async r=>r.ok?await r.json():{active:false,configured:false})
       .catch(()=>({active:false,configured:false}));
-    const mainPromise=fetch('/api/iptv/channels?compact=1&fast=1',{cache:'no-store'}).then(async r=>{
-      if(!r.ok)throw new Error('channels '+r.status);
-      return await r.json();
-    });
+    const mainPromise=window.ABAJ_STANDALONE&&typeof window.abajStandaloneGetIptvChannels==='function'
+      ?window.abajStandaloneGetIptvChannels().then(rows=>({channels:rows,stats:{offline:0},running:false}))
+      :fetch('/api/iptv/channels?compact=1&fast=1',{cache:'no-store'}).then(async r=>{
+        if(!r.ok)throw new Error('channels '+r.status);
+        return await r.json();
+      });
     const edemPromise=fetch('/api/iptv/edem/channels',{headers:authHeaders(),cache:'no-store'}).then(async r=>{
       if(!r.ok)return {channels:[]};
       return await r.json();
@@ -6026,7 +6028,8 @@ async function load(){
       }
     }
     if(window.ABAJ_STANDALONE&&generation!==window.__abajStandaloneLoadGen)return;
-    let base=(d.channels||[]).filter(x=>{
+    const allBuiltIn=Array.isArray(d.channels)?d.channels:[];
+    let base=allBuiltIn.filter(x=>{
       const key=(String(x&&x.name||'')+' '+String(x&&x.tvg_id||'')).toLowerCase();
       if(key.includes('shoghakat')||key.includes('շողակաթ'))return false;
       return x.status==='ONLINE'&&(!tvHideUnreliable||!x.unreliable);
@@ -10666,7 +10669,11 @@ function cinemaLazyContentKind(item){
 }
 function cinemaLazyFilterType(items,type){
   const wanted=type==='series'?'series':'movies';
-  return (Array.isArray(items)?items:[]).filter(item=>cinemaLazyContentKind(item)===wanted);
+  return (Array.isArray(items)?items:[]).filter(item=>{
+    const known=cinemaLazyContentKind(item);
+    if(known)return known===wanted;
+    return wanted==='movies';
+  });
 }
 function cinemaRank(items,type){
   const rows=cinemaSource==='lazy'&&window.ABAJ_STANDALONE
@@ -10839,7 +10846,12 @@ async function searchCinemaLazyMedia(raw){
     }
   }
   merged.sort((a,b)=>cinemaYear(b)-cinemaYear(a));
-  const visible=cinemaSource==='lazy'&&window.ABAJ_STANDALONE?cinemaLazyFilterType(merged,cinemaType):merged;
+  const visible=cinemaSource==='lazy'&&window.ABAJ_STANDALONE
+    ?merged.filter(item=>{
+      const kind=cinemaLazyContentKind(item);
+      return kind?kind===cinemaType:cinemaType==='movies'||(cinemaType==='series'&&q.length>0);
+    }).map(item=>cinemaLazyContentKind(item)?item:{...item,kind:cinemaType})
+    :merged;
   renderCinemaCatalog(visible.slice(0,100),{search:true});
   if(status)status.textContent=visible.length?('Найдено '+visible.length):'Ничего не найдено';
 }
@@ -12039,12 +12051,18 @@ async function loadCinemaCatalog(force=false){
     const queries=requestedType==='series'?['','сериал']:['','фильм'];
     const batches=await Promise.all(queries.map(q=>withTimeout(lazyMediaSearchAsync(q),6500,[]).catch(()=>[])));
     if(loadSeq!==cinemaLazyLoadSeq||cinemaSource!=='lazy'||cinemaType!==requestedType)return;
-    for(const rows of batches){
-      for(const item of cinemaLazyFilterType(rows,requestedType)){
+    for(let batchIndex=0;batchIndex<batches.length;batchIndex++){
+      const targeted=batchIndex>0;
+      const items=Array.isArray(batches[batchIndex])?batches[batchIndex]:[];
+      for(const raw of items){
+        if(!raw)continue;
+        const inferred=cinemaLazyContentKind(raw);
+        if(inferred&&inferred!==requestedType)continue;
+        if(!inferred&&requestedType==='series'&&!targeted)continue;
+        const item=inferred?raw:{...raw,kind:requestedType};
         const key=String(item.intent||item.id||item.title||'');
         if(!key||seen.has(key))continue;
-        seen.add(key);
-        all.push(item);
+        seen.add(key);all.push(item);
       }
     }
     const merged=cinemaRank(all,requestedType);
