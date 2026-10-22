@@ -10618,10 +10618,10 @@ function standaloneLazyPlaybackUnavailable(item){
 }
 function standaloneLazyPlaybackMessage(){
   return appLang==='en'
-    ?'Select the video in LazyMedia, then choose ABAJ TV Standalone as the external player to return here.'
+    ?'Choose a source, dub, season, episode and quality. Playback inside ABAJ TV requires the provider to supply an actual playable URL.'
     :appLang==='hy'
-      ?'Ընտրեք տեսանյութը LazyMedia-ում, ապա որպես արտաքին նվագարկիչ ընտրեք ABAJ TV Standalone՝ այստեղ դիտելու համար։'
-      :'Выберите видео в LazyMedia, затем внешний плеер «ABAJ TV Standalone». Воспроизведение откроется здесь.';
+      ?'Ընտրեք աղբյուրը, հնչյունավորումը, սեզոնը, սերիան և որակը։ ABAJ TV-ում դիտումը հնարավոր է, եթե աղբյուրը վերադարձնում է տեսահղում։'
+      :'Выберите источник, озвучку, сезон, серию и качество. Просмотр внутри ABAJ TV возможен, если источник передаёт прямую видеоссылку.';
 }
 function standaloneLazyOpenArticle(item){
   if(!window.ABAJ_STANDALONE||!getLazyMediaInfo().installed)return false;
@@ -15086,7 +15086,7 @@ async function watchCinemaDetail(){
       const err=document.getElementById('cinemaDetailError');
       if(err){err.textContent='Не удалось получить видеоисточники LazyMedia.';err.style.display='block';}
     }finally{
-      if(watchBtn){watchBtn.disabled=false;watchBtn.textContent='ПРОВЕРИТЬ ИСТОЧНИКИ';}
+      if(watchBtn){watchBtn.disabled=false;watchBtn.textContent='ВЫБРАТЬ ВИДЕО';}
     }
     return;
   }
