@@ -6198,7 +6198,13 @@ async function load(){
       }
     }
   }catch(e){
-    if(!channels.length)document.getElementById('status').textContent=(UI_TEXT[appLang]||UI_TEXT.ru).loadError;
+    console.error('ABAJ IPTV load',e);
+    if(window.ABAJ_STANDALONE&&channels.length){
+      try{renderStandaloneIptvFallback(String(e?.message||e))}catch(inner){console.error('IPTV fallback',inner)}
+    }else{
+      const status=document.getElementById('status');
+      if(status)status.textContent=(UI_TEXT[appLang]||UI_TEXT.ru).loadError;
+    }
   }
 }
 function toggleCountryFilters(){
