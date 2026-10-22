@@ -2879,6 +2879,7 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
 <div class="settingsModal" id="tvSettingsModal" onclick="if(event.target===this)closeTvSettings()">
   <div class="settingsCard">
     <div class="settingsTitle" id="settingsTitle">⚙ Настройки</div>
+    <button type="button" class="settingsAction" id="standaloneUpdateBtn" onclick="manualAppUpdate()" style="width:100%;min-height:46px;margin:0 0 10px;border:0;border-radius:14px;background:#0b77bd;color:#fff;font-size:16px;font-weight:800">🔄 Проверить обновление</button>
     <button class="settingsAction" id="settingsAdminBtn" onclick="openAdminFromTvSettings()" style="display:none;background:#0b5f9e">🛠 Админ-панель</button>
     <button id="activationBotLink" onclick="openActivationBot()" style="width:100%;border:0;border-radius:14px;background:#0d87e7;color:#fff;padding:12px 14px;margin:0 0 10px;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px">
       🤖 Для активации переходите в бот @FaceTalkID_bot
@@ -4696,6 +4697,8 @@ function paintTvSettings(){
   const appearanceLight=document.getElementById('appearanceLightBtn');
   const appearanceDark=document.getElementById('appearanceDarkBtn');
   const activationBotLink=document.getElementById('activationBotLink');
+  const updateBtn=document.getElementById('standaloneUpdateBtn');
+  if(updateBtn)updateBtn.textContent=appLang==='hy'?'🔄 Ստուգել թարմացումը':appLang==='en'?'🔄 Check for update':'🔄 Проверить обновление';
   if(auto)auto.textContent=(tvAutoStartLast?'✓ ':'✕ ')+t.auto;
   if(bad)bad.textContent=(tvHideUnreliable?'✓ ':'✕ ')+t.hide;
   if(adult){
