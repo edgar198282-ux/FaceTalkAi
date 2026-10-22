@@ -120,6 +120,40 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   assert.equal(ui.sceneVisible,true);
   assert.equal(ui.noEmptyEpgText,true);
   assert.equal(ui.noEmptyEpgRows,true);
+  const settingsBefore=await page.evaluate(()=>{
+    window.abajStandaloneOpenSources();
+    const config=document.getElementById('standaloneConfig');
+    const iptv=config.querySelector('.standaloneIptvSection');
+    const kp=config.querySelector('.standaloneKpSection');
+    const refresh=config.querySelector('#standaloneRefresh');
+    const epg=config.querySelector('#standaloneBuiltinEpgCount');
+    const info=config.querySelector('#standaloneBuiltinIptvStatus');
+    return {
+      epg:epg.textContent,
+      channelCount:info.textContent,
+      refreshInsideIptv:iptv.contains(refresh),
+      refreshOutsideKp:!kp.contains(refresh),
+      sectionColorsDistinct:getComputedStyle(iptv).backgroundColor!==getComputedStyle(kp).backgroundColor,
+      epgUnderCount:!!(info.compareDocumentPosition(epg)&Node.DOCUMENT_POSITION_FOLLOWING)
+    };
+  });
+  assert.equal(settingsBefore.epg,'EPG: 1');
+  assert.match(settingsBefore.channelCount,/каналов/);
+  assert.equal(settingsBefore.refreshInsideIptv,true);
+  assert.equal(settingsBefore.refreshOutsideKp,true);
+  assert.equal(settingsBefore.sectionColorsDistinct,true);
+  assert.equal(settingsBefore.epgUnderCount,true);
+  const settingsAfter=await page.evaluate(()=>{
+    const now=Math.floor(Date.now()/1000);
+    window.__abajStandaloneEpgUpdate({country:'AM',updated:now,channels:[
+      {id:'test0.am',names:['Test 0'],now:{start:now-30,stop:now+300,title:'News 0'}},
+      {id:'test1.am',names:['Test 1'],now:{start:now-30,stop:now+300,title:'News 1'}}
+    ]});
+    return document.getElementById('standaloneBuiltinEpgCount').textContent;
+  });
+  assert.equal(settingsAfter,'EPG: 2');
+  await page.evaluate(()=>document.getElementById('standaloneClose').click());
+
 
   const lazy=await page.evaluate(async()=>{
    cinemaSource='lazy';cinemaPlaybackAllowed=true;
