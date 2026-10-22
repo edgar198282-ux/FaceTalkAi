@@ -79,7 +79,31 @@ const builtinIptvSeed=BUILTIN_IPTV_OFFICIAL.filter(x=>x&&URL_OK(x.url)).map((x,i
  tvg_id:x.tvg_id||'',country:x.country||'',quality:x.quality||'',height:x.height||0,
  status:'ONLINE',provider:'IPTV',playlist_id:'free',personal:false,adult:!!x.adult
 }));
-const iptvName=n=>String(n||'').toLocaleLowerCase('ru').replace(/\s*(?:\((?:2160p|1080p|720p|4k|uhd|fhd|hd|sd)\)|\b(?:2160p|1080p|720p|4k|uhd|fhd|hd|sd)\b)\s*$/gi,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+const iptvName=n=>String(n||'').normalize('NFKC').toLocaleLowerCase('ru')
+ .replace(/ё/g,'е')
+ .replace(/[\[(]\s*(?:not\s*24\s*\/\s*7|(?:2160|1080|720|576|540|480|360)p|4k|uhd|fhd|full\s*hd|hd|sd)\s*[\])]/gi,' ')
+ .replace(/(?:^|\s)(?:2160p|1080p|720p|576p|540p|480p|360p|4k|uhd|fhd|full\s*hd|hd|sd)(?=\s|$)/gi,' ')
+ .replace(/[^\p{L}\p{N}+]+/gu,' ').replace(/\s+/g,' ').trim();
+const iptvQualityHeight=x=>{
+ const listed=String(x.name||'').match(/(?:^|[\s([])(2160p|1080p|720p|576p|540p|480p|360p|4k|uhd|fhd|full\s*hd|hd|sd)(?=$|[\s)\]])/i)?.[1]?.toUpperCase().replace(/\s+/g,'')||'';
+ const quality=listed||String(x.quality||'').toUpperCase();
+ const measured=Number(x.height)||0;
+ const nominal=/2160P|4K|UHD/.test(quality)?2160:
+  /1080P|FHD|FULLHD/.test(quality)?1080:
+  /720P|^HD$/.test(quality)?720:
+  /576P/.test(quality)?576:/540P/.test(quality)?540:
+  /480P/.test(quality)?480:/360P/.test(quality)?360:/^SD$/.test(quality)?480:0;
+ return Math.max(measured,nominal);
+};
+const iptvQualityScore=x=>[
+ String(x.status||'ONLINE').toUpperCase()==='OFFLINE'?0:1,
+ iptvQualityHeight(x),Boolean(x.tvg_id)?1:0,Boolean(x.logo)?1:0
+];
+const iptvIsBetter=(candidate,previous)=>{
+ const a=iptvQualityScore(candidate),b=iptvQualityScore(previous);
+ for(let i=0;i<a.length;i++)if(a[i]!==b[i])return a[i]>b[i];
+ return false;
+};
 function iptvHash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)}
 const BUILTIN_IPTV_COUNTRIES=new Set(['AM','RU']);
 function mergeBuiltinIptv(rows){
@@ -87,26 +111,33 @@ function mergeBuiltinIptv(rows){
  for(const raw of rows){
   const item=raw&&URL_OK(raw.url)?raw:raw?.[1];
   if(!item||!URL_OK(item.url)||!String(item.name||'').trim())continue;
-  if(!BUILTIN_IPTV_COUNTRIES.has(String(item.country||'').toUpperCase()))continue;
-  const k=(String(item.country||'')+'|'+iptvName(item.name)).toLowerCase();
-  if(k.endsWith('|'))continue;
-  const previous=selected.get(k);
-  if(!previous){selected.set(k,item);continue}
-  const score=x=>Number(x.height||0)+(x.logo?400:0)+(x.quality==='4K'?5000:x.quality==='FHD'?3000:x.quality==='HD'?2000:0);
-  const best=score(item)>score(previous)?item:previous,other=best===item?previous:item;
+  const country=String(item.country||'').toUpperCase();
+  if(!BUILTIN_IPTV_COUNTRIES.has(country))continue;
+  const key=country+'|'+iptvName(item.name);
+  if(key.endsWith('|'))continue;
+  const previous=selected.get(key);
+  if(!previous){
+   selected.set(key,{...item,backups:Array.isArray(item.backups)?[...item.backups]:[]});
+   continue;
+  }
+  const replace=iptvIsBetter(item,previous);
+  const best=replace?{...item}:previous;
+  const other=replace?previous:item;
   const backups=new Set([...(best.backups||[]),other.url,...(other.backups||[])]);
-  best.backups=[...backups].filter(u=>URL_OK(u)&&u!==best.url).slice(0,6);
+  best.backups=[...backups].filter(u=>URL_OK(u)&&u!==best.url).slice(0,12);
   if(!best.logo)best.logo=other.logo||'';
-  selected.set(k,best);
+  if(!best.tvg_id)best.tvg_id=other.tvg_id||'';
+  if(!best.group||best.group==='General')best.group=other.group||best.group;
+  selected.set(key,best);
  }
- return [...selected.values()].map(x=>({...x,id:'free:'+iptvHash((String(x.country||'')+'|'+iptvName(x.name)).toLowerCase()),provider:'IPTV',playlist_id:'free',personal:false}));
+ return [...selected.entries()].map(([key,x])=>({
+  ...x,id:'free:'+iptvHash(key.toLowerCase()),provider:'IPTV',playlist_id:'free',personal:false
+ }));
 }
 function builtinFromM3u(raw,country){
  return parseM3U(raw,'IPTV','free',country).map(x=>{
-  const attr=(x.name+' '+x.group).match(/\b(4k|2160p|fhd|1080p|hd|720p)\b/i);
-  const q=(attr?.[1]||'').toUpperCase();
-  const quality=/4K|2160P/.test(q)?'4K':/FHD|1080P/.test(q)?'FHD':/HD|720P/.test(q)?'HD':'';
-  const height=quality==='4K'?2160:quality==='FHD'?1080:quality==='HD'?720:0;
+  const height=iptvQualityHeight(x);
+  const quality=height>=2160?'4K':height>=1080?'FHD':height>=720?'HD':'';
   const adult=/(?:^|[\W_])(xxx|adult|erotic|porn|18\+|порно|взрослые)(?:$|[\W_])/i.test(x.name+' '+x.group);
   return {...x,country:country==='HQ'?'':country,quality,height,adult,personal:false,provider:'IPTV'};
  });
