@@ -15,6 +15,8 @@ function setup(options={}){
  };
  class FakeElement{
   constructor(){this.children=[];this.style={};this.value='';this.hidden=false;this.dataset={};this.textContent='';this._html='';}
+  set id(value){this._id=String(value);if(value)elements.set(this._id,this)}
+  get id(){return this._id||''}
   set innerHTML(v){
    this._html=String(v);
    for(const m of this._html.matchAll(/\bid="([^"]+)"/g))
