@@ -221,6 +221,7 @@ public class MainActivity extends Activity {
     private SharedPreferences prefs; private boolean telegramLaunchAttempted=false; private boolean isTv=false; private long lastTvBackAt=0L;
     private long pendingApkDownloadId=-1L; private Uri pendingApkUri; private BroadcastReceiver downloadReceiver;
     private volatile boolean updateCheckRunning=false, updateDownloadRunning=false; private long lastUpdateCheckAt=0L;
+    private volatile String expectedStandaloneApkSha256="";
     private final Handler updateHandler=new Handler(Looper.getMainLooper());
     private final ScheduledExecutorService tvWatchdogExecutor=Executors.newSingleThreadScheduledExecutor();
     private volatile long lastWebHeartbeatAt=System.currentTimeMillis();
@@ -3198,7 +3199,84 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void checkForAppUpdate(boolean force,boolean showResult){if(BuildConfig.STANDALONE_BUILD)return; String b=baseUrl(); if(b.isEmpty()||updateCheckRunning||updateDownloadRunning)return; long n=System.currentTimeMillis(); if(!force&&n-lastUpdateCheckAt<60000L)return; lastUpdateCheckAt=n;updateCheckRunning=true; new Thread(()->{HttpURLConnection c=null;try{URL u=new URL(b+"/api/app-release?ts="+System.currentTimeMillis());c=(HttpURLConnection)u.openConnection();c.setConnectTimeout(10000);c.setReadTimeout(10000);c.setUseCaches(false);c.setRequestProperty("Cache-Control","no-cache");int http=c.getResponseCode();if(http!=200)throw new IllegalStateException("HTTP "+http);BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream()));StringBuilder sb=new StringBuilder();String line;while((line=br.readLine())!=null)sb.append(line);br.close();JSONObject j=new JSONObject(sb.toString());boolean available=j.optBoolean("available",false);int latest=j.optInt("version_code",0);String download=j.optString("download_url",""); if(!available||latest<=0||download.isEmpty()){if(showResult)runOnUiThread(()->Toast.makeText(this,"Новая APK ещё не опубликована на сервер обновлений",Toast.LENGTH_LONG).show());return;} if(latest<=BuildConfig.VERSION_CODE){if(showResult)runOnUiThread(()->Toast.makeText(this,"Установлена последняя версия",Toast.LENGTH_LONG).show());return;} if(!showResult){
+    
+    private String sha256File(File file) throws Exception {
+        java.security.MessageDigest digest=java.security.MessageDigest.getInstance("SHA-256");
+        try(InputStream in=new java.io.FileInputStream(file)){
+            byte[] buf=new byte[65536];
+            int n;
+            while((n=in.read(buf))>=0)if(n>0)digest.update(buf,0,n);
+        }
+        StringBuilder hex=new StringBuilder(64);
+        for(byte b:digest.digest())hex.append(String.format(java.util.Locale.US,"%02x",b&0xff));
+        return hex.toString();
+    }
+    private void checkStandaloneUpdate(boolean showResult){
+        if(updateCheckRunning||updateDownloadRunning)return;
+        final long now=System.currentTimeMillis();
+        if(!showResult&&now-lastUpdateCheckAt<30L*60L*1000L)return;
+        lastUpdateCheckAt=now;
+        updateCheckRunning=true;
+        new Thread(()->{
+            HttpURLConnection c=null;
+            try{
+                URL u=new URL("https://api.github.com/repos/edgar198282-ux/FaceTalkAi/releases/tags/abajtv-standalone-latest");
+                c=(HttpURLConnection)u.openConnection();
+                c.setConnectTimeout(12000);
+                c.setReadTimeout(15000);
+                c.setRequestProperty("Accept","application/vnd.github+json");
+                c.setRequestProperty("User-Agent","ABAJ-TV-Standalone/"+BuildConfig.VERSION_NAME);
+                c.setRequestProperty("Cache-Control","no-cache");
+                if(c.getResponseCode()!=200)throw new IOException("GitHub HTTP "+c.getResponseCode());
+                StringBuilder body=new StringBuilder();
+                try(BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream()))){
+                    String line;
+                    while((line=br.readLine())!=null&&body.length()<100000)body.append(line);
+                }
+                JSONObject release=new JSONObject(body.toString());
+                org.json.JSONArray assets=release.optJSONArray("assets");
+                JSONObject apkAsset=null;
+                if(assets!=null)for(int i=0;i<assets.length();i++){
+                    JSONObject item=assets.optJSONObject(i);
+                    if(item!=null&&"AbajTV-Standalone.apk".equals(item.optString("name",""))){
+                        apkAsset=item;break;
+                    }
+                }
+                if(apkAsset==null)throw new IOException("APK отсутствует в релизе");
+                String digest=apkAsset.optString("digest","").toLowerCase(java.util.Locale.US);
+                if(!digest.matches("sha256:[0-9a-f]{64}"))throw new IOException("GitHub не предоставил SHA256");
+                final String target="https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-standalone-latest/AbajTV-Standalone.apk";
+                if(!target.equals(apkAsset.optString("browser_download_url","")))throw new IOException("Неверная ссылка релиза");
+                String currentSha=prefs.getString("standalone_local_apk_sha_"+BuildConfig.VERSION_CODE,"");
+                if(!currentSha.matches("[0-9a-f]{64}")){
+                    currentSha=sha256File(new File(getApplicationInfo().sourceDir));
+                    prefs.edit().putString("standalone_local_apk_sha_"+BuildConfig.VERSION_CODE,currentSha).apply();
+                }
+                if(digest.substring(7).equalsIgnoreCase(currentSha)){
+                    if(showResult)runOnUiThread(()->Toast.makeText(this,"ABAJ TV уже обновлён",Toast.LENGTH_LONG).show());
+                    return;
+                }
+                long lastPrompt=prefs.getLong("standalone_update_attempt_at",0L);
+                String lastDigest=prefs.getString("standalone_update_attempt_digest","");
+                if(!showResult&&digest.equals(lastDigest)&&now-lastPrompt<24L*60L*60L*1000L)return;
+                expectedStandaloneApkSha256=digest.substring(7);
+                prefs.edit().putLong("standalone_update_attempt_at",now).putString("standalone_update_attempt_digest",digest).apply();
+                runOnUiThread(()->{
+                    if(!isFinishing()&&!updateDownloadRunning){
+                        if(activityResumed)Toast.makeText(this,"Найдена новая ABAJ TV. Загружаю APK…",Toast.LENGTH_LONG).show();
+                        downloadAndInstallApk(target);
+                    }
+                });
+            }catch(Exception ex){
+                Log.w("AbajStandaloneUpdate","Update check failed",ex);
+                if(showResult)runOnUiThread(()->Toast.makeText(this,"Не удалось проверить обновления GitHub",Toast.LENGTH_LONG).show());
+            }finally{
+                updateCheckRunning=false;
+                if(c!=null)c.disconnect();
+            }
+        },"abaj-standalone-update").start();
+    }
+    private void checkForAppUpdate(boolean force,boolean showResult){if(BuildConfig.STANDALONE_BUILD){checkStandaloneUpdate(showResult);return;} String b=baseUrl(); if(b.isEmpty()||updateCheckRunning||updateDownloadRunning)return; long n=System.currentTimeMillis(); if(!force&&n-lastUpdateCheckAt<60000L)return; lastUpdateCheckAt=n;updateCheckRunning=true; new Thread(()->{HttpURLConnection c=null;try{URL u=new URL(b+"/api/app-release?ts="+System.currentTimeMillis());c=(HttpURLConnection)u.openConnection();c.setConnectTimeout(10000);c.setReadTimeout(10000);c.setUseCaches(false);c.setRequestProperty("Cache-Control","no-cache");int http=c.getResponseCode();if(http!=200)throw new IllegalStateException("HTTP "+http);BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream()));StringBuilder sb=new StringBuilder();String line;while((line=br.readLine())!=null)sb.append(line);br.close();JSONObject j=new JSONObject(sb.toString());boolean available=j.optBoolean("available",false);int latest=j.optInt("version_code",0);String download=j.optString("download_url",""); if(!available||latest<=0||download.isEmpty()){if(showResult)runOnUiThread(()->Toast.makeText(this,"Новая APK ещё не опубликована на сервер обновлений",Toast.LENGTH_LONG).show());return;} if(latest<=BuildConfig.VERSION_CODE){if(showResult)runOnUiThread(()->Toast.makeText(this,"Установлена последняя версия",Toast.LENGTH_LONG).show());return;} if(!showResult){
     long lastAt=prefs.getLong("last_auto_update_at",0L);
     long minInterval=isTv?15L*60L*1000L:24L*60L*60L*1000L;
     if(System.currentTimeMillis()-lastAt<minInterval)return;
@@ -3236,6 +3314,17 @@ public class MainActivity extends Activity {
                     out.flush();
                 }
                 if(total<300000L)throw new IllegalStateException("APK too small: "+total);
+                if(BuildConfig.STANDALONE_BUILD){
+                    final String expected=expectedStandaloneApkSha256;
+                    if(!expected.matches("[0-9a-f]{64}")||!expected.equalsIgnoreCase(sha256File(apk)))
+                        throw new IllegalStateException("SHA256 обновления не совпадает с GitHub");
+                    android.content.pm.PackageInfo candidate=getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(),0);
+                    if(candidate==null||!getPackageName().equals(candidate.packageName))
+                        throw new IllegalStateException("Несовпадение пакета обновления");
+                    long nextCode=Build.VERSION.SDK_INT>=28?candidate.getLongVersionCode():candidate.versionCode;
+                    if(nextCode<=BuildConfig.VERSION_CODE)
+                        throw new IllegalStateException("Новая версия не выше установленной");
+                }
                 Uri uri=FileProvider.getUriForFile(this,getPackageName()+".fileprovider",apk);
                 pendingApkUri=uri;
                 updateDownloadRunning=false;
