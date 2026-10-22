@@ -18,6 +18,24 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    return route.fulfill({status:404,body:''});
   });
   await page.goto('https://abaj.test/');
+  await page.waitForFunction(()=>{
+    const tile=document.querySelector('#abajLauncher [data-target="cinema"]');
+    const canvas=tile?.querySelector('.abajCinemaScene');
+    return !!(tile?.classList.contains('abajCinemaSceneReady')&&canvas&&!canvas.hidden&&canvas.width>0);
+  },{timeout:15000});
+  const cinemaBefore=await page.evaluate(()=>{
+    const tile=document.querySelector('#abajLauncher [data-target="cinema"]');
+    const canvas=tile.querySelector('.abajCinemaScene');
+    return {image:canvas.toDataURL(),fakeEffects:tile.querySelectorAll('.abajPopcornSpark').length};
+  });
+  await page.waitForTimeout(850);
+  const cinemaAfter=await page.evaluate(()=>{
+    const tile=document.querySelector('#abajLauncher [data-target="cinema"]');
+    return tile.querySelector('.abajCinemaScene').toDataURL();
+  });
+  assert.equal(cinemaBefore.fakeEffects,0);
+  assert.notEqual(cinemaBefore.image,cinemaAfter,'Original cinema scene must animate actual film, sun and popcorn pixels');
+
   await page.evaluate(async()=>{
    const items=Array.from({length:17103},(_,i)=>({0:'am|test '+i,1:{
     name:'Test '+i,url:'https://stream.test/'+i+'.m3u8',status:'ONLINE',country:'AM',
@@ -86,20 +104,20 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
     document.getElementById('search').value='';
     setCategory('');setModeFilter(null,'all');render();
     const cinema=document.querySelector('#abajLauncher .abajLaunchTile[data-target="cinema"]');
-    const spark=cinema?.querySelector('.abajPopcornSpark');
+    const scene=cinema?.querySelector('.abajCinemaScene');
     const noGuide=Array.from(document.querySelectorAll('#list .channel'))
       .filter(node=>node.dataset.id&&node.dataset.id!==channels.find(x=>x.name==='Test 0')?.id);
     return {
       cinemaReady:!!cinema,
-      sparkCount:cinema?.querySelectorAll('.abajPopcornSpark').length||0,
-      sparkAnimation:spark?getComputedStyle(spark).animationName:'',
+      sceneReady:!!scene&&!!cinema?.classList.contains('abajCinemaSceneReady'),
+      sceneVisible:!!scene&&!scene.hidden,
       noEmptyEpgText:noGuide.every(node=>!node.textContent.includes('Программа недоступна')),
       noEmptyEpgRows:noGuide.every(node=>!node.querySelector('.abajEpgSmall'))
     };
   });
   assert.equal(ui.cinemaReady,true);
-  assert.equal(ui.sparkCount,4);
-  assert.notEqual(ui.sparkAnimation,'none');
+  assert.equal(ui.sceneReady,true);
+  assert.equal(ui.sceneVisible,true);
   assert.equal(ui.noEmptyEpgText,true);
   assert.equal(ui.noEmptyEpgRows,true);
 
