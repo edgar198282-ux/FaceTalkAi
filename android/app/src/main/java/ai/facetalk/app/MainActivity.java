@@ -1589,6 +1589,10 @@ public class MainActivity extends Activity {
     }
 
     public final class AbajNativeBridge {
+        @JavascriptInterface public void checkStandaloneUpdate(){
+            if(!BuildConfig.STANDALONE_BUILD)return;
+            runOnUiThread(()->MainActivity.this.checkStandaloneUpdate(true));
+        }
         @JavascriptInterface public void reconnectTelegram(){
             runOnUiThread(()->{
                 if(isTv){Toast.makeText(MainActivity.this,"Для Android TV используйте привязку по QR-коду",Toast.LENGTH_LONG).show();return;}
@@ -2533,9 +2537,9 @@ public class MainActivity extends Activity {
         });
         webView.setWebViewClient(new WebViewClient(){
             @Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){ Uri uri=request.getUrl(); String url=uri.toString(), scheme=uri.getScheme()==null?"":uri.getScheme().toLowerCase(), host=uri.getHost()==null?"":uri.getHost().toLowerCase();
+                if("facetalk".equals(scheme)&&"check-update".equalsIgnoreCase(uri.getHost())){if(!BuildConfig.PLAY_STORE_BUILD)checkForAppUpdate(true,true);return true;}
                 if(BuildConfig.STANDALONE_BUILD&&!url.startsWith("file:///android_asset/standalone/")){openExternal(uri);return true;}
                 if("facetalk".equals(scheme)&&"auth".equalsIgnoreCase(uri.getHost())){consumeAuthUri(uri);loadOrAuthorize();return true;}
-                if("facetalk".equals(scheme)&&"check-update".equalsIgnoreCase(uri.getHost())){if(!BuildConfig.PLAY_STORE_BUILD)checkForAppUpdate(true,true);return true;}
                 if(url.endsWith(".apk")||url.contains("/api/app-download")){if(!BuildConfig.PLAY_STORE_BUILD)downloadAndInstallApk(url);return true;}
                 if(("http".equals(scheme)||"https".equals(scheme))&&"/api/app-auth/telegram-start".equals(uri.getPath())){openExternal(uri);return true;}
                 if("tg".equals(scheme)||"t.me".equals(host)||"telegram.me".equals(host)){openExternal(uri);return true;}
@@ -3211,12 +3215,24 @@ public class MainActivity extends Activity {
         for(byte b:digest.digest())hex.append(String.format(java.util.Locale.US,"%02x",b&0xff));
         return hex.toString();
     }
+    private void announceStandaloneUpdateStatus(String state,String message){
+        if(!BuildConfig.STANDALONE_BUILD)return;
+        final String code="window.__abajStandaloneUpdateStatus&&window.__abajStandaloneUpdateStatus("+
+            JSONObject.quote(state)+","+JSONObject.quote(message)+")";
+        runOnUiThread(()->{
+            try{if(webView!=null)webView.evaluateJavascript(code,null);}catch(Exception ignored){}
+        });
+    }
     private void checkStandaloneUpdate(boolean showResult){
-        if(updateCheckRunning||updateDownloadRunning)return;
+        if(updateCheckRunning||updateDownloadRunning){
+            if(showResult)announceStandaloneUpdateStatus("busy","Проверка или загрузка уже выполняется");
+            return;
+        }
         final long now=System.currentTimeMillis();
         if(!showResult&&now-lastUpdateCheckAt<30L*60L*1000L)return;
         lastUpdateCheckAt=now;
         updateCheckRunning=true;
+        if(showResult)announceStandaloneUpdateStatus("checking","Проверяю обновление GitHub…");
         new Thread(()->{
             HttpURLConnection c=null;
             try{
@@ -3253,7 +3269,10 @@ public class MainActivity extends Activity {
                     prefs.edit().putString("standalone_local_apk_sha_"+BuildConfig.VERSION_CODE,currentSha).apply();
                 }
                 if(digest.substring(7).equalsIgnoreCase(currentSha)){
-                    if(showResult)runOnUiThread(()->Toast.makeText(this,"ABAJ TV уже обновлён",Toast.LENGTH_LONG).show());
+                    if(showResult){
+                        announceStandaloneUpdateStatus("latest","Установлена последняя версия ABAJ TV");
+                        runOnUiThread(()->Toast.makeText(this,"ABAJ TV уже обновлён",Toast.LENGTH_LONG).show());
+                    }
                     return;
                 }
                 long lastPrompt=prefs.getLong("standalone_update_attempt_at",0L);
@@ -3261,6 +3280,7 @@ public class MainActivity extends Activity {
                 if(!showResult&&digest.equals(lastDigest)&&now-lastPrompt<24L*60L*60L*1000L)return;
                 expectedStandaloneApkSha256=digest.substring(7);
                 prefs.edit().putLong("standalone_update_attempt_at",now).putString("standalone_update_attempt_digest",digest).apply();
+                if(showResult)announceStandaloneUpdateStatus("downloading","Найдена новая версия · загрузка APK…");
                 runOnUiThread(()->{
                     if(!isFinishing()&&!updateDownloadRunning){
                         if(activityResumed)Toast.makeText(this,"Найдена новая ABAJ TV. Загружаю APK…",Toast.LENGTH_LONG).show();
@@ -3269,7 +3289,10 @@ public class MainActivity extends Activity {
                 });
             }catch(Exception ex){
                 Log.w("AbajStandaloneUpdate","Update check failed",ex);
-                if(showResult)runOnUiThread(()->Toast.makeText(this,"Не удалось проверить обновления GitHub",Toast.LENGTH_LONG).show());
+                if(showResult){
+                    announceStandaloneUpdateStatus("error","Ошибка проверки GitHub · повторить");
+                    runOnUiThread(()->Toast.makeText(this,"Не удалось проверить обновления GitHub",Toast.LENGTH_LONG).show());
+                }
             }finally{
                 updateCheckRunning=false;
                 if(c!=null)c.disconnect();
