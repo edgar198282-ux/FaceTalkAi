@@ -5996,6 +5996,42 @@ async function load(){
   const generation=window.ABAJ_STANDALONE?(window.__abajStandaloneLoadGen=(window.__abajStandaloneLoadGen||0)+1):0;
   try{
     restoreCachedChannels();
+    if(window.ABAJ_STANDALONE&&typeof window.abajStandaloneGetIptvChannels==='function'){
+      const standaloneBuiltin=await window.abajStandaloneGetIptvChannels();
+      if(generation!==window.__abajStandaloneLoadGen)return;
+      const builtinRows=(Array.isArray(standaloneBuiltin)?standaloneBuiltin:[])
+        .filter(item=>item&&item.status==='ONLINE'&&typeof item.url==='string'&&item.url);
+      edemStatus={active:true,configured:true,days_left:null,payment:{status:'paid'}};
+      channels=builtinRows;
+      if(!['free','edem'].includes(sourceFilter)&&!sourceFilter.startsWith('playlist:'))sourceFilter='free';
+      const updateStandaloneDisplay=(playlists=[])=>{
+        renderNamedPlaylistChips(playlists,channels.filter(x=>x.personal));
+        const groups=visibleChannelGroups();
+        const select=document.getElementById('group');
+        if(select){
+          const previous=select.value;
+          select.innerHTML='<option value="">'+esc((UI_TEXT[appLang]||UI_TEXT.ru).all)+'</option>'+
+            groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
+          select.value=groups.includes(previous)?previous:'';
+        }
+        buildQuickCats(groups);
+        applyTvBrowseUi();
+        const status=document.getElementById('status');
+        if(status)status.textContent='IPTV: '+channels.filter(x=>!x.personal).length+' · M3U: '+channels.filter(x=>x.personal).length;
+        render();
+        document.documentElement.classList.remove('abaj-initializing');
+        restoreTvBrowseFocus();
+      };
+      updateStandaloneDisplay();
+      const personal=await fetch('/api/iptv/edem/channels',{cache:'no-store'})
+        .then(async r=>r.ok?await r.json():{channels:[],playlists:[]})
+        .catch(()=>({channels:[],playlists:[]}));
+      if(generation!==window.__abajStandaloneLoadGen)return;
+      channels=[...builtinRows,...(Array.isArray(personal.channels)?personal.channels:[])
+        .map(x=>({...x,personal:true,provider:'Edem'}))];
+      updateStandaloneDisplay(personal.playlists||[]);
+      return;
+    }
     const edemStatusPromise=fetch('/api/iptv/edem/status',{headers:authHeaders(),cache:'no-store'})
       .then(async r=>r.ok?await r.json():{active:false,configured:false})
       .catch(()=>({active:false,configured:false}));
@@ -6453,9 +6489,13 @@ document.addEventListener('DOMContentLoaded',initIptvScrollTop);
 function render(){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
   filteredNow=getFiltered();
-  if(nativeTv&&channels.length&&filteredNow.length===0){
+  if((nativeTv||window.ABAJ_STANDALONE)&&channels.length&&filteredNow.length===0){
     modeFilter='all';
     activeCategory='';
+    if(window.ABAJ_STANDALONE){
+      sourceFilter='free';
+      localStorage.setItem('abaj_tv_source_filter','free');
+    }
     const search=document.getElementById('search');
     if(search)search.value='';
     const group=document.getElementById('group');
@@ -15126,15 +15166,7 @@ async function enrichCinemaMovie(item){
   if(!title||title==='Фильм')return best;
   const year=cinemaYear(item);
 
-  if(window.ABAJ_STANDALONE&&cinemaSource==='lazy'){
-    if(!item?.intent||!getLazyMediaInfo().installed)return best;
-    const provider=normalizeLazyProviderName(cinemaProviderName(item));
-    try{
-      const extra=await withTimeout(cinemaArticleDetailsAsync(item,provider),6500,{});
-      if(extra&&cinemaMetadataScore(extra)>0)best=cinemaMergeMetadata(best,cinemaNormalizeLazyDetails(extra));
-    }catch(e){}
-    return best;
-  }
+  if(window.ABAJ_STANDALONE&&cinemaSource==='lazy')return best;
   try{
     const r=await fetch('/api/cinema/meta?title='+encodeURIComponent(title)+'&year='+encodeURIComponent(year||''),{cache:'no-store'});
     if(r.ok){
