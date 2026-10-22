@@ -6075,6 +6075,7 @@ const standaloneEpgDocs=new Map();
 let standaloneEpgStarted=false;
 let standaloneEpgRequestedAt=0;
 let standaloneEpgMatchCount=0;
+window.abajStandaloneEpgCount=()=>channels.reduce((count,ch)=>count+(!ch.personal&&(ch.epg_now||ch.epg_next)?1:0),0);
 const STANDALONE_EPG_REQUEST_GAP=2*60*60*1000;
 function standaloneEpgName(value){
   return String(value||'').normalize('NFKC').toLocaleLowerCase('ru')
@@ -6176,6 +6177,7 @@ function applyStandaloneEpg(){
   }
   if(standaloneEpgMatchCount!==matched)changed=true;
   standaloneEpgMatchCount=matched;
+  window.abajStandaloneUpdateEpgCount?.();
   if(current){
     const ref=channels.find(x=>x.id===current.id);
     if(ref){
