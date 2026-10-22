@@ -10607,7 +10607,7 @@ function lazyMediaSearchAsync(query){
   });
 }
 function cinemaCacheKey(){
-  return 'abaj_cinema_cache_v4_'+cinemaSource+'_'+cinemaType;
+  return 'abaj_cinema_cache_v5_'+cinemaSource+'_'+cinemaType;
 }
 function readCinemaCache(){
   try{
@@ -10649,11 +10649,31 @@ function cinemaYear(item){
   const text=(String(item?.title||'')+' '+String(item?.subtitle||'')).match(/(?:^|\D)(20\d{2}|19\d{2})(?:\D|$)/);
   return text?Number(text[1]):0;
 }
+function cinemaLazyContentKind(item){
+  if(!item||typeof item!=='object')return '';
+  const type=[item.content_type,item.suggest_content_type,item.media_type,item.item_type,item.kind,item.type,item.category]
+    .filter(x=>x!=null).map(x=>String(x).toLowerCase()).join(' ');
+  if(/(?:^|[^a-zа-яё])(tv[\s_-]*series|tv[\s_-]*show|tvshow|series|serial|serials|episodes?|seasons?|сериал|сериалы|сезон|мультсериал)(?:$|[^a-zа-яё])/i.test(type))return 'series';
+  if(/(?:^|[^a-zа-яё])(movies?|films?|feature[\s_-]*film|фильмы?|кино)(?:$|[^a-zа-яё])/i.test(type))return 'movies';
+  const media=Array.isArray(item.media_rows)?item.media_rows:[];
+  if(media.some(x=>Number(x?.season||0)>0||Number(x?.episode||0)>0))return 'series';
+  const hint=[item.subtitle,item.suggest_text_2,item.description,item.genre,item.title]
+    .map(x=>String(x||'')).join(' ');
+  if(/(?:^|[^a-zа-яё])(сериал|мультсериал|телесериал|series)(?:$|[^a-zа-яё])|(?:сезон|серия)\s*\d+/i.test(hint))return 'series';
+  if(/(?:^|[^a-zа-яё])(полнометражный\s+фильм|художественный\s+фильм|feature\s+film|кинофильм)(?:$|[^a-zа-яё])/i.test(hint))return 'movies';
+  return '';
+}
+function cinemaLazyFilterType(items,type){
+  const wanted=type==='series'?'series':'movies';
+  return (Array.isArray(items)?items:[]).filter(item=>cinemaLazyContentKind(item)===wanted);
+}
 function cinemaRank(items,type){
-  const rows=(Array.isArray(items)?items:[]).filter(item=>{
-    const series=cinemaItemLooksSeries(item);
-    return type==='series'?series:!series;
-  });
+  const rows=cinemaSource==='lazy'&&window.ABAJ_STANDALONE
+    ?cinemaLazyFilterType(items,type)
+    :(Array.isArray(items)?items:[]).filter(item=>{
+      const series=cinemaItemLooksSeries(item);
+      return type==='series'?series:!series;
+    });
   rows.forEach((item,i)=>item.__order=i);
   rows.sort((a,b)=>{
     const ay=cinemaYear(a),by=cinemaYear(b);
@@ -10796,14 +10816,15 @@ async function searchCinemaLazyMedia(raw){
   }
   if(merged.length){
     merged.sort((a,b)=>cinemaYear(b)-cinemaYear(a));
-    renderCinemaCatalog(merged.slice(0,100),{search:true});
-    if(status)status.textContent='Найдено '+merged.length+' · обновляю результаты…';
+    const visible=cinemaSource==='lazy'&&window.ABAJ_STANDALONE?cinemaLazyFilterType(merged,cinemaType):merged;
+    if(visible.length)renderCinemaCatalog(visible.slice(0,100),{search:true});
+    if(status)status.textContent='Найдено '+visible.length+' · обновляю результаты…';
   }
 
   const requests=[];
   const info=getLazyMediaInfo();
   if(info.installed)requests.push(lazyMediaSearchAsync(q).catch(()=>[]));
-  requests.push(fetch('/api/cinema/search?q='+encodeURIComponent(q),{cache:'no-store'}).then(r=>r.json()).then(d=>Array.isArray(d.items)?d.items:[]).catch(()=>[]));
+  if(!window.ABAJ_STANDALONE)requests.push(fetch('/api/cinema/search?q='+encodeURIComponent(q),{cache:'no-store'}).then(r=>r.json()).then(d=>Array.isArray(d.items)?d.items:[]).catch(()=>[]));
 
   const batches=await Promise.all(requests);
   if(seq!==cinemaSearchSeq)return;
@@ -10817,8 +10838,9 @@ async function searchCinemaLazyMedia(raw){
     }
   }
   merged.sort((a,b)=>cinemaYear(b)-cinemaYear(a));
-  renderCinemaCatalog(merged.slice(0,100),{search:true});
-  if(status)status.textContent=merged.length?('Найдено '+merged.length):'Ничего не найдено';
+  const visible=cinemaSource==='lazy'&&window.ABAJ_STANDALONE?cinemaLazyFilterType(merged,cinemaType):merged;
+  renderCinemaCatalog(visible.slice(0,100),{search:true});
+  if(status)status.textContent=visible.length?('Найдено '+visible.length):'Ничего не найдено';
 }
 function handleUnifiedSearchInput(value){
   if(!cinemaMode){
@@ -11926,7 +11948,9 @@ function renderCinemaCatalog(items,options={}){
     }));
   }
 }
+let cinemaLazyLoadSeq=0;
 async function loadCinemaCatalog(force=false){
+  const loadSeq=++cinemaLazyLoadSeq;
   cinemaLibraryMode=false;
   await loadGlobalCinemaSource();
   if(cinemaLoaded&&!force)return;
@@ -12009,53 +12033,29 @@ async function loadCinemaCatalog(force=false){
       if(grid)grid.innerHTML='<div style="grid-column:1/-1;padding:24px 8px;color:#9fc5d8;font-size:16px">Загрузка каталога…</div>';
     }
 
-    const all=[]; const seen=new Set();
-    const y=new Date().getFullYear();
-    const queries=cinemaType==='series'
-      ? ['',String(y)+' сериал',String(y-1)+' сериал','новинки сериал','сериал']
-      : ['',String(y)+' фильм',String(y-1)+' фильм','новинки фильм','фильм'];
-    for(const q of queries){
-      const rows=await lazyMediaSearchAsync(q);
-      for(const item of (Array.isArray(rows)?rows:[])){
+    const all=[],seen=new Set();
+    const requestedType=cinemaType;
+    const queries=requestedType==='series'?['','сериал']:['','фильм'];
+    const batches=await Promise.all(queries.map(q=>withTimeout(lazyMediaSearchAsync(q),6500,[]).catch(()=>[])));
+    if(loadSeq!==cinemaLazyLoadSeq||cinemaSource!=='lazy'||cinemaType!==requestedType)return;
+    for(const rows of batches){
+      for(const item of cinemaLazyFilterType(rows,requestedType)){
         const key=String(item.intent||item.id||item.title||'');
         if(!key||seen.has(key))continue;
         seen.add(key);
-        item.kind=cinemaItemLooksSeries(item)?'series':'movies';
         all.push(item);
       }
-      if(cinemaRank(all,cinemaType).length>=50)break;
     }
-    const merged=cinemaRank(all,cinemaType);
+    const merged=cinemaRank(all,requestedType);
     if(merged.length){
       cinemaLoaded=true;
       writeCinemaCache(merged);
       renderCinemaCatalog(merged);
-      if(status)status.textContent='Последние '+merged.length+(cinemaType==='series'?' сериалов':' фильмов');
-      fetch('/api/cinema/catalog-cache',{
-        method:'POST',
-        headers:{'Content-Type':'application/json',...authHeaders()},
-        body:JSON.stringify({type:cinemaType,items:merged})
-      }).catch(()=>{});
+      if(status)status.textContent='Найдено '+merged.length+(requestedType==='series'?' сериалов':' фильмов');
     }else if(!cached.length){
-      try{
-        const r=await fetch('/api/cinema/catalog?type='+encodeURIComponent(cinemaType),{cache:'no-store'});
-        const data=await r.json();
-        const shared=Array.isArray(data.items)?data.items:[];
-        if(shared.length){
-          cinemaLoaded=true;
-          writeCinemaCache(shared);
-          renderCinemaCatalog(shared);
-          if(status)status.textContent='Найдено '+shared.length;
-        }else{
-          cinemaLoaded=false;
-          renderCinemaCatalog([]);
-          if(status)status.textContent='Источники LazyMedia сейчас не вернули каталог.';
-        }
-      }catch(e){
-        cinemaLoaded=false;
-        renderCinemaCatalog([]);
-        if(status)status.textContent='Источники LazyMedia сейчас не ответили.';
-      }
+      cinemaLoaded=false;
+      renderCinemaCatalog([]);
+      if(status)status.textContent='LazyMedia не вернул '+(requestedType==='series'?'сериалы':'фильмы')+' с определённым типом.';
     }
     setTimeout(()=>{
       if(nativeTv&&cinemaMode&&!cinemaFocusable().includes(document.activeElement)){
