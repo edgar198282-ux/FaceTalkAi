@@ -30,7 +30,9 @@ public final class StandaloneEpgBridge {
     private static final String[][] FEEDS={
         {"AM","https://iptv-epg.org/files/epg-am.xml.gz"},
         {"RU","https://iptv-epg.org/files/epg-ru.xml.gz"},
-        {"ALT","http://epg.one/epg.xml.gz"}
+        {"RUPW","https://epg.pw/xmltv/epg_RU.xml.gz"},
+        {"ALT","http://epg.one/epg.xml.gz"},
+        {"ALT2","https://iptvx.one/epg/epg_lite.xml.gz"}
     };
     StandaloneEpgBridge(Activity a,WebView w){activity=a;view=w;}
 
