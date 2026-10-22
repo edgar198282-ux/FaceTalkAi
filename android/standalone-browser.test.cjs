@@ -71,15 +71,46 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    const disabled=document.getElementById('cinemaDetailWatch').disabled;
    const label=document.getElementById('cinemaDetailWatch').textContent;
    await watchCinemaDetail();
-   const opened=window.__lazyMediaLaunchedIntent;
-   return {disabled,label,opened,
-    directAvailable:!standaloneLazyPlaybackUnavailable({url:'https://stream.test/movie.m3u8'})};
+   const sourceLabels=[...document.querySelectorAll('#cinemaSourceList .cinemaSourceBtn')].map(b=>b.textContent);
+   const opened=!!document.getElementById('cinemaSourceModal')?.classList.contains('open');
+   return {disabled,label,sourceLabels,opened,externalLaunch:window.__lazyMediaLaunchedIntent||''};
   });
   assert.equal(lazy.disabled,false);
   assert.match(lazy.label,/ВЫБРАТЬ ВИДЕО/);
-  assert.equal(lazy.opened,'catalog-only');
-  assert.equal(lazy.directAvailable,true);
+  assert.equal(lazy.opened,true);
+  assert.ok(lazy.sourceLabels.some(x=>x.includes('HDREZKA')));
+  assert.equal(lazy.externalLaunch,'');
+  const manualSelection=await page.evaluate(()=>{
+   const group={name:'HDREZKA'};
+   const options=[
+    {name:'Озвучка A Сезон 1 Серия 1 720p',url:'https://stream.test/a_s1e1_720.m3u8',quality:'720p',format:'HLS'},
+    {name:'Озвучка A Сезон 1 Серия 1 1080p',url:'https://stream.test/a_s1e1_1080.m3u8',quality:'1080p',format:'HLS'},
+    {name:'Озвучка A Сезон 1 Серия 2 1080p',url:'https://stream.test/a_s1e2_1080.m3u8',quality:'1080p',format:'HLS'},
+    {name:'Озвучка B Сезон 1 Серия 1 720p',url:'https://stream.test/b_s1e1_720.m3u8',quality:'720p',format:'HLS'}
+   ];
+   const infos=options.map(cinemaResolvedRowInfo);
+   const stages=[],getStage=()=>document.getElementById('cinemaSourceTitle')?.textContent||'';
+   const click=term=>{const b=[...document.querySelectorAll('#cinemaSourceList .cinemaSourceBtn')].find(el=>el.textContent.includes(term));if(!b)throw Error('Missing selection '+term);b.click()};
+   cinemaRenderResolvedRows(group,infos);
+   stages.push(getStage());
+   click('Озвучка A');
+   stages.push(getStage());
+   click('Сезон 1');
+   stages.push(getStage());
+   click('Серия 1');
+   stages.push(getStage());
+   const qualityOptions=[...document.querySelectorAll('#cinemaSourceList .cinemaSourceBtn')].map(e=>e.textContent);
+   window.__abajOpenExternalMedia=(...args)=>{window.__testPlaybackArgs=args};
+   click('1080p');
+   return {stages,qualityOptions,chosen:window.__testPlaybackArgs?.[0]||''};
+  });
+  assert.match(manualSelection.stages[0],/ОЗВУЧКА/);
+  assert.match(manualSelection.stages[1],/СЕЗОН/);
+  assert.match(manualSelection.stages[2],/СЕРИИ/);
+  assert.match(manualSelection.stages[3],/КАЧЕСТВО/);
+  assert.ok(manualSelection.qualityOptions.some(x=>x.includes('1080p')));
+  assert.match(manualSelection.chosen,/a_s1e1_1080.m3u8/);
   assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({catalog:all,filters:['ALL','HD','FHD','AM','News'],emptySearchPreserved:true,lazyExternalPlayerHandoff:true}));
+  console.log(JSON.stringify({catalog:all,filters:['ALL','HD','FHD','AM','News'],emptySearchPreserved:true,lazySourceSelection:true,lazyOrderedStages:true}));
  }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});
