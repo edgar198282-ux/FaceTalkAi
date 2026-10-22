@@ -35,7 +35,11 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   });
   await page.addInitScript(()=>{
    window.StandaloneNetwork={request(id){setTimeout(()=>window.__abajStandaloneResponse(id,404,''),0)}};
-   window.AbajNative={lazyMediaInfo:()=>JSON.stringify({installed:true,version:'3.470',embeddedPlayback:false})};
+   window.AbajNative={
+    lazyMediaInfo:()=>JSON.stringify({installed:true,version:'3.470',embeddedPlayback:false}),
+    openLazyMediaIntent:intent=>{window.__lazyMediaLaunchedIntent=intent;return true;},
+    openLazyMedia:()=>{window.__lazyMediaLaunchedIntent='app';return true;}
+   };
   });
   await page.reload();
   await page.waitForFunction(()=>channels.length>=17103);
@@ -61,17 +65,21 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   });
   assert.equal(empty.count,0);assert.equal(empty.query,'missing-query-xyz');assert.equal(empty.category,'News');
   const lazy=await page.evaluate(async()=>{
-   cinemaSource='lazy';
+   cinemaSource='lazy';cinemaPlaybackAllowed=true;
    const item={id:'test-film',title:'Test film',intent:'catalog-only',provider:'HDREZKA'};
-   renderCinemaDetail(item);await showCinemaSourcePicker(item);
-   return {disabled:document.getElementById('cinemaDetailWatch').disabled,
-    text:document.getElementById('cinemaSourceList').textContent,
-    buttons:document.querySelectorAll('#cinemaSourceList button').length,
+   renderCinemaDetail(item);
+   const disabled=document.getElementById('cinemaDetailWatch').disabled;
+   const label=document.getElementById('cinemaDetailWatch').textContent;
+   await watchCinemaDetail();
+   const opened=window.__lazyMediaLaunchedIntent;
+   return {disabled,label,opened,
     directAvailable:!standaloneLazyPlaybackUnavailable({url:'https://stream.test/movie.m3u8'})};
   });
-  assert.equal(lazy.disabled,true);assert.equal(lazy.buttons,0);assert.equal(lazy.directAvailable,true);
-  assert.match(lazy.text,/интерфейс воспроизведения/);
+  assert.equal(lazy.disabled,false);
+  assert.match(lazy.label,/ВЫБРАТЬ ВИДЕО/);
+  assert.equal(lazy.opened,'catalog-only');
+  assert.equal(lazy.directAvailable,true);
   assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({catalog:all,filters:['ALL','HD','FHD','AM','News'],emptySearchPreserved:true,lazyCatalogOnlyGuard:true}));
+  console.log(JSON.stringify({catalog:all,filters:['ALL','HD','FHD','AM','News'],emptySearchPreserved:true,lazyExternalPlayerHandoff:true}));
  }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});
