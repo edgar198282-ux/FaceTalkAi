@@ -2653,6 +2653,13 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
   body:not(.nativeTv) .cinemaDetailHero::after{height:34%!important}
 }
 </style>
+
+<style id="abaj-standalone-epg-style">
+.standaloneCatalogMeta{font-size:12px;font-weight:800;color:#155475;line-height:1.4;padding:7px 14px 4px;text-align:left}
+.gridMode .abajEpgSmall{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;font-weight:650;line-height:1.35;margin-top:4px;color:#d8f0ff}
+.gridMode .gridChannelName:has(.abajEpgSmall){white-space:normal}
+.gridMode .gridChannelName:has(.abajEpgSmall) .abajChannelNameText{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
@@ -2729,6 +2736,7 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
       <button id="adultChip" class="chip adultChip" data-filter="adult" onclick="setModeFilter(this,'adult')">18+</button>
     </div>
     <div class="quickCats" id="quickCats"></div>
+    <div id="standaloneCatalogMeta" class="standaloneCatalogMeta" role="status" aria-live="polite" style="display:none"></div>
     <div class="status" id="status">Загрузка каналов…</div>
   </header>
 
@@ -6062,6 +6070,106 @@ function renderStandaloneIptvFallback(reason=''){
   document.documentElement.classList.remove('abaj-initializing');
 }
 
+
+const standaloneEpgDocs=new Map();
+let standaloneEpgStarted=false;
+let standaloneEpgRequestedAt=0;
+let standaloneEpgMatchCount=0;
+const STANDALONE_EPG_REQUEST_GAP=90*60*1000;
+function standaloneEpgName(value){
+  return String(value||'').normalize('NFKC').toLocaleLowerCase('ru')
+    .replace(/\([^)]*(?:hd|fhd|uhd|4k|1080|720)[^)]*\)/gi,'')
+    .replace(/(?:\bhd\b|\bfhd\b|\buhd\b|\b4k\b|\b1080p\b|\b720p\b)/gi,'')
+    .replace(/[^\p{L}\p{N}]+/gu,'').trim();
+}
+function updateStandaloneCatalogMeta(){
+  if(!window.ABAJ_STANDALONE||cinemaMode)return;
+  const label=document.getElementById('standaloneCatalogMeta');
+  if(!label)return;
+  const total=channels.filter(x=>!x.personal).length;
+  const user=channels.length-total;
+  const visible=filteredNow.length;
+  label.style.display='block';
+  label.textContent='IPTV: '+total.toLocaleString('ru-RU')+' каналов'+
+    (user?' · M3U: '+user.toLocaleString('ru-RU'):'')+
+    (visible<channels.length?' · Показано: '+visible.toLocaleString('ru-RU'):'')+
+    ' · EPG: '+standaloneEpgMatchCount.toLocaleString('ru-RU');
+}
+function applyStandaloneEpg(){
+  if(!window.ABAJ_STANDALONE||!channels.length)return;
+  const countries=new Map();
+  for(const [country,feed] of standaloneEpgDocs){
+    const ids=new Map(),names=new Map();
+    for(const row of Array.isArray(feed?.channels)?feed.channels:[]){
+      if(!row||typeof row!=='object')continue;
+      if(row.id)ids.set(String(row.id).toLowerCase(),row);
+      for(const name of (Array.isArray(row.names)?row.names:[])){
+        const key=standaloneEpgName(name);
+        if(key&&!names.has(key))names.set(key,row);
+      }
+    }
+    countries.set(country,{ids,names});
+  }
+  let matched=0;
+  const now=Math.floor(Date.now()/1000);
+  for(const ch of channels){
+    const guide=countries.get(String(ch.country||'').toUpperCase());
+    if(!guide)continue;
+    const id=String(ch.tvg_id||'').trim().toLowerCase();
+    const row=(id&&guide.ids.get(id))||guide.names.get(standaloneEpgName(ch.name||''));
+    if(!row){delete ch.epg_now;delete ch.epg_next;continue;}
+    const entries=[row.now,row.next].filter(p=>p&&Number(p.stop)>now&&p.title);
+    ch.epg_now=entries.find(p=>Number(p.start)<=now&&now<Number(p.stop))||null;
+    ch.epg_next=entries.find(p=>Number(p.start)>now)||null;
+    if(ch.epg_now||ch.epg_next)matched++;
+  }
+  standaloneEpgMatchCount=matched;
+  if(current){
+    const ref=channels.find(x=>x.id===current.id);
+    if(ref){
+      current.epg_now=ref.epg_now;
+      current.epg_next=ref.epg_next;
+      const details=document.getElementById('playerEpgDetails');
+      if(details&&!isCinemaPlaybackOpen()){
+        const p=[];
+        if(current.epg_now)p.push('Сейчас: '+current.epg_now.title+' · '+fmtClock(current.epg_now.start)+'–'+fmtClock(current.epg_now.stop));
+        if(current.epg_next)p.push('Далее: '+current.epg_next.title+' · '+fmtClock(current.epg_next.start));
+        details.textContent=p.join('  |  ')||'Программа недоступна';
+        details.style.display='block';
+      }
+      updatePlayerRemaining();
+    }
+  }
+  render();
+}
+window.__abajStandaloneEpgUpdate=function(data){
+  if(!window.ABAJ_STANDALONE||!data||!['AM','RU'].includes(data.country)||!Array.isArray(data.channels)||!data.channels.length)return;
+  standaloneEpgDocs.set(data.country,data);
+  try{localStorage.setItem('abaj_standalone_epg_'+data.country,JSON.stringify(data));}catch(e){}
+  applyStandaloneEpg();
+};
+function startStandaloneEpg(){
+  if(!window.ABAJ_STANDALONE)return;
+  if(!standaloneEpgStarted){
+    standaloneEpgStarted=true;
+    for(const country of ['AM','RU']){
+      try{
+        const saved=JSON.parse(localStorage.getItem('abaj_standalone_epg_'+country)||'null');
+        if(saved&&Array.isArray(saved.channels)&&Date.now()-Number(saved.updated||0)*1000<12*60*60*1000)
+          standaloneEpgDocs.set(country,saved);
+      }catch(e){}
+    }
+    if(standaloneEpgDocs.size)applyStandaloneEpg();
+    if(typeof setInterval==='function')setInterval(()=>{
+      if(document.visibilityState==='visible')startStandaloneEpg();
+    },30*60*1000);
+  }
+  if(!window.StandaloneEpg||typeof StandaloneEpg.refresh!=='function')return;
+  if(Date.now()-standaloneEpgRequestedAt<STANDALONE_EPG_REQUEST_GAP)return;
+  standaloneEpgRequestedAt=Date.now();
+  try{StandaloneEpg.refresh()}catch(e){}
+}
+
 async function load(){
   const generation=window.ABAJ_STANDALONE?(window.__abajStandaloneLoadGen=(window.__abajStandaloneLoadGen||0)+1):0;
   try{
@@ -6099,12 +6207,14 @@ async function load(){
         }
       };
       updateStandaloneDisplay();
+      setTimeout(startStandaloneEpg,1000);
       const personal=await fetch('/api/iptv/edem/channels',{cache:'no-store'})
         .then(async r=>r.ok?await r.json():{channels:[],playlists:[]})
         .catch(()=>({channels:[],playlists:[]}));
       if(generation!==window.__abajStandaloneLoadGen)return;
       channels=[...builtinRows,...(Array.isArray(personal.channels)?personal.channels:[])
         .map(x=>({...x,personal:true,provider:'Edem'}))];
+      if(standaloneEpgDocs.size)applyStandaloneEpg();
       updateStandaloneDisplay(personal.playlists||[]);
       return;
     }
@@ -6571,6 +6681,7 @@ document.addEventListener('DOMContentLoaded',initIptvScrollTop);
 function render(){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
   filteredNow=getFiltered();
+  if(window.ABAJ_STANDALONE)updateStandaloneCatalogMeta();
   if(nativeTv&&!window.ABAJ_STANDALONE&&channels.length&&filteredNow.length===0){
     modeFilter='all';
     activeCategory='';
@@ -6610,10 +6721,14 @@ function render(){
         (qualityLabel?'<div class="qualityBadge">'+qualityLabel+'</div>':'')+
         (nativeTv&&favs.has(ch.id)?'<div class="tvFavLeft" aria-hidden="true">♥</div>':'')+
         '<div class="logoWrap">'+logo+'</div>'+
-        '<div class="gridChannelName">'+esc(ch.name)+'</div>'+
+        '<div class="gridChannelName">'+
+          (window.ABAJ_STANDALONE
+            ?'<span class="abajChannelNameText">'+esc(ch.name)+'</span><small class="abajEpgSmall">'+
+              esc(ch.epg_now?.title||ch.epg_next?.title||'Программа недоступна')+'</small>'
+            :esc(ch.name))+'</div>'+
         '<div class="info">'+
           '<div class="name">'+esc(ch.name)+'</div>'+
-          '<div class="now">'+esc(ch.epg_now&&ch.epg_now.title?cleanTvLabel(ch.epg_now.title,'LIVE'):localizedCategoryLabel(ch.group))+'</div>'+
+          '<div class="now">'+esc(ch.epg_now&&ch.epg_now.title?cleanTvLabel(ch.epg_now.title,'LIVE'):(window.ABAJ_STANDALONE?'Программа недоступна':localizedCategoryLabel(ch.group)))+'</div>'+
           '<div class="progress"><span style="width:'+epgProgress(ch.epg_now)+'%"></span></div>'+
           '<div class="times"><span>'+(ch.epg_now?fmtClock(ch.epg_now.start):'LIVE')+'</span><span>'+(ch.epg_now?fmtClock(ch.epg_now.stop):Math.max(1,Math.round((ch.latency_ms||0)/1000))+'s')+'</span></div>'+
           (ch.epg_next?'<div class="next">'+esc(t.next)+': '+esc(ch.epg_next.title)+'</div>':'')+
