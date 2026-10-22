@@ -415,6 +415,21 @@ test('built-in catalog supplies renderable channel objects, not Map entries',asy
  }
  assert.ok(rows.some(row=>row.country==='AM'&&row.quality==='FHD'));
 });
+test('standalone built-in IPTV includes only Armenia and Russia, even after a legacy cache import',async()=>{
+ const saved=[
+  {name:'Russian legacy',url:'https://iptv.test/russia.m3u8',status:'ONLINE',country:'RU'},
+  {name:'Armenian legacy',url:'https://iptv.test/armenia.m3u8',status:'ONLINE',country:'AM'},
+  {name:'Georgian legacy',url:'https://iptv.test/georgia.m3u8',status:'ONLINE',country:'GE'},
+  {name:'Unclassified legacy',url:'https://iptv.test/unknown.m3u8',status:'ONLINE',country:''}
+ ];
+ const x=setup({indexedDB:snapshotDatabase({items:saved,at:Date.now()})});
+ const rows=await x.win.abajStandaloneGetIptvChannels();
+ assert.ok(rows.every(row=>row.country==='AM'||row.country==='RU'));
+ assert.ok(rows.some(row=>row.name==='Russian legacy'));
+ assert.ok(rows.some(row=>row.name==='Armenian legacy'));
+ assert.ok(!rows.some(row=>row.name==='Georgian legacy'||row.name==='Unclassified legacy'));
+ assert.ok(rows.some(row=>row.playlist_id==='free'));
+});
 test('old 17103-entry IndexedDB snapshot is repaired without dropping its channels',async()=>{
  const items=Array.from({length:17103},(_,i)=>({0:'am|channel '+i,1:{
   name:'Channel '+i,url:'https://iptv.test/'+i+'.m3u8',status:'ONLINE',
