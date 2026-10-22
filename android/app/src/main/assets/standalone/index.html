@@ -15079,14 +15079,6 @@ async function watchCinemaDetail(){
     }
     return;
   }
-  if(cinemaSource==='lazy'&&window.ABAJ_STANDALONE){
-    const opened=standaloneLazyOpenArticle(item);
-    if(!opened){
-      const err=document.getElementById('cinemaDetailError');
-      if(err){err.textContent='Не удалось открыть фильм в LazyMedia Deluxe.';err.style.display='block';}
-    }
-    return;
-  }
   if(cinemaSource==='lazy'&&getLazyMediaInfo().installed){
     if(watchBtn){watchBtn.disabled=true;watchBtn.textContent='ИЩУ ВИДЕО…';}
     try{await showCinemaSourcePicker(item);}
