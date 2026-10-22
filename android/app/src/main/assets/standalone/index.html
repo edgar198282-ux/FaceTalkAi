@@ -2643,6 +2643,15 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
 #playerView.open .playerBrand{pointer-events:none!important}
 #playerView.open .videoWrap{pointer-events:auto!important}
 </style>
+<style id="abaj-lazy-detail-poster-fix">
+@media(max-width:760px){
+  body:not(.nativeTv) .cinemaDetailHero{min-height:31vh!important;max-height:310px;background-image:none!important;background-color:#234358!important}
+  body:not(.nativeTv) .cinemaDetailHero.posterFallback::before{content:none!important}
+  body:not(.nativeTv) .cinemaDetailHero.posterFallback .cinemaDetailHeroPoster{display:block!important;top:7%;height:75%;width:auto;max-width:53%;object-fit:contain;filter:none}
+  body:not(.nativeTv) .cinemaDetailHero.posterFallback .cinemaDetailHeroPoster[src=""]{display:none!important}
+  body:not(.nativeTv) .cinemaDetailHero::after{height:34%!important}
+}
+</style>
 </head>
 <body>
 <div class="tvSearch" id="tvSearch" onclick="if(event.target===this)closeTvSearch(false)">
@@ -12367,8 +12376,8 @@ async function showCinemaSourcePicker(item){
   };
   push(item);
 
-  const variants=cinemaSearchVariants(item);
-  const batches=await Promise.all(variants.map(q=>lazyMediaSearchAsync(q).catch(()=>[])));
+  const variants=cinemaSearchVariants(item).slice(0,window.ABAJ_STANDALONE?1:4);
+  const batches=await Promise.all(variants.map(q=>withTimeout(lazyMediaSearchAsync(q),7000,[]).catch(()=>[])));
   const base=cinemaComparableTitle(item?.title||'');
   const year=cinemaYear(item);
   for(const found of batches){
@@ -12449,7 +12458,7 @@ function renderCinemaSourceGroups(){
     }
   });
   setTimeout(()=>focusCinemaSourceButton(0),20);
-  prefetchCinemaSourceQualities();
+  if(!window.ABAJ_STANDALONE)prefetchCinemaSourceQualities();
 }
 
 function withTimeout(promise,ms,fallback=[]){
@@ -13731,6 +13740,10 @@ function applyCinemaHeroImage(hero,poster,bg){
   const token=++cinemaHeroLoadToken;
   const fallback=String(poster||'').trim();
   const backdrop=String(bg||'').trim();
+  if(!nativeTv&&window.ABAJ_STANDALONE&&!backdrop){
+    hero.style.backgroundImage='';
+    return;
+  }
   if(!nativeTv&&backdrop){
     hero.style.backgroundImage=`url(${backdrop})`;
     hero.style.backgroundPosition='center 28%';
@@ -14883,17 +14896,20 @@ async function watchCinemaDetail(){
     }
     return;
   }
-  if(watchBtn){
-    watchBtn.disabled=false;
-    watchBtn.textContent='СМОТРЕТЬ';
+  if(cinemaSource==='lazy'&&getLazyMediaInfo().installed){
+    if(watchBtn){watchBtn.disabled=true;watchBtn.textContent='ИЩУ ВИДЕО…';}
+    try{
+      await showCinemaSourcePicker(item);
+    }catch(e){
+      const err=document.getElementById('cinemaDetailError');
+      if(err){err.textContent='Не удалось получить видеоисточники LazyMedia.';err.style.display='block';}
+    }finally{
+      if(watchBtn){watchBtn.disabled=false;watchBtn.textContent=cinemaItemLooksSeries(item)?'СМОТРЕТЬ СЕРИАЛ':'СМОТРЕТЬ ФИЛЬМ';}
+    }
+    return;
   }
   const err=document.getElementById('cinemaDetailError');
-  if(err){
-    err.textContent=appLang==='hy'?'Հին կինոաղբյուրը անջատված է։':(appLang==='en'?'Legacy cinema source is disabled.':'Старый источник кино отключён.');
-    err.style.display='block';
-    setTimeout(()=>{if(err)err.style.display='none'},2500);
-  }
-  return;
+  if(err){err.textContent='LazyMedia Deluxe не установлен на устройстве.';err.style.display='block';}
 }
 function cinemaTrailerEmbedUrl(raw){
   const url=String(raw||'').trim();
@@ -15067,6 +15083,15 @@ async function enrichCinemaMovie(item){
   if(!title||title==='Фильм')return best;
   const year=cinemaYear(item);
 
+  if(window.ABAJ_STANDALONE&&cinemaSource==='lazy'){
+    if(!item?.intent||!getLazyMediaInfo().installed)return best;
+    const provider=normalizeLazyProviderName(cinemaProviderName(item));
+    try{
+      const extra=await withTimeout(cinemaArticleDetailsAsync(item,provider),6500,{});
+      if(extra&&cinemaMetadataScore(extra)>0)best=cinemaMergeMetadata(best,cinemaNormalizeLazyDetails(extra));
+    }catch(e){}
+    return best;
+  }
   try{
     const r=await fetch('/api/cinema/meta?title='+encodeURIComponent(title)+'&year='+encodeURIComponent(year||''),{cache:'no-store'});
     if(r.ok){
@@ -15074,7 +15099,6 @@ async function enrichCinemaMovie(item){
       if(meta&&meta.found)best=cinemaMergeMetadata(best,meta);
     }
   }catch(e){}
-
   return best;
 }
 let cinemaHistoryPop=false;
