@@ -5992,6 +5992,55 @@ function recoverPlaylistLogos(rows,known){
     return item;
   });
 }
+
+let standaloneIptvFallbackLimit=120;
+function renderStandaloneIptvFallback(reason=''){
+  if(!window.ABAJ_STANDALONE)return;
+  const host=document.getElementById('list');
+  if(!host)return;
+  let rows=[];
+  try{rows=getFiltered()}catch(e){rows=channels.filter(x=>sourceFilter!=='free'||!x.personal)}
+  if(!rows.length&&channels.some(x=>!x.personal)){
+    sourceFilter='free';modeFilter='all';activeCategory='';
+    try{localStorage.setItem('abaj_tv_source_filter','free')}catch(e){}
+    const group=document.getElementById('group');if(group)group.value='';
+    const search=document.getElementById('search');if(search)search.value='';
+    rows=channels.filter(x=>!x.personal&&!isAdultChannel(x));
+  }
+  host.replaceChildren();
+  filteredNow=rows;
+  for(const [i,ch] of rows.slice(0,standaloneIptvFallbackLimit).entries()){
+    const card=document.createElement('div');
+    card.className='channel';card.tabIndex=0;
+    card.dataset.id=String(ch.id||'');
+    const title=document.createElement('div');
+    title.className='gridChannelName';title.textContent=String(ch.name||'TV');
+    const logo=document.createElement('div');
+    logo.className='logoWrap';
+    const text=document.createElement('strong');
+    text.style.cssText='font-size:16px;color:#11719e';text.textContent=String(ch.name||'TV').slice(0,32);
+    logo.appendChild(text);
+    const quality=document.createElement('div');
+    quality.className='qualityBadge';
+    quality.textContent=String(ch.quality||'IPTV');
+    card.append(logo,title,quality);
+    card.addEventListener('click',()=>openPlayer(String(ch.id)));
+    card.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();openPlayer(String(ch.id))}});
+    host.appendChild(card);
+  }
+  if(rows.length>standaloneIptvFallbackLimit){
+    const more=document.createElement('button');
+    more.className='chip';more.type='button';
+    more.textContent='Показать ещё · '+(rows.length-standaloneIptvFallbackLimit);
+    more.style.cssText='display:block;margin:16px auto;padding:12px';
+    more.onclick=()=>{standaloneIptvFallbackLimit+=120;renderStandaloneIptvFallback()};
+    host.appendChild(more);
+  }
+  const status=document.getElementById('status');
+  if(status)status.textContent='IPTV: '+rows.length+(reason?' · запасной режим':'');
+  document.documentElement.classList.remove('abaj-initializing');
+}
+
 async function load(){
   const generation=window.ABAJ_STANDALONE?(window.__abajStandaloneLoadGen=(window.__abajStandaloneLoadGen||0)+1):0;
   try{
@@ -6014,13 +6063,20 @@ async function load(){
             groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
           select.value=groups.includes(previous)?previous:'';
         }
-        buildQuickCats(groups);
-        applyTvBrowseUi();
-        const status=document.getElementById('status');
-        if(status)status.textContent='IPTV: '+channels.filter(x=>!x.personal).length+' · M3U: '+channels.filter(x=>x.personal).length;
-        render();
-        document.documentElement.classList.remove('abaj-initializing');
-        restoreTvBrowseFocus();
+        try{
+          buildQuickCats(groups);
+          applyTvBrowseUi();
+          const status=document.getElementById('status');
+          if(status)status.textContent='IPTV: '+channels.filter(x=>!x.personal).length+' · M3U: '+channels.filter(x=>x.personal).length;
+          render();
+          if(channels.some(x=>!x.personal)&&!document.querySelector('#list .channel'))
+            renderStandaloneIptvFallback('Пустой список');
+          document.documentElement.classList.remove('abaj-initializing');
+          restoreTvBrowseFocus();
+        }catch(e){
+          console.error('Standalone IPTV UI',e);
+          renderStandaloneIptvFallback(String(e?.message||e));
+        }
       };
       updateStandaloneDisplay();
       const personal=await fetch('/api/iptv/edem/channels',{cache:'no-store'})
@@ -6200,7 +6256,7 @@ function normalizeSearchText(v){
 }
 const NEW_CHANNEL_ORDER_KEY='abaj_tv_free_new_channel_order_v2';
 function prioritizeNewChannels(rows){
-  if(modeFilter==='recent'||sourceFilter!=='free')return rows;
+  if(window.ABAJ_STANDALONE||modeFilter==='recent'||sourceFilter!=='free')return rows;
   try{
     const free=channels.filter(x=>!x.personal);
     const ids=free.map(x=>String(x.id));
