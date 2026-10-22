@@ -704,6 +704,7 @@ public class MainActivity extends Activity {
     }
 
     private synchronized org.json.JSONArray expandLazyCinemaFolder(String token){
+        if(BuildConfig.STANDALONE_BUILD)return new org.json.JSONArray();
         Object folder=lazyCinemaNodes.get(token==null?"":token);
         if(folder==null)return new org.json.JSONArray();
         try{
@@ -1198,6 +1199,7 @@ public class MainActivity extends Activity {
     }
 
     private synchronized org.json.JSONArray lazyProviderReflectOptions(String rawIntent,String provider){
+        if(BuildConfig.STANDALONE_BUILD)return new org.json.JSONArray();
         org.json.JSONArray out=new org.json.JSONArray();
         try{
             String source=cinemaSourceId(rawIntent);
@@ -1393,6 +1395,7 @@ public class MainActivity extends Activity {
     }
 
     private synchronized org.json.JSONObject lazyArticleReflectDetails(String rawIntent,String provider){
+        if(BuildConfig.STANDALONE_BUILD)return new org.json.JSONObject();
         org.json.JSONObject out=new org.json.JSONObject();
         try{
             String source=cinemaSourceId(rawIntent);
@@ -1539,6 +1542,7 @@ public class MainActivity extends Activity {
     }
 
     private synchronized org.json.JSONArray lazyFilmixReflectOptions(String rawIntent){
+        if(BuildConfig.STANDALONE_BUILD)return new org.json.JSONArray();
         org.json.JSONArray out=new org.json.JSONArray();
         try{
             String movieId=decodeCinemaIntentPart(rawIntent,1);
@@ -1900,6 +1904,7 @@ public class MainActivity extends Activity {
             });
         }
         @JavascriptInterface public String lazyMediaProviderMap(){
+            if(BuildConfig.STANDALONE_BUILD)return "[]";
             org.json.JSONArray out=new org.json.JSONArray();
             try{
                 Context lazy=createPackageContext(
@@ -1952,6 +1957,10 @@ public class MainActivity extends Activity {
                 JSONObject o=new JSONObject();
                 o.put("installed",true);
                 o.put("version",pi.versionName==null?"":pi.versionName);
+                if(BuildConfig.STANDALONE_BUILD){
+                    o.put("embeddedPlayback",false);
+                    o.put("playbackReason","search_only_interface");
+                }
                 return o.toString();
             }catch(Exception e){
                 try{

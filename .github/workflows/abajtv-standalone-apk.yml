@@ -43,6 +43,13 @@ jobs:
           test -s android/app/src/main/assets/standalone/static/abaj-launcher.js
           test -s android/app/src/main/assets/standalone/static/abaj-media.js
           test -s android/app/src/main/java/ai/facetalk/app/StandaloneNetworkBridge.java
+      - name: Verify complete standalone page in Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/abaj-browser" --no-save playwright@1.49.1
+          node "$RUNNER_TEMP/abaj-browser/node_modules/playwright/cli.js" install --with-deps chromium
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/abaj-browser/node_modules/playwright" node android/standalone-browser.test.cjs
       - name: Restore existing signing key
         run: |
           base64 -d android/facetalk-upload-key.jks.b64 > android/facetalk-upload-key.jks

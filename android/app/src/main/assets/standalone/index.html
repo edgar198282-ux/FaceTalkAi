@@ -10609,6 +10609,15 @@ function getLazyMediaInfo(){
   }catch(e){}
   return {installed:false};
 }
+function standaloneLazyPlaybackUnavailable(item){
+  return window.ABAJ_STANDALONE&&cinemaSource==='lazy'&&
+    !cinemaIsDirectStreamUrl(item?.url)&&getLazyMediaInfo().embeddedPlayback===false;
+}
+function standaloneLazyPlaybackMessage(){
+  return appLang==='en'?'LazyMedia provides search results but no compatible playback interface. No video stream is available inside ABAJ TV.':
+    appLang==='hy'?'LazyMedia-ն տրամադրում է որոնման արդյունքներ, բայց չունի համատեղելի նվագարկման միջերես։ ABAJ TV-ում տեսահոսքը հասանելի չէ։':
+    'LazyMedia передаёт результаты поиска, но не предоставляет совместимый интерфейс воспроизведения. Видеопоток внутри ABAJ TV недоступен.';
+}
 const ABAJ_DEVICE_CINEMA_SOURCE_KEY='abaj_cinema_device_source_v1';
 function cinemaDeviceSourceChoice(){
   try{const x=localStorage.getItem(ABAJ_DEVICE_CINEMA_SOURCE_KEY);return x==='lazy'||x==='kinopub'?x:'';}catch(e){return '';}
@@ -12471,6 +12480,10 @@ async function showCinemaSourcePicker(item){
   }
   modal.classList.add('open');
   cinemaSourcePickerMovie=item;
+  if(standaloneLazyPlaybackUnavailable(item)){
+    if(list){list.replaceChildren();cinemaLazyExternalFallback(list,item)}
+    return;
+  }
   if(cinemaSource==='kinopub'){
     if(list)list.innerHTML='<div class="cinemaSourceBusy">Получаю поток для внутреннего плеера…</div>';
     const resolved=await resolveKinoPubInternalStream(item);
@@ -12548,26 +12561,11 @@ async function showCinemaSourcePicker(item){
 }
 
 function cinemaLazyExternalFallback(list,item){
-  if(!window.ABAJ_STANDALONE||!list||!getLazyMediaInfo().installed)return;
-  const btn=document.createElement('button');
-  btn.className='cinemaSourceBtn';
-  btn.type='button';
-  btn.textContent='Открыть фильм в LazyMedia';
-  btn.onclick=()=>{
-    let opened=false;
-    try{
-      if(item?.intent&&window.AbajNative?.openLazyMediaIntent){
-        opened=!!AbajNative.openLazyMediaIntent(String(item.intent));
-      }
-      if(!opened&&window.AbajNative?.openLazyMedia)opened=!!AbajNative.openLazyMedia();
-    }catch(e){}
-    if(!opened){
-      const error=document.createElement('small');
-      error.textContent='Не удалось открыть установленный LazyMedia Deluxe.';
-      btn.after(error);
-    }
-  };
-  list.appendChild(btn);
+  if(!standaloneLazyPlaybackUnavailable(item)||!list)return;
+  const message=document.createElement('div');
+  message.className='cinemaSourceEmpty';
+  message.textContent=standaloneLazyPlaybackMessage();
+  list.appendChild(message);
 }
 function renderCinemaSourceGroups(){
   const list=document.getElementById('cinemaSourceList');
@@ -14816,6 +14814,16 @@ function renderCinemaDetail(item){
     cinemaSelectedKinoMedia=first;
   }
   updateCinemaSelectedEpisodeInfo();
+  if(watchBtn&&window.ABAJ_STANDALONE&&cinemaSource==='lazy'){
+    const unavailable=standaloneLazyPlaybackUnavailable(item);
+    watchBtn.disabled=unavailable;
+    watchBtn.textContent=unavailable?'ВИДЕО НЕДОСТУПНО':
+      (cinemaIsDirectStreamUrl(item?.url)?cinemaT().watchMovie:'ПРОВЕРИТЬ ИСТОЧНИКИ');
+    if(unavailable){
+      const error=document.getElementById('cinemaDetailError');
+      if(error){error.textContent=standaloneLazyPlaybackMessage();error.style.display='block'}
+    }
+  }
   if(watchBtn&&cinemaSource==='kinopub'){
     const watchPrefix=appLang==='hy'?'ԴԻՏԵԼ ':(appLang==='en'?'WATCH ':'СМОТРЕТЬ ');
     watchBtn.textContent=isSeries
@@ -15059,7 +15067,7 @@ async function watchCinemaDetail(){
       const err=document.getElementById('cinemaDetailError');
       if(err){err.textContent='Не удалось получить видеоисточники LazyMedia.';err.style.display='block';}
     }finally{
-      if(watchBtn){watchBtn.disabled=false;watchBtn.textContent=cinemaItemLooksSeries(item)?'СМОТРЕТЬ СЕРИАЛ':'СМОТРЕТЬ ФИЛЬМ';}
+      if(watchBtn){watchBtn.disabled=standaloneLazyPlaybackUnavailable(item);watchBtn.textContent=watchBtn.disabled?'ВИДЕО НЕДОСТУПНО':'ПРОВЕРИТЬ ИСТОЧНИКИ';}
     }
     return;
   }
