@@ -6115,6 +6115,20 @@ function updateStandaloneCatalogMeta(){
     (visible<channels.length?' · Показано: '+visible.toLocaleString('ru-RU'):'')+
     ' · EPG: '+standaloneEpgMatchCount.toLocaleString('ru-RU');
 }
+function standaloneEpgAliases(ch){
+  if(String(ch.country||'').toUpperCase()!=='AM')return [];
+  const name=standaloneEpgName(ch.name);
+  const sets=[
+    [['armenia1','1tvarmenia','h1armenia'],['armenia 1','1TV Armenia','Public TV of Armenia','First Channel Armenia','Первый канал Армении','Հանրային հեռուստատեսություն']],
+    [['armeniatv','armeniaam'],['Armenia TV','Армения ТВ','Armenia Television']],
+    [['atvarmenia','atvam'],['ATV Armenia','ATV Armenian']],
+    [['dar21tv','dar21'],['Dar 21','Dar 21 TV','Дар 21']],
+    [['norhayastan','norhayastantv'],['Nor Hayastan','Nor Hayastan TV','Նոր Հայաստան']],
+    [['yerkirmedia','yerkirtv'],['Yerkir Media','Yerkir TV','Երկիր Մեդիա','Еркир Медиа']]
+  ];
+  const group=sets.find(pair=>pair[0].includes(name));
+  return group?group[1].map(standaloneEpgName):[];
+}
 function applyStandaloneEpg(){
   if(!window.ABAJ_STANDALONE||!channels.length||!standaloneEpgDocs.size)return;
   const guides=new Map();
@@ -6123,31 +6137,42 @@ function applyStandaloneEpg(){
   const now=Math.floor(Date.now()/1000);
   for(const ch of channels){
     const country=String(ch.country||'').toUpperCase();
-    const scopes=country==='RU'||country==='AM'?[country,'ALT']:['RU','AM','ALT'];
+    const scopes=country==='RU'?['RU','RUPW','ALT','ALT2']:
+      country==='AM'?['AM','ALT','ALT2']:['RU','RUPW','AM','ALT','ALT2'];
     const id=standaloneEpgId(ch.tvg_id);
     const name=standaloneEpgName(ch.name);
-    let row=null;
-    for(const scope of scopes){
-      const candidate=id&&guides.get(scope)?.ids.get(id);
-      if(candidate){row=candidate;break;}
-    }
-    if(!row){
-      for(const scope of scopes){
-        const candidate=name&&guides.get(scope)?.names.get(name);
-        if(candidate){row=candidate;break;}
+    const aliasKeys=standaloneEpgAliases(ch);
+    let winner=null,nowProgram=null,nextProgram=null,bestRank=-1;
+    for(let i=0;i<scopes.length;i++){
+      const scope=scopes[i],guide=guides.get(scope);
+      if(!guide)continue;
+      const candidates=[];
+      const exactId=id&&guide.ids.get(id);
+      if(exactId)candidates.push({row:exactId,exact:true});
+      const names=[name,...aliasKeys];
+      for(let k=0;k<names.length;k++){
+        if(k>0&&country!=='AM')continue;
+        const row=guide.names.get(names[k]);
+        if(row&&!candidates.some(c=>c.row===row))candidates.push({row,exact:k===0});
+      }
+      for(const candidate of candidates){
+        const row=candidate.row;
+        const schedule=Array.isArray(row.programmes)&&row.programmes.length?row.programmes:[row.now,row.next];
+        const entries=schedule.filter(p=>p&&p.title&&Number(p.stop)>now)
+          .sort((a,b)=>Number(a.start)-Number(b.start));
+        const active=entries.filter(p=>Number(p.start)<=now&&now<Number(p.stop)).pop()||null;
+        const upcoming=entries.find(p=>Number(p.start)>now)||null;
+        if(!active&&!upcoming)continue;
+        const rank=(active?100:10)+(candidate.exact?3:0)-i;
+        if(rank>bestRank){bestRank=rank;winner=row;nowProgram=active;nextProgram=upcoming;}
       }
     }
-    const schedule=Array.isArray(row?.programmes)&&row.programmes.length?row.programmes:[row?.now,row?.next];
-    const entries=schedule.filter(p=>p&&p.title&&Number(p.stop)>now)
-      .sort((a,b)=>Number(a.start)-Number(b.start));
-    const nextNow=entries.filter(p=>Number(p.start)<=now&&now<Number(p.stop)).pop()||null;
-    const nextLater=entries.find(p=>Number(p.start)>now)||null;
     const oldNow=ch.epg_now,oldNext=ch.epg_next;
-    if((oldNow?.start||0)!==(nextNow?.start||0)||(oldNow?.title||'')!==(nextNow?.title||'')||
-       (oldNext?.start||0)!==(nextLater?.start||0)||(oldNext?.title||'')!==(nextLater?.title||''))changed=true;
-    ch.epg_now=nextNow;
-    ch.epg_next=nextLater;
-    if(nextNow||nextLater)matched++;
+    if((oldNow?.start||0)!==(nowProgram?.start||0)||(oldNow?.title||'')!==(nowProgram?.title||'')||
+       (oldNext?.start||0)!==(nextProgram?.start||0)||(oldNext?.title||'')!==(nextProgram?.title||''))changed=true;
+    ch.epg_now=nowProgram;
+    ch.epg_next=nextProgram;
+    if(nowProgram||nextProgram)matched++;
   }
   if(standaloneEpgMatchCount!==matched)changed=true;
   standaloneEpgMatchCount=matched;
@@ -6171,7 +6196,7 @@ function applyStandaloneEpg(){
   else updateStandaloneCatalogMeta();
 }
 window.__abajStandaloneEpgUpdate=function(data){
-  if(!window.ABAJ_STANDALONE||!data||!['AM','RU','ALT'].includes(data.country)||!Array.isArray(data.channels)||!data.channels.length)return;
+  if(!window.ABAJ_STANDALONE||!data||!['AM','RU','RUPW','ALT','ALT2'].includes(data.country)||!Array.isArray(data.channels)||!data.channels.length)return;
   standaloneEpgDocs.set(data.country,data);
   try{localStorage.setItem('abaj_standalone_epg_'+data.country,JSON.stringify(data));}catch(e){}
   applyStandaloneEpg();
@@ -6180,7 +6205,7 @@ function startStandaloneEpg(){
   if(!window.ABAJ_STANDALONE)return;
   if(!standaloneEpgStarted){
     standaloneEpgStarted=true;
-    for(const country of ['AM','RU','ALT']){
+    for(const country of ['AM','RU','RUPW','ALT','ALT2']){
       try{
         const saved=JSON.parse(localStorage.getItem('abaj_standalone_epg_'+country)||'null');
         if(saved&&Array.isArray(saved.channels)&&Date.now()-Number(saved.updated||0)*1000<6*60*60*1000)
