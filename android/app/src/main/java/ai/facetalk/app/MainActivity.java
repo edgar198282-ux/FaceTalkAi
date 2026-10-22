@@ -236,6 +236,9 @@ public class MainActivity extends Activity {
     private volatile boolean cinemaResolverDone=false;
     private volatile String pendingExternalMediaUrl="";
     private volatile String pendingExternalMediaTitle="";
+    private volatile String pendingExternalMediaHeaders="{}";
+    private int externalMediaDeliveryAttempts=0;
+    private final Handler externalMediaDeliveryHandler=new Handler(Looper.getMainLooper());
     private final java.util.concurrent.ConcurrentHashMap<String,Object> lazyCinemaNodes=new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.atomic.AtomicLong lazyCinemaNodeSeq=new java.util.concurrent.atomic.AtomicLong(1L);
     private String decodeCinemaIntentPart(String raw,int index){
@@ -3054,33 +3057,113 @@ public class MainActivity extends Activity {
         webView.requestFocus();
     }
     private boolean consumeExternalMediaIntent(Intent i){
-        if(i==null||!Intent.ACTION_VIEW.equals(i.getAction()))return false;
+        if(i==null)return false;
+        final String action=i.getAction()==null?"":i.getAction();
+        if(!Intent.ACTION_VIEW.equals(action)&&!Intent.ACTION_SEND.equals(action))return false;
         Uri data=i.getData();
+        if(data==null&&Intent.ACTION_SEND.equals(action)){
+            try{data=i.getParcelableExtra(Intent.EXTRA_STREAM);}catch(Exception ignored){}
+            if(data==null){
+                try{
+                    String text=i.getStringExtra(Intent.EXTRA_TEXT);
+                    if(text!=null)data=Uri.parse(text.trim());
+                }catch(Exception ignored){}
+            }
+        }
         if(data==null)return false;
-        String scheme=data.getScheme()==null?"":data.getScheme().toLowerCase();
-        if("facetalk".equals(scheme))return false;
-        String type=i.getType()==null?"":i.getType().toLowerCase();
-        boolean mediaType=type.startsWith("video/")||type.contains("mpegurl")||type.contains("dash+xml");
-        String raw=data.toString();
-        String low=raw.toLowerCase();
-        boolean mediaUrl=low.contains(".m3u8")||low.contains(".mp4")||low.contains(".mkv")||low.contains(".webm")||low.contains(".mpd");
-        if(!mediaType&&!mediaUrl)return false;
+        final String scheme=data.getScheme()==null?"":data.getScheme().toLowerCase(java.util.Locale.US);
+        if(!("http".equals(scheme)||"https".equals(scheme)||"content".equals(scheme)||"file".equals(scheme)))return false;
+        final String type=i.getType()==null?"":i.getType().toLowerCase(java.util.Locale.US);
+        final String raw=data.toString();
+        final String low=raw.toLowerCase(java.util.Locale.US);
+        final boolean mediaMime=type.startsWith("video/")||type.contains("mpegurl")||type.contains("dash+xml")||type.contains("octet-stream");
+        final boolean mediaPath=low.contains(".m3u8")||low.contains(".mp4")||low.contains(".mkv")||
+            low.contains(".webm")||low.contains(".mpd")||low.contains(".ts?");
+        if(!mediaMime&&!mediaPath)return false;
+        if(raw.length()>8192)return false;
+        JSONObject headers=new JSONObject();
+        try{
+            Bundle extras=i.getExtras();
+            if(extras!=null){
+                for(String name:new String[]{"headers","http_headers","httpHeaders"}){
+                    Object value=extras.get(name);
+                    if(value instanceof Bundle){
+                        Bundle provided=(Bundle)value;
+                        for(String key:provided.keySet()){
+                            Object v=provided.get(key);
+                            if(key!=null&&v instanceof String)appendExternalMediaHeader(headers,key,(String)v);
+                        }
+                    }else if(value instanceof String){
+                        try{
+                            JSONObject provided=new JSONObject((String)value);
+                            java.util.Iterator<String> keys=provided.keys();
+                            while(keys.hasNext()){
+                                String key=keys.next();
+                                appendExternalMediaHeader(headers,key,provided.optString(key,""));
+                            }
+                        }catch(Exception ignored){}
+                    }
+                }
+                for(String key:new String[]{"User-Agent","Referer","Origin"}){
+                    String value=i.getStringExtra(key);
+                    if(value!=null)appendExternalMediaHeader(headers,key,value);
+                }
+            }
+        }catch(Exception ignored){}
+        try{
+            if(Intent.ACTION_VIEW.equals(action)&&("content".equals(scheme)||"file".equals(scheme)))
+                getContentResolver().takePersistableUriPermission(data,Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        }catch(Exception ignored){}
         pendingExternalMediaUrl=raw;
         String title=i.getStringExtra(Intent.EXTRA_TITLE);
+        if(title==null||title.trim().isEmpty())title=i.getStringExtra("title");
         pendingExternalMediaTitle=title==null?"":title;
+        pendingExternalMediaHeaders=headers.toString();
+        externalMediaDeliveryAttempts=0;
         if(webView!=null)runOnUiThread(this::deliverPendingExternalMedia);
         return true;
     }
+    private void appendExternalMediaHeader(JSONObject target,String key,String value){
+        if(key==null||value==null||value.length()>4096)return;
+        String normalized=key.trim().toLowerCase(java.util.Locale.US);
+        final String safe;
+        switch(normalized){
+            case "user-agent":safe="User-Agent";break;
+            case "referer":safe="Referer";break;
+            case "origin":safe="Origin";break;
+            case "cookie":safe="Cookie";break;
+            case "authorization":safe="Authorization";break;
+            default:return;
+        }
+        try{target.put(safe,value);}catch(Exception ignored){}
+    }
     private void deliverPendingExternalMedia(){
         if(webView==null)return;
-        String url=pendingExternalMediaUrl;
+        final String url=pendingExternalMediaUrl;
         if(url==null||url.isEmpty())return;
-        String title=pendingExternalMediaTitle==null?"":pendingExternalMediaTitle;
-        pendingExternalMediaUrl="";
-        pendingExternalMediaTitle="";
-        String js="window.__abajOpenExternalMedia&&window.__abajOpenExternalMedia("+
-            JSONObject.quote(url)+","+JSONObject.quote(title)+");";
-        try{webView.evaluateJavascript(js,null);}catch(Exception ignored){}
+        if(externalMediaDeliveryAttempts++>36)return;
+        final String title=pendingExternalMediaTitle==null?"":pendingExternalMediaTitle;
+        final String headers=pendingExternalMediaHeaders==null?"{}":pendingExternalMediaHeaders;
+        final String script="(function(){"+
+            "if(typeof window.__abajOpenExternalMedia!=='function')return false;"+
+            "window.__abajOpenExternalMedia("+JSONObject.quote(url)+","+
+                JSONObject.quote(title)+",'LAZYMEDIA',"+headers+");"+
+            "return true;})()";
+        try{
+            webView.evaluateJavascript(script,value->{
+                if(!url.equals(pendingExternalMediaUrl))return;
+                if("true".equals(String.valueOf(value))){
+                    pendingExternalMediaUrl="";
+                    pendingExternalMediaTitle="";
+                    pendingExternalMediaHeaders="{}";
+                    externalMediaDeliveryAttempts=0;
+                }else{
+                    externalMediaDeliveryHandler.postDelayed(this::deliverPendingExternalMedia,350);
+                }
+            });
+        }catch(Exception e){
+            externalMediaDeliveryHandler.postDelayed(this::deliverPendingExternalMedia,350);
+        }
     }
     private void consumeAuthIntent(Intent i){if(i!=null){consumeAuthUri(i.getData());consumeExternalMediaIntent(i);}}
     private void saveSignedAuth(String uid,String ts,String sig){if(uid==null||ts==null||sig==null||uid.isEmpty()||ts.isEmpty()||sig.isEmpty())return;prefs.edit().putString("ft_uid",uid).putString("ft_ts",ts).putString("ft_sig",sig).remove("app_auth_nonce").apply();}
