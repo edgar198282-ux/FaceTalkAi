@@ -97,6 +97,51 @@ test('15,129 channels import completely, without storing giant cache',async()=>{
 });
 
 
+test('built-in IPTV keeps highest quality and distinguishes time shifts, regional versions and user playlists',async()=>{
+ const x=setup();
+ x.samples.set('https://iptv-org.github.io/iptv/countries/ru.m3u',[
+  '#EXTM3U',
+  '#EXTINF:-1 tvg-id="Mir.ru",Mir +2 (540p) [Not 24/7]',
+  'https://stream.test/mir-plus2-sd.m3u8',
+  '#EXTINF:-1 tvg-id="Mir.ru",Mir +2 (1080p)',
+  'https://stream.test/mir-plus2-fhd.m3u8',
+  '#EXTINF:-1,Mir +7 (540p)',
+  'https://stream.test/mir-plus7.m3u8',
+  '#EXTINF:-1,Mir (720p)',
+  'https://stream.test/mir-hd.m3u8',
+  '#EXTINF:-1,Mir (1080p)',
+  'https://stream.test/mir-fhd.m3u8',
+  '#EXTINF:-1,Mir Moscow (720p)',
+  'https://stream.test/mir-moscow.m3u8'
+ ].join('\n'));
+ x.samples.set('https://iptv-org.github.io/iptv/countries/am.m3u',[
+  '#EXTM3U',
+  '#EXTINF:-1,Armenia 1 (576p)',
+  'https://stream.test/armenia1-sd.m3u8',
+  '#EXTINF:-1,Armenia 1 (1080p)',
+  'https://stream.test/armenia1-fhd.m3u8',
+  '#EXTINF:-1,Armenia 1 America (1080p)',
+  'https://stream.test/armenia1-us.m3u8'
+ ].join('\n'));
+ await x.win.abajStandaloneGetIptvChannels();
+ const update=x.scheduled.find(job=>job.active&&job.ms===50);
+ assert.ok(update);
+ await update.fn();
+ const rows=await x.win.abajStandaloneGetIptvChannels();
+ const plus2=rows.filter(c=>/^mir \+2\b/i.test(c.name));
+ assert.equal(plus2.length,1);
+ assert.equal(plus2[0].url,'https://stream.test/mir-plus2-fhd.m3u8');
+ assert.ok(plus2[0].backups.includes('https://stream.test/mir-plus2-sd.m3u8'));
+ assert.equal(rows.filter(c=>/^mir \+7\b/i.test(c.name)).length,1);
+ assert.equal(rows.filter(c=>/^mir \(/i.test(c.name)).length,1);
+ assert.equal(rows.filter(c=>/^mir moscow\b/i.test(c.name)).length,1);
+ const armenia=rows.filter(c=>/^armenia 1(?: \(|$)/i.test(c.name));
+ assert.equal(armenia.length,1);
+ assert.equal(armenia[0].height,1080);
+ assert.ok(rows.some(c=>/^armenia 1 america/i.test(c.name)));
+ assert.ok(rows.every(c=>c.personal===false));
+});
+
 test('KinoPub: one tap requests a device code without manual OAuth inputs',async()=>{
  const x=setup();x.win.abajStandaloneOpenSources();
  const st=x.get('standaloneKpStatus');
