@@ -994,7 +994,7 @@ async function api(path,opts){
  if(p==='/api/iptv/edem/channels'){const data=await customList();channelCache.push(...data.channels);return reply(data)}
  if(p==='/api/iptv/edem/status'){const active=sources().length>0;return reply({active,configured:active,days_left:null,device_limit:0,device_count:1,payment:{status:'paid'}})}
  if(p==='/api/iptv/play'||p==='/api/iptv/edem/play')return reply({url:getItemUrl(q.get('id'))});
- if(p==='/api/iptv/refresh'){save('free-cache',null);for(const x of sources())save('playlist-cache-'+x.id,null);return reply({ok:true})}
+ if(p==='/api/iptv/refresh'){refreshBuiltinIptv(true).catch(()=>{});playlistCache.clear();return reply({ok:true})}
  if(p==='/api/cinema/source-state')return reply({source:'kinopub',cinema_enabled:true,playback_allowed:true});
  if(p==='/api/kinopub/status')return reply({ok:true,authenticated:cinemaStatus(),pending:false,owner:false,verification_uri:'https://kino.pub/device'});
  if(p==='/api/kinopub/catalog'||p==='/api/kinopub/section')return kpLoadSection(q,p.endsWith('/catalog'));
@@ -1045,7 +1045,7 @@ function settings(){
  `;
  document.head.appendChild(css);
  const el=document.createElement('div');el.id='standaloneConfig';el.hidden=true;
- el.innerHTML='<div class="standaloneSheet"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">ABAJ TV · Источники</h2><button id="standaloneClose">✕</button></div><h3>Сохранённые IPTV-плейлисты <span id="standaloneSavedCount"></span></h3><div class="savedPlaylists" id="standaloneRows"></div><h3 id="standaloneEditorTitle">Добавить плейлист</h3><label>Название плейлиста</label><input id="standaloneListName" placeholder="Например, Free TV"><label>Прямая ссылка M3U</label><input id="standaloneListUrl" placeholder="https://..."><button id="standaloneAdd">Добавить плейлист</button> <button id="standaloneCancel" hidden>Отмена</button><div id="standalonePlaylistStatus" aria-live="polite"></div><hr><h3>KinoPub</h3><p id="standaloneKpStatus" aria-live="polite" style="font-weight:700">Нажми «Войти» для получения кода устройства</p><div id="standaloneKpCode" hidden style="padding:12px;background:#d9efff;border-radius:14px;margin:12px 0"><small>1. Открой на телефоне kino.pub/device</small><div id="standaloneKpUserCode" style="font-size:30px;font-weight:900;letter-spacing:3px;margin:6px 0"></div><small>2. Введи этот код и подтверди устройство. ABAJ TV подключится автоматически.</small><button id="standaloneKpCopy" type="button">Копировать код</button> <button id="standaloneKpVisit" type="button">Открыть сайт</button></div><button id="standaloneConnect">Войти в KinoPub</button> <button id="standaloneKpSync">Синхронизировать</button> <button id="standaloneKpOut" class="danger">Выйти</button><details id="standaloneKpAdvanced" style="margin-top:12px"><summary style="cursor:pointer;font-weight:800">Дополнительные настройки OAuth</summary><label>OAuth Client ID</label><input id="standaloneClientId" autocomplete="off"><label>OAuth Client Secret</label><input type="password" id="standaloneClientSecret" autocomplete="off"><button id="standaloneKpSaveClient" type="button">Сохранить параметры</button> <button id="standaloneKpResetClient" type="button">Сбросить</button><small>Нужны только если KinoPub выдал тебе отдельные параметры клиента.</small></details><hr><button id="standaloneRefresh">Обновить каналы</button></div>';
+ el.innerHTML='<div class="standaloneSheet"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">ABAJ TV · Источники</h2><button id="standaloneClose">✕</button></div><h3>Встроенный IPTV</h3><div class="savedRow" style="margin-top:8px"><div class="savedDetails"><b>IPTV</b><small id="standaloneBuiltinIptvStatus">Автообновление каналов · источник встроен</small></div><span style="font-size:12px;font-weight:800;color:#16865b">Встроенный</span></div><h3>Дополнительные IPTV-плейлисты <span id="standaloneSavedCount"></span></h3><div class="savedPlaylists" id="standaloneRows"></div><h3 id="standaloneEditorTitle">Добавить плейлист</h3><label>Название плейлиста</label><input id="standaloneListName" placeholder="Например, Free TV"><label>Прямая ссылка M3U</label><input id="standaloneListUrl" placeholder="https://..."><button id="standaloneAdd">Добавить плейлист</button> <button id="standaloneCancel" hidden>Отмена</button><div id="standalonePlaylistStatus" aria-live="polite"></div><hr><h3>KinoPub</h3><p id="standaloneKpStatus" aria-live="polite" style="font-weight:700">Нажми «Войти» для получения кода устройства</p><div id="standaloneKpCode" hidden style="padding:12px;background:#d9efff;border-radius:14px;margin:12px 0"><small>1. Открой на телефоне kino.pub/device</small><div id="standaloneKpUserCode" style="font-size:30px;font-weight:900;letter-spacing:3px;margin:6px 0"></div><small>2. Введи этот код и подтверди устройство. ABAJ TV подключится автоматически.</small><button id="standaloneKpCopy" type="button">Копировать код</button> <button id="standaloneKpVisit" type="button">Открыть сайт</button></div><button id="standaloneConnect">Войти в KinoPub</button> <button id="standaloneKpSync">Синхронизировать</button> <button id="standaloneKpOut" class="danger">Выйти</button><details id="standaloneKpAdvanced" style="margin-top:12px"><summary style="cursor:pointer;font-weight:800">Дополнительные настройки OAuth</summary><label>OAuth Client ID</label><input id="standaloneClientId" autocomplete="off"><label>OAuth Client Secret</label><input type="password" id="standaloneClientSecret" autocomplete="off"><button id="standaloneKpSaveClient" type="button">Сохранить параметры</button> <button id="standaloneKpResetClient" type="button">Сбросить</button><small>Нужны только если KinoPub выдал тебе отдельные параметры клиента.</small></details><hr><button id="standaloneRefresh">Обновить каналы</button></div>';
  document.body.appendChild(el);
  // The original "Подключить IPTV / KinoPub" button is the only entry point.
  // Do not inject a second "Источники (без сервера)" button at the bottom.
@@ -1078,6 +1078,13 @@ function settings(){
   nameInput.focus();
  }
  function paintRows(){
+  const builtinInfo=el.querySelector('#standaloneBuiltinIptvStatus');
+  if(builtinInfo){
+   const state=window.abajStandaloneIptvState?.()||{};
+   const updatedAt=Number(state.updatedAt||0);
+   const suffix=updatedAt?' · '+new Date(updatedAt).toLocaleDateString():'';
+   builtinInfo.textContent=Number(state.count||0)+' каналов · '+(state.updating?'обновляется…':'автообновление')+suffix;
+  }
   const lists=sources(),host=el.querySelector('#standaloneRows');
   host.replaceChildren();
   el.querySelector('#standaloneSavedCount').textContent='('+lists.length+')';
@@ -1151,7 +1158,8 @@ function settings(){
  };
  el.querySelector('#standaloneRefresh').onclick=()=>{
   playlistCache.clear();playlistHealth.clear();
-  announcePlaylist('Обновляем все плейлисты…');
+  announcePlaylist('Обновляем IPTV и дополнительные плейлисты…');
+  refreshBuiltinIptv(true).catch(()=>{});
   refreshAppPlaylists();paintRows();
  };
 
