@@ -64,6 +64,24 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    return {count:filteredNow.length,query:document.getElementById('search').value,category:activeCategory};
   });
   assert.equal(empty.count,0);assert.equal(empty.query,'missing-query-xyz');assert.equal(empty.category,'News');
+  const epg=await page.evaluate(()=>{
+    const now=Math.floor(Date.now()/1000);
+    window.__abajStandaloneEpgUpdate({
+      country:'AM',updated:now,channels:[{
+        id:'test0.am',names:['Test 0'],
+        now:{start:now-900,stop:now+900,title:'Тестовая передача'},
+        next:{start:now+900,stop:now+4500,title:'Следующая передача'}
+      }]
+    });
+    const item=channels.find(x=>x.name==='Test 0');
+    const badge=document.getElementById('standaloneCatalogMeta');
+    return {count:badge?.textContent||'',now:item?.epg_now?.title,
+      next:item?.epg_next?.title,visible:getComputedStyle(badge).display!=='none'};
+  });
+  assert.match(epg.count,/IPTV:/);
+  assert.equal(epg.visible,true);
+  assert.equal(epg.now,'Тестовая передача');
+  assert.equal(epg.next,'Следующая передача');
   const lazy=await page.evaluate(async()=>{
    cinemaSource='lazy';cinemaPlaybackAllowed=true;
    const item={id:'test-film',title:'Test film',intent:'catalog-only',provider:'HDREZKA'};
