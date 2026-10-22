@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const script=fs.readFileSync('app/src/main/assets/standalone/compat.js','utf8');
-function setup(){
+function setup(options={}){
  const elements=new Map(),handlers={},storage=new Map();
  const localStorage={
   get length(){return storage.size},
@@ -38,6 +38,7 @@ function setup(){
  const fakeSetTimeout=(fn,ms)=>{const job={fn,ms,active:true};scheduled.push(job);return job};
  const fakeClearTimeout=job=>{if(job)job.active=false};
  const win={
+  indexedDB:options.indexedDB,
   fetch:async()=>new Response('{}'),
   renderNamedPlaylistChips:(lists)=>{menu=lists.map(x=>x.name)},
   load:async()=>{loads++},
@@ -48,7 +49,7 @@ function setup(){
    win.__abajStandaloneResponse(id,raw===undefined?404:200,raw??'Not found');
   }}
  };
- vm.runInNewContext(script,{window:win,document,localStorage,Response,URL,URLSearchParams,console,setTimeout:fakeSetTimeout,clearTimeout:fakeClearTimeout,Date,Math,Promise,Error},{filename:'compat.js'});
+ vm.runInNewContext(script,{window:win,indexedDB:options.indexedDB,document,localStorage,Response,URL,URLSearchParams,console,setTimeout:fakeSetTimeout,clearTimeout:fakeClearTimeout,Date,Math,Promise,Error},{filename:'compat.js'});
  handlers.DOMContentLoaded();
  return{get:id=>elements.get(id),storage,win,samples,requests,scheduled,menu:()=>menu,loads:()=>loads};
 }
@@ -387,4 +388,42 @@ test('Standalone mobile movie detail hides duplicate centered poster, keeping th
  const html=fs.readFileSync('app/src/main/assets/standalone/index.html','utf8');
  assert.ok(html.includes('body:not(.nativeTv) .cinemaDetailHero.posterFallback .cinemaDetailHeroPoster{display:none!important}'));
  assert.ok(html.includes("heroPoster.style.display=(!bg&&poster&&nativeTv)?'block':'none';"));
+});
+
+function snapshotDatabase(snapshot){
+ return {open(){
+  const request={};
+  queueMicrotask(()=>{
+   request.result={close(){},transaction(){return {objectStore(){return {get(){
+    const read={};queueMicrotask(()=>{read.result=snapshot;read.onsuccess()});return read;
+   }}}}}};
+   request.onsuccess();
+  });
+  return request;
+ }};
+}
+test('built-in catalog supplies renderable channel objects, not Map entries',async()=>{
+ const x=setup();
+ const rows=await x.win.abajStandaloneGetIptvChannels();
+ assert.ok(rows.length>10);
+ for(const row of rows){
+  assert.equal(row.status,'ONLINE');
+  assert.match(row.url,/^https?:\/\//);
+  assert.ok(row.name);
+  assert.equal(row.personal,false);
+  assert.equal(row.playlist_id,'free');
+ }
+ assert.ok(rows.some(row=>row.country==='AM'&&row.quality==='FHD'));
+});
+test('old 17103-entry IndexedDB snapshot is repaired without dropping its channels',async()=>{
+ const items=Array.from({length:17103},(_,i)=>({0:'am|channel '+i,1:{
+  name:'Channel '+i,url:'https://iptv.test/'+i+'.m3u8',status:'ONLINE',
+  country:'AM',quality:'FHD',height:1080
+ },id:'free:'+i,provider:'IPTV',playlist_id:'free',personal:false}));
+ const x=setup({indexedDB:snapshotDatabase({items,at:Date.now()})});
+ const rows=await x.win.abajStandaloneGetIptvChannels();
+ assert.equal(rows.filter(row=>row.name?.startsWith('Channel ')).length,17103);
+ assert.ok(rows.every(row=>row.status==='ONLINE'&&row.url&&row.name));
+ assert.equal(new Set(rows.map(row=>row.id)).size,rows.length);
+ assert.equal(x.win.abajStandaloneIptvState().count,rows.length);
 });

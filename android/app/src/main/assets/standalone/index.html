@@ -6069,8 +6069,7 @@ async function load(){
           const status=document.getElementById('status');
           if(status)status.textContent='IPTV: '+channels.filter(x=>!x.personal).length+' · M3U: '+channels.filter(x=>x.personal).length;
           render();
-          if(channels.some(x=>!x.personal)&&!document.querySelector('#list .channel'))
-            renderStandaloneIptvFallback('Пустой список');
+          console.info('ABAJ IPTV render',JSON.stringify({catalog:channels.length,filtered:filteredNow.length,cards:document.querySelectorAll('#list .channel').length,source:sourceFilter,mode:modeFilter}));
           document.documentElement.classList.remove('abaj-initializing');
           restoreTvBrowseFocus();
         }catch(e){
@@ -6551,7 +6550,7 @@ document.addEventListener('DOMContentLoaded',initIptvScrollTop);
 function render(){
   const t=UI_TEXT[appLang]||UI_TEXT.ru;
   filteredNow=getFiltered();
-  if((nativeTv||window.ABAJ_STANDALONE)&&channels.length&&filteredNow.length===0){
+  if(nativeTv&&!window.ABAJ_STANDALONE&&channels.length&&filteredNow.length===0){
     modeFilter='all';
     activeCategory='';
     if(window.ABAJ_STANDALONE){
@@ -6567,7 +6566,7 @@ function render(){
     filteredNow=getFiltered();
   }
   const channelNumberMap=new Map(filteredNow.map((x,i)=>[x.id,i+1]));
-  const grouped={};
+  const grouped=Object.create(null);
   const renderRows=nativeTv?filteredNow.slice(0,tvRenderLimit):(window.ABAJ_STANDALONE?filteredNow.slice(0,standaloneRenderLimit):filteredNow);
   renderRows.forEach(x=>{
     const k=x.group||'Other';

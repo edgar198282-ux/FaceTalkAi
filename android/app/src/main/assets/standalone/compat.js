@@ -83,7 +83,9 @@ const iptvName=n=>String(n||'').toLocaleLowerCase('ru').replace(/\s*(?:\((?:2160
 function iptvHash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)}
 function mergeBuiltinIptv(rows){
  const selected=new Map();
- for(const item of rows){
+ for(const raw of rows){
+  const item=raw&&URL_OK(raw.url)?raw:raw?.[1];
+  if(!item||!URL_OK(item.url)||!String(item.name||'').trim())continue;
   const k=(String(item.country||'')+'|'+iptvName(item.name)).toLowerCase();
   if(k.endsWith('|'))continue;
   const previous=selected.get(k);
@@ -95,7 +97,7 @@ function mergeBuiltinIptv(rows){
   if(!best.logo)best.logo=other.logo||'';
   selected.set(k,best);
  }
- return [...selected].map(x=>({...x,id:'free:'+iptvHash((String(x.country||'')+'|'+iptvName(x.name)).toLowerCase()),provider:'IPTV',playlist_id:'free',personal:false}));
+ return [...selected.values()].map(x=>({...x,id:'free:'+iptvHash((String(x.country||'')+'|'+iptvName(x.name)).toLowerCase()),provider:'IPTV',playlist_id:'free',personal:false}));
 }
 function builtinFromM3u(raw,country){
  return parseM3U(raw,'IPTV','free',country).map(x=>{
@@ -194,8 +196,9 @@ function refreshBuiltinIptv(force=false){
 }
 const freeList=async()=>{
  if(!builtinIptvBoot)builtinIptvBoot=iptvSnapshotRead().then(saved=>{
-  builtinIptvData=saved&&Array.isArray(saved.items)&&saved.items.length>=builtinIptvSeed.length
-   ?saved:{items:mergeBuiltinIptv(builtinIptvSeed),at:0};
+  const items=mergeBuiltinIptv([...builtinIptvSeed,...(Array.isArray(saved?.items)?saved.items:[])]);
+  builtinIptvData={items,at:Number(saved?.at)||0};
+  console.info('ABAJ IPTV cache',JSON.stringify({cached:saved?.items?.length||0,available:items.length}));
  }).catch(()=>{builtinIptvData={items:mergeBuiltinIptv(builtinIptvSeed),at:0}});
  await builtinIptvBoot;
  if(!builtinIptvRefresh&&(!builtinIptvData.at||Date.now()-builtinIptvData.at>=IPTV_REFRESH_MS))
