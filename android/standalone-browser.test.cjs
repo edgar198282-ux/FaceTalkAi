@@ -82,6 +82,27 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   assert.equal(epg.visible,true);
   assert.equal(epg.now,'Тестовая передача');
   assert.equal(epg.next,'Следующая передача');
+  const ui=await page.evaluate(()=>{
+    document.getElementById('search').value='';
+    setCategory('');setModeFilter(null,'all');render();
+    const cinema=document.querySelector('#abajLauncher .abajLaunchTile[data-target="cinema"]');
+    const spark=cinema?.querySelector('.abajPopcornSpark');
+    const noGuide=Array.from(document.querySelectorAll('#list .channel'))
+      .filter(node=>node.dataset.id&&node.dataset.id!==channels.find(x=>x.name==='Test 0')?.id);
+    return {
+      cinemaReady:!!cinema,
+      sparkCount:cinema?.querySelectorAll('.abajPopcornSpark').length||0,
+      sparkAnimation:spark?getComputedStyle(spark).animationName:'',
+      noEmptyEpgText:noGuide.every(node=>!node.textContent.includes('Программа недоступна')),
+      noEmptyEpgRows:noGuide.every(node=>!node.querySelector('.abajEpgSmall'))
+    };
+  });
+  assert.equal(ui.cinemaReady,true);
+  assert.equal(ui.sparkCount,4);
+  assert.notEqual(ui.sparkAnimation,'none');
+  assert.equal(ui.noEmptyEpgText,true);
+  assert.equal(ui.noEmptyEpgRows,true);
+
   const lazy=await page.evaluate(async()=>{
    cinemaSource='lazy';cinemaPlaybackAllowed=true;
    const item={id:'test-film',title:'Test film',intent:'catalog-only',provider:'HDREZKA'};
