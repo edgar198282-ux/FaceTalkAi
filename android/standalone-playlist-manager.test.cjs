@@ -58,6 +58,26 @@ function add(x,name,url){
  x.get('standaloneListUrl').value=url;
  x.get('standaloneAdd').onclick();
 }
+test('IPTV refresh is above playlists and KinoPub, and EPG count updates below channel total',()=>{
+ const x=setup();
+ const html=x.get('standaloneConfig').innerHTML;
+ const iptv=html.indexOf('<section class="standaloneSourceSection standaloneIptvSection"');
+ const refresh=html.indexOf('id="standaloneRefresh"');
+ const playlists=html.indexOf('Дополнительные IPTV-плейлисты');
+ const kino=html.indexOf('<section class="standaloneSourceSection standaloneKpSection"');
+ assert.ok(iptv>=0&&iptv<refresh&&refresh<playlists&&playlists<kino);
+ assert.equal(html.split('id="standaloneRefresh"').length-1,1);
+ assert.ok(html.indexOf('id="standaloneBuiltinIptvStatus"')<html.indexOf('id="standaloneBuiltinEpgCount"'));
+ x.win.abajStandaloneEpgCount=()=>703;
+ x.win.abajStandaloneOpenSources();
+ assert.equal(x.get('standaloneBuiltinEpgCount').textContent,'EPG: 703');
+ assert.ok(x.get('standaloneBuiltinIptvStatus').textContent.includes('каналов'));
+ x.win.abajStandaloneEpgCount=()=>712;
+ x.win.abajStandaloneUpdateEpgCount();
+ assert.equal(x.get('standaloneBuiltinEpgCount').textContent,'EPG: 712');
+ assert.equal(typeof x.get('standaloneRefresh').onclick,'function');
+ assert.equal(x.get('standaloneKpStatus').hidden,false);
+});
 test('multiple playlists, edit existing name and URL, delete one without losing other',async()=>{
  const x=setup();
  x.win.abajStandaloneOpenSources();
