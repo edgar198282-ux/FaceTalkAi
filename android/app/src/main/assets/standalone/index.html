@@ -10614,9 +10614,27 @@ function standaloneLazyPlaybackUnavailable(item){
     !cinemaIsDirectStreamUrl(item?.url)&&getLazyMediaInfo().embeddedPlayback===false;
 }
 function standaloneLazyPlaybackMessage(){
-  return appLang==='en'?'LazyMedia provides search results but no compatible playback interface. No video stream is available inside ABAJ TV.':
-    appLang==='hy'?'LazyMedia-ն տրամադրում է որոնման արդյունքներ, բայց չունի համատեղելի նվագարկման միջերես։ ABAJ TV-ում տեսահոսքը հասանելի չէ։':
-    'LazyMedia передаёт результаты поиска, но не предоставляет совместимый интерфейс воспроизведения. Видеопоток внутри ABAJ TV недоступен.';
+  return appLang==='en'
+    ?'Select the video in LazyMedia, then choose ABAJ TV Standalone as the external player to return here.'
+    :appLang==='hy'
+      ?'Ընտրեք տեսանյութը LazyMedia-ում, ապա որպես արտաքին նվագարկիչ ընտրեք ABAJ TV Standalone՝ այստեղ դիտելու համար։'
+      :'Выберите видео в LazyMedia, затем внешний плеер «ABAJ TV Standalone». Воспроизведение откроется здесь.';
+}
+function standaloneLazyOpenArticle(item){
+  if(!window.ABAJ_STANDALONE||!getLazyMediaInfo().installed)return false;
+  try{
+    if(item?.url&&cinemaIsDirectStreamUrl(item.url)){
+      window.__abajOpenExternalMedia(item.url,String(item.title||'Кино'),'LAZYMEDIA',item.headers||{});
+      return true;
+    }
+    if(window.AbajNative&&typeof AbajNative.openLazyMediaIntent==='function'&&item?.intent){
+      if(AbajNative.openLazyMediaIntent(String(item.intent)))return true;
+    }
+    if(window.AbajNative&&typeof AbajNative.openLazyMedia==='function'){
+      return !!AbajNative.openLazyMedia();
+    }
+  }catch(e){}
+  return false;
 }
 const ABAJ_DEVICE_CINEMA_SOURCE_KEY='abaj_cinema_device_source_v1';
 function cinemaDeviceSourceChoice(){
@@ -14815,13 +14833,14 @@ function renderCinemaDetail(item){
   }
   updateCinemaSelectedEpisodeInfo();
   if(watchBtn&&window.ABAJ_STANDALONE&&cinemaSource==='lazy'){
-    const unavailable=standaloneLazyPlaybackUnavailable(item);
-    watchBtn.disabled=unavailable;
-    watchBtn.textContent=unavailable?'ВИДЕО НЕДОСТУПНО':
-      (cinemaIsDirectStreamUrl(item?.url)?cinemaT().watchMovie:'ПРОВЕРИТЬ ИСТОЧНИКИ');
-    if(unavailable){
-      const error=document.getElementById('cinemaDetailError');
-      if(error){error.textContent=standaloneLazyPlaybackMessage();error.style.display='block'}
+    const info=getLazyMediaInfo();
+    const direct=cinemaIsDirectStreamUrl(item?.url);
+    watchBtn.disabled=!direct&&!info.installed;
+    watchBtn.textContent=direct?'СМОТРЕТЬ ФИЛЬМ':'ВЫБРАТЬ ВИДЕО';
+    const hint=document.getElementById('cinemaDetailError');
+    if(hint){
+      hint.textContent=info.installed?standaloneLazyPlaybackMessage():'Для просмотра установите LazyMedia Deluxe.';
+      hint.style.display='block';
     }
   }
   if(watchBtn&&cinemaSource==='kinopub'){
@@ -15059,15 +15078,22 @@ async function watchCinemaDetail(){
     }
     return;
   }
+  if(cinemaSource==='lazy'&&window.ABAJ_STANDALONE){
+    const opened=standaloneLazyOpenArticle(item);
+    if(!opened){
+      const err=document.getElementById('cinemaDetailError');
+      if(err){err.textContent='Не удалось открыть фильм в LazyMedia Deluxe.';err.style.display='block';}
+    }
+    return;
+  }
   if(cinemaSource==='lazy'&&getLazyMediaInfo().installed){
     if(watchBtn){watchBtn.disabled=true;watchBtn.textContent='ИЩУ ВИДЕО…';}
-    try{
-      await showCinemaSourcePicker(item);
-    }catch(e){
+    try{await showCinemaSourcePicker(item);}
+    catch(e){
       const err=document.getElementById('cinemaDetailError');
       if(err){err.textContent='Не удалось получить видеоисточники LazyMedia.';err.style.display='block';}
     }finally{
-      if(watchBtn){watchBtn.disabled=standaloneLazyPlaybackUnavailable(item);watchBtn.textContent=watchBtn.disabled?'ВИДЕО НЕДОСТУПНО':'ПРОВЕРИТЬ ИСТОЧНИКИ';}
+      if(watchBtn){watchBtn.disabled=false;watchBtn.textContent='ПРОВЕРИТЬ ИСТОЧНИКИ';}
     }
     return;
   }
