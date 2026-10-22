@@ -12835,7 +12835,10 @@ function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
       btn.onclick=()=>cinemaRenderResolvedRows(group,infos,'season',{...selection,season});
       list.appendChild(btn);
     });
-    addBack('← Источники',renderCinemaSourceGroups);
+    addBack(selection.voice?'← Озвучка':'← Источники',()=>{
+      if(selection.voice)cinemaRenderResolvedRows(group,infos,'root',{});
+      else renderCinemaSourceGroups();
+    });
     setTimeout(()=>focusCinemaSourceButton(0),20);
     return;
   }
@@ -12877,13 +12880,12 @@ function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
       btn.onclick=()=>cinemaRenderResolvedRows(group,infos,'episode',{...selection,episode});
       list.appendChild(btn);
     });
-    addBack(selection.voice?'← Озвучка':(selection.season?'← Сезон':'← Источники'),()=>{
-      if(selection.voice){
-        const base={...selection};delete base.voice;delete base.episode;
-        cinemaRenderResolvedRows(group,infos,'season',base);
-      }else if(selection.season){
-        const base={...selection};delete base.episode;
-        cinemaRenderResolvedRows(group,infos,'season',base);
+    addBack(selection.season?'← Сезоны':(selection.voice?'← Озвучка':'← Источники'),()=>{
+      if(selection.season){
+        const base={...selection};delete base.season;delete base.episode;
+        cinemaRenderResolvedRows(group,infos,'root',base);
+      }else if(selection.voice){
+        cinemaRenderResolvedRows(group,infos,'root',{});
       }else renderCinemaSourceGroups();
     });
     setTimeout(()=>focusCinemaSourceButton(0),20);
@@ -12943,15 +12945,15 @@ function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
   }
 
   addBack(
-    selection.episode?'← Серии':(selection.voice?'← Озвучка':(selection.season?'← Сезоны':'← Источники')),
+    selection.episode?'← Серии':(selection.season?'← Сезоны':(selection.voice?'← Озвучка':'← Источники')),
     ()=>{
       if(selection.episode){
         const base={...selection};delete base.episode;
-        cinemaRenderResolvedRows(group,infos,'voice',base);
-      }else if(selection.voice){
-        const base={...selection};delete base.voice;
-        cinemaRenderResolvedRows(group,infos,'season',base);
+        cinemaRenderResolvedRows(group,infos,'root',base);
       }else if(selection.season){
+        const base={...selection};delete base.season;
+        cinemaRenderResolvedRows(group,infos,'root',base);
+      }else if(selection.voice){
         cinemaRenderResolvedRows(group,infos,'root',{});
       }else{
         renderCinemaSourceGroups();
