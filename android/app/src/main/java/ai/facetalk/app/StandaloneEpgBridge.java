@@ -16,6 +16,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import javax.xml.parsers.SAXParserFactory;
 import org.json.JSONArray;
@@ -39,17 +43,29 @@ public final class StandaloneEpgBridge {
     @JavascriptInterface public void refresh(){
         if(!busy.compareAndSet(false,true))return;
         new Thread(()->{
+            ExecutorService workers=Executors.newFixedThreadPool(2);
+            CountDownLatch pending=new CountDownLatch(FEEDS.length);
             try{
                 for(String[] feed:FEEDS){
-                    try{
-                        JSONObject parsed=download(feed[1],feed[0]);
-                        if(parsed!=null&&parsed.optJSONArray("channels")!=null&&parsed.optJSONArray("channels").length()>0)
-                            deliver(parsed);
-                    }catch(Exception ex){
-                        Log.w("AbajStandaloneEPG",feed[0]+" guide unavailable: "+ex.getClass().getSimpleName());
-                    }
+                    workers.execute(()->{
+                        try{
+                            JSONObject parsed=download(feed[1],feed[0]);
+                            if(parsed!=null&&parsed.optJSONArray("channels")!=null&&parsed.optJSONArray("channels").length()>0){
+                                Log.i("AbajStandaloneEPG",feed[0]+" guide channels: "+parsed.optJSONArray("channels").length());
+                                deliver(parsed);
+                            }
+                        }catch(Exception ex){
+                            Log.w("AbajStandaloneEPG",feed[0]+" guide unavailable: "+ex.getClass().getSimpleName(),ex);
+                        }finally{pending.countDown();}
+                    });
                 }
-            }finally{busy.set(false);}
+                pending.await(3,TimeUnit.MINUTES);
+            }catch(InterruptedException ex){
+                Thread.currentThread().interrupt();
+            }finally{
+                workers.shutdownNow();
+                busy.set(false);
+            }
         },"abaj-standalone-epg").start();
     }
 
