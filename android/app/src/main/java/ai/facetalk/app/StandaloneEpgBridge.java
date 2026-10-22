@@ -29,7 +29,8 @@ public final class StandaloneEpgBridge {
     private final AtomicBoolean busy=new AtomicBoolean(false);
     private static final String[][] FEEDS={
         {"AM","https://iptv-epg.org/files/epg-am.xml.gz"},
-        {"RU","https://iptv-epg.org/files/epg-ru.xml.gz"}
+        {"RU","https://iptv-epg.org/files/epg-ru.xml.gz"},
+        {"ALT","http://epg.one/epg.xml.gz"}
     };
     StandaloneEpgBridge(Activity a,WebView w){activity=a;view=w;}
 
@@ -61,6 +62,8 @@ public final class StandaloneEpgBridge {
             return dt==null?0:dt.getTime()/1000;
         }catch(Exception ex){return 0;}
     }
+    private static final long EPG_HORIZON_SECONDS=10L*60L*60L;
+    private static final int MAX_SCHEDULE_ITEMS=20;
     private static class Program {
         long start,stop;
         String title;
@@ -76,6 +79,7 @@ public final class StandaloneEpgBridge {
         String id;
         ArrayList<String> names=new ArrayList<>();
         Program now,next;
+        final ArrayList<Program> schedule=new ArrayList<>();
         TvChannel(String key){id=key;}
     }
 
@@ -128,8 +132,9 @@ public final class StandaloneEpgBridge {
                             if(title.isEmpty())title=content.toString().trim();
                         }else if("programme".equals(element)){
                             TvChannel item=map.get(currentId);
-                            if(item!=null&&!title.isEmpty()&&stop>now){
+                            if(item!=null&&!title.isEmpty()&&start>0&&stop>now){
                                 Program p=new Program(start,stop,title);
+                                if(start<now+EPG_HORIZON_SECONDS)item.schedule.add(p);
                                 if(start<=now&&(item.now==null||start>item.now.start))item.now=p;
                                 else if(start>now&&(item.next==null||start<item.next.start))item.next=p;
                             }
@@ -152,6 +157,10 @@ public final class StandaloneEpgBridge {
                     entry.put("names",new JSONArray(item.names));
                     if(item.now!=null)entry.put("now",item.now.json());
                     if(item.next!=null)entry.put("next",item.next.json());
+                    item.schedule.sort((a,b)->Long.compare(a.start,b.start));
+                    JSONArray schedule=new JSONArray();
+                    for(int i=0;i<item.schedule.size()&&i<MAX_SCHEDULE_ITEMS;i++)schedule.put(item.schedule.get(i).json());
+                    entry.put("programmes",schedule);
                     items.put(entry);
                 }
                 JSONObject result=new JSONObject();
