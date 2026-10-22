@@ -3243,7 +3243,7 @@ const FREE_PREVIEW_CHANNEL_IDS=new Set([
   'b59270a84342af57', // Shant TV
   '70e91e70087be9e8'  // Fast Sport FHD
 ]);
-function hasFullChannelAccess(){return !!(edemStatus&&edemStatus.active)}
+function hasFullChannelAccess(){return !!window.ABAJ_STANDALONE||!!(edemStatus&&edemStatus.active)}
 function isFreePreviewChannel(ch){
   return !!(ch&&FREE_PREVIEW_CHANNEL_IDS.has(String(ch.id||'')));
 }
@@ -3708,7 +3708,7 @@ function applyAppLanguage(){
   const map={settingsTitle:t.settings,settingsStatusLabel:t.status,settingsUntilLabel:t.until,settingsLangLabel:t.language,settingsQualityLabel:t.quality,settingsAdminBtn:t.admin,settingsCloseBtn:t.close};
   const supportBtn=document.getElementById('supportAdminBtn'); if(supportBtn)supportBtn.textContent=appLang==='hy'?'💬 Գրել ադմինիստրատորին':(appLang==='en'?'💬 Message administrator':'💬 Написать администратору');
   Object.entries(map).forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.textContent=v});
-  const sourceLabels={all:t.all,free:t.free,edem:t.edem};
+  const sourceLabels={all:t.all,free:window.ABAJ_STANDALONE?'IPTV':t.free,edem:t.edem};
   document.querySelectorAll('#sourceChips [data-source]').forEach(b=>{const k=b.dataset.source;if(sourceLabels[k])b.textContent=sourceLabels[k]});
   const filterLabels={all:t.all,HD:'HD','4K':'4K',adult:'18+',fav:t.favorites,recent:t.recent};
   document.querySelectorAll('[data-filter]').forEach(b=>{
@@ -5436,7 +5436,7 @@ function renderNamedPlaylistChips(playlists,rows){
     const id=String(channel.playlist_id||'legacy');
     playlistCounts.set(id,(playlistCounts.get(id)||0)+1);
   }
-  iptvPlaylistMenuOptions=[{value:'free',name:'Free',count:channels.filter(x=>!x.personal).length}];
+  iptvPlaylistMenuOptions=[{value:'free',name:window.ABAJ_STANDALONE?'IPTV':'Free',count:channels.filter(x=>!x.personal).length}];
   for(const p of playlists||[]){
     const id=String(p.id||'');
     const name=String(p.name||'').trim();
@@ -6032,7 +6032,7 @@ async function load(){
       return x.status==='ONLINE'&&(!tvHideUnreliable||!x.unreliable);
     });
     base=deduplicateFreeChannels(base);
-    if(!edemStatus.active){
+    if(!edemStatus.active&&!window.ABAJ_STANDALONE){
       const am=base.filter(x=>String(x&&x.country||'').toUpperCase()==='AM').slice(0,3);
       const ru=base.filter(x=>String(x&&x.country||'').toUpperCase()==='RU').slice(0,2);
       base=[...am,...ru].slice(0,5);
@@ -6086,7 +6086,7 @@ async function load(){
     const freeCount=channels.filter(x=>!x.personal).length;
     const edemCount=channels.filter(x=>!!x.personal).length;
     document.getElementById('status').textContent=
-      t.free+': '+freeCount+' · '+t.edem+': '+edemCount+
+      (window.ABAJ_STANDALONE?'IPTV':t.free)+': '+freeCount+' · '+t.edem+': '+edemCount+
       ' · '+t.offline+': '+((d.stats||{}).offline||0)+
       (d.running?' · '+t.updating:'');
     cacheChannels();
