@@ -196,7 +196,7 @@ const freeList=async()=>{
   setTimeout(()=>refreshBuiltinIptv().catch(()=>{}),50);
  return builtinIptvData.items;
 };
-setInterval(()=>{
+if(typeof setInterval==='function')setInterval(()=>{
  if(document.visibilityState==='visible'&&!builtinIptvRefresh)refreshBuiltinIptv().catch(()=>{});
 },30*60*1000);
 const customList=async()=>{
