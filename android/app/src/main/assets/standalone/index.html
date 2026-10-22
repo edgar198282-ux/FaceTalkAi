@@ -2768,6 +2768,7 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
         <button class="cinemaMenuItem" data-cinema-action="tvshows" onclick="cinemaSideAction('tvshows')"><span class="cinemaMenuIcon icon-tvshows">📡</span><span>ТВ ШОУ</span></button>
         <button class="cinemaMenuItem" data-cinema-action="concerts" onclick="cinemaSideAction('concerts')"><span class="cinemaMenuIcon icon-concerts">🎤</span><span>КОНЦЕРТЫ</span></button>
         <button class="cinemaMenuItem" data-cinema-action="collections" onclick="cinemaSideAction('collections')"><span class="cinemaMenuIcon icon-collections">🗂</span><span>ПОДБОРКИ</span></button>
+        <button class="cinemaMenuItem" data-cinema-action="providers" onclick="cinemaSideAction('providers')"><span class="cinemaMenuIcon">🔗</span><span id="cinemaProviderMenuTitle">ИСТОЧНИК КИНО</span></button>
       </div>
     </aside>
     <div class="cinemaShellBody">
@@ -10461,7 +10462,7 @@ async function loadGlobalCinemaSource(){
     }
     const src=String(d.source||'none').toLowerCase();
     if(['none','lazy','kinopub'].includes(src)){
-      cinemaSource=src==='none'?'kinopub':src;
+      cinemaSource=cinemaDeviceSourceChoice()||(src==='none'?'kinopub':src);
       localStorage.setItem('abaj_cinema_source',cinemaSource);
       if(src!=='kinopub')localStorage.removeItem('abaj_kinopub_disabled');
       syncCinemaSourceUi();
@@ -10494,6 +10495,73 @@ function getLazyMediaInfo(){
   }catch(e){}
   return {installed:false};
 }
+const ABAJ_DEVICE_CINEMA_SOURCE_KEY='abaj_cinema_device_source_v1';
+function cinemaDeviceSourceChoice(){
+  try{const x=localStorage.getItem(ABAJ_DEVICE_CINEMA_SOURCE_KEY);return x==='lazy'||x==='kinopub'?x:'';}catch(e){return '';}
+}
+function cinemaProviderText(k){
+  const t={
+    ru:{title:'Источник кино',help:'Выбор только для этого устройства. KinoPub остаётся доступным.',installed:'LazyMedia Deluxe установлен',missing:'LazyMedia Deluxe не установлен. Установите APK на устройство.',watch:'Выбрать',account:'Открыть LazyMedia · аккаунт',note:'Вход и активация выполняются в оригинальном приложении. ABAJ TV не получает пароль и не переносит сессию.',close:'Закрыть',error:'LazyMedia не открылся.'},
+    hy:{title:'Կինոյի աղբյուր',help:'Ընտրությունը միայն այս սարքի համար է։ KinoPub-ը հասանելի կմնա։',installed:'LazyMedia Deluxe-ը տեղադրված է',missing:'LazyMedia Deluxe-ը տեղադրված չէ։ Տեղադրեք APK-ը։',watch:'Ընտրել',account:'Բացել LazyMedia · հաշիվ',note:'Մուտքը և ակտիվացումը կատարվում են բնօրինակ հավելվածում։ ABAJ TV-ն գաղտնաբառ կամ սեանս չի փոխանցում։',close:'Փակել',error:'LazyMedia-ն չբացվեց։'},
+    en:{title:'Cinema source',help:'Choose a source for this device only. KinoPub remains available.',installed:'LazyMedia Deluxe installed',missing:'Install the LazyMedia Deluxe APK on this device first.',watch:'Select',account:'Open LazyMedia · account',note:'Sign-in and activation happen in the original app. ABAJ TV cannot import your password or session.',close:'Close',error:'Could not open LazyMedia.'}
+  };
+  return (t[appLang]||t.ru)[k]||'';
+}
+function closeCinemaProviderSettings(){
+  const m=document.getElementById('abajCinemaProviderDialog');if(m){m.hidden=true;m.style.display='none';}
+}
+function selectCinemaDeviceSource(s){
+  if(s!=='lazy'&&s!=='kinopub')return;
+  if(s==='lazy'&&!getLazyMediaInfo().installed)return;
+  try{localStorage.setItem(ABAJ_DEVICE_CINEMA_SOURCE_KEY,s);localStorage.setItem('abaj_cinema_source',s);}catch(e){}
+  cinemaSource=s;cinemaLoaded=false;cinemaLibraryMode=false;
+  closeCinemaProviderSettings();syncCinemaUi();loadCinemaCatalog(true);
+}
+function showCinemaProviderSettings(){
+  closeCinemaShellMenus();
+  let m=document.getElementById('abajCinemaProviderDialog');
+  if(!m){
+    m=document.createElement('div');m.id='abajCinemaProviderDialog';m.hidden=true;
+    m.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,10,22,.85);display:none;align-items:center;justify-content:center;padding:14px;box-sizing:border-box';
+    m.innerHTML='<section role="dialog" aria-modal="true" style="background:#102d44;color:#fff;width:min(430px,100%);max-height:90vh;overflow:auto;padding:20px;border-radius:18px;border:1px solid #4c7d95;box-sizing:border-box"><h3 id="abajProviderTitle" style="margin:0 0 10px"></h3><p id="abajProviderHelp"></p><div id="abajProviderRows" style="display:grid;gap:10px;margin:16px 0"><button type="button" data-provider-action="kinopub"></button><button type="button" data-provider-action="lazy"></button></div><p id="abajProviderInstall"></p><button type="button" data-provider-action="account"></button><p id="abajProviderNote"></p><button type="button" data-provider-action="close"></button></section>';
+    const style=document.createElement('style');style.id='abajProviderStyle';
+    style.textContent='#abajCinemaProviderDialog p{color:#bdd5e4;font-size:13px;line-height:1.45;margin:9px 0}#abajCinemaProviderDialog button{min-height:43px;width:100%;border:1px solid #42718d;border-radius:12px;background:#17577b;color:white;padding:9px;font-weight:800;margin:5px 0}#abajCinemaProviderDialog button[data-provider-action="account"]{background:#206c4a}#abajCinemaProviderDialog button[data-provider-action="close"]{background:#305064}#abajCinemaProviderDialog button:disabled{opacity:.4}#abajCinemaProviderDialog button:focus{outline:3px solid #ffd600}';
+    document.head.appendChild(style);
+    m.addEventListener('click',e=>{
+      if(e.target===m){closeCinemaProviderSettings();return;}
+      const b=e.target.closest('button[data-provider-action]');if(!b)return;
+      const a=b.dataset.providerAction;
+      if(a==='close')closeCinemaProviderSettings();
+      else if(a==='lazy'||a==='kinopub')selectCinemaDeviceSource(a);
+      else if(a==='account'){
+        let opened=false;
+        try{opened=!!(window.AbajNative&&AbajNative.openLazyMedia&&AbajNative.openLazyMedia());}catch(e){}
+        if(!opened)document.getElementById('abajProviderInstall').textContent=cinemaProviderText('error');
+      }
+    });
+    document.body.appendChild(m);
+    document.addEventListener('keydown',e=>{
+      if(!m.hidden&&(e.key==='Escape'||e.key==='Backspace'||e.key==='BrowserBack')){
+        e.preventDefault();e.stopImmediatePropagation();closeCinemaProviderSettings();
+      }
+    },true);
+  }
+  const info=getLazyMediaInfo(),installed=!!info.installed;
+  document.getElementById('abajProviderTitle').textContent=cinemaProviderText('title');
+  document.getElementById('abajProviderHelp').textContent=cinemaProviderText('help');
+  document.getElementById('abajProviderInstall').textContent=installed?cinemaProviderText('installed')+(info.version?' · v'+info.version:''):cinemaProviderText('missing');
+  document.getElementById('abajProviderNote').textContent=cinemaProviderText('note');
+  m.querySelectorAll('[data-provider-action="kinopub"],[data-provider-action="lazy"]').forEach(b=>{
+    b.textContent=b.dataset.providerAction==='lazy'?'LazyMedia Deluxe':'KinoPub';
+    b.textContent+=' · '+cinemaProviderText('watch')+(cinemaSource===b.dataset.providerAction?' ✓':'');
+    b.disabled=b.dataset.providerAction==='lazy'&&!installed;
+  });
+  const account=m.querySelector('[data-provider-action="account"]');
+  account.textContent=cinemaProviderText('account');account.disabled=!installed;
+  m.querySelector('[data-provider-action="close"]').textContent=cinemaProviderText('close');
+  m.hidden=false;m.style.display='flex';setTimeout(()=>m.querySelector('button:not(:disabled)')?.focus(),40);
+}
+
 const lazySearchPending=new Map();
 let lazySearchSeq=0;
 window.__abajLazyMediaResult=function(requestId,rows){
@@ -10936,6 +11004,8 @@ function setCinemaShellCategory(category){
   searchCinemaLazyMedia(q);
 }
 function syncCinemaSourceUi(){
+  const label=document.getElementById('cinemaProviderMenuTitle');
+  if(label)label.textContent=(appLang==='en'?'SOURCE: ':appLang==='hy'?'ԱՂԲՅՈՒՐ՝ ':'ИСТОЧНИК: ')+(cinemaSource==='lazy'?'LazyMedia':'KinoPub');
   const kp=cinemaMode&&cinemaSource==='kinopub';
   document.body.classList.toggle('cinemaKinopub',kp);
   const filters=document.getElementById('cinemaKpFilters');
@@ -11558,6 +11628,7 @@ function cinemaKpNav(action){
   }
 }
 function cinemaSideAction(action){
+  if(action==='providers'){showCinemaProviderSettings();return;}
   if(nativeTv)cinemaFocusFirstPosterOnRender=true;
   document.querySelectorAll('#cinemaSideMenu .cinemaMenuItem[data-cinema-action]').forEach(x=>{
     x.classList.toggle('active',x.dataset.cinemaAction===action);
