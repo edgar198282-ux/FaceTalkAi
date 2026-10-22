@@ -2645,7 +2645,8 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
 </style>
 <style id="abaj-lazy-detail-poster-fix">
 @media(max-width:760px){
-  body:not(.nativeTv) .cinemaDetailHero{min-height:31vh!important;max-height:310px;background-image:none!important;background-color:#234358!important}
+  body:not(.nativeTv) .cinemaDetailHero{min-height:31vh!important;max-height:310px}
+  body:not(.nativeTv) .cinemaDetailHero.posterFallback{background-image:none!important;background-color:#234358!important}
   body:not(.nativeTv) .cinemaDetailHero.posterFallback::before{content:none!important}
   body:not(.nativeTv) .cinemaDetailHero.posterFallback .cinemaDetailHeroPoster{display:block!important;top:7%;height:75%;width:auto;max-width:53%;object-fit:contain;filter:none}
   body:not(.nativeTv) .cinemaDetailHero.posterFallback .cinemaDetailHeroPoster[src=""]{display:none!important}
@@ -12420,12 +12421,35 @@ async function showCinemaSourcePicker(item){
   if(title)title.textContent=String(item?.title||'Кино')+' · '+cinemaSourceGroups.length+' источников';
   if(!list)return;
   if(!cinemaSourceGroups.length){
-    list.innerHTML='<div class="cinemaSourceEmpty">Для этого фильма активные источники LazyMedia не найдены.</div>';
+    list.innerHTML='<div class="cinemaSourceEmpty">LazyMedia не предоставил видеопоток для встроенного плеера.</div>';
+    cinemaLazyExternalFallback(list,item);
     return;
   }
   renderCinemaSourceGroups();
 }
 
+function cinemaLazyExternalFallback(list,item){
+  if(!window.ABAJ_STANDALONE||!list||!getLazyMediaInfo().installed)return;
+  const btn=document.createElement('button');
+  btn.className='cinemaSourceBtn';
+  btn.type='button';
+  btn.textContent='Открыть фильм в LazyMedia';
+  btn.onclick=()=>{
+    let opened=false;
+    try{
+      if(item?.intent&&window.AbajNative?.openLazyMediaIntent){
+        opened=!!AbajNative.openLazyMediaIntent(String(item.intent));
+      }
+      if(!opened&&window.AbajNative?.openLazyMedia)opened=!!AbajNative.openLazyMedia();
+    }catch(e){}
+    if(!opened){
+      const error=document.createElement('small');
+      error.textContent='Не удалось открыть установленный LazyMedia Deluxe.';
+      btn.after(error);
+    }
+  };
+  list.appendChild(btn);
+}
 function renderCinemaSourceGroups(){
   const list=document.getElementById('cinemaSourceList');
   const title=document.getElementById('cinemaSourceTitle');
@@ -12471,11 +12495,11 @@ async function resolveProviderAcrossItems(group){
   const provider=normalizeLazyProviderName(group?.name||'');
   const items=Array.isArray(group?.items)?group.items:[];
   if(!provider||!items.length)return [];
-  for(const item of items.slice(0,6)){
+  for(const item of items.slice(0,2)){
     try{
-      let rows=await withTimeout(cinemaProviderOptionsAsync(item,provider),14000,[]);
+      let rows=await withTimeout(cinemaProviderOptionsAsync(item,provider),7000,[]);
       if((!rows||!rows.length)&&provider==='FILMIX'){
-        rows=await withTimeout(filmixVideoOptionsAsync(item).catch(()=>[]),12000,[]);
+        rows=await withTimeout(filmixVideoOptionsAsync(item).catch(()=>[]),7000,[]);
       }
       if(Array.isArray(rows)&&rows.length){
         group.resolvedFromItem=item;
@@ -13550,6 +13574,7 @@ async function cinemaV2OpenSource(index){
       empty.className='cinemaSourceEmpty';
       empty.textContent=group.name+' найден в LazyMedia, но рабочего видео сейчас не вернул.';
       list.appendChild(empty);
+      cinemaLazyExternalFallback(list,group.items[0]||cinemaSourcePickerMovie);
       const back=document.createElement('button');
       back.className='cinemaSourceClose';
       back.textContent='← Источники';
