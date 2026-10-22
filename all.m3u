@@ -19091,8 +19091,6 @@ https://aasthaott.akamaized.net/110923/smil:aasthaprime1.smil/master.m3u8
 https://aasthaott.akamaized.net/110923/smil:aasthatamil.smil/playlist.m3u8
 #EXTINF:-1 tvg-id="AasthaTelugu.in" tvg-name="Aastha Telugu" tvg-logo="https://dtil.tmsimg.com/assets/s158136_ld_h15_aa.png?lock=720x540" tvg-country="IN" tvg-language="tel" group-title="Religious" nexus-score="100",Aastha Telugu (576p)
 https://cdn.pishow.tv/ott/live/262/master.m3u8
-#EXTINF:-1 tvg-id="AathavanTV.uk" tvg-name="Aathavan TV" tvg-logo="https://i.imgur.com/LEVEhTH.png" tvg-country="UK" tvg-language="tam" group-title="Entertainment" nexus-score="0",Aathavan TV (720p)
-http://45.77.66.224:1935/athavantv/live/playlist.m3u8
 #EXTINF:-1 tvg-id="AbaiTV.kz" tvg-name="Abai TV" tvg-logo="https://i.imgur.com/Nw2R7Dq.png" tvg-country="KZ" tvg-language="kaz" group-title="Culture" nexus-score="100",Abai TV (1080p)
 https://abaitv-stream.qazcdn.com/abaitv/abaitv/playlist.m3u8
 #EXTINF:-1 tvg-id="ABHPTV.us" tvg-name="ABHP TV" tvg-logo="https://i.imgur.com/QznvBD7.png" tvg-country="US" tvg-language="vie" group-title="Religious" nexus-score="100",ABHP TV (480p)
@@ -21001,8 +20999,6 @@ https://mumbai-edge.smartplaytv.in/ETVLIFE/index.m3u8
 https://edge1.socialsmart.tv/manisaetv/bant1/playlist.m3u8
 #EXTINF:-1 tvg-id="ETVMusic.in" tvg-name="ETV Music" tvg-logo="https://jiotvimages.cdn.jio.com/dare_images/images/ETVMusic12.png" tvg-country="IN" tvg-language="tel" group-title="Music" nexus-score="100",ETV Music (1080p)
 https://cc-szivnms4rlah6.akamaized.net/WWBI/Amagi/ETV_Music_IN/playlist.m3u8
-#EXTINF:-1 tvg-id="ETVTelugu.in" tvg-name="ETV Telugu" tvg-logo="https://ltsk-cdn.s3.eu-west-1.amazonaws.com/jumpstart/Temp_Live/cdn/HLS/Channel/transparentImages/ETV%20HD.png" tvg-country="IN" tvg-language="tel" group-title="Entertainment" nexus-score="0",ETV Telugu (1080p)
-https://d27zlkxhgwrfgo.cloudfront.net/v1/master/9d43eacaed199f8d5883927e7aef514a8a08e108/ETV_HD_H264_cloud_in/index.m3u8
 #EXTINF:-1 tvg-id="EuronewsItalian.fr" tvg-name="Euronews Italian" tvg-logo="https://provider-static.plex.tv/epg/cms/production/ca19114a-f498-4ac3-bade-257fb304e0be/ITLogo_Euronews_stacked_white_on_italien_1500x1000whtrdx2.png" tvg-country="FR" tvg-language="ita" group-title="News" nexus-score="100",Euronews Italian (720p)
 https://jmp2.uk/plu-61b86ea479a4390007c6d5fc.m3u8
 #EXTINF:-1 tvg-id="EuronewsSpanish.fr" tvg-name="Euronews Spanish" tvg-logo="https://provider-static.plex.tv/epg/cms/production/f7dacd88-7f26-40a6-960e-a597d8b560c5/ESLogo_Euronews_stacked_white_on_spanish_1500x1000wht.png" tvg-country="FR" tvg-language="spa" group-title="News" nexus-score="100",Euronews Spanish (684p)
@@ -22705,8 +22701,6 @@ http://190.93.224.42/NICK/index.m3u8
 http://103.151.60.162:2122/play/a00s/index.m3u8?hls
 #EXTINF:-1 tvg-id="Nicktoons.ro" tvg-name="Nicktoons" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/d/d8/Nicktoons_UK_Logo_2014.png" tvg-country="RO" tvg-language="eng" group-title="Kids" nexus-score="0",Nicktoons
 http://178.76.68.60:7442/80/mpegts
-#EXTINF:-1 tvg-id="NicktoonsScandinavia.nl" tvg-name="Nicktoons Scandinavia" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/d/d8/Nicktoons_UK_Logo_2014.png" tvg-country="NL" tvg-language="eng" group-title="Kids" nexus-score="98",Nicktoons Scandinavia
-http://sewv654wfcsdwfi87fwvgbngh.siauliairsavlt.pw/iptv/PE7C639D6VY8TCQQ4BYRZT7X/12059/index.m3u8
 #EXTINF:-1 tvg-id="NiederbayernTVLandshut.de" tvg-name="Niederbayern TV Landshut" tvg-logo="https://i.imgur.com/5sHzZAh.png" tvg-country="DE" tvg-language="deu" group-title="General" nexus-score="100",Niederbayern TV Landshut (1080p)
 https://isar-tv.iptv-playoutcenter.de/isar-tv/isar-tv.stream_1/playlist.m3u8
 #EXTINF:-1 tvg-id="Nigbati.ng" tvg-name="Nigbati" tvg-country="NG" tvg-language="eng" group-title="Culture" nexus-score="100",Nigbati (480p)
@@ -23177,7 +23171,7 @@ https://mumbai-edge.smartplaytv.in/PowerVision/index.m3u8
 https://livecdn.live247stream.com/praise/tv/playlist.m3u8
 #EXTINF:-1 tvg-id="PrarthanaBhawanTV.in" tvg-name="Prarthana Bhawan TV" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_PRARTHANA_BHAWAN/images/LOGO_HD/image.png" tvg-country="IN" tvg-language="hin" group-title="Undefined" nexus-score="0",Prarthana Bhawan TV (360p)
 https://mumt03.tangotv.in/Dsly5z3HPRATHANABHAWAN/index.m3u8
-#EXTINF:-1 tvg-id="PrarthanaTV.in" tvg-name="Prarthana TV" tvg-logo="https://i.imgur.com/gj7dtNF.png" tvg-country="IN" tvg-language="ori" group-title="Undefined" nexus-score="100",Prarthana TV (720p)
+#EXTINF:-1 tvg-id="PrarthanaLife.in" tvg-name="Prarthana Life" tvg-logo="https://jiotvimages.cdn.jio.com/dare_images/images/Prarthana_Life.png" tvg-country="IN" tvg-language="ori" group-title="Undefined" nexus-score="100",Prarthana Life (720p)
 https://livetv.tarangplus.in/prarthana-origin/live/playlist.m3u8
 #EXTINF:-1 tvg-id="PratidinTime.in" tvg-name="Pratidin Time" tvg-logo="https://dtil.tmsimg.com/assets/s143674_ld_h15_aa.png?lock=720x540" tvg-country="IN" tvg-language="asm" group-title="News" nexus-score="100",Pratidin Time (720p)
 https://streams.tangotv.in/PROTIDINTIME/ORIGIN/index.m3u8
@@ -23699,6 +23693,8 @@ https://edge12.vedge.infomaniak.com/livecast/ik:rtblive1_8/manifest.m3u8
 https://edge13.vedge.infomaniak.com/livecast/ik:rtb3-1/manifest.m3u8
 #EXTINF:-1 tvg-id="RTCTelevision.cl" tvg-name="RTC Television" tvg-logo="https://i.imgur.com/w91IBj7.png" tvg-country="CL" tvg-language="spa" group-title="Undefined" nexus-score="70",RTC Television (1080p)
 https://scl.edge.grupoz.cl/rtcstreaming/live/playlist.m3u8
+#EXTINF:-1 tvg-id="RTEjr.ie" tvg-name="RTEjr" tvg-logo="https://i.imgur.com/E3jxqu9.png" tvg-country="IE" tvg-language="eng" group-title="Undefined" nexus-score="0",RTEjr
+http://etvhosts.site:55337/live/littlespiked/cam1gail2brian3/20641.m3u8
 #EXTINF:-1 tvg-id="RTenEspanol.ru" tvg-name="RT en Espanol" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Russia-today-logo.svg/960px-Russia-today-logo.svg.png" tvg-country="RU" tvg-language="spa" group-title="News" nexus-score="100",RT en Espanol (1080p)
 http://168.196.127.137:6001/play/a0a9/index.m3u8
 #EXTINF:-1 tvg-id="RTGint.ru" tvg-name="RTG int." tvg-logo="https://i.imgur.com/ZpUNou4.png" tvg-country="RU" tvg-language="eng" group-title="Travel" nexus-score="0",RTG int.
@@ -24395,10 +24391,6 @@ http://31.148.5.241/kanal_12/index.m3u8
 https://jstre.am/live/jsl:2gNjpghXRLE.m3u8
 #EXTINF:-1 tvg-id="SpikeOutdoors.us" tvg-name="Spike Outdoors" tvg-logo="https://i.imgur.com/cdCD2A2.png" tvg-country="US" tvg-language="eng" group-title="Outdoor" nexus-score="100",Spike Outdoors
 https://jmp2.uk/plu-5c393cad2de254456f7ef8c2.m3u8
-#EXTINF:-1 tvg-id="Sport3.il" tvg-name="Sport 3" tvg-logo="https://i.imgur.com/stSrBBh.png" tvg-country="IL" tvg-language="heb" group-title="Sports" nexus-score="100",Sport 3 (1080p)
-http://sewv654wfcsdwfi87fwvgbngh.siauliairsavlt.pw/iptv/BWGFFCU59AE6AEV3KF3FXTBA/12251/index.m3u8
-#EXTINF:-1 tvg-id="Sport4.il" tvg-name="Sport 4" tvg-logo="https://i.imgur.com/wFXzzYs.png" tvg-country="IL" tvg-language="heb" group-title="Sports" nexus-score="100",Sport 4 (1080p)
-http://sewv654wfcsdwfi87fwvgbngh.siauliairsavlt.pw/iptv/BWGFFCU59AE6AEV3KF3FXTBA/2389/index.m3u8
 #EXTINF:-1 tvg-id="Sportitalia.it" tvg-name="Sportitalia" tvg-logo="https://i.imgur.com/0CJGGgd.png" tvg-country="IT" tvg-language="ita" group-title="Sports" nexus-score="100",Sportitalia (1080p)
 https://amg01370-italiansportcom-sportitalia-rakuten-3hmdb.amagi.tv/hls/amagi_hls_data_rakutenAA-sportitalia-rakuten/CDN/master.m3u8
 #EXTINF:-1 tvg-id="SportitaliaSolocalcio.it" tvg-name="Sportitalia Solocalcio" tvg-logo="https://i.imgur.com/hu56Ya5.png" tvg-country="IT" tvg-language="ita" group-title="Sports" nexus-score="100",Sportitalia Solocalcio (1080p)
