@@ -6075,12 +6075,32 @@ const standaloneEpgDocs=new Map();
 let standaloneEpgStarted=false;
 let standaloneEpgRequestedAt=0;
 let standaloneEpgMatchCount=0;
-const STANDALONE_EPG_REQUEST_GAP=90*60*1000;
+const STANDALONE_EPG_REQUEST_GAP=2*60*60*1000;
 function standaloneEpgName(value){
   return String(value||'').normalize('NFKC').toLocaleLowerCase('ru')
-    .replace(/\([^)]*(?:hd|fhd|uhd|4k|1080|720)[^)]*\)/gi,'')
-    .replace(/(?:\bhd\b|\bfhd\b|\buhd\b|\b4k\b|\b1080p\b|\b720p\b)/gi,'')
+    .replace(/ё/g,'е')
+    .replace(/\([^)]*(?:hd|fhd|uhd|4k|2160p|1080p|720p)[^)]*\)/gi,'')
+    .replace(/\b(?:fhd|uhd|hd|sd|4k|2160p|1080p|720p)\b/gi,'')
     .replace(/[^\p{L}\p{N}]+/gu,'').trim();
+}
+function standaloneEpgId(value){
+  return String(value||'').trim().toLowerCase().split('@')[0];
+}
+function standaloneEpgIndex(feed){
+  const ids=new Map(),names=new Map();
+  const add=(map,key,row)=>{
+    if(!key)return;
+    if(!map.has(key))map.set(key,row);
+    else if(map.get(key)?.id!==row.id)map.set(key,null);
+  };
+  for(const row of Array.isArray(feed?.channels)?feed.channels:[]){
+    if(!row||typeof row!=='object')continue;
+    add(ids,standaloneEpgId(row.id),row);
+    for(const name of (Array.isArray(row.names)?row.names:[])){
+      add(names,standaloneEpgName(name),row);
+    }
+  }
+  return {ids,names};
 }
 function updateStandaloneCatalogMeta(){
   if(!window.ABAJ_STANDALONE||cinemaMode)return;
@@ -6096,33 +6116,40 @@ function updateStandaloneCatalogMeta(){
     ' · EPG: '+standaloneEpgMatchCount.toLocaleString('ru-RU');
 }
 function applyStandaloneEpg(){
-  if(!window.ABAJ_STANDALONE||!channels.length)return;
-  const countries=new Map();
-  for(const [country,feed] of standaloneEpgDocs){
-    const ids=new Map(),names=new Map();
-    for(const row of Array.isArray(feed?.channels)?feed.channels:[]){
-      if(!row||typeof row!=='object')continue;
-      if(row.id)ids.set(String(row.id).toLowerCase(),row);
-      for(const name of (Array.isArray(row.names)?row.names:[])){
-        const key=standaloneEpgName(name);
-        if(key&&!names.has(key))names.set(key,row);
-      }
-    }
-    countries.set(country,{ids,names});
-  }
-  let matched=0;
+  if(!window.ABAJ_STANDALONE||!channels.length||!standaloneEpgDocs.size)return;
+  const guides=new Map();
+  for(const [country,feed] of standaloneEpgDocs)guides.set(country,standaloneEpgIndex(feed));
+  let matched=0,changed=false;
   const now=Math.floor(Date.now()/1000);
   for(const ch of channels){
-    const guide=countries.get(String(ch.country||'').toUpperCase());
-    if(!guide)continue;
-    const id=String(ch.tvg_id||'').trim().toLowerCase();
-    const row=(id&&guide.ids.get(id))||guide.names.get(standaloneEpgName(ch.name||''));
-    if(!row){delete ch.epg_now;delete ch.epg_next;continue;}
-    const entries=[row.now,row.next].filter(p=>p&&Number(p.stop)>now&&p.title);
-    ch.epg_now=entries.find(p=>Number(p.start)<=now&&now<Number(p.stop))||null;
-    ch.epg_next=entries.find(p=>Number(p.start)>now)||null;
-    if(ch.epg_now||ch.epg_next)matched++;
+    const country=String(ch.country||'').toUpperCase();
+    const scopes=country==='RU'||country==='AM'?[country,'ALT']:['RU','AM','ALT'];
+    const id=standaloneEpgId(ch.tvg_id);
+    const name=standaloneEpgName(ch.name);
+    let row=null;
+    for(const scope of scopes){
+      const candidate=id&&guides.get(scope)?.ids.get(id);
+      if(candidate){row=candidate;break;}
+    }
+    if(!row){
+      for(const scope of scopes){
+        const candidate=name&&guides.get(scope)?.names.get(name);
+        if(candidate){row=candidate;break;}
+      }
+    }
+    const schedule=Array.isArray(row?.programmes)&&row.programmes.length?row.programmes:[row?.now,row?.next];
+    const entries=schedule.filter(p=>p&&p.title&&Number(p.stop)>now)
+      .sort((a,b)=>Number(a.start)-Number(b.start));
+    const nextNow=entries.filter(p=>Number(p.start)<=now&&now<Number(p.stop)).pop()||null;
+    const nextLater=entries.find(p=>Number(p.start)>now)||null;
+    const oldNow=ch.epg_now,oldNext=ch.epg_next;
+    if((oldNow?.start||0)!==(nextNow?.start||0)||(oldNow?.title||'')!==(nextNow?.title||'')||
+       (oldNext?.start||0)!==(nextLater?.start||0)||(oldNext?.title||'')!==(nextLater?.title||''))changed=true;
+    ch.epg_now=nextNow;
+    ch.epg_next=nextLater;
+    if(nextNow||nextLater)matched++;
   }
+  if(standaloneEpgMatchCount!==matched)changed=true;
   standaloneEpgMatchCount=matched;
   if(current){
     const ref=channels.find(x=>x.id===current.id);
@@ -6140,10 +6167,11 @@ function applyStandaloneEpg(){
       updatePlayerRemaining();
     }
   }
-  render();
+  if(changed)render();
+  else updateStandaloneCatalogMeta();
 }
 window.__abajStandaloneEpgUpdate=function(data){
-  if(!window.ABAJ_STANDALONE||!data||!['AM','RU'].includes(data.country)||!Array.isArray(data.channels)||!data.channels.length)return;
+  if(!window.ABAJ_STANDALONE||!data||!['AM','RU','ALT'].includes(data.country)||!Array.isArray(data.channels)||!data.channels.length)return;
   standaloneEpgDocs.set(data.country,data);
   try{localStorage.setItem('abaj_standalone_epg_'+data.country,JSON.stringify(data));}catch(e){}
   applyStandaloneEpg();
@@ -6152,17 +6180,20 @@ function startStandaloneEpg(){
   if(!window.ABAJ_STANDALONE)return;
   if(!standaloneEpgStarted){
     standaloneEpgStarted=true;
-    for(const country of ['AM','RU']){
+    for(const country of ['AM','RU','ALT']){
       try{
         const saved=JSON.parse(localStorage.getItem('abaj_standalone_epg_'+country)||'null');
-        if(saved&&Array.isArray(saved.channels)&&Date.now()-Number(saved.updated||0)*1000<12*60*60*1000)
+        if(saved&&Array.isArray(saved.channels)&&Date.now()-Number(saved.updated||0)*1000<6*60*60*1000)
           standaloneEpgDocs.set(country,saved);
       }catch(e){}
     }
     if(standaloneEpgDocs.size)applyStandaloneEpg();
     if(typeof setInterval==='function')setInterval(()=>{
-      if(document.visibilityState==='visible')startStandaloneEpg();
-    },30*60*1000);
+      if(document.visibilityState==='visible'){
+        if(standaloneEpgDocs.size)applyStandaloneEpg();
+        startStandaloneEpg();
+      }
+    },60*1000);
   }
   if(!window.StandaloneEpg||typeof StandaloneEpg.refresh!=='function')return;
   if(Date.now()-standaloneEpgRequestedAt<STANDALONE_EPG_REQUEST_GAP)return;
