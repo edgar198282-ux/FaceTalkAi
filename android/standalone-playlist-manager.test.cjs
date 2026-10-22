@@ -394,7 +394,7 @@ function snapshotDatabase(snapshot){
  return {open(){
   const request={};
   queueMicrotask(()=>{
-   request.result={close(){},transaction(){return {objectStore(){return {get(){
+   request.result={close(){},transaction(){return {objectStore(){return {put(){},get(){
     const read={};queueMicrotask(()=>{read.result=snapshot;read.onsuccess()});return read;
    }}}}}};
    request.onsuccess();
@@ -426,4 +426,19 @@ test('old 17103-entry IndexedDB snapshot is repaired without dropping its channe
  assert.ok(rows.every(row=>row.status==='ONLINE'&&row.url&&row.name));
  assert.equal(new Set(rows.map(row=>row.id)).size,rows.length);
  assert.equal(x.win.abajStandaloneIptvState().count,rows.length);
+});
+
+test('partial refresh retains last successful channels when other feeds fail',async()=>{
+ const stored={name:'Last known channel',url:'https://iptv.test/last.m3u8',status:'ONLINE',country:'AM'};
+ const x=setup({indexedDB:snapshotDatabase({items:[stored],at:Date.now()})});
+ await x.win.abajStandaloneGetIptvChannels();
+ for(const country of ['am','ru','ge','ua','by','kz','uz','md']){
+  x.samples.set('/iptv/countries/'+country+'.m3u','#EXTM3U\n#EXTINF:-1,New '+country+'\nhttps://iptv.test/'+country+'.m3u8');
+ }
+ await x.win.fetch('/api/iptv/refresh');
+ for(let i=0;i<100&&x.win.abajStandaloneIptvState().updating;i++)await new Promise(setImmediate);
+ assert.equal(x.win.abajStandaloneIptvState().updating,false);
+ const rows=await x.win.abajStandaloneGetIptvChannels();
+ assert.ok(rows.some(row=>row.name==='Last known channel'));
+ assert.ok(rows.some(row=>row.name==='New am'));
 });

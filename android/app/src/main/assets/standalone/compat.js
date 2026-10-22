@@ -146,9 +146,10 @@ window.abajStandaloneIptvState=()=>({
 });
 let iptvNotifyTimer=null;
 function iptvPublish(items,isFinal,successful){
- const list=mergeBuiltinIptv([...builtinIptvSeed,...items]);
- const prev=builtinIptvData?.items?.length||0;
- if(!successful||prev>list.length&&successful<7)return;
+ if(!successful)return;
+ const previous=builtinIptvData?.items||[];
+ const prev=previous.length;
+ const list=mergeBuiltinIptv([...builtinIptvSeed,...items,...(successful<BUILTIN_IPTV_SOURCES.length?previous:[])]);
  builtinIptvData={items:list,at:isFinal?Date.now():0};
  if(isFinal)iptvSnapshotSave(builtinIptvData);
  window.abajStandaloneRefreshRows?.();
