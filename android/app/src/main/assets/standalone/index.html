@@ -12501,10 +12501,6 @@ async function showCinemaSourcePicker(item){
   }
   modal.classList.add('open');
   cinemaSourcePickerMovie=item;
-  if(standaloneLazyPlaybackUnavailable(item)){
-    if(list){list.replaceChildren();cinemaLazyExternalFallback(list,item)}
-    return;
-  }
   if(cinemaSource==='kinopub'){
     if(list)list.innerHTML='<div class="cinemaSourceBusy">Получаю поток для внутреннего плеера…</div>';
     const resolved=await resolveKinoPubInternalStream(item);
@@ -12811,8 +12807,8 @@ function cinemaRenderResolvedRows(group,infos,stage='root',selection={}){
   const episodes=cinemaUniqueResolved(filtered.filter(x=>x.episode>0),x=>x.episode).sort((a,b)=>a-b);
 
   let nextStage='quality';
-  if(isSeries&&!selection.season&&seasons.length)nextStage='season';
-  else if(!selection.voice&&voices.length>1)nextStage='voice';
+  if(!selection.voice&&voices.length>1)nextStage='voice';
+  else if(isSeries&&!selection.season&&seasons.length)nextStage='season';
   else if(isSeries&&!selection.episode&&episodes.length)nextStage='episode';
 
   list.innerHTML='';
@@ -13294,7 +13290,7 @@ async function openCinemaSourceGroup(index){
   if(title)title.textContent=group.name+' · ВИДЕО';
   if(!list)return;
   if(Array.isArray(group.resolvedOptions)&&group.resolvedOptions.length){
-    if(cinemaPlayResolvedMovie(group,group.resolvedOptions))return;
+    
     renderResolvedProviderOptions(group,group.resolvedOptions);
     return;
   }
@@ -13343,7 +13339,7 @@ async function openCinemaSourceGroup(index){
           rows:rows.length,
           playable:true
         });
-        if(cinemaPlayResolvedMovie(group,rows))return;
+        
         renderResolvedProviderOptions(group,rows);
         return;
       }
@@ -13781,7 +13777,7 @@ async function cinemaV2Resolve(group,item,meta){
     }
     if(Array.isArray(rows)&&rows.length){
       group.resolvedOptions=rows;
-      if(cinemaPlayResolvedMovie(group,rows))return;
+      
       renderResolvedProviderOptions(group,rows);
       return;
     }
