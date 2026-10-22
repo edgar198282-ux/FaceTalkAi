@@ -142,6 +142,7 @@ window.abajStandaloneIptvState=()=>({
  updatedAt:builtinIptvData?.at||0,
  updating:!!builtinIptvRefresh
 });
+let iptvNotifyTimer=null;
 function iptvPublish(items,isFinal,successful){
  const list=mergeBuiltinIptv([...builtinIptvSeed,...items]);
  const prev=builtinIptvData?.items?.length||0;
@@ -149,8 +150,13 @@ function iptvPublish(items,isFinal,successful){
  builtinIptvData={items:list,at:isFinal?Date.now():0};
  if(isFinal)iptvSnapshotSave(builtinIptvData);
  window.abajStandaloneRefreshRows?.();
- if((isFinal||list.length>prev+40)&&typeof window.load==='function')
-  setTimeout(()=>{try{window.load()}catch(e){}},120);
+ if(isFinal||prev<=builtinIptvSeed.length){
+  if(iptvNotifyTimer)clearTimeout(iptvNotifyTimer);
+  iptvNotifyTimer=setTimeout(()=>{
+   iptvNotifyTimer=null;
+   if(typeof window.load==='function')Promise.resolve(window.load()).catch(()=>{});
+  },isFinal?200:800);
+ }
 }
 function refreshBuiltinIptv(force=false){
  if(builtinIptvRefresh)return builtinIptvRefresh;
@@ -195,6 +201,11 @@ const freeList=async()=>{
  if(!builtinIptvRefresh&&(!builtinIptvData.at||Date.now()-builtinIptvData.at>=IPTV_REFRESH_MS))
   setTimeout(()=>refreshBuiltinIptv().catch(()=>{}),50);
  return builtinIptvData.items;
+};
+window.abajStandaloneGetIptvChannels=async()=>{
+ const rows=await freeList();
+ channelCache=rows;
+ return rows;
 };
 if(typeof setInterval==='function')setInterval(()=>{
  if(document.visibilityState==='visible'&&!builtinIptvRefresh)refreshBuiltinIptv().catch(()=>{});
