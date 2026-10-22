@@ -4848,8 +4848,26 @@ async function refreshAppUpdateState(){
   }catch(e){}
 }
 function manualAppUpdate(){
+  if(window.ABAJ_STANDALONE&&window.AbajNative&&typeof AbajNative.checkStandaloneUpdate==='function'){
+    try{AbajNative.checkStandaloneUpdate();return;}catch(e){}
+  }
   window.location.href='facetalk://check-update';
 }
+window.__abajStandaloneUpdateStatus=function(state,message){
+  const btn=document.getElementById('standaloneUpdateBtn');
+  if(!btn)return;
+  const text=String(message||'');
+  if(text)btn.textContent=text;
+  btn.disabled=state==='checking';
+  if(state==='latest'||state==='error'||state==='busy'){
+    const current=text;
+    setTimeout(()=>{
+      if(btn.textContent!==current)return;
+      btn.disabled=false;
+      btn.textContent=appLang==='hy'?'🔄 Ստուգել թարմացումը':appLang==='en'?'🔄 Check for update':'🔄 Проверить обновление';
+    },6000);
+  }
+};
 function fixTvSettingsSectionFocus(modal){
   if(!nativeTv||!modal)return;
   const card=modal.querySelector('.settingsCard');
