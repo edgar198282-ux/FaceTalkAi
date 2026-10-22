@@ -6186,8 +6186,8 @@ function applyStandaloneEpg(){
         const p=[];
         if(current.epg_now)p.push('Сейчас: '+current.epg_now.title+' · '+fmtClock(current.epg_now.start)+'–'+fmtClock(current.epg_now.stop));
         if(current.epg_next)p.push('Далее: '+current.epg_next.title+' · '+fmtClock(current.epg_next.start));
-        details.textContent=p.join('  |  ')||'Программа недоступна';
-        details.style.display='block';
+        details.textContent=p.join('  |  ');
+        details.style.display=p.length?'block':'none';
       }
       updatePlayerRemaining();
     }
@@ -6779,14 +6779,14 @@ function render(){
         '<div class="logoWrap">'+logo+'</div>'+
         '<div class="gridChannelName">'+
           (window.ABAJ_STANDALONE
-            ?'<span class="abajChannelNameText">'+esc(ch.name)+'</span><small class="abajEpgSmall">'+
-              esc(ch.epg_now?.title||ch.epg_next?.title||'Программа недоступна')+'</small>'
+            ?'<span class="abajChannelNameText">'+esc(ch.name)+'</span>'+
+              (ch.epg_now?.title||ch.epg_next?.title?'<small class="abajEpgSmall">'+esc(ch.epg_now?.title||ch.epg_next?.title)+'</small>':'')
             :esc(ch.name))+'</div>'+
         '<div class="info">'+
           '<div class="name">'+esc(ch.name)+'</div>'+
-          '<div class="now">'+esc(ch.epg_now&&ch.epg_now.title?cleanTvLabel(ch.epg_now.title,'LIVE'):(window.ABAJ_STANDALONE?'Программа недоступна':localizedCategoryLabel(ch.group)))+'</div>'+
-          '<div class="progress"><span style="width:'+epgProgress(ch.epg_now)+'%"></span></div>'+
-          '<div class="times"><span>'+(ch.epg_now?fmtClock(ch.epg_now.start):'LIVE')+'</span><span>'+(ch.epg_now?fmtClock(ch.epg_now.stop):Math.max(1,Math.round((ch.latency_ms||0)/1000))+'s')+'</span></div>'+
+          (window.ABAJ_STANDALONE&&!ch.epg_now?.title?'':'<div class="now">'+esc(ch.epg_now&&ch.epg_now.title?cleanTvLabel(ch.epg_now.title,'LIVE'):localizedCategoryLabel(ch.group))+'</div>')+
+          (window.ABAJ_STANDALONE&&!ch.epg_now?'':'<div class="progress"><span style="width:'+epgProgress(ch.epg_now)+'%"></span></div>')+
+          (window.ABAJ_STANDALONE&&!ch.epg_now?'':'<div class="times"><span>'+(ch.epg_now?fmtClock(ch.epg_now.start):'LIVE')+'</span><span>'+(ch.epg_now?fmtClock(ch.epg_now.stop):Math.max(1,Math.round((ch.latency_ms||0)/1000))+'s')+'</span></div>')+
           (ch.epg_next?'<div class="next">'+esc(t.next)+': '+esc(ch.epg_next.title)+'</div>':'')+
           '<div class="badge">'+(isAdultChannel(ch)?'🔞 18+':(ch.personal?'★ EDEM':((COUNTRY_META[ch.country]&&COUNTRY_META[ch.country].flag)||esc(ch.country||''))))+'</div>'+
         '</div>'+
