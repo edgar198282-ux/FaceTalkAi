@@ -152,7 +152,25 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
     return document.getElementById('standaloneBuiltinEpgCount').textContent;
   });
   assert.equal(settingsAfter,'EPG: 2');
-  await page.evaluate(()=>document.getElementById('standaloneClose').click());
+  const remoteNavigation=await page.evaluate(()=>{
+    const config=document.getElementById('standaloneConfig');
+    const focusOrder=[document.activeElement.id];
+    for(let i=0;i<5;i++){
+      window.abajStandaloneRemoteKey('ArrowDown');
+      focusOrder.push(document.activeElement.id);
+    }
+    const reachedKinoPub=config.querySelector('.standaloneKpSection').contains(document.activeElement);
+    window.abajStandaloneRemoteKey('ArrowUp');
+    focusOrder.push(document.activeElement.id);
+    window.abajStandaloneRemoteKey('Back');
+    return {focusOrder,reachedKinoPub,closed:config.hidden};
+  });
+  assert.deepEqual(remoteNavigation.focusOrder.slice(0,5),[
+    'standaloneClose','standaloneRefresh','standaloneListName','standaloneListUrl','standaloneAdd'
+  ]);
+  assert.equal(remoteNavigation.reachedKinoPub,true);
+  assert.equal(remoteNavigation.focusOrder[6],'standaloneAdd');
+  assert.equal(remoteNavigation.closed,true);
 
 
   const lazy=await page.evaluate(async()=>{
