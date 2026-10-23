@@ -1,0 +1,54 @@
+name: Publish Taxi Hub Standalone direct APK
+on:
+  push:
+    branches: [taxi-hub-public-distribution]
+    paths:
+      - '.github/workflows/publish-taxi-hub-standalone.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify signed APK from owner-authorized transfer
+        env:
+          SOURCE_URL: 'https://d2ol7oe51mr4n9.cloudfront.net/user_3JQL6lNNGBhTS6xkig16ewYNVWt/7a71dfd2-1d09-4322-8027-3e73ffc7788e.zip'
+          EXPECTED_SHA256: '0ddaedd2cfe64fe035df6564fe604cabdbccc0b7ef0aeafc037688ff5fe4b8be'
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 4 --retry-delay 3 --connect-timeout 10 --max-time 90 \
+            "$SOURCE_URL" -o TaxiHub-Standalone.apk
+          echo "$EXPECTED_SHA256  TaxiHub-Standalone.apk" | sha256sum -c -
+          unzip -t TaxiHub-Standalone.apk >/dev/null
+          test "$(stat -c %s TaxiHub-Standalone.apk)" -eq 4470933
+      - name: Create update manifest and publish public APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA256: '0ddaedd2cfe64fe035df6564fe604cabdbccc0b7ef0aeafc037688ff5fe4b8be'
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os
+          manifest={
+              'packageName':'am.taxihub.driver.standalone',
+              'versionCode':500003,
+              'versionName':'0.2.500003',
+              'apkUrl':'https://github.com/edgar198282-ux/FaceTalkAi/releases/download/taxi-hub-standalone-latest/TaxiHub-Standalone.apk',
+              'sha256':os.environ['EXPECTED_SHA256']
+          }
+          open('update.json','w').write(json.dumps(manifest,sort_keys=True))
+          PY
+          TAG=taxi-hub-standalone-latest
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --target "$GITHUB_SHA" \
+              --repo "$GITHUB_REPOSITORY" --title "Taxi Hub Standalone Direct APK" \
+              --notes "Direct public download of independently signed Taxi Hub Standalone. No Railway runtime required; updates are checked through this GitHub release." \
+              --prerelease --latest=false
+          fi
+          gh release upload "$TAG" TaxiHub-Standalone.apk update.json \
+            --repo "$GITHUB_REPOSITORY" --clobber
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[] | [.name,.size,.url] | @tsv'
