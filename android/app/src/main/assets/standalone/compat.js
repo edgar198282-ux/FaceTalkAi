@@ -1073,7 +1073,10 @@ function settings(){
  #standaloneConfig .savedDetails b,#standaloneConfig .savedDetails small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  #standaloneConfig .savedActions{display:flex;gap:6px;flex:none}
  #standaloneConfig .savedActions button{font-size:13px;padding:8px}
- #standaloneConfig button:focus-visible{outline:3px solid #e8aa15}
+ #standaloneConfig button:focus,#standaloneConfig input:focus,#standaloneConfig select:focus,#standaloneConfig summary:focus{outline:3px solid #e8aa15;outline-offset:3px}
+ #standaloneConfig button:focus{box-shadow:0 0 0 4px #2c6697aa}
+ #standaloneConfig .standaloneSheet{scroll-behavior:smooth}
+ #standaloneConfig button,#standaloneConfig input,#standaloneConfig summary{scroll-margin:55px}
  #standaloneConfig #standaloneCancel{background:#64859d}
  #standaloneConfig #standalonePlaylistStatus{min-height:20px;font-size:13px;font-weight:700;margin-top:10px}
  
@@ -1103,9 +1106,69 @@ function settings(){
  const el=document.createElement('div');el.id='standaloneConfig';el.hidden=true;
  el.innerHTML='<div class="standaloneSheet"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">ABAJ TV · Источники</h2><button id="standaloneClose">✕</button></div><section class="standaloneSourceSection standaloneIptvSection" aria-label="Настройки IPTV"><h3>Встроенный IPTV</h3><div class="savedRow" style="margin-top:8px"><div class="savedDetails"><b>IPTV</b><small id="standaloneBuiltinIptvStatus">Автообновление каналов · источник встроен</small><small id="standaloneBuiltinEpgCount">EPG: 0</small></div><span style="font-size:12px;font-weight:800;color:#16865b">Встроенный</span></div><button id="standaloneRefresh" type="button">Обновить каналы</button><h3>Дополнительные IPTV-плейлисты <span id="standaloneSavedCount"></span></h3><div class="savedPlaylists" id="standaloneRows"></div><h3 id="standaloneEditorTitle">Добавить плейлист</h3><label>Название плейлиста</label><input id="standaloneListName" placeholder="Например, Free TV"><label>Прямая ссылка M3U</label><input id="standaloneListUrl" placeholder="https://..."><button id="standaloneAdd">Добавить плейлист</button> <button id="standaloneCancel" hidden>Отмена</button><div id="standalonePlaylistStatus" aria-live="polite"></div></section><section class="standaloneSourceSection standaloneKpSection" aria-label="Настройки KinoPub"><h3>KinoPub</h3><p id="standaloneKpStatus" aria-live="polite" style="font-weight:700">Нажми «Войти» для получения кода устройства</p><div id="standaloneKpCode" hidden style="padding:12px;background:#d9efff;border-radius:14px;margin:12px 0"><small>1. Открой на телефоне kino.pub/device</small><div id="standaloneKpUserCode" style="font-size:30px;font-weight:900;letter-spacing:3px;margin:6px 0"></div><small>2. Введи этот код и подтверди устройство. ABAJ TV подключится автоматически.</small><button id="standaloneKpCopy" type="button">Копировать код</button> <button id="standaloneKpVisit" type="button">Открыть сайт</button></div><button id="standaloneConnect">Войти в KinoPub</button> <button id="standaloneKpSync">Синхронизировать</button> <button id="standaloneKpOut" class="danger">Выйти</button><details id="standaloneKpAdvanced" style="margin-top:12px"><summary style="cursor:pointer;font-weight:800">Дополнительные настройки OAuth</summary><label>OAuth Client ID</label><input id="standaloneClientId" autocomplete="off"><label>OAuth Client Secret</label><input type="password" id="standaloneClientSecret" autocomplete="off"><button id="standaloneKpSaveClient" type="button">Сохранить параметры</button> <button id="standaloneKpResetClient" type="button">Сбросить</button><small>Нужны только если KinoPub выдал тебе отдельные параметры клиента.</small></details></section></div>';
  document.body.appendChild(el);
+ const sheet=el.querySelector('.standaloneSheet');
+ sheet.setAttribute('role','dialog');
+ sheet.setAttribute('aria-modal','true');
+ sheet.setAttribute('aria-label','ABAJ TV · Источники');
+ sheet.tabIndex=-1;
  // The original "Подключить IPTV / KinoPub" button is the only entry point.
  // Do not inject a second "Источники (без сервера)" button at the bottom.
- const close=()=>{el.hidden=true;cancelEdit()};
+ let returnFocus=null;
+ const focusTarget=target=>{
+  if(!target)return;
+  try{target.focus({preventScroll:true})}catch(e){target.focus()}
+  target.scrollIntoView({block:'nearest',inline:'nearest'});
+ };
+ const remoteTargets=()=>Array.from(sheet.querySelectorAll('button,input,select,textarea,summary')).filter(target=>
+  !target.disabled&&!target.hidden&&target.getClientRects().length>0&&getComputedStyle(target).visibility!=='hidden'
+ );
+ const close=()=>{
+  el.hidden=true;
+  cancelEdit();
+  const previous=returnFocus;
+  returnFocus=null;
+  if(previous?.isConnected)try{previous.focus({preventScroll:true})}catch(e){}
+ };
+ window.abajStandaloneRemoteKey=key=>{
+  if(el.hidden)return false;
+  if(key==='Back'||key==='Escape'||key==='Backspace'||key==='BrowserBack'){close();return true}
+  if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(key))return true;
+  const targets=remoteTargets();
+  if(!targets.length){focusTarget(sheet);return true}
+  const active=document.activeElement;
+  let index=targets.indexOf(active);
+  if(key==='Enter'){
+   const target=targets[index<0?0:index];
+   focusTarget(target);
+   target.click();
+   return true;
+  }
+  if(key==='ArrowUp'||key==='ArrowDown'){
+   const next=index<0?0:Math.max(0,Math.min(targets.length-1,index+(key==='ArrowDown'?1:-1)));
+   focusTarget(targets[next]);
+   return true;
+  }
+  if(index<0){focusTarget(targets[0]);return true}
+  const current=targets[index].getBoundingClientRect();
+  const right=key==='ArrowRight';
+  const candidates=targets.filter((target,i)=>{
+   if(i===index)return false;
+   const rect=target.getBoundingClientRect();
+   return Math.abs((rect.top+rect.bottom)-(current.top+current.bottom))<Math.max(rect.height,current.height)
+    &&(right?rect.left>=current.right-2:rect.right<=current.left+2);
+  });
+  candidates.sort((a,b)=>Math.abs(a.getBoundingClientRect().left-current.left)-Math.abs(b.getBoundingClientRect().left-current.left));
+  if(candidates.length)focusTarget(candidates[0]);
+  return true;
+ };
+ document.addEventListener('keydown',event=>{
+  if(el.hidden)return;
+  const key=event.key==='NumpadEnter'?'Enter':event.key;
+  if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter','Backspace','Escape','BrowserBack'].includes(key))return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  window.abajStandaloneRemoteKey(key);
+ },true);
  el.querySelector('#standaloneClose').onclick=close;
  let editingId=null;
  const nameInput=el.querySelector('#standaloneListName');
@@ -1195,8 +1258,10 @@ function settings(){
   paintKp();
  };
  window.abajStandaloneOpenSources=()=>{
+  if(el.hidden)returnFocus=document.activeElement;
   el.hidden=false;
   paint();
+  focusTarget(el.querySelector('#standaloneClose'));
  };
  cancelButton.onclick=cancelEdit;
  addButton.onclick=()=>{
