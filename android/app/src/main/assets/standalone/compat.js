@@ -301,6 +301,65 @@ async function access(){
  }
  return t.access_token;
 }
+let kpStandaloneOverviewCache=null;
+let kpStandaloneOverviewPending=null;
+async function kpStandaloneCatalogCount(type,token){
+ const params={access_token:token,type,page:1,perpage:1};
+ const first=await kp('/v1/items',params);
+ const pagination=first?.pagination||first?.data?.pagination||{};
+ const direct=Number(pagination.total_items??pagination.totalItems??first?.total_items);
+ if(Number.isFinite(direct)&&direct>=0)return direct;
+ const pages=Number(pagination.total);
+ const perpage=Number(pagination.perpage??1);
+ if(!Number.isInteger(pages)||pages<1||!Number.isInteger(perpage)||perpage<1)return null;
+ if(perpage===1)return pages;
+ const firstItems=Array.isArray(first?.items)?first.items:[];
+ if(pages===1)return firstItems.length;
+ const last=await kp('/v1/items',{access_token:token,type,page:pages,perpage});
+ const lastItems=Array.isArray(last?.items)?last.items:[];
+ return lastItems.length?(pages-1)*perpage+lastItems.length:null;
+}
+async function kpStandaloneOverview(){
+ if(!cinemaStatus())return reply({ok:false,authenticated:false,error:'kinopub_auth_required'},401);
+ try{
+  const token=await access();
+  if(kpStandaloneOverviewCache&&kpStandaloneOverviewCache.token===token&&Date.now()<kpStandaloneOverviewCache.expires)
+   return reply(kpStandaloneOverviewCache.value);
+  if(!kpStandaloneOverviewPending){
+   kpStandaloneOverviewPending=(async()=>{
+    const [movies,series]=await Promise.allSettled([
+     kpStandaloneCatalogCount('movie',token),
+     kpStandaloneCatalogCount('serial',token)
+    ]);
+    const count=r=>r.status==='fulfilled'&&Number.isInteger(r.value)&&r.value>=0?r.value:null;
+    const value={ok:true,movies_total:count(movies),series_total:count(series)};
+    kpStandaloneOverviewCache={token,value,expires:Date.now()+(value.movies_total!==null&&value.series_total!==null?1800000:60000)};
+    return value;
+   })().finally(()=>{kpStandaloneOverviewPending=null});
+  }
+  return reply(await kpStandaloneOverviewPending);
+ }catch(e){
+  return reply({ok:false,error:'kinopub_overview_unavailable',detail:String(e.message||e).slice(0,140)},502);
+ }
+}
+async function kpStandaloneStatus(){
+ if(!cinemaStatus())return reply({ok:true,authenticated:false,pending:false,owner:false,subscription_days:null,verification_uri:'https://kino.pub/device'});
+ try{
+  const d=await kp('/v1/user',{access_token:await access()});
+  const sub=d?.user?.subscription||d?.data?.user?.subscription||{};
+  const rawDays=sub.days;
+  let days=rawDays!=null&&rawDays!==''?Number(rawDays):NaN;
+  if(!Number.isFinite(days)&&Number.isFinite(Number(sub.end_time))&&Number(sub.end_time)>0)
+   days=Math.max(0,(Number(sub.end_time)*1000-Date.now())/86400000);
+  return reply({ok:true,authenticated:true,pending:false,owner:false,
+   subscription_days:Number.isFinite(days)?days:null,
+   subscription_active:typeof sub.active==='boolean'?sub.active:null,
+   verification_uri:'https://kino.pub/device'});
+ }catch(e){
+  return reply({ok:true,authenticated:true,pending:false,owner:false,
+   subscription_days:null,subscription_active:null,verification_uri:'https://kino.pub/device'});
+ }
+}
 // Keep exactly the metadata contract used by the original ABAJ TV server.
 function kpLabelRows(input, keys=['title','name','label']){
  if(input==null)return '';
@@ -1044,12 +1103,12 @@ async function api(path,opts){
  if(p==='/api/iptv/play'||p==='/api/iptv/edem/play')return reply({url:getItemUrl(q.get('id'))});
  if(p==='/api/iptv/refresh'){refreshBuiltinIptv(true).catch(()=>{});playlistCache.clear();return reply({ok:true})}
  if(p==='/api/cinema/source-state')return reply({source:'kinopub',cinema_enabled:true,playback_allowed:true});
- if(p==='/api/kinopub/status')return reply({ok:true,authenticated:cinemaStatus(),pending:false,owner:false,verification_uri:'https://kino.pub/device'});
+ if(p==='/api/kinopub/status')return kpStandaloneStatus();
  if(p==='/api/kinopub/catalog'||p==='/api/kinopub/section')return kpLoadSection(q,p.endsWith('/catalog'));
  if(p==='/api/kinopub/play')return kpResolvePlayback(q);
  if(p==='/api/kinopub/collection')return kpCollectionItems(q);
  if(p==='/api/kinopub/item')return kpItemDetail(q.get('id'));
- if(p==='/api/kinopub/overview')return reply({ok:true,movies_total:0,series_total:0});
+ if(p==='/api/kinopub/overview')return kpStandaloneOverview();
  if(p==='/api/kinopub/auth/start'||p==='/api/kinopub/auth/poll')return reply({ok:false,error:'Use standalone KinoPub device login in local settings'},400);
  if(p==='/api/cinema/library'||p==='/api/cinema/bookmark-folders'||p==='/api/cinema/progress'||p==='/api/cinema/library/watch')
   return kinoApi(p,q,opts);
