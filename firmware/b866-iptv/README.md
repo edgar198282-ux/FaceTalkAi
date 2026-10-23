@@ -68,3 +68,17 @@ The Home screen adds a persisted on/off switch for automatic ABAJ TV launch afte
 The new APK is a separate installable package, not a firmware, and should be tested first before selecting it as the default HOME application. MTS firmware may disallow replacing its Home launcher. To undo: reselect default Home in system settings or uninstall `ai.abaj.tv.home`.
 
 Source/build location: `firmware/b866-iptv/launcher`.
+
+## Home app 0.3.0
+
+- Read-only hardware diagnostics split into two TV-remote-friendly screens.
+- Displays current Android version, build, bootloader, memory, internal storage, device board, CPU ABI and security patch.
+- **Copy report** contains only system-level build facts, never device serials, MAC addresses, advertising IDs or DRM identifiers.
+- Reads the installed ABAJ TV Standalone version before launching it.
+- A new vector ABAJ TV OS icon identifies the separate launcher in Android's application list.
+- First launch does **not** unexpectedly jump into ABAJ TV, even if auto-launch is enabled; auto-launch activates only on a subsequent boot and can be toggled off.
+- Press Back from extended diagnostics to return to basic diagnostics, then Back again to Home.
+
+On the ZTE box install the APK normally and open **ABAJ TV OS → Диагностика приставки**. Take one photo per diagnostics page to capture complete hardware information. No USB flashing or root permissions are required. OEM launcher restrictions can still prevent selecting this app as default Home.
+
+The source tree intentionally contains no firmware `img` or `zip` image for flashing. **Never** use the Home APK with a flashing tool.
