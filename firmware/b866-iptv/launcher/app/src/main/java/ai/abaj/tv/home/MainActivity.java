@@ -277,7 +277,6 @@ public final class MainActivity extends Activity {
     }
 
     private void maybeOpenTVOnFirstHomeAfterBoot() {
-        if (!preferences.get().getBoolean(PREF_AUTO, true)) return;
         int bootCount;
         try {
             bootCount = Settings.Global.getInt(getContentResolver(), Settings.Global.BOOT_COUNT, -1);
@@ -285,13 +284,14 @@ public final class MainActivity extends Activity {
             return;
         }
         if (bootCount < 0) return;
-        if (!preferences.get().contains(PREF_BOOT)) {
-            preferences.get().edit().putInt(PREF_BOOT, bootCount).apply();
+        SharedPreferences stored = preferences.get();
+        if (!stored.contains(PREF_BOOT)) {
+            stored.edit().putInt(PREF_BOOT, bootCount).apply();
             return;
         }
-        if (preferences.get().getInt(PREF_BOOT, -1) == bootCount) return;
-        preferences.get().edit().putInt(PREF_BOOT, bootCount).apply();
-        startTV();
+        if (stored.getInt(PREF_BOOT, -1) == bootCount) return;
+        stored.edit().putInt(PREF_BOOT, bootCount).apply();
+        if (stored.getBoolean(PREF_AUTO, true)) startTV();
     }
 
     @Override
