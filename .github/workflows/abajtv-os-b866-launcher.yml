@@ -1,0 +1,31 @@
+name: Build ABAJ TV OS B866 Home (non-flashable)
+on:
+  push:
+    branches: [feature/abajtv-os-zte-b866-iptv]
+    paths:
+      - 'firmware/b866-iptv/launcher/**'
+      - '.github/workflows/abajtv-os-b866-launcher.yml'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Install Android SDK platform
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Build safe Home APK
+        run: gradle -p firmware/b866-iptv/launcher :app:assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: abajtv-os-b866-home-debug
+          path: firmware/b866-iptv/launcher/app/build/outputs/apk/debug/app-debug.apk
