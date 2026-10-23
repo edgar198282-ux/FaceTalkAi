@@ -42,3 +42,29 @@ Select the new Home app only when your firmware offers that choice. To revert, r
 4. Boot a compatible OS non-destructively, test playback and input, then decide whether any flashable image is viable.
 
 Do not advertise Android 15/16 for this box before a working hardware-specific port exists.
+
+
+## Verified research for this box (2026-10-23)
+
+Physical label provided by owner: **MTS IPTV ТВ-приставка, ZTE ZXV10 B866**.
+Previously shared About-device screen indicates **Android 9**, firmware
+**V81111371.1041**, **PL20210417**, bootloader **V0004** and 2021 security patch.
+These values are **reported from prior photo**, not independently read via ADB yet.
+
+References:
+- [MTS support](https://support.mts.ru/domashnii_internet_i_tv/oborudovanie/rukovodstvo-po-ekspluatatsii-tv-pristavok-msk) distinguishes IPTV B866 from OTT products.
+- [Android TV Guide B866 IPTV](https://www.androidtv-guide.com/pay-tv-provider/mts-iptv-box/) identifies Amlogic S905X / 2 GB / 8 GB / Android TV 9–10.
+- [ZTE B866V2K](https://www.zte.com.cn/global/product_index/home_media_center_en/ip-stb/ZXV10_B866V2K/ZXV10_B866V2K.html) is a **different** Android 11 device (Cortex-A35, Mali-G31). It is NOT a compatible Android 11 image for this B866.
+- [Community IPTV/OTT warning](https://4pda.to/forum/index.php?showtopic=993178&st=4200) emphasizes that mixing IPTV, OTT and V2 firmwares can permanently brick hardware.
+
+**Result:** No verified Android 15/16 image for the original MTS B866 IPTV was identified. ROM porting is blocked pending matching vendor binaries, board/recovery research and physical device tests. This repository does **not** promise an updated Android system.
+
+## Home app 0.2.0
+
+Safe read-only info page (accessible directly with the remote, no PC required): manufacturer, model, device, board, hardware, bootloader, Android release, build, patch and primary ABI. This page intentionally excludes serial numbers, MAC addresses, identifiers and DRM data. Photograph that page for ROM compatibility checks.
+
+The Home screen adds a persisted on/off switch for automatic ABAJ TV launch after a **new boot**. When disabled, the menu stays visible. Neither setting requires nor requests privileged Android access.
+
+The new APK is a separate installable package, not a firmware, and should be tested first before selecting it as the default HOME application. MTS firmware may disallow replacing its Home launcher. To undo: reselect default Home in system settings or uninstall `ai.abaj.tv.home`.
+
+Source/build location: `firmware/b866-iptv/launcher`.
