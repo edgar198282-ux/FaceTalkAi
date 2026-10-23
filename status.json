@@ -1,6 +1,6 @@
 {
-  "updated_at_utc": "2026-10-22T21:35:46+00:00",
-  "unique_channels": 15097,
+  "updated_at_utc": "2026-10-23T04:48:58+00:00",
+  "unique_channels": 15126,
   "official_channels": 24,
   "public_sources": 86,
   "successful_sources": 86,
@@ -321,85 +321,85 @@
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/general.m3u",
-      "parsed": 2755,
-      "new": 2702
+      "parsed": 2749,
+      "new": 2696
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/movies.m3u",
-      "parsed": 789,
-      "new": 786
+      "parsed": 775,
+      "new": 772
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/series.m3u",
-      "parsed": 522,
-      "new": 445
+      "parsed": 518,
+      "new": 444
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/kids.m3u",
-      "parsed": 431,
-      "new": 424
+      "parsed": 429,
+      "new": 422
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/education.m3u",
-      "parsed": 216,
-      "new": 204
+      "parsed": 214,
+      "new": 202
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/science.m3u",
-      "parsed": 22,
-      "new": 16
+      "parsed": 21,
+      "new": 15
     },
     {
       "country": "HQ",
       "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8",
       "parsed": 2014,
-      "new": 1685
+      "new": 1687
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/news.m3u",
-      "parsed": 1017,
-      "new": 898
+      "parsed": 1018,
+      "new": 900
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/sports.m3u",
-      "parsed": 472,
-      "new": 448
+      "parsed": 468,
+      "new": 444
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/documentary.m3u",
-      "parsed": 268,
-      "new": 245
+      "parsed": 257,
+      "new": 235
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/music.m3u",
-      "parsed": 783,
-      "new": 725
+      "parsed": 782,
+      "new": 724
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/entertainment.m3u",
-      "parsed": 907,
-      "new": 820
+      "parsed": 896,
+      "new": 812
     },
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/best.m3u",
       "parsed": 10302,
-      "new": 3696
+      "new": 3769
     },
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/online.m3u",
-      "parsed": 8369,
+      "parsed": 8375,
       "new": 0
     },
     {
@@ -412,7 +412,7 @@
       "country": "RU",
       "url": "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv-top.m3u",
       "parsed": 391,
-      "new": 356
+      "new": 355
     },
     {
       "country": "RU",
@@ -429,8 +429,8 @@
     {
       "country": "RU",
       "url": "https://iptv-org.github.io/iptv/languages/rus.m3u",
-      "parsed": 655,
-      "new": 34
+      "parsed": 651,
+      "new": 36
     },
     {
       "country": "AM",
@@ -465,20 +465,20 @@
     {
       "country": "RU",
       "url": "https://iptv-org.github.io/iptv/countries/ru.m3u",
-      "parsed": 507,
+      "parsed": 504,
       "new": 0
     },
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/substanc1/iptv-russia/main/streams/ru.m3u",
       "parsed": 715,
-      "new": 220
+      "new": 221
     },
     {
       "country": "RU",
       "url": "https://ngrch.github.io/iptv/ru.m3u",
       "parsed": 995,
-      "new": 698
+      "new": 697
     },
     {
       "country": "RU",
@@ -495,7 +495,7 @@
     {
       "country": "UA",
       "url": "https://iptv-org.github.io/iptv/countries/ua.m3u",
-      "parsed": 200,
+      "parsed": 199,
       "new": 2
     },
     {
@@ -519,7 +519,7 @@
     {
       "country": "MD",
       "url": "https://iptv-org.github.io/iptv/countries/md.m3u",
-      "parsed": 26,
+      "parsed": 25,
       "new": 0
     }
   ],
