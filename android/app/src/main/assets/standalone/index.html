@@ -2773,6 +2773,7 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
         <div><div class="cinemaSideUser">Abaj TV</div><div class="cinemaSideMeta" id="cinemaSideMeta">Кино</div><div class="cinemaSideMeta" id="cinemaKinoPubDays" style="display:none;color:#ffd66b"></div></div>
       </div>
       <div class="cinemaSideItems">
+        <button class="cinemaMenuItem" data-cinema-action="providers" onclick="cinemaSideAction('providers')"><span class="cinemaMenuIcon">🔗</span><span id="cinemaProviderMenuTitle">ИСТОЧНИК КИНО</span></button>
         <button class="cinemaMenuItem" data-cinema-action="watching" onclick="cinemaSideAction('watching')"><span class="cinemaMenuIcon icon-watching">▶</span><span>Я СМОТРЮ <b id="cinemaWatchingCount"></b></span></button>
         <button class="cinemaMenuItem" data-cinema-action="bookmarks" onclick="cinemaSideAction('bookmarks')"><span class="cinemaMenuIcon icon-bookmarks">♥</span><span>ИЗБРАННОЕ <b id="cinemaBookmarksCount"></b></span></button>
         <button class="cinemaMenuItem" data-cinema-action="history" onclick="cinemaSideAction('history')"><span class="cinemaMenuIcon icon-history">↶</span><span>ИСТОРИЯ <b id="cinemaHistoryCount"></b></span></button>
@@ -2786,7 +2787,6 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
         <button class="cinemaMenuItem" data-cinema-action="tvshows" onclick="cinemaSideAction('tvshows')"><span class="cinemaMenuIcon icon-tvshows">📡</span><span>ТВ ШОУ</span></button>
         <button class="cinemaMenuItem" data-cinema-action="concerts" onclick="cinemaSideAction('concerts')"><span class="cinemaMenuIcon icon-concerts">🎤</span><span>КОНЦЕРТЫ</span></button>
         <button class="cinemaMenuItem" data-cinema-action="collections" onclick="cinemaSideAction('collections')"><span class="cinemaMenuIcon icon-collections">🗂</span><span>ПОДБОРКИ</span></button>
-        <button class="cinemaMenuItem" data-cinema-action="providers" onclick="cinemaSideAction('providers')"><span class="cinemaMenuIcon">🔗</span><span id="cinemaProviderMenuTitle">ИСТОЧНИК КИНО</span></button>
       </div>
     </aside>
     <div class="cinemaShellBody">
@@ -3824,7 +3824,7 @@ let appIsAdmin=false;
 function renderAdminCinemaHeader(){
   const meta=document.getElementById('cinemaSideMeta');
   if(!meta)return;
-  if(!appIsAdmin){
+  if(!appIsAdmin&&!window.ABAJ_STANDALONE){
     meta.textContent=cinemaT().cinema;
     return;
   }
@@ -3833,8 +3833,8 @@ function renderAdminCinemaHeader(){
     meta.textContent=cinemaT().cinema;
     return;
   }
-  const m=Number.isFinite(Number(d.movies_total))?Number(d.movies_total):null;
-  const sr=Number.isFinite(Number(d.series_total))?Number(d.series_total):null;
+  const m=d.movies_total!=null&&Number.isFinite(Number(d.movies_total))?Number(d.movies_total):null;
+  const sr=d.series_total!=null&&Number.isFinite(Number(d.series_total))?Number(d.series_total):null;
   if(m===null&&sr===null){
     meta.textContent=cinemaT().cinema;
     return;
@@ -3857,8 +3857,8 @@ async function checkAdmin(){
     const btn=document.getElementById('settingsAdminBtn');
     if(btn)btn.style.display=appIsAdmin?'':'none';
     const kpDays=document.getElementById('cinemaKinoPubDays');
-    if(kpDays&&!appIsAdmin){kpDays.style.display='none';kpDays.textContent=''}
-    if(appIsAdmin)refreshCinemaKinoPubDays();
+    if(kpDays&&!appIsAdmin&&!window.ABAJ_STANDALONE){kpDays.style.display='none';kpDays.textContent=''}
+    if(appIsAdmin||window.ABAJ_STANDALONE)refreshCinemaKinoPubDays();
     renderAdminCinemaHeader();
   }catch(e){}
 }
@@ -3979,7 +3979,7 @@ function autoConnectInstalledKinoPub(){
 }
 async function refreshCinemaKinoPubDays(){
   const el=document.getElementById('cinemaKinoPubDays');
-  if(!el||!appIsAdmin)return;
+  if(!el||(!appIsAdmin&&!window.ABAJ_STANDALONE))return;
   try{
     const r=await fetch('/api/kinopub/status',{headers:authHeaders(),cache:'no-store'});
     const d=r.ok?await r.json():null;
@@ -3988,7 +3988,7 @@ async function refreshCinemaKinoPubDays(){
       el.textContent='';
       return;
     }
-    const days=Number(d.subscription_days);
+    const days=d.subscription_days==null?NaN:Number(d.subscription_days);
     el.classList.remove('kpDaysActive','kpDaysExpired');
     if(Number.isFinite(days)){
       const shown=days<1?days.toFixed(1):String(Math.ceil(days));
@@ -11224,7 +11224,7 @@ function toggleCinemaSideMenu(){
   if(side){
     side.classList.toggle('open');
     if(side.classList.contains('open')){
-      if(appIsAdmin){
+      if(appIsAdmin||window.ABAJ_STANDALONE){
         renderAdminCinemaHeader();
         refreshCinemaKinoPubDays();
         if(!kinoPubOverview)loadKinoPubOverview();
