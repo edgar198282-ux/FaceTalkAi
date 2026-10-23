@@ -219,6 +219,43 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   assert.match(manualSelection.stages[3],/КАЧЕСТВО/);
   assert.ok(manualSelection.qualityOptions.some(x=>x.includes('1080p')));
   assert.match(manualSelection.chosen,/a_s1e1_1080.m3u8/);
+  await page.setViewportSize({width:1280,height:720});
+  await page.addInitScript(()=>{
+    window.__startupFrames=[];
+    const sample=()=>{
+      const app=document.getElementById('app'),home=document.getElementById('abajLauncher');
+      if(app)window.__startupFrames.push({appVisible:getComputedStyle(app).visibility==='visible',homeVisible:!!home&&!home.hidden&&getComputedStyle(home).visibility==='visible'});
+      if(!home)requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  await page.goto('https://abaj.test/?tv=1');
+  await page.waitForFunction(()=>document.querySelector('#abajLauncher .abajCinemaScene'));
+  const startup=await page.evaluate(()=>({
+    frames:window.__startupFrames,
+    home:!document.getElementById('abajLauncher').hidden,
+    ready:!document.documentElement.classList.contains('abajTvBoot'),
+    playerLibrary:typeof Hls,
+    focus:document.activeElement.dataset.target
+  }));
+  assert.equal(startup.home,true);
+  assert.equal(startup.ready,true);
+  assert.equal(startup.playerLibrary,'function');
+  assert.equal(startup.focus,'cinema');
+  assert.ok(startup.frames.length>0);
+  assert.ok(startup.frames.every(frame=>!frame.appVisible||frame.homeVisible),'IPTV must never appear before home');
+  const beforeTv=await page.locator('.abajCinemaScene').evaluate(canvas=>canvas.toDataURL());
+  await page.waitForTimeout(350);
+  assert.notEqual(await page.locator('.abajCinemaScene').evaluate(canvas=>canvas.toDataURL()),beforeTv);
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.locator('#abajLauncher [data-target="iptv"]').click();
+  await page.waitForFunction(()=>document.getElementById('abajLauncher').hidden);
+  assert.equal(await page.locator('#app').evaluate(app=>getComputedStyle(app).visibility),'visible');
+  await page.evaluate(()=>window.abajLauncherHome());
+  assert.equal(await page.locator('#abajLauncher').isVisible(),true);
+  await page.locator('#abajLauncher [data-target="settings"]').click();
+  await page.waitForFunction(()=>document.getElementById('tvSettingsModal').classList.contains('open'));
+  assert.equal(await page.locator('#tvSettingsModal').isVisible(),true);
   assert.deepEqual(errors,[]);
   console.log(JSON.stringify({catalog:all,filters:['ALL','HD','FHD','AM','News'],emptySearchPreserved:true,lazySourceSelection:true,lazyOrderedStages:true}));
  }finally{await browser.close()}

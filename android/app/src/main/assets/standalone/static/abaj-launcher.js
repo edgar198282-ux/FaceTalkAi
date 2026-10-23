@@ -1,7 +1,11 @@
 /* ABAJ TV Premium Dark launcher — isolated UI layer */
 (()=>{'use strict';
-const tvAnimationFrameMs=1000/24; // smoother TV motion, heavy film drawing remains disabled
 const css=`
+body.nativeTv.abajHomeVisible #app{visibility:hidden;pointer-events:none}
+body.nativeTv #abajLauncher .abajGearForeground,
+body.nativeTv #abajLauncher .abajBrandSpark{will-change:transform,opacity}
+body.nativeTv #abajLauncher .abajLaunchTile{contain:layout paint}
+
 #abajLauncher{position:fixed;inset:0;z-index:9000;box-sizing:border-box;overflow-y:auto;display:flex;flex-direction:column;padding:18px 28px 28px;color:#f6fbff;background:#020b18 url('static/launcher-header-20261014.webp') center top / 100% auto no-repeat;font-family:Arial,sans-serif;overscroll-behavior:contain;scrollbar-width:none}
 #abajLauncher[hidden],#abajLaunchHome[hidden]{display:none!important}
 #abajLauncher::-webkit-scrollbar{display:none}
@@ -373,7 +377,7 @@ function createFootballScreen(tile,root){
   return true;
  }
  function draw(){
-  if(!ready||!align())return;
+  if(!ready||(!document.body.classList.contains('nativeTv')&&!align())||!width||!height)return;
   const phase=elapsed/7200*Math.PI*2,bounce=7*Math.pow(Math.sin(phase*3),2);
   const left=Math.max(486,-offsetX/scale+radius+4),right=Math.min(554,(width-offsetX)/scale-radius-4);
   ballX=left+(right-left)*(1-Math.cos(phase))/2;ballY=147-bounce;
@@ -399,14 +403,14 @@ function createFootballScreen(tile,root){
  }
  function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected}
  function tick(now){
-  frame=0;if(!active()){last=0;return}if(root.classList.contains('abajTransitionRunning')){last=0;frame=requestAnimationFrame(tick);return}if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now
+  frame=0;if(!active()){last=0;return}if(root.classList.contains('abajTransitionRunning')){last=0;frame=requestAnimationFrame(tick);return}
   if(last&&!departing&&!reduced.matches)elapsed+=Math.min(now-last,80);
   last=now;draw();
   if(!reduced.matches)frame=requestAnimationFrame(tick);
  }
  function sync(){
   if(frame)cancelAnimationFrame(frame);frame=0;last=0;
-  if(active()){draw();if(!reduced.matches)frame=requestAnimationFrame(tick)}
+  if(active()){align();draw();if(!reduced.matches)frame=requestAnimationFrame(tick)}
  }
  clean.onload=()=>{
   if(clean.naturalWidth!==134||clean.naturalHeight!==133||!tile.isConnected)return;
@@ -462,7 +466,7 @@ function createIptvScenes(tile,root){
   return [.75*Math.sin(t*2.1+y*1.1)*Math.max(0,(y-168)/27),.3*Math.sin(t*1.8+x*.16)*Math.max(0,(y-168)/27)];
  }
  function mesh(p,t){
-  const [x0,y0,w,h]=p.box,n=6,points=[];
+  const [x0,y0,w,h]=p.box,n=document.body.classList.contains('nativeTv')?2:6,points=[];
   for(let j=0;j<=n;j++)for(let i=0;i<=n;i++){
    const x=x0+w*i/n,y=y0+h*j/n,edge=Math.sin(Math.PI*i/n)*Math.sin(Math.PI*j/n),d=displacement(p.type,x,y,t);
    points.push([x,y,x+d[0]*edge,y+d[1]*edge]);
@@ -534,9 +538,9 @@ function createIptvScenes(tile,root){
  }
  function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected&&!reduced.matches}
  function tick(now){
-  frame=0;if(!active()){last=0;return}if(root.classList.contains('abajTransitionRunning')){last=0;frame=requestAnimationFrame(tick);return}if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now
+  frame=0;if(!active()){last=0;return}if(root.classList.contains('abajTransitionRunning')){last=0;frame=requestAnimationFrame(tick);return}
   if(last)elapsed+=Math.min(now-last,80);last=now;
-  if(now-painted>=(document.body.classList.contains('nativeTv')?tvAnimationFrameMs:32)){draw();painted=now}frame=requestAnimationFrame(tick);
+  if(document.body.classList.contains('nativeTv')||now-painted>=32){draw();painted=now}frame=requestAnimationFrame(tick);
  }
  function sync(){
   if(frame)cancelAnimationFrame(frame);frame=0;last=0;painted=0;canvas.hidden=reduced.matches;
@@ -657,7 +661,7 @@ function createCinemaScene(tile,root){
  }
  function active(){return ready&&visible&&!suspended&&!root.hidden&&!document.hidden&&root.isConnected}
  function tick(now){
-  frame=0;if(!active()){last=0;return}if(root.classList.contains('abajTransitionRunning')){last=0;frame=requestAnimationFrame(tick);return}if(document.body.classList.contains('nativeTv')&&tick.lastPaint&&now-tick.lastPaint<tvAnimationFrameMs){frame=requestAnimationFrame(tick);return}tick.lastPaint=now
+  frame=0;if(!active()){last=0;return}if(root.classList.contains('abajTransitionRunning')){last=0;frame=requestAnimationFrame(tick);return}
   if(last)elapsed+=Math.min(now-last,80);last=now;draw();frame=requestAnimationFrame(tick);
  }
  function sync(){
@@ -889,8 +893,8 @@ async function playIptvBallTransition(tile){
 }
 let lastLaunchTarget='cinema';
 function selectLaunchTile(tile){if(!tile)return;root.querySelectorAll('.abajLaunchTile').forEach(b=>b.classList.toggle('abajSelectedTile',b===tile));lastLaunchTarget=tile.dataset.target||lastLaunchTarget;tile.focus({preventScroll:true})}
-function show(){settingsGear?.reset();applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;window.abajApplyHomeSections?.();footballScreen?.reset();home.hidden=true;const visible=[...root.querySelectorAll('.abajLaunchTile:not([hidden])')];const target=lastLaunchTarget;const previous=visible.find(b=>b.dataset.target===target)||visible[0];selectLaunchTile(previous);requestAnimationFrame(()=>{if(!root.hidden&&previous?.isConnected)selectLaunchTile(previous)})}
-function hide(){root.hidden=true;home.hidden=true}
+function show(){settingsGear?.reset();applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;document.body.classList.add('abajHomeVisible');window.abajApplyHomeSections?.();footballScreen?.reset();home.hidden=true;const visible=[...root.querySelectorAll('.abajLaunchTile:not([hidden])')];const target=lastLaunchTarget;const previous=visible.find(b=>b.dataset.target===target)||visible[0];selectLaunchTile(previous);requestAnimationFrame(()=>{if(!root.hidden&&previous?.isConnected)selectLaunchTile(previous)})}
+function hide(){root.hidden=true;document.body.classList.remove('abajHomeVisible');home.hidden=true}
 window.abajLauncherHome=show;
 root.addEventListener('click',async e=>{
  const b=e.target.closest('[data-target]');if(!b||iptvTransitionBusy||cinemaTransitionBusy||settingsTransitionBusy||mediaTransitionBusy)return;
@@ -944,7 +948,8 @@ root.addEventListener('keydown',e=>{
 root.addEventListener('focusin',e=>{if(e.target.matches('.abajLaunchTile')){root.dataset.tvFocus='true';selectLaunchTile(e.target)}});
 root.addEventListener('focusout',e=>{if(e.target.matches('.abajLaunchTile'))root.dataset.tvFocus='false'});
 show();
+document.documentElement.classList.remove('abajTvBoot');
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,250));else setTimeout(start,250);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
 

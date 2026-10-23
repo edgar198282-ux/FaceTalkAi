@@ -16,7 +16,7 @@ try{
   }
 }catch(e){}
 </script>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js" async></script>
 <style>
 :root{
   --bg:#66baf3;
@@ -3103,7 +3103,7 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+<script src="static/hls-1.5.17.min.js"></script>
 <script>
 const DEFAULT_UI_PROFILE_V1='abaj_default_ui_profile_v1';
 if(localStorage.getItem(DEFAULT_UI_PROFILE_V1)!=='1'){
@@ -3658,7 +3658,7 @@ function applyUiMode(){
     app.classList.toggle('gridMode',layout==='grid');
     app.classList.toggle('tvMode',tvMode);
   }
-  if(nativeTv)document.documentElement.classList.remove('abajTvBoot');
+  if(nativeTv&&document.getElementById('abajLauncher'))document.documentElement.classList.remove('abajTvBoot');
 }
 
 let appLang=localStorage.getItem('abaj_tv_lang')||'ru';
@@ -5303,6 +5303,8 @@ function persistTvBrowseState(){
 function restoreTvBrowseFocus(){
   if(!nativeTv||current||cinemaMode||tvSettingsOpen()||adminPanelOpen()||tvGuideOpen()||tvSearchOpen())return;
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const home=document.getElementById('abajLauncher');
+    if(document.documentElement.classList.contains('abajTvBoot')||(home&&!home.hidden))return;
     const cards=[...document.querySelectorAll('.channel')];
     if(!cards.length)return;
     const savedId=localStorage.getItem('abaj_tv_focus_channel')||lastChannelId||'';
