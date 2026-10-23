@@ -1,14 +1,22 @@
 package ai.abaj.tv.home;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.StatFs;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
@@ -30,6 +38,7 @@ public final class MainActivity extends Activity {
 
     private final SharedPreferencesHolder preferences = new SharedPreferencesHolder();
     private boolean detailsVisible;
+    private boolean extendedInfoVisible;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -64,11 +73,12 @@ public final class MainActivity extends Activity {
         detailsVisible = false;
         LinearLayout root = createRoot();
         addTitle(root, "ABAJ TV", 43, ACCENT, true);
-        addCaption(root, "IPTV  •  Кино  •  Медиа", 18, WHITE, 25);
+        addCaption(root, "IPTV  •  Кино  •  Медиа", 18, WHITE, 12);
+        addCaption(root, tvInstallationStatus(), 14, MUTED, 18);
         TextView open = addButton(root, "Открыть ABAJ TV", this::startTV);
         addButton(root, "Настройки Wi-Fi", () -> startSettings(Settings.ACTION_WIFI_SETTINGS));
         addButton(root, "Настройки Android", () -> startSettings(Settings.ACTION_SETTINGS));
-        addButton(root, "Информация о приставке", this::showDeviceInfo);
+        addButton(root, "Диагностика приставки", () -> showDeviceInfo(false));
 
         boolean auto = preferences.get().getBoolean(PREF_AUTO, true);
         TextView autoButton = addButton(root, autoLabel(auto), null);
@@ -80,7 +90,7 @@ public final class MainActivity extends Activity {
                     next ? "Автозапуск включён" : "Автозапуск выключен",
                     Toast.LENGTH_SHORT).show();
         });
-        addCaption(root, "Работает поверх Android. Система МТС не изменяется.", 13, MUTED, 0);
+        addCaption(root, "Оболочка работает поверх Android. Прошивка МТС не изменяется.", 13, MUTED, 0);
         open.requestFocus();
     }
 
@@ -88,25 +98,96 @@ public final class MainActivity extends Activity {
         return "Автозапуск после включения: " + (enabled ? "ВКЛ" : "ВЫКЛ");
     }
 
-    private void showDeviceInfo() {
+    private String tvInstallationStatus() {
+        try {
+            PackageInfo info = getPackageManager().getPackageInfo(TV_PACKAGE, 0);
+            return "ABAJ TV установлен" + (info.versionName == null ? "" : " · v" + info.versionName);
+        } catch (PackageManager.NameNotFoundException | SecurityException e) {
+            return "ABAJ TV Standalone не установлен";
+        }
+    }
+
+    private void showDeviceInfo(boolean extended) {
         detailsVisible = true;
+        extendedInfoVisible = extended;
         LinearLayout root = createRoot();
         addTitle(root, "ABAJ TV OS", 30, ACCENT, true);
-        addCaption(root, "Диагностика (только чтение)", 16, WHITE, 15);
-        addInfo(root, "Производитель", Build.MANUFACTURER);
-        addInfo(root, "Модель", Build.MODEL);
-        addInfo(root, "Устройство", Build.DEVICE);
-        addInfo(root, "Плата", Build.BOARD);
-        addInfo(root, "Аппаратная платформа", Build.HARDWARE);
-        addInfo(root, "Загрузчик", Build.BOOTLOADER);
-        addInfo(root, "Android", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
-        addInfo(root, "Номер сборки", Build.DISPLAY);
-        addInfo(root, "Сборка ОС", Build.VERSION.INCREMENTAL);
-        addInfo(root, "Патч безопасности", Build.VERSION.SECURITY_PATCH);
-        addInfo(root, "ABI", Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "неизвестно");
-        addCaption(root, "Прошивки OTT и B866V2 несовместимы с B866 IPTV.", 15, MUTED, 10);
-        TextView back = addButton(root, "Назад к ABAJ TV", this::showHome);
-        back.requestFocus();
+        addCaption(root, extended ? "Дополнительная информация" : "Информация о ZTE B866", 16, WHITE, 9);
+
+        if (extended) {
+            addInfo(root, "Устройство", Build.DEVICE);
+            addInfo(root, "Плата", Build.BOARD);
+            addInfo(root, "Аппаратная платформа", Build.HARDWARE);
+            addInfo(root, "Номер сборки", Build.DISPLAY);
+            addInfo(root, "Внутренняя версия", Build.VERSION.INCREMENTAL);
+            addInfo(root, "ABI", Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "неизвестно");
+        } else {
+            addInfo(root, "Производитель", Build.MANUFACTURER);
+            addInfo(root, "Модель", Build.MODEL);
+            addInfo(root, "Android", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
+            addInfo(root, "Загрузчик", Build.BOOTLOADER);
+            addInfo(root, "Патч безопасности", Build.VERSION.SECURITY_PATCH);
+            addInfo(root, "ОЗУ", totalRam());
+            addInfo(root, "Накопитель", totalStorage());
+        }
+
+        addCaption(root, "IPTV / OTT определяется по заводской наклейке.\n"
+                + "Не устанавливайте прошивки от другой модификации.", 14, MUTED, 10);
+        TextView page = addButton(root, extended ? "Основные сведения" : "Дополнительные сведения",
+                () -> showDeviceInfo(!extended));
+        addButton(root, "Скопировать отчёт", this::copyReport);
+        addButton(root, "Назад к ABAJ TV", this::showHome);
+        page.requestFocus();
+    }
+
+    private String totalRam() {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        if (manager == null) return "нет данных";
+        ActivityManager.MemoryInfo memory = new ActivityManager.MemoryInfo();
+        manager.getMemoryInfo(memory);
+        return gigabytes(memory.totalMem);
+    }
+
+    private String totalStorage() {
+        try {
+            StatFs storage = new StatFs(Environment.getDataDirectory().getPath());
+            return gigabytes(storage.getTotalBytes());
+        } catch (RuntimeException e) {
+            return "нет данных";
+        }
+    }
+
+    private String gigabytes(long bytes) {
+        return String.format(java.util.Locale.US, "%.1f ГБ", bytes / 1073741824.0);
+    }
+
+    private String diagnosticReport() {
+        return "ABAJ TV OS · ZTE B866 (read-only)\n"
+                + "Производитель: " + Build.MANUFACTURER + "\n"
+                + "Модель: " + Build.MODEL + "\n"
+                + "Устройство: " + Build.DEVICE + "\n"
+                + "Плата: " + Build.BOARD + "\n"
+                + "Аппаратная платформа: " + Build.HARDWARE + "\n"
+                + "Android: " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")\n"
+                + "Загрузчик: " + Build.BOOTLOADER + "\n"
+                + "Сборка: " + Build.DISPLAY + "\n"
+                + "Внутренняя версия: " + Build.VERSION.INCREMENTAL + "\n"
+                + "Патч безопасности: " + Build.VERSION.SECURITY_PATCH + "\n"
+                + "ABI: " + (Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "неизвестно") + "\n"
+                + "ОЗУ: " + totalRam() + "\n"
+                + "Накопитель: " + totalStorage() + "\n"
+                + "Тип IPTV/OTT: проверить наклейку\n";
+    }
+
+    private void copyReport() {
+        ClipboardManager manager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (manager == null) {
+            Toast.makeText(this, "Буфер обмена недоступен", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        manager.setPrimaryClip(ClipData.newPlainText("ABAJ TV OS diagnostics", diagnosticReport()));
+        Toast.makeText(this, "Технический отчёт скопирован без серийного номера и MAC",
+                Toast.LENGTH_LONG).show();
     }
 
     private void addInfo(LinearLayout root, String label, String value) {
@@ -203,7 +284,12 @@ public final class MainActivity extends Activity {
         } catch (SecurityException e) {
             return;
         }
-        if (bootCount < 0 || preferences.get().getInt(PREF_BOOT, -1) == bootCount) return;
+        if (bootCount < 0) return;
+        if (!preferences.get().contains(PREF_BOOT)) {
+            preferences.get().edit().putInt(PREF_BOOT, bootCount).apply();
+            return;
+        }
+        if (preferences.get().getInt(PREF_BOOT, -1) == bootCount) return;
         preferences.get().edit().putInt(PREF_BOOT, bootCount).apply();
         startTV();
     }
@@ -211,7 +297,8 @@ public final class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (detailsVisible) {
-            showHome();
+            if (extendedInfoVisible) showDeviceInfo(false);
+            else showHome();
         } else {
             super.onBackPressed();
         }
