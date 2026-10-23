@@ -3533,6 +3533,7 @@ public class MainActivity extends Activity {
                 if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){
                     webView.evaluateJavascript(
                         "(function(){var key='"+launcherKey+"';"+
+                        "if(typeof window.abajStandaloneRemoteKey==='function'&&window.abajStandaloneRemoteKey(key))return;"+
                         "var modal=document.getElementById('tvSettingsModal');"+
                         "if(modal&&modal.classList.contains('open')){"+
                         "var card=modal.querySelector('.settingsCard')||modal;"+
@@ -3685,7 +3686,7 @@ public class MainActivity extends Activity {
                 }catch(Exception ignored){}
             },800L);
             webView.evaluateJavascript(
-                "(function(){try{return (typeof handleTvBack==='function')?handleTvBack():false}catch(e){return false}})()",
+                "(function(){try{if(typeof window.abajStandaloneRemoteKey==='function'&&window.abajStandaloneRemoteKey('Back'))return true;return (typeof handleTvBack==='function')?handleTvBack():false}catch(e){return false}})()",
                 value->{
                     if(answered[0])return;
                     answered[0]=true;
@@ -3706,7 +3707,7 @@ public class MainActivity extends Activity {
         }
         if(webView!=null){
             webView.evaluateJavascript(
-                "(function(){try{return (typeof handleAppBack==='function')?handleAppBack():false}catch(e){return false}})()",
+                "(function(){try{if(typeof window.abajStandaloneRemoteKey==='function'&&window.abajStandaloneRemoteKey('Back'))return true;return (typeof handleAppBack==='function')?handleAppBack():false}catch(e){return false}})()",
                 value->{
                     if("true".equals(value))return;
                     if(webView.canGoBack())webView.goBack();
