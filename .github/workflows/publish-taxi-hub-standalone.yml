@@ -7,48 +7,75 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: taxi-hub-standalone-distribution
+  cancel-in-progress: false
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Verify signed APK from owner-authorized transfer
-        env:
-          SOURCE_URL: 'https://d2ol7oe51mr4n9.cloudfront.net/user_3JQL6lNNGBhTS6xkig16ewYNVWt/7a71dfd2-1d09-4322-8027-3e73ffc7788e.zip'
-          EXPECTED_SHA256: '0ddaedd2cfe64fe035df6564fe604cabdbccc0b7ef0aeafc037688ff5fe4b8be'
-        run: |
-          set -euo pipefail
-          curl -fsSL --retry 4 --retry-delay 3 --connect-timeout 10 --max-time 90 \
-            "$SOURCE_URL" -o TaxiHub-Standalone.apk
-          echo "$EXPECTED_SHA256  TaxiHub-Standalone.apk" | sha256sum -c -
-          unzip -t TaxiHub-Standalone.apk >/dev/null
-          test "$(stat -c %s TaxiHub-Standalone.apk)" -eq 4470933
-      - name: Create update manifest and publish public APK
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EXPECTED_SHA256: '0ddaedd2cfe64fe035df6564fe604cabdbccc0b7ef0aeafc037688ff5fe4b8be'
+      - name: Reassemble and verify signed 500004 APK
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json,os
-          manifest={
-              'packageName':'am.taxihub.driver.standalone',
-              'versionCode':500003,
-              'versionName':'0.2.500003',
-              'apkUrl':'https://github.com/edgar198282-ux/FaceTalkAi/releases/download/taxi-hub-standalone-latest/TaxiHub-Standalone.apk',
-              'sha256':os.environ['EXPECTED_SHA256']
-          }
-          open('update.json','w').write(json.dumps(manifest,sort_keys=True))
+          import base64,hashlib,json,pathlib
+          meta=json.loads(pathlib.Path('taxi-hub-transfer/metadata.json').read_text())
+          parts=sorted(pathlib.Path('taxi-hub-transfer').glob('part-*.txt'))
+          assert len(parts)==12, 'Incomplete staged binary'
+          assert [p.name for p in parts]==[f'part-{i:03d}.txt' for i in range(12)]
+          assert meta['packageName']=='am.taxihub.driver.standalone'
+          assert meta['versionCode']==500004 and meta['versionName']=='0.2.500004'
+          encoded=''.join(p.read_text() for p in parts)
+          data=base64.b64decode(encoded,validate=True)
+          assert len(data)==meta['size']==4471269
+          assert hashlib.sha256(data).hexdigest()==meta['sha256']=='f145551cde0e7f3d0e8914e0496083c98b8812d6f0b6d0c57d1f16ae5edefa3b'
+          pathlib.Path('TaxiHub-Standalone.apk').write_bytes(data)
           PY
+          unzip -t TaxiHub-Standalone.apk >/dev/null
+          BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs TaxiHub-Standalone.apk > new-certs.txt
+          "$BUILD_TOOLS/aapt" dump badging TaxiHub-Standalone.apk | grep '^package:' | tee package.txt
+          grep -q "name='am.taxihub.driver.standalone'" package.txt
+          grep -q "versionCode='500004'" package.txt
+      - name: Confirm upgrade compatibility with current public APK
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 3 --connect-timeout 10 --max-time 120             https://github.com/edgar198282-ux/FaceTalkAi/releases/download/taxi-hub-standalone-latest/TaxiHub-Standalone.apk             -o previous.apk
+          echo '0ddaedd2cfe64fe035df6564fe604cabdbccc0b7ef0aeafc037688ff5fe4b8be  previous.apk' | sha256sum -c -
+          BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
+          "$BUILD_TOOLS/apksigner" verify --print-certs previous.apk > old-certs.txt
+          OLD_CERT=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' old-certs.txt)
+          NEW_CERT=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' new-certs.txt)
+          test -n "$OLD_CERT" && test -n "$NEW_CERT"
+          test "$OLD_CERT" = "$NEW_CERT" || { echo "::error::APK signing certificate mismatch"; exit 1; }
+      - name: Build update manifest
+        run: |
+          python3 - <<'PY'
+          import json,pathlib
+          meta=json.loads(pathlib.Path('taxi-hub-transfer/metadata.json').read_text())
+          manifest={
+              'packageName':meta['packageName'],
+              'versionCode':meta['versionCode'],
+              'versionName':meta['versionName'],
+              'apkUrl':'https://github.com/edgar198282-ux/FaceTalkAi/releases/download/taxi-hub-standalone-latest/TaxiHub-Standalone.apk',
+              'sha256':meta['sha256']
+          }
+          pathlib.Path('update.json').write_text(json.dumps(manifest,sort_keys=True))
+          PY
+      - name: Publish unchanged direct URL and update manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
           TAG=taxi-hub-standalone-latest
-          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create "$TAG" --target "$GITHUB_SHA" \
-              --repo "$GITHUB_REPOSITORY" --title "Taxi Hub Standalone Direct APK" \
-              --notes "Direct public download of independently signed Taxi Hub Standalone. No Railway runtime required; updates are checked through this GitHub release." \
-              --prerelease --latest=false
-          fi
-          gh release upload "$TAG" TaxiHub-Standalone.apk update.json \
-            --repo "$GITHUB_REPOSITORY" --clobber
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
-            --json assets --jq '.assets[] | [.name,.size,.url] | @tsv'
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+          gh release upload "$TAG" TaxiHub-Standalone.apk --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "$TAG" update.json --repo "$GITHUB_REPOSITORY" --clobber
+          mkdir -p verify
+          gh release download "$TAG" --pattern 'TaxiHub-Standalone.apk' --dir verify --repo "$GITHUB_REPOSITORY"
+          gh release download "$TAG" --pattern 'update.json' --dir verify --repo "$GITHUB_REPOSITORY"
+          cmp TaxiHub-Standalone.apk verify/TaxiHub-Standalone.apk
+          cmp update.json verify/update.json
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY"             --json assets --jq '.assets[] | [.name,.size,.url] | @tsv'
