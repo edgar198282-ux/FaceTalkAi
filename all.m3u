@@ -20143,8 +20143,6 @@ https://congresodirecto.akamaized.net/hls/live/2037973/canalparlamento/master.m3
 https://60417ddeaf0d9.streamlock.net/srtc/smil:srtc.smil/playlist.m3u8
 #EXTINF:-1 tvg-id="CanalPeniel.gt" tvg-name="Canal Peniel" tvg-logo="https://i.imgur.com/Z7aKJCt.png" tvg-country="GT" tvg-language="spa" group-title="Religious" nexus-score="0",Canal Peniel (720p)
 https://cdn.streamhispanatv.net:3840/live/penielfamlive.m3u8
-#EXTINF:-1 tvg-id="CanalPlus.fr" tvg-name="Canal+" tvg-logo="https://i.imgur.com/5HcyMnW.png" tvg-country="FR" tvg-language="fra" group-title="Entertainment" nexus-score="100",Canal+ (1080p)
-http://tv.streambox.fr/live/testlivestream/testlivestream/41.m3u8
 #EXTINF:-1 tvg-id="CANALPlus360.pl" tvg-name="CANAL+ 360" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Canal360_1920x1080.png/960px-Canal360_1920x1080.png" tvg-country="PL" tvg-language="pol" group-title="Family" nexus-score="100",CANAL+ 360 (576i)
 http://92.114.85.87:8019/play/a003/index.m3u8
 #EXTINF:-1 tvg-id="CanalPlusDomo.pl" tvg-name="Canal+ Domo" tvg-logo="https://i.imgur.com/Iz2BxbR.png" tvg-country="PL" tvg-language="pol" group-title="Undefined" nexus-score="100",Canal+ Domo (576i)
@@ -20153,8 +20151,6 @@ http://92.114.85.87:8019/play/a008/index.m3u8
 http://92.114.85.87:8019/play/a009/index.m3u8
 #EXTINF:-1 tvg-id="CanalPlusNow.pl" tvg-name="Canal+ Now" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/C%2BNow.png/960px-C%2BNow.png" tvg-country="PL" tvg-language="pol" group-title="Undefined" nexus-score="1",Canal+ Now (576i)
 http://92.114.85.87:8006/play/a005/index.m3u8
-#EXTINF:-1 tvg-id="CanalPlusSport360.fr" tvg-name="Canal+ Sport 360" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/6/64/Canal%2BSport_360.png" tvg-country="FR" tvg-language="fra" group-title="Sports" nexus-score="0",Canal+ Sport 360
-https://futbol9865.ultratv13.workers.dev/deportivo111/14.m3u8
 #EXTINF:-1 tvg-id="CanalPro.py" tvg-name="Canal Pro" tvg-logo="https://i.imgur.com/ah8n7jL.png" tvg-country="PY" tvg-language="spa" group-title="Business" nexus-score="100",Canal Pro
 https://www.desde-paraguay.com/pro.m3u8
 #EXTINF:-1 tvg-id="CanalRCN.co" tvg-name="Canal RCN" tvg-logo="https://i.imgur.com/5PhTaHp.png" tvg-country="CO" tvg-language="spa" group-title="General" nexus-score="100",Canal RCN (1080p)
@@ -20793,6 +20789,8 @@ https://video.oct.dc.gov/out/u/DCN.m3u8
 http://15.204.142.109:22880/TELEVISA-PROVEEDOR-DISTRITO-COMEDIA/index.m3u8
 #EXTINF:-1 tvg-id="DitisHelmond.nl" tvg-name="Dit is Helmond" tvg-logo="https://i.imgur.com/fGAaBAs.png" tvg-country="NL" tvg-language="nld" group-title="General" nexus-score="100",Dit is Helmond (1080p)
 https://ms2.mx-cd.net/tv/228-1864150/Omroep_Helmond.smil/playlist.m3u8
+#EXTINF:-1 tvg-id="DivyaBhajan.in" tvg-name="Divya Bhajan" tvg-logo="https://jiotvimages.cdn.jio.com/dare_images/images/DivyaBhajan.png" tvg-country="IN" tvg-language="pan" group-title="Religious" nexus-score="0",Divya Bhajan (1080p)
+https://jmp2.uk/stvp-IN1600002IQ
 #EXTINF:-1 tvg-id="DivyaDarshanTV.np" tvg-name="Divya Darshan TV" tvg-logo="https://i.imgur.com/EwDQ12F.png" tvg-country="NP" tvg-language="nep;mai" group-title="Religious" nexus-score="90",Divya Darshan TV (1080p)
 https://live.divyadarshantv.com/hls/0/stream.m3u8
 #EXTINF:-1 tvg-id="DivyavaniTV.in" tvg-name="Divyavani TV" tvg-logo="https://jiotvimages.cdn.jio.com/dare_images/images/Divya_Vani.png" tvg-country="IN" tvg-language="tel" group-title="Religious" nexus-score="100",Divyavani TV (720p)
@@ -21139,6 +21137,8 @@ https://edge-f.swagit.com/live/fernandinabeachfl/live-1-a/playlist.m3u8
 https://d3c1w351ahk83d.cloudfront.net/scheduler/scheduleMaster/416.m3u8
 #EXTINF:-1 tvg-id="FeViviente.gt" tvg-name="Fe Viviente" tvg-logo="https://i.imgur.com/PkW3cKR.png" tvg-country="GT" tvg-language="spa" group-title="Religious" nexus-score="0",Fe Viviente (480p)
 https://stream.oursnetworktv.com/latin/feVivienteGtm/playlist.m3u8
+#EXTINF:-1 tvg-id="FGNChannel.in" tvg-name="FGN Channel" tvg-logo="https://yt3.googleusercontent.com/rDtVRwirMau7LnqmpkNHMrsqCQ7TtWTIbXePXFcY_GWDMs4z64A-w2XBG92t-IV4-C8UoEI=s900-c-k-c0x00ffffff-no-rj" tvg-country="IN" tvg-language="hin" group-title="Religious" nexus-score="0",FGN Channel (360p)
+https://samitaorigin.tangotv.in/FGNCHANNEL/SAMITAORIGIN/index.m3u8
 #EXTINF:-1 tvg-id="FGTV.kr" tvg-name="FGTV" tvg-logo="https://i.ibb.co/crxz0fd/yfgc-hearder-logo.png" tvg-country="KR" tvg-language="kor" group-title="Religious" nexus-score="100",FGTV (720p)
 https://fgtvlive.fgtv.com/smil:fgtv.smil/playlist.m3u8
 #EXTINF:-1 tvg-id="FGTV.us" tvg-name="FGTV" tvg-logo="https://i.imgur.com/RXFmzVY.png" tvg-country="US" tvg-language="eng" group-title="Legislative" nexus-score="100",FGTV
@@ -21191,8 +21191,6 @@ http://168.196.127.137:6001/play/a09v/index.m3u8
 http://stream.mcquack.net/216/index.m3u8
 #EXTINF:-1 tvg-id="Foodxp.uk" tvg-name="Foodxp" tvg-logo="https://i.imgur.com/zOWog5j.png" tvg-country="UK" tvg-language="hin" group-title="Cooking" nexus-score="100",Foodxp (1080p)
 https://techtraveleat.in/stream.m3u8?id=foodxp
-#EXTINF:-1 tvg-id="Football.ru" tvg-name="Football" tvg-logo="https://i.imgur.com/pEuaZVx.png" tvg-country="RU" tvg-language="rus" group-title="Sports" nexus-score="20",Football (576p)
-http://hls127.freeott.top:8080/Football/video.m3u8
 #EXTINF:-1 tvg-id="ForaTedioTV.br" tvg-name="Fora Tedio TV" tvg-logo="https://i.imgur.com/R9ul4T1.png" tvg-country="BR" tvg-language="por" group-title="Comedy" nexus-score="100",Fora Tedio TV (720p)
 https://stmv2.srvif.com/foratedio/foratedio/playlist.m3u8
 #EXTINF:-1 tvg-id="ForensicFiles.us" tvg-name="Forensic Files" tvg-logo="https://i.imgur.com/V5vvuLK.png" tvg-country="US" tvg-language="spa" group-title="Documentary" nexus-score="100",Forensic Files
@@ -21385,6 +21383,8 @@ https://amg09501-amg09501c1-klowdtv-us-2398.playouts.now.amagi.tv/playlist/amg09
 https://livestream.telvue.com/nashuanh3/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 #EXTINF:-1 tvg-id="GraceNetwork.pk" tvg-name="Grace Network" tvg-logo="https://i.imgur.com/QSaZPJ4.png" tvg-country="PK" tvg-language="urd;eng" group-title="Religious" nexus-score="100",Grace Network (1080p)
 https://livecdn.live247stream.com/grace/tv/playlist.m3u8
+#EXTINF:-1 tvg-id="GraceTV.in" tvg-name="Grace TV" tvg-logo="https://jiotvimages.cdn.jio.com/dare_images/images/Grace_TV.png" tvg-country="IN" tvg-language="eng" group-title="Religious" nexus-score="0",Grace TV (360p)
+https://samitaorigin.tangotv.in/GRACETV/SAMITAORIGIN/index.m3u8
 #EXTINF:-1 tvg-id="GrandeTV.ve" tvg-name="Grande TV" tvg-logo="https://i.imgur.com/jxCirrP.png" tvg-country="VE" tvg-language="spa" group-title="General" nexus-score="19",Grande TV (720p)
 https://live20.bozztv.com/akamaissh101/ssh101/grandetv2240/playlist.m3u8
 #EXTINF:-1 tvg-id="GranTV.hu" tvg-name="Gran TV" tvg-logo="https://i.ibb.co/qJN7Qh2/gran-kicsi.png" tvg-country="HU" tvg-language="hun" group-title="Religious" nexus-score="0",Gran TV (720p)
@@ -21467,8 +21467,6 @@ https://7mbd4ogkr3gx-hls-live.wmncdn.net/harvestusa/d57ffba6564caea2fee3f4085f19
 http://15.204.246.24:8080/HBO2HD/index.m3u8
 #EXTINF:-1 tvg-id="HBOFamilyLatinAmerica.us" tvg-name="HBO Family Latin America" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/HBO_Family.svg/960px-HBO_Family.svg.png" tvg-country="US" tvg-language="spa" group-title="Family" nexus-score="100",HBO Family Latin America (1080p)
 http://15.204.246.24:8080/HBOFamilyHD/index.m3u8
-#EXTINF:-1 tvg-id="HBOHitsAsia.sg" tvg-name="HBO Hits Asia" tvg-logo="https://i.ibb.co/Mkzs7g3J/IMG-2195.png" tvg-country="SG" tvg-language="eng" group-title="Movies" nexus-score="15",HBO Hits Asia (1080p)
-https://2x2.me/BbwzPx
 #EXTINF:-1 tvg-id="HBOLatinAmerica.us" tvg-name="HBO Latin America" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/HBO_logo.svg/960px-HBO_logo.svg.png" tvg-country="US" tvg-language="spa" group-title="Undefined" nexus-score="100",HBO Latin America (1080p)
 http://15.204.246.24:8080/HBOHD/index.m3u8
 #EXTINF:-1 tvg-id="HBOPlusLatinAmerica.us" tvg-name="HBO+ Latin America" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Logohboplus2019.svg/960px-Logohboplus2019.svg.png" tvg-country="US" tvg-language="spa" group-title="Undefined" nexus-score="100",HBO+ Latin America (1080p)
@@ -21501,8 +21499,6 @@ http://51.210.199.58/hls/stream.m3u8
 http://88.212.15.17/live/test_hgtv_hevc_25p/playlist.m3u8
 #EXTINF:-1 tvg-id="HGTV.hu" tvg-name="HGTV" tvg-logo="https://i.imgur.com/KMcR9z9.png" tvg-country="HU" tvg-language="hun" group-title="Lifestyle" nexus-score="70",HGTV
 http://88.212.15.17/live/hgtv_hun/index.m3u8
-#EXTINF:-1 tvg-id="HGTV.pl" tvg-name="HGTV" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/HGTV_US_Logo_2015.svg/960px-HGTV_US_Logo_2015.svg.png" tvg-country="PL" tvg-language="pol" group-title="Lifestyle" nexus-score="6",HGTV (1080p)
-http://57.128.231.171:8080/241/index.m3u8
 #EXTINF:-1 tvg-id="HGTV.us" tvg-name="HGTV" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/HGTV_US_Logo_2015.svg/960px-HGTV_US_Logo_2015.svg.png" tvg-country="US" tvg-language="eng" group-title="Lifestyle" nexus-score="39",HGTV (360p)
 http://tvsen7.aynascope.net/hgtv/index.m3u8
 #EXTINF:-1 tvg-id="HGTVAsia.us" tvg-name="HGTV Asia" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/HGTV_US_Logo_2015.svg/960px-HGTV_US_Logo_2015.svg.png" tvg-country="US" tvg-language="eng" group-title="Lifestyle" nexus-score="100",HGTV Asia (1080p)
@@ -22337,8 +22333,6 @@ https://live.obslivestream.com/mastertv/index.m3u8
 http://stream.mcquack.net/163/index.m3u8
 #EXTINF:-1 tvg-id="MatchIgra.ru" tvg-name="Match! Igra" tvg-logo="https://i.imgur.com/5XWpF19.png" tvg-country="RU" tvg-language="rus" group-title="Sports" nexus-score="99",Match! Igra (1080p)
 http://stream.mcquack.net/188/index.m3u8
-#EXTINF:-1 tvg-id="MatchPremier.ru" tvg-name="Match! Premier" tvg-logo="https://i.imgur.com/GQPyHYK.png" tvg-country="RU" tvg-language="rus" group-title="Sports" nexus-score="0",Match! Premier (480p)
-http://192.162.64.99:5000/play/a02b/index.m3u8
 #EXTINF:-1 tvg-id="MatchStrana.ru" tvg-name="Match! Strana" tvg-logo="https://i.imgur.com/X02s2UE.png" tvg-country="RU" tvg-language="rus" group-title="Sports" nexus-score="100",Match! Strana (1080p)
 http://stream.mcquack.net/143/index.m3u8
 #EXTINF:-1 tvg-id="MatribhumiTV.bd" tvg-name="Matribhumi TV" tvg-logo="https://www.jagobd.com/wp-content/uploads/2024/10/matribhumi.jpg" tvg-country="BD" tvg-language="ben" group-title="Undefined" nexus-score="100",Matribhumi TV (720p)
@@ -22439,6 +22433,8 @@ https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main
 https://vidl.misatv.ro:5050/MSTV/romanian_720p_baseline/playlist.m3u8
 #EXTINF:-1 tvg-id="MisionELTV.do" tvg-name="Mision ELTV" tvg-logo="https://i.imgur.com/hwC1stN.png" tvg-country="DO" tvg-language="spa" group-title="Religious" nexus-score="100",Mision ELTV (720p)
 https://rd.tvabierta.net/live/misioneltv.m3u8
+#EXTINF:-1 tvg-id="MisionVidaTV.uy" tvg-name="Mision Vida TV" tvg-logo="https://i.imgur.com/8JgBuTm.png" tvg-country="UY" tvg-language="spa" group-title="Religious" nexus-score="0",Mision Vida TV
+https://5bf8041cb3fed.streamlock.net/zoefm/zoefm/playlist.m3u8
 #EXTINF:-1 tvg-id="MissionAsia.au" tvg-name="Mission Asia" tvg-logo="https://i.imgur.com/B5mKwF6.png" tvg-country="AU" tvg-language="eng;ara" group-title="Religious" nexus-score="100",Mission Asia (1080p)
 https://livecdn.live247stream.com/missionasia/tv/playlist.m3u8
 #EXTINF:-1 tvg-id="MissionTV.us" tvg-name="Mission TV" tvg-logo="https://i.imgur.com/Hb38BNo.png" tvg-country="US" tvg-language="eng" group-title="Religious" nexus-score="79",Mission TV (1080p)
@@ -25733,6 +25729,8 @@ https://unlimited1-us.dps.live/uct/uct.smil/playlist.m3u8
 https://644398c.ha.azioncdn.net/primary/tvuniversal_480p.sdp/playlist.m3u8
 #EXTINF:-1 tvg-id="TVUniversalEcuador.ec" tvg-name="TV Universal Ecuador" tvg-logo="https://i.imgur.com/TIsk5zN.png" tvg-country="EC" tvg-language="spa" group-title="Religious" nexus-score="100",TV Universal Ecuador (720p)
 https://cdn.mycloudstream.io/hls/live/broadcast/uwcedjt2/index.m3u8
+#EXTINF:-1 tvg-id="TVUniversalUruguay.uy" tvg-name="TV Universal Uruguay" tvg-logo="https://i.imgur.com/KD4aZ7W.jpeg" tvg-country="UY" tvg-language="spa" group-title="Religious" nexus-score="0",TV Universal Uruguay
+https://stream.universal.org.uy/hls/0/stream.m3u8
 #EXTINF:-1 tvg-id="TVVega.sk" tvg-name="TV Vega" tvg-logo="https://i.imgur.com/Qw3NeLA.png" tvg-country="SK" tvg-language="slk" group-title="Undefined" nexus-score="0",TV Vega (576p)
 http://88.212.7.11/live/test_tv_vega_web_player/playlist.m3u8
 #EXTINF:-1 tvg-id="TVVeseljakGolicaHD.si" tvg-name="TV Veseljak Golica HD" tvg-logo="https://i.imgur.com/49VrbSW.png" tvg-country="SI" tvg-language="slv" group-title="Undefined" nexus-score="100",TV Veseljak Golica HD
