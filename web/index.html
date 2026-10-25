@@ -5424,7 +5424,10 @@ function renderNamedPlaylistChips(playlists,rows){
     const name=String(p.name||'').trim();
     if(id&&name)iptvPlaylistMenuOptions.push({value:'playlist:'+id,name,count:playlistCounts.get(id)||0});
   }
-  if(sourceFilter.startsWith('playlist:')&&!iptvPlaylistMenuOptions.some(x=>x.value===sourceFilter))sourceFilter='free';
+  if((sourceFilter.startsWith('playlist:')&&!iptvPlaylistMenuOptions.some(x=>x.value===sourceFilter))||sourceFilter==='edem'){
+    sourceFilter='free';
+    localStorage.setItem('abaj_tv_source_filter','free');
+  }
   closeIptvPlaylistMenu();
   syncIptvPlaylistToggle();
 }
@@ -5883,8 +5886,9 @@ function restoreCachedChannels(){
       if(key.includes('shoghakat')||key.includes('շողակաթ'))return false;
       return !tvHideUnreliable||!x.unreliable||x.personal;
     });
-    channels=cached.accessActive===true?cachedRows:applyChannelAccessGate(cachedRows);
-    renderNamedPlaylistChips(cached.playlists||[],channels.filter(x=>x.personal));
+    // Never display cached personal playlists before server confirmation.
+    channels=applyChannelAccessGate(cachedRows.filter(x=>!x.personal));
+    renderNamedPlaylistChips([],[]);
     const groups=visibleChannelGroups();
     const t=UI_TEXT[appLang]||UI_TEXT.ru;
     const sel=document.getElementById('group');
