@@ -5994,15 +5994,9 @@ async function load(){
       edemPromise,
       new Promise(resolve=>setTimeout(()=>resolve({channels:[]}),40000))
     ]);
-    if(!Array.isArray(ed.channels)||!ed.channels.length){
-      const lastGood=channels.filter(x=>x.personal);
-      if(lastGood.length){
-        let savedPlaylists=[];
-        try{savedPlaylists=JSON.parse(localStorage.getItem(CHANNEL_CACHE_KEY)||'null')?.playlists||[]}catch(e){}
-        const fallbackId=sourceFilter.startsWith('playlist:')?sourceFilter.slice(9):'legacy';
-        ed={...ed,channels:lastGood.map(x=>({...x,playlist_id:x.playlist_id||fallbackId})),playlists:Array.isArray(savedPlaylists)&&savedPlaylists.length?savedPlaylists:[{id:fallbackId,name:'Едо'}]};
-      }
-    }
+    // The server is authoritative for deleted playlists; do not resurrect local channels.
+    if(!Array.isArray(ed.channels))ed.channels=[];
+    if(!Array.isArray(ed.playlists))ed.playlists=[];
     let base=(d.channels||[]).filter(x=>{
       const key=(String(x&&x.name||'')+' '+String(x&&x.tvg_id||'')).toLowerCase();
       if(key.includes('shoghakat')||key.includes('շողակաթ'))return false;
