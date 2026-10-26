@@ -218,7 +218,7 @@ function refreshBuiltinIptv(force=false){
     }catch(e){}
     finally{
      done++;
-     if(ok>=3&&done>=6&&done-partialAt>=10){partialAt=done;iptvPublish(data,false,ok)}
+     if(ok>0&&(partialAt===0||done-partialAt>=6)){partialAt=done;iptvPublish(data,false,ok)}
     }
    }
   };
