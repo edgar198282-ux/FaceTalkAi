@@ -1,0 +1,31 @@
+@supports not (height:100dvh){
+  .app{height:var(--abaj-screen-height,100vh)!important}
+  .playerView.appFullscreen,.playerView.pureFullscreen,
+  body.mobileLandscapePlayer .playerView.open{height:var(--abaj-screen-height,100vh)!important}
+}
+html.abajTouchScreen .app{width:100%;max-width:none;margin:0;border:0}
+html.abajTouchScreen .content{min-height:0;overflow-y:auto}
+html.abajTouchScreen .chip,html.abajTouchScreen .cat{min-height:44px}
+html.abajTouchScreen .chip.flagOnly,html.abajTouchScreen .chip.favOnly{height:44px}
+html.abajTouchScreen .gridMode .list,
+html.abajTouchScreen .tvMode .list{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))!important}
+@media (orientation:landscape) and (min-width:700px){
+  html.abajTouchScreen #abajLauncher{height:100vh;height:var(--abaj-screen-height,100vh);padding:12px 18px;overflow-y:auto}
+  html.abajTouchScreen #abajLauncher .abajLaunchTop{min-height:48px}
+  html.abajTouchScreen #abajLauncher .abajLaunchBrand{font-size:40px}
+  html.abajTouchScreen #abajLauncher .abajLaunchTitle{margin:6px 0 12px;font-size:12px}
+  html.abajTouchScreen #abajLauncher .abajLaunchTiles{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(120px,1fr));gap:12px}
+  html.abajTouchScreen #abajLauncher .abajLaunchTile{min-height:120px;padding:16px}
+  html.abajTouchScreen #abajLauncher .abajLaunchName{font-size:24px}
+}
+@supports not (inset:0){
+  #abajLauncher,.playerView.appFullscreen,.playerView.pureFullscreen,.playerBrand,
+  .adminPanel,.tvGuide,.cinemaSourceModal{top:0;right:0;bottom:0;left:0}
+}
+@supports not (font-size:clamp(20px,3vw,34px)){
+  .title{font-size:32px}
+  #abajLauncher .abajLaunchBrand{font-size:42px}
+  #abajLauncher .abajLaunchTitle{font-size:13px}
+  #abajLauncher .abajLaunchName{font-size:24px}
+  #abajLauncher .abajLaunchDesc{font-size:14px}
+}

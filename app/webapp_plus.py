@@ -1,3 +1,4 @@
+from .web_compat import index_path
 import asyncio
 import base64
 import hashlib
@@ -2518,7 +2519,7 @@ def _read_apk_meta(channel='stable'):
         return {}
 
 async def index(request):
-    path = os.path.join(WEB_DIR, 'index.html')
+    path = index_path(WEB_DIR, request.headers.get('User-Agent', ''))
     return web.FileResponse(path, headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0','Pragma':'no-cache'})
 
 async def abaj_site(request):

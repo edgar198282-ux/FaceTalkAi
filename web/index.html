@@ -4,6 +4,8 @@
   <link rel="icon" href="/static/abaj_tv_logo.svg" type="image/svg+xml">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script src="/static/display-compat.js?v=20261026"></script>
+<link rel="stylesheet" href="/static/display-compat.css?v=20261026">
 <meta name="theme-color" content="#2f8fe8">
 <title>Abaj TV</title>
 <script>
@@ -41,7 +43,7 @@ html,body{
 }
 button,input,select{font:inherit}
 button{cursor:pointer}
-.app{height:100dvh;display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(180deg,hsl(var(--theme-hue) 82% 66%) 0%,hsl(var(--theme-hue) 78% 56%) 42%,hsl(var(--theme-hue) 70% 49%) 100%)}
+.app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(180deg,hsl(var(--theme-hue) 82% 66%) 0%,hsl(var(--theme-hue) 78% 56%) 42%,hsl(var(--theme-hue) 70% 49%) 100%)}
 .top{
   background:linear-gradient(180deg,hsl(var(--theme-hue) 82% 38% / .86),hsl(var(--theme-hue) 78% 54% / .78));
   padding:11px 13px 9px;
@@ -140,7 +142,7 @@ body:not(.nativeTv) .top.mobileScrollCollapsing.mobileHeaderHidden{
 .settingsAction.adultOn{background:#7b1d2a!important;color:#fff!important;border-color:#b84255!important}
 .chip.active,.cat.active{background:#087fe1;color:#fff;border-color:#6ed0ff;box-shadow:0 4px 12px rgba(0,86,166,.28)}
 .status{display:none!important}
-.content{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
+.content{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .list{padding:12px 12px 100px;background:linear-gradient(180deg,hsl(var(--theme-hue) 86% 76% / .38),hsl(var(--theme-hue) 76% 63% / .32));}
 .groupTitle{
   display:flex;align-items:center;gap:8px;font-size:12.5px;color:#315f7c;padding:11px 4px 7px;text-transform:uppercase;
@@ -188,14 +190,14 @@ body:not(.nativeTv) .top.mobileScrollCollapsing.mobileHeaderHidden{
 .cinemaTrackOption:disabled{opacity:.45}
 @media(max-width:760px){.playerView.cinemaPlayback .playerUtilityControls{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.playerView.cinemaPlayback .playerUtilityCtrl{min-height:42px;padding:5px 7px}.playerView.cinemaPlayback .playerUtilityCtrl b{font-size:10px}.playerView.cinemaPlayback .playerUtilityCtrl small{font-size:8px}}
 
-.playerView.appFullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;transform:none!important;z-index:1000!important;background:#000!important}
+.playerView.appFullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;transform:none!important;z-index:1000!important;background:#000!important}
 .playerView.appFullscreen .playerTop,.playerView.appFullscreen .playerBottom{display:none!important}
 .playerView.appFullscreen .videoWrap{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;background:#000!important;padding:0!important}
 .playerView.appFullscreen video{width:100%!important;height:100%!important;object-fit:contain!important}
 
 /* Pure Screen mode: video only, absolutely no ABAJ overlays or controls. */
 .playerView.pureFullscreen{
-  position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;
+  position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;
   max-width:none!important;transform:none!important;z-index:2147483000!important;background:#000!important
 }
 .playerView.pureFullscreen .videoWrap{
@@ -800,7 +802,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerCinemaTime{display:none!im
 /* Mobile landscape player controls */
 @media (orientation:landscape) and (max-height:520px){
   body:not(.nativeTv) .playerView.open{
-    display:flex!important;position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;
+    display:flex!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;
     max-width:none!important;transform:none!important;background:#000!important
   }
   body:not(.nativeTv) .playerView.open .playerTop{display:none!important}
@@ -820,7 +822,7 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerCinemaTime{display:none!im
     width:auto!important;height:auto!important
   }
   body:not(.nativeTv) .playerView.open.videoFill video{
-    width:100%!important;height:100%!important;max-width:96vw!important;max-height:90dvh!important;
+    width:100%!important;height:100%!important;max-width:96vw!important;max-height:90vh!important;max-height:90dvh!important;
     object-fit:contain!important
   }
   body:not(.nativeTv) .playerView.open .playerBottom,
@@ -981,7 +983,7 @@ body.cinemaMode #tvSettingsModal.open{z-index:1100!important}.settingsCard{width
   }
   body:not(.nativeTv) #tvSettingsModal .settingsCard{
     width:100vw!important;
-    height:100dvh!important;
+    height:100vh!important;height:100dvh!important;
     max-width:none!important;
     max-height:none!important;
     border-radius:0!important;
@@ -1071,7 +1073,7 @@ body.cinemaMode #tvSettingsModal.open{z-index:1100!important}.settingsCard{width
   }
   body:not(.nativeTv) #adminPanel .adminCard{
     width:100vw!important;
-    height:100dvh!important;
+    height:100vh!important;height:100dvh!important;
     max-width:none!important;
     max-height:none!important;
     border-radius:0!important;
@@ -1804,7 +1806,7 @@ body:not(.darkMode) .cinemaDetailFacts{background:rgba(235,247,255,.65);border-c
 
 /* Keep IPTV and cinema loading artwork in one stable viewport during rotation. */
 @media (orientation:landscape){
- body.mobileLandscapePlayer .playerView.open{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;transform:none!important}
+ body.mobileLandscapePlayer .playerView.open{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;max-height:none!important;transform:none!important}
  body.mobileLandscapePlayer .playerView.open .videoWrap{min-width:0;min-height:0;overflow:hidden}
  body.mobileLandscapePlayer .playerView.open .playerBrand{inset:0!important;width:100%!important;height:100%!important;transform:none!important}
  body.mobileLandscapePlayer .playerView.open .playerLoadingLogo{width:min(18vh,112px)!important;height:min(18vh,112px)!important;max-width:112px!important;max-height:112px!important;object-fit:contain!important}
@@ -2265,7 +2267,7 @@ body:not(.cinemaMode) .cinemaShellSide{
   body:not(.nativeTv).mobileLandscapePlayer .playerView.appFullscreen:not(.cinemaPlayback) .playerBottom{
     padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))!important;
     box-sizing:border-box!important;
-    max-height:70dvh!important;
+    max-height:70vh!important;max-height:70dvh!important;
     overflow-y:auto!important;
     overscroll-behavior:contain;
   }
