@@ -2513,6 +2513,17 @@ public class MainActivity extends Activity {
         if(BuildConfig.STANDALONE_BUILD)webView.addJavascriptInterface(new StandaloneEpgBridge(this,webView),"StandaloneEpg");
         maintainStorage();
         WebSettings s=webView.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setMediaPlaybackRequiresUserGesture(false); s.setCacheMode(WebSettings.LOAD_DEFAULT); s.setAllowFileAccess(true); s.setAllowContentAccess(true); if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP)s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW); s.setUserAgentString(s.getUserAgentString()+" AbajTV-Android/"+BuildConfig.VERSION_NAME);
+        if(BuildConfig.STANDALONE_BUILD){
+            s.setUseWideViewPort(true);
+            s.setLoadWithOverviewMode(false);
+            s.setSupportZoom(false);
+            s.setBuiltInZoomControls(false);
+            s.setDisplayZoomControls(false);
+            s.setTextZoom(100);
+            webView.setInitialScale(0);
+            webView.setVerticalScrollBarEnabled(false);
+            webView.setHorizontalScrollBarEnabled(false);
+        }
         if(isTv){
             s.setTextZoom(115);
             s.setBuiltInZoomControls(false);
