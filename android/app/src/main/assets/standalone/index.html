@@ -6263,7 +6263,12 @@ async function load(){
       channels=builtinRows;
       if(!['free','edem'].includes(sourceFilter)&&!sourceFilter.startsWith('playlist:'))sourceFilter='free';
       const updateStandaloneDisplay=(playlists=[])=>{
-        renderNamedPlaylistChips(playlists,channels.filter(x=>x.personal));
+        const personalChannels=channels.filter(x=>x.personal);
+        if(personalChannels.length===0&&(sourceFilter==='edem'||sourceFilter.startsWith('playlist:'))){
+          sourceFilter='free';
+          localStorage.setItem('abaj_tv_source_filter','free');
+        }
+        renderNamedPlaylistChips(playlists,personalChannels);
         const groups=visibleChannelGroups();
         const select=document.getElementById('group');
         if(select){
