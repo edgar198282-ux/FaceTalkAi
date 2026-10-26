@@ -20,7 +20,8 @@ function parseM3U(raw,name='TV',id='free',country='AM'){
  for(const line0 of String(raw||'').replace(/\r/g,'').split('\n')){
   const line=line0.trim();
   if(line.startsWith('#EXTINF:')){
-   const attrs={};for(const m of line.matchAll(/([\w-]+)="([^"]*)"/g))attrs[m[1]]=m[2];
+   const attrs={};const attrPattern=/([\w-]+)="([^"]*)"/g;let attrMatch;
+   while((attrMatch=attrPattern.exec(line))!==null)attrs[attrMatch[1]]=attrMatch[2];
    const c=line.indexOf(',');
    meta={name:c>=0?line.slice(c+1).trim():'Канал',group:attrs['group-title']||'General',logo:attrs['tvg-logo']||'',tvg_id:attrs['tvg-id']||'',country};
   }else if(line&&!line.startsWith('#')&&URL_OK(line)){
