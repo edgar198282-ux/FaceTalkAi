@@ -296,7 +296,18 @@ async function access(){
  let t=read('kino-token',{});
  if(!t.access_token)throw Error('KinoPub не подключён');
  if(t.expires_at&&Date.now()>t.expires_at-90000&&t.refresh_token){
-  const r=await kp('/oauth2/token',{grant_type:'refresh_token',...kpClient(),refresh_token:t.refresh_token},'POST');
+  let r;
+  try{
+   r=await kp('/oauth2/token',{grant_type:'refresh_token',...kpClient(),refresh_token:t.refresh_token},'POST');
+  }catch(e){
+   if(/invalid_refresh|invalid_grant|invalid_token/i.test(String(e.message||e))){
+    save('kino-token',{});
+    kpStandaloneOverviewCache=null;
+    window.dispatchEvent(new Event('abaj-kino-auth-expired'));
+    throw Error('Сессия KinoPub истекла. Войдите в KinoPub заново.');
+   }
+   throw e;
+  }
   if(r.access_token){t={access_token:r.access_token,refresh_token:r.refresh_token||t.refresh_token,expires_at:Date.now()+Number(r.expires_in||3600)*1000};save('kino-token',t)}
  }
  return t.access_token;
@@ -1357,6 +1368,7 @@ function settings(){
  const kpCodeText=el.querySelector('#standaloneKpUserCode');
  const kpConnect=el.querySelector('#standaloneConnect');
  const kpDisconnect=el.querySelector('#standaloneKpOut');
+ window.addEventListener('abaj-kino-auth-expired',()=>{paintKp();kpStatus.textContent='Сессия KinoPub истекла. Нажмите «Войти в KinoPub».'});
  function clearKpPoll(){if(kpPollTimer){clearTimeout(kpPollTimer);kpPollTimer=null}}
  function stopKpPoll(){kpGeneration++;clearKpPoll();kpPending=null;kpBusy=false}
  function paintKp(){
