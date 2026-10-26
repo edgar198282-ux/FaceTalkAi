@@ -50,6 +50,7 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/abaj-browser" --no-save playwright@1.49.1
           node "$RUNNER_TEMP/abaj-browser/node_modules/playwright/cli.js" install --with-deps chromium
           PLAYWRIGHT_MODULE="$RUNNER_TEMP/abaj-browser/node_modules/playwright" node android/standalone-browser.test.cjs
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/abaj-browser/node_modules/playwright" node android/standalone-touch.test.cjs
       - name: Restore existing signing key
         run: |
           base64 -d android/facetalk-upload-key.jks.b64 > android/facetalk-upload-key.jks
