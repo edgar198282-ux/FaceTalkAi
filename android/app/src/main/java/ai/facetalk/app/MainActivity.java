@@ -2531,6 +2531,17 @@ public class MainActivity extends Activity {
         }
         CookieManager.getInstance().setAcceptCookie(true); CookieManager.getInstance().setAcceptThirdPartyCookies(webView,true);
         webView.setWebChromeClient(new WebChromeClient(){
+            @Override public boolean onConsoleMessage(android.webkit.ConsoleMessage message){
+                if(BuildConfig.STANDALONE_BUILD && message!=null){
+                    String detail=message.message()+" ("+message.sourceId()+":"+message.lineNumber()+")";
+                    if(message.messageLevel()==android.webkit.ConsoleMessage.MessageLevel.ERROR){
+                        Log.e("AbajStandaloneJS",detail);
+                    }else{
+                        Log.d("AbajStandaloneJS",detail);
+                    }
+                }
+                return super.onConsoleMessage(message);
+            }
             @Override public void onPermissionRequest(PermissionRequest request){runOnUiThread(()->handleWebPermission(request));}
             @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){ if(fileCallback!=null)fileCallback.onReceiveValue(null); fileCallback=callback; try{Intent i=params!=null?params.createIntent():new Intent(Intent.ACTION_GET_CONTENT); if(params==null){i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");} startActivityForResult(i,FILE_CHOOSER_REQUEST);return true;}catch(Exception e){fileCallback=null;return false;}}
             @Override public void onShowCustomView(View view, CustomViewCallback callback){
