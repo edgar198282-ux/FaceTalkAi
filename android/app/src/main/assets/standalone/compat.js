@@ -1368,7 +1368,7 @@ function settings(){
  const kpCodeText=el.querySelector('#standaloneKpUserCode');
  const kpConnect=el.querySelector('#standaloneConnect');
  const kpDisconnect=el.querySelector('#standaloneKpOut');
- window.addEventListener('abaj-kino-auth-expired',()=>{paintKp();kpStatus.textContent='Сессия KinoPub истекла. Нажмите «Войти в KinoPub».'});
+ if(typeof window.addEventListener==='function')window.addEventListener('abaj-kino-auth-expired',()=>{paintKp();kpStatus.textContent='Сессия KinoPub истекла. Нажмите «Войти в KinoPub».'});
  function clearKpPoll(){if(kpPollTimer){clearTimeout(kpPollTimer);kpPollTimer=null}}
  function stopKpPoll(){kpGeneration++;clearKpPoll();kpPending=null;kpBusy=false}
  function paintKp(){
