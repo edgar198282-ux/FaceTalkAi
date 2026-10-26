@@ -303,7 +303,7 @@ async function access(){
    if(/invalid_refresh|invalid_grant|invalid_token/i.test(String(e.message||e))){
     save('kino-token',{});
     kpStandaloneOverviewCache=null;
-    window.dispatchEvent(new Event('abaj-kino-auth-expired'));
+    if(typeof window.dispatchEvent==='function'&&typeof Event==='function')window.dispatchEvent(new Event('abaj-kino-auth-expired'));
     throw Error('Сессия KinoPub истекла. Войдите в KinoPub заново.');
    }
    throw e;
