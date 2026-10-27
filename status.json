@@ -1,10 +1,10 @@
 {
-  "updated_at_utc": "2026-10-27T05:04:17+00:00",
-  "unique_channels": 15094,
+  "updated_at_utc": "2026-10-27T12:11:16+00:00",
+  "unique_channels": 15092,
   "official_channels": 24,
   "public_sources": 86,
-  "successful_sources": 85,
-  "failed_sources": 1,
+  "successful_sources": 86,
+  "failed_sources": 0,
   "sources": [
     {
       "country": "RU",
@@ -224,6 +224,12 @@
     },
     {
       "country": "RU",
+      "url": "https://iptv-org.github.io/iptv/subdivisions/ru-al.m3u",
+      "parsed": 1,
+      "new": 0
+    },
+    {
+      "country": "RU",
       "url": "https://iptv-org.github.io/iptv/subdivisions/ru-alt.m3u",
       "parsed": 2,
       "new": 1
@@ -388,7 +394,7 @@
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/best.m3u",
       "parsed": 10294,
-      "new": 3685
+      "new": 3683
     },
     {
       "country": "HQ",
@@ -417,7 +423,7 @@
     {
       "country": "RU",
       "url": "https://dearbulut.github.io/iptv/playlists/country/ru.m3u",
-      "parsed": 461,
+      "parsed": 462,
       "new": 0
     },
     {
@@ -465,7 +471,7 @@
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/substanc1/iptv-russia/main/streams/ru.m3u",
-      "parsed": 703,
+      "parsed": 704,
       "new": 220
     },
     {
@@ -517,12 +523,6 @@
       "new": 0
     }
   ],
-  "failures": [
-    {
-      "country": "RU",
-      "url": "https://iptv-org.github.io/iptv/subdivisions/ru-al.m3u",
-      "error": "HTTPError: HTTP Error 503: Service Unavailable"
-    }
-  ],
+  "failures": [],
   "note": "Channel presence does not guarantee stream availability. Free public sources only."
 }
