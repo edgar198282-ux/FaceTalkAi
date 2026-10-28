@@ -1,10 +1,10 @@
 {
-  "updated_at_utc": "2026-10-28T12:53:56+00:00",
-  "unique_channels": 15082,
+  "updated_at_utc": "2026-10-28T22:34:52+00:00",
+  "unique_channels": 15000,
   "official_channels": 24,
   "public_sources": 86,
-  "successful_sources": 86,
-  "failed_sources": 0,
+  "successful_sources": 85,
+  "failed_sources": 1,
   "sources": [
     {
       "country": "RU",
@@ -357,8 +357,8 @@
     {
       "country": "HQ",
       "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8",
-      "parsed": 2042,
-      "new": 1722
+      "parsed": 2043,
+      "new": 1723
     },
     {
       "country": "HQ",
@@ -394,31 +394,25 @@
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/best.m3u",
       "parsed": 10298,
-      "new": 3683
+      "new": 3727
     },
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/online.m3u",
-      "parsed": 8395,
+      "parsed": 8419,
       "new": 0
-    },
-    {
-      "country": "RU",
-      "url": "https://raw.githubusercontent.com/smolnp/IPTVru/refs/heads/gh-pages/IPTVstable.m3u8",
-      "parsed": 223,
-      "new": 183
     },
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv-top.m3u",
       "parsed": 391,
-      "new": 356
+      "new": 365
     },
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv.m3u",
       "parsed": 842,
-      "new": 409
+      "new": 413
     },
     {
       "country": "RU",
@@ -430,7 +424,7 @@
       "country": "RU",
       "url": "https://iptv-org.github.io/iptv/languages/rus.m3u",
       "parsed": 649,
-      "new": 33
+      "new": 34
     },
     {
       "country": "AM",
@@ -472,13 +466,13 @@
       "country": "RU",
       "url": "https://raw.githubusercontent.com/substanc1/iptv-russia/main/streams/ru.m3u",
       "parsed": 686,
-      "new": 213
+      "new": 216
     },
     {
       "country": "RU",
       "url": "https://ngrch.github.io/iptv/ru.m3u",
-      "parsed": 993,
-      "new": 696
+      "parsed": 991,
+      "new": 735
     },
     {
       "country": "RU",
@@ -523,6 +517,12 @@
       "new": 0
     }
   ],
-  "failures": [],
+  "failures": [
+    {
+      "country": "RU",
+      "url": "https://raw.githubusercontent.com/smolnp/IPTVru/refs/heads/gh-pages/IPTVstable.m3u8",
+      "error": "HTTPError: HTTP Error 404: Not Found"
+    }
+  ],
   "note": "Channel presence does not guarantee stream availability. Free public sources only."
 }
