@@ -19107,6 +19107,8 @@ https://4afghls.wns.live/hls/stream.m3u8
 https://stream.4fun.tv:8888/hls/4f.m3u8
 #EXTINF:-1 tvg-id="4TVNews.in" tvg-name="4TV News" tvg-logo="https://jiotvimages.cdn.jio.com/dare_images/images/4_TV.png" tvg-country="IN" tvg-language="urd" group-title="News" nexus-score="100",4TV News (576p)
 https://cdn.pishow.tv/ott/live/1007/master.m3u8
+#EXTINF:-1 tvg-id="5DiasTV.py" tvg-name="5Dias TV" tvg-logo="https://i.imgur.com/AX25tmv.png" tvg-country="PY" tvg-language="spa" group-title="Business" nexus-score="0",5Dias TV
+http://45.184.109.10/live/69393EAE6ADBC65A68F942022362A202/13.m3u8
 #EXTINF:-1 tvg-id="5tv.ar" tvg-name="5tv" tvg-logo="https://i.imgur.com/mSn7ACs.png" tvg-country="AR" tvg-language="spa" group-title="General" nexus-score="100",5tv (576p)
 http://www.coninfo.net:1935/tvcinco/live1/playlist.m3u8
 #EXTINF:-1 tvg-id="6TVTelugu.in" tvg-name="6 TV Telugu" tvg-logo="https://i.imgur.com/l3EcRnZ.png" tvg-country="IN" tvg-language="tel" group-title="News" nexus-score="100",6 TV Telugu (1080p)
@@ -19153,8 +19155,6 @@ https://abaitv-stream.qazcdn.com/abaitv/abaitv/playlist.m3u8
 https://d1q60ra9vxbqm1.cloudfront.net/playlist.m3u8
 #EXTINF:-1 tvg-id="ABCNewsLive.us" tvg-name="ABC News Live" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/ABC_News_Live_logo_2021.svg/960px-ABC_News_Live_logo_2021.svg.png" tvg-country="US" tvg-language="eng" group-title="News" nexus-score="100",ABC News Live (1080p)
 https://pb-0n3n2ej0w8pl9.akamaized.net/ABCNewsLive_Disney.m3u8
-#EXTINF:-1 tvg-id="ABCTVParaguay.py" tvg-name="ABC-TV Paraguay" tvg-logo="https://i.imgur.com/OqfBMGy.png" tvg-country="PY" tvg-language="spa" group-title="News" nexus-score="50",ABC-TV Paraguay (1080p)
-https://live2.eu-north-1a.cf.dmcdn.net/sec2(vig4KUMvzIpvL_0CGgNPG2QFE6DukpwGhRZzGj8aqOyedNaDjlOwv-qe03N1Bk5-7nB-V7Uv8gBwwy2h-0TCL_WRE6IWeUWiVcnYm587YcdKpnqvQZ3tYg9iGdqpySyX)/cloud/3/x9skr3m/d/live-720.m3u8#cell=lcf2-eu-north-1a
 #EXTINF:-1 tvg-id="ABHPTV.us" tvg-name="ABHP TV" tvg-logo="https://i.imgur.com/QznvBD7.png" tvg-country="US" tvg-language="vie" group-title="Religious" nexus-score="100",ABHP TV (480p)
 https://vietprocast.app/hls/abhp/index.m3u8
 #EXTINF:-1 tvg-id="ABNAfghanistan.us" tvg-name="ABN Afghanistan" tvg-logo="https://i.imgur.com/LI30mAt.png" tvg-country="US" tvg-language="pus;prd" group-title="Religious" nexus-score="100",ABN Afghanistan (540p)
@@ -19385,8 +19385,6 @@ https://pb-fmbyorn1d0n1n.akamaized.net/v1/amc_amcespanol_3/samsungheadend_us/lat
 https://streaming.onnethn.com/AMC/playlist.m3u8
 #EXTINF:-1 tvg-id="AmericanNinjaWarrior.us" tvg-name="American Ninja Warrior" tvg-logo="https://raw.githubusercontent.com/RoqueDJ/iptv-svg/main/1792421696158.png" tvg-country="US" tvg-language="eng" group-title="Sports" nexus-score="100",American Ninja Warrior (1080p)
 https://xumo-drct-ch812-n4996.fast.nbcuni.com/live/master.m3u8
-#EXTINF:-1 tvg-id="AmericaParaguay.py" tvg-name="America Paraguay" tvg-logo="https://i.imgur.com/0COKxet.png" tvg-country="PY" tvg-language="spa" group-title="General" nexus-score="84",America Paraguay (720p)
-http://45.170.130.224:8000/play/a02o/index.m3u8?hls
 #EXTINF:-1 tvg-id="AmericasTestKitchen.us" tvg-name="America's Test Kitchen" tvg-logo="https://i.imgur.com/prMkTsZ.png" tvg-country="US" tvg-language="eng" group-title="Cooking" nexus-score="100",America's Test Kitchen (1080p)
 https://amg01420-americastestkitchen-amg01420c1-xumo-us-878.playouts.now.amagi.tv/playlist.m3u8
 #EXTINF:-1 tvg-id="Ameritrade.us" tvg-name="Ameritrade" tvg-logo="https://images-na.ssl-images-amazon.com/images/I/71CZKwin9mL.png" tvg-country="US" tvg-language="eng" group-title="Business" nexus-score="100",Ameritrade (1080p)
@@ -19979,7 +19977,7 @@ https://do7nccdsswstc.cloudfront.net/v1/manifest/3722c60a815c199d9c0ef36c5b73da6
 https://cmc-ono.amagi.tv/playlist.m3u8
 #EXTINF:-1 tvg-id="CalvaryTV.in" tvg-name="Calvary TV" tvg-logo="https://jiotvimages.cdn.jio.com/dare_images/images/Calvary.png" tvg-country="IN" tvg-language="tel" group-title="Undefined" nexus-score="100",Calvary TV (576p)
 https://cdn.pishow.tv/ott/live/963/master.m3u8
-#EXTINF:-1 tvg-id="CaMauTV.vn" tvg-name="Ca Mau TV" tvg-country="VN" tvg-language="vie" group-title="Undefined" nexus-score="100",Ca Mau TV (720p)
+#EXTINF:-1 tvg-id="CaMauTV.vn" tvg-name="Ca Mau TV" tvg-logo="https://raw.githubusercontent.com/HaNoiIPTV/HaNoiIPTV.m3u/refs/heads/master/Logo%20kh%C3%A1c/CTV%20-%20Truy%E1%BB%81n%20h%C3%ACnh%20C%C3%A0%20Mau%20HD/CTV%20-%20Truy%E1%BB%81n%20h%C3%ACnh%20C%C3%A0%20Mau.png" tvg-country="VN" tvg-language="vie" group-title="Undefined" nexus-score="100",Ca Mau TV (720p)
 https://tv.ctvcamau.vn/live/tv/tv.m3u8
 #EXTINF:-1 tvg-id="CameraSmileTV.us" tvg-name="Camera Smile TV" tvg-logo="https://i.imgur.com/V5h4R83.png" tvg-country="US" tvg-language="eng" group-title="Comedy" nexus-score="100",Camera Smile TV (720p)
 https://rpn.bozztv.com/gusa/gusa-camerasmile/index.m3u8
@@ -20579,7 +20577,7 @@ https://linear-903.frequency.stream/dist/xumo/903/hls/master/playlist.m3u8
 https://stream1.antenaplay.ro/live/ComedyPlay/chunklist.m3u8
 #EXTINF:-1 tvg-id="ComedyTV.ge" tvg-name="Comedy TV" tvg-logo="https://i.imgur.com/i1TANKv.png" tvg-country="GE" tvg-language="kat" group-title="Comedy" nexus-score="0",Comedy TV
 http://31.146.5.178:8087/play/a00b/index.m3u8
-#EXTINF:-1 tvg-id="ComedyTV.us" tvg-name="Comedy TV" tvg-logo="https://i.imgur.com/KLfXnba.png" tvg-country="US" tvg-language="eng" group-title="Comedy" nexus-score="100",Comedy TV (720p)
+#EXTINF:-1 tvg-id="ComedyTV.us" tvg-name="Comedy.TV" tvg-logo="https://i.imgur.com/KLfXnba.png" tvg-country="US" tvg-language="eng" group-title="Comedy" nexus-score="100",Comedy.TV (720p)
 https://a-cdn.klowdtv.com/live2/comedytv_720p/playlist.m3u8
 #EXTINF:-1 tvg-id="ComercioTV.us" tvg-name="Comercio TV" tvg-logo="https://www.amagi.com/hubfs/Group%202-3.png" tvg-country="US" tvg-language="spa" group-title="General" nexus-score="98",Comercio TV (1080p)
 http://45.70.201.81:8000/play/a014/index.m3u8
@@ -20831,10 +20829,14 @@ https://livecdn.live247stream.com/discoverpakistan/web/playlist.m3u8
 http://88.212.15.50/live/test_discovery_hd_hevc/playlist.m3u8
 #EXTINF:-1 tvg-id="DiscoveryFamily.us" tvg-name="Discovery Family" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/1/1c/Discovery_Family_Channel_%28DFC%29.png" tvg-country="US" tvg-language="eng" group-title="Family" nexus-score="90",Discovery Family (360p)
 https://tvsen5.aynaott.com/discoveryfamily/index.m3u8
+#EXTINF:-1 tvg-id="DiscoveryHomeHealthLatinAmerica.mx" tvg-name="Discovery Home & Health Latin America" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Discovery_H%26H_Logo_2022.webp/960px-Discovery_H%26H_Logo_2022.webp.png" tvg-country="MX" tvg-language="por;spa" group-title="Lifestyle" nexus-score="0",Discovery Home & Health Latin America
+http://45.184.109.10/live/69393EAE6ADBC65A68F942022362A202/39.m3u8
 #EXTINF:-1 tvg-id="DiscoveryTheaterLatinAmerica.us" tvg-name="Discovery Theater Latin America" tvg-logo="https://i.imgur.com/AqR0Jkn.png" tvg-country="US" tvg-language="spa" group-title="Undefined" nexus-score="100",Discovery Theater Latin America (1080p)
 http://181.224.200.5:2277/play/a0bj/index.m3u8
 #EXTINF:-1 tvg-id="DiscoveryTurbo.in" tvg-name="Discovery Turbo" tvg-logo="https://dtil.tmsimg.com/assets/s159108_ld_h15_aa.png?lock=720x540" tvg-country="IN" tvg-language="eng" group-title="Auto" nexus-score="100",Discovery Turbo (720p)
 https://drk6xq0vhn.gpcdn.net/live/discovery_turbo_abr/index.m3u8
+#EXTINF:-1 tvg-id="DiscoveryTurbo.uk" tvg-name="Discovery Turbo" tvg-logo="https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb2409.png" tvg-country="UK" tvg-language="eng" group-title="Auto" nexus-score="0",Discovery Turbo
+http://37.49.224.5/stream/13/index.m3u8
 #EXTINF:-1 tvg-id="DiscoveryTurbo.us" tvg-name="Discovery Turbo" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Discovery_Turbo_2025.svg/1920px-Discovery_Turbo_2025.svg.png" tvg-country="US" tvg-language="eng" group-title="Auto" nexus-score="100",Discovery Turbo (720p)
 http://41.205.93.154/ESPNNEWS/index.m3u8
 #EXTINF:-1 tvg-id="DiscoveryTurboLatinAmerica.us" tvg-name="Discovery Turbo Latin America" tvg-logo="https://i.imgur.com/1pQPxu3.png" tvg-country="US" tvg-language="por;spa" group-title="Auto" nexus-score="93",Discovery Turbo Latin America (1080p)
@@ -20971,8 +20973,6 @@ https://stream.ecoperu.tv/ECOTV/tracks-v1a1/mono.m3u8
 http://45.224.97.181:9999/Ecuavisa/index.m3u8
 #EXTINF:-1 tvg-id="EETTV.ca" tvg-name="EET TV" tvg-logo="https://i.imgur.com/rntSEDZ.png" tvg-country="CA" tvg-language="tam;eng" group-title="Culture" nexus-score="100",EET TV (1080p)
 https://eu.streamjo.com/eetlive/eettv.m3u8
-#EXTINF:-1 tvg-id="EInternational.id" tvg-name="E International" tvg-logo="https://hosting.renderforestsites.com/35126779/1659328/media/1058391c8059a0d092426e145d55951b.png" tvg-country="ID" tvg-language="ind" group-title="General" nexus-score="100",E International (360p)
-https://gist.githubusercontent.com/iptvonlinetv/cf56ccf36d1c0827e4dc470db7b7912d/raw/066b1c9755b2496805575f16d413bd1207ca8117/udp315.520.789:8060.m3u8
 #EXTINF:-1 tvg-id="EkhonTV.bd" tvg-name="Ekhon TV" tvg-logo="https://i.imgur.com/tRrDh6z.png" tvg-country="BD" tvg-language="ben" group-title="Business" nexus-score="0",Ekhon TV (1080p)
 https://tplay.live/out/bangladesh/ekhontv.index.m3u8
 #EXTINF:-1 tvg-id="El33.es" tvg-name="El 33" tvg-logo="https://i.imgur.com/frKCBTN.png" tvg-country="ES" tvg-language="cat" group-title="Culture" nexus-score="100",El 33 (1080p)
@@ -21079,6 +21079,8 @@ https://estrellanews-roku.amagi.tv/playlist.m3u8
 https://d1accqs1infy2u.cloudfront.net/EstrellaTV.m3u8
 #EXTINF:-1 tvg-id="ESTV.tr" tvg-name="ES TV" tvg-logo="https://i.imgur.com/epAEBrp.png" tvg-country="TR" tvg-language="tur" group-title="Undefined" nexus-score="100",ES TV (720p)
 https://live.artidijitalmedya.com/artidijital_estv/estv/playlist.m3u8
+#EXTINF:-1 tvg-id="ESTV.us" tvg-name="ES.TV" tvg-logo="https://i.imgur.com/ihY01ao.png" tvg-country="US" tvg-language="eng" group-title="Entertainment" nexus-score="0",ES.TV (720p)
+https://a-cdn.klowdtv.com/live2/estv_720p/playlist.m3u8
 #EXTINF:-1 tvg-id="ETB1On.es" tvg-name="ETB1 On" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/5/52/Logo_ETB1_On_2026.svg" tvg-country="ES" tvg-language="eus" group-title="Public" nexus-score="100",ETB1 On (1080p)
 https://cdn1.etbon.eus/etb1on/index.m3u8
 #EXTINF:-1 tvg-id="ETNow.in" tvg-name="ET Now" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/TIMESPLAY/LIVECHANNEL/6904ba3d39f3b175376a61db/images/LOGO_HD/LOGO_HD_V0Qv9pfm6_ETNow1_1.png" tvg-country="IN" tvg-language="eng" group-title="Business" nexus-score="50",ET Now (720p)
@@ -21479,10 +21481,6 @@ https://pb-7k9tqpp5wqdnj.akamaized.net/Grit_Xtra_US.m3u8
 https://b6c7c7d1020a4588982ca7c2625f85d1.mediatailor.us-east-1.amazonaws.com/v1/master/0fb304b2320b25f067414d481a779b77db81760d/RakutenTV-eu_GrjngoWesterny/playlist.m3u8
 #EXTINF:-1 tvg-id="GrjngoWesternMovies.de" tvg-name="Grjngo Western Movies" tvg-logo="https://i.imgur.com/wFqhK3p.png" tvg-country="DE" tvg-language="eng;deu" group-title="Movies" nexus-score="100",Grjngo Western Movies (720p)
 https://amogonetworx-grjngo-3-lu.samsung.wurl.tv/playlist.m3u8
-#EXTINF:-1 tvg-id="GrooviaKanal.id" tvg-name="Groovia Kanal" tvg-logo="https://hosting.renderforestsites.com/35126779/1657983/media/e1b4737ec68d96b27f713c034543d472.png" tvg-country="ID" tvg-language="ind" group-title="General" nexus-score="100",Groovia Kanal (360p)
-https://gist.githubusercontent.com/iptvonlinetv/02d209207082846012c15305f7471c55/raw/4439b54b986e696e6fcfba7a53380d85b27bbbc1/udp450.500.723:6050.m3u8
-#EXTINF:-1 tvg-id="GrooviaKids.id" tvg-name="Groovia Kids" tvg-logo="https://hosting.renderforestsites.com/35126779/1657983/media/37034d6b30d2c092aa6827a34fa145ab.png" tvg-country="ID" tvg-language="ind" group-title="Kids" nexus-score="97",Groovia Kids (360p)
-https://gist.githubusercontent.com/iptvonlinetv/244b66c61f162a7c0c2b4fa59b528139/raw/2376b7ba1989ebbd383301ec7d645e222a6c9338/udp780.510.345:4545.m3u8
 #EXTINF:-1 tvg-id="GSGTV.sv" tvg-name="GSG TV" tvg-logo="https://i.imgur.com/Naj8yUN.png" tvg-country="SV" tvg-language="spa" group-title="Religious" nexus-score="0",GSG TV (720p)
 https://rpn3.bozztv.com/schurch1/livecdn69/live/playlist.m3u8
 #EXTINF:-1 tvg-id="GSMyShop.kr" tvg-name="GS My Shop" tvg-logo="https://i.imgur.com/ETPQwui.png" tvg-country="KR" tvg-language="kor" group-title="Shop" nexus-score="100",GS My Shop (720p)
@@ -21555,6 +21553,8 @@ https://aegis-cloudfront-1.tubi.video/69da419c-6bb2-473f-98c3-246153fc909b/playl
 http://15.204.246.24:8080/HBO2HD/index.m3u8
 #EXTINF:-1 tvg-id="HBO3.pl" tvg-name="HBO 3" tvg-logo="https://i.imgur.com/3QIHh2V.png" tvg-country="PL" tvg-language="pol" group-title="Undefined" nexus-score="100",HBO 3 (1080p)
 http://185.227.34.179:8080/hbo-3-hd/index.m3u8
+#EXTINF:-1 tvg-id="HBOFamilyAsia.sg" tvg-name="HBO Family Asia" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/d/d2/HBO_Family_Asia_logo.svg/960px-HBO_Family_Asia_logo.svg.png" tvg-country="SG" tvg-language="eng" group-title="Family" nexus-score="0",HBO Family Asia (1080p)
+http://202.150.165.66:8088/play/103-HBOFamily/index.m3u8
 #EXTINF:-1 tvg-id="HBOFamilyLatinAmerica.us" tvg-name="HBO Family Latin America" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/HBO_Family.svg/960px-HBO_Family.svg.png" tvg-country="US" tvg-language="spa" group-title="Family" nexus-score="89",HBO Family Latin America (1080p)
 http://45.171.64.30:6060/play/a00k/index.m3u8
 #EXTINF:-1 tvg-id="HBOLatinAmerica.us" tvg-name="HBO Latin America" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/HBO_logo.svg/960px-HBO_logo.svg.png" tvg-country="US" tvg-language="spa" group-title="Undefined" nexus-score="100",HBO Latin America (1080p)
@@ -21731,8 +21731,6 @@ http://hlsal-ldvt.qing.mgtv.com/nn_live/nn_x64/dWlwPTEyNy4wLjAuMSZ1aWQ9cWluZy1jb
 http://35848.hlsplay.aodianyun.com/guangdianyun_35848/tv_channel_349.m3u8
 #EXTINF:-1 tvg-id="HunatTV.tr" tvg-name="Hunat TV" tvg-logo="https://i.imgur.com/NrxHGnb.png" tvg-country="TR" tvg-language="tur" group-title="General" nexus-score="100",Hunat TV (720p)
 https://live.artidijitalmedya.com/artidijital_hunattv/hunattv/playlist.m3u8
-#EXTINF:-1 tvg-id="HungamaTV.in" tvg-name="Hungama TV" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Hungama_TV.svg/960px-Hungama_TV.svg.png" tvg-country="IN" tvg-language="hin;tam;tel" group-title="Kids" nexus-score="0",Hungama TV (576p)
-http://66.102.126.10:8000/play/a023/index.m3u8
 #EXTINF:-1 tvg-id="Hungry.us" tvg-name="Hungry" tvg-logo="https://i.imgur.com/MIUDYh0.png" tvg-country="US" tvg-language="eng" group-title="Cooking" nexus-score="100",Hungry (720p)
 https://dos35knl8v49a.cloudfront.net/v1/food/samsungheadend_us/latest/main/hls/playlist.m3u8
 #EXTINF:-1 tvg-id="HuzurTV.ru" tvg-name="Huzur TV" tvg-logo="https://i.imgur.com/Abg1fct.png" tvg-country="RU" tvg-language="rus;tat" group-title="Religious" nexus-score="100",Huzur TV (1080p)
@@ -21865,6 +21863,8 @@ https://amg00861-amg00861c6-rlaxx-uk-3951.playouts.now.amagi.tv/playlist.m3u8
 https://tv-omega-nine.vercel.app/hls/live.m3u8
 #EXTINF:-1 tvg-id="InvestigationDiscovery.cz" tvg-name="Investigation Discovery" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/0/01/ID_%28Print%29.svg/revision/latest?cb=20210101125600" tvg-country="CZ" tvg-language="ces" group-title="Undefined" nexus-score="100",Investigation Discovery
 http://88.212.15.50/live/test_id_hevc_atktv/playlist.m3u8
+#EXTINF:-1 tvg-id="InvestigationDiscoveryLatinAmerica.us" tvg-name="Investigation Discovery Latin America" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/InvestigationDiscoveryLogo2020.svg/960px-InvestigationDiscoveryLogo2020.svg.png" tvg-country="US" tvg-language="spa" group-title="Documentary" nexus-score="0",Investigation Discovery Latin America
+http://45.184.109.10/live/69393EAE6ADBC65A68F942022362A202/41.m3u8
 #EXTINF:-1 tvg-id="InWonder.nl" tvg-name="InWonder" tvg-logo="https://cdn.uc.assets.prezly.com/1e0b2617-b145-4489-9d63-ba8438489f26/InWonder_portrait-black.png" tvg-country="NL" tvg-language="eng" group-title="Science" nexus-score="100",InWonder (1080p)
 https://amg00861-terninternation-inwonderushd-samsungus-gqtpa.amagi.tv/playlist/amg00861-terninternation-inwonderushd-samsungus/playlist.m3u8
 #EXTINF:-1 tvg-id="IONPlus.us" tvg-name="ION Plus" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/ION_Plus_logo.svg/960px-ION_Plus_logo.svg.png" tvg-country="US" tvg-language="eng" group-title="Entertainment" nexus-score="100",ION Plus (1080p)
@@ -21925,8 +21925,6 @@ https://live77cdn2.antenaplay.ro/live2_fast/ch2/stream.m3u8
 https://e85541db4ae943d9b5a09477d6b1d8ab.mediatailor.us-east-1.amazonaws.com/v1/master/44f73ba4d03e9607dcd9bebdcb8494d86964f1d8/RakutenTV-eu_Jail/playlist.m3u8
 #EXTINF:-1 tvg-id="JakTV.id" tvg-name="Jak TV" tvg-logo="https://i.imgur.com/xyLLLOi.png" tvg-country="ID" tvg-language="ind" group-title="Undefined" nexus-score="0",Jak TV
 https://op-group1-swiftservesd-1.dens.tv/s/s123/index2.m3u8
-#EXTINF:-1 tvg-id="JalshaMovies.in" tvg-name="Jalsha Movies" tvg-logo="https://img10.hotstar.com/image/upload/f_auto/sources/r1/cms/prod/1445/1782291521445-h.jpg" tvg-country="IN" tvg-language="ben" group-title="Movies" nexus-score="63",Jalsha Movies (1080p)
-http://103.151.60.162:2122/play/a00x/index.m3u8?hls
 #EXTINF:-1 tvg-id="JalwaTV.pk" tvg-name="Jalwa TV" tvg-logo="https://i.imgur.com/HWb5Iat.png" tvg-country="PK" tvg-language="eng" group-title="Music" nexus-score="100",Jalwa TV
 https://vodzong.mjunoon.tv:8087/streamtest/JalwaTV-135/live/135M/chunks.m3u8
 #EXTINF:-1 tvg-id="JamaicaTravelChannel.jm" tvg-name="Jamaica Travel Channel" tvg-logo="https://i.imgur.com/ewdPTh8.png" tvg-country="JM" tvg-language="eng" group-title="Travel" nexus-score="0",Jamaica Travel Channel (720p)
@@ -23719,6 +23717,8 @@ https://mumt01.tangotv.in/O5aw8Zn3RAMDHENU/index.m3u8
 http://58bd5b7a98e04.streamlock.net/medienasa-live/ran1_high/playlist.m3u8
 #EXTINF:-1 tvg-id="Rang.in" tvg-name="Rang" tvg-logo="https://dtil.tmsimg.com/assets/s143718_ld_h15_aa.png?lock=720x540" tvg-country="IN" tvg-language="asm" group-title="Undefined" nexus-score="100",Rang (576p)
 https://cdn.pishow.tv/ott/live/10017/master.m3u8
+#EXTINF:-1 tvg-id="RapsodiaTV.ro" tvg-name="Rapsodia TV" tvg-logo="https://i.imgur.com/mwMG7BB.png" tvg-country="RO" tvg-language="ron" group-title="Undefined" nexus-score="0",Rapsodia TV
+http://hls02ns.antenaplay.ro/hls/rapsoida-tv-sd/index.m3u8
 #EXTINF:-1 tvg-id="RasoulallahTv.ir" tvg-name="RasoulallahTv" tvg-logo="https://i.imgur.com/Jh5ADee.png" tvg-country="IR" tvg-language="fas" group-title="Religious" nexus-score="100",RasoulallahTv (1080p)
 https://avr.host247.net/live/rasoulallahtv/playlist.m3u8
 #EXTINF:-1 tvg-id="RAZ3.ua" tvg-name="RAZ 3" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/b/bb/Raz_3_%282026%29.png" tvg-country="UA" tvg-language="ukr" group-title="Undefined" nexus-score="100",RAZ 3 (720p)
@@ -23755,9 +23755,11 @@ https://2-fss-2.streamhoster.com/pl_118/206858-4404454-1/playlist.m3u8
 https://stream.realitatea.net/realitatea/plus_md/ts:playlist.m3u8
 #EXTINF:-1 tvg-id="RealitateaStar.ro" tvg-name="Realitatea Star" tvg-logo="https://i.imgur.com/bNdpyAZ.png" tvg-country="RO" tvg-language="ron" group-title="Undefined" nexus-score="49",Realitatea Star (720p)
 https://stream.realitatea.net/realitatea/star_md/ts:playlist.m3u8
+#EXTINF:-1 tvg-id="Really.uk" tvg-name="Really" tvg-logo="https://i.imgur.com/lY5sFgo.png" tvg-country="UK" tvg-language="eng" group-title="Undefined" nexus-score="0",Really
+http://37.49.224.5/stream/36/index.m3u8
 #EXTINF:-1 tvg-id="RealWild.uk" tvg-name="Real Wild" tvg-logo="https://i.imgur.com/T9HHmAO.png" tvg-country="UK" tvg-language="eng" group-title="Undefined" nexus-score="100",Real Wild (1080p)
 https://lds-realwild-samsunguk.amagi.tv/playlist.m3u8
-#EXTINF:-1 tvg-id="RecipeTV.us" tvg-name="Recipe TV" tvg-logo="https://i.imgur.com/HcL4a8z.png" tvg-country="US" tvg-language="eng" group-title="Undefined" nexus-score="100",Recipe TV (720p)
+#EXTINF:-1 tvg-id="RecipeTV.us" tvg-name="Recipe.TV" tvg-logo="https://i.imgur.com/HcL4a8z.png" tvg-country="US" tvg-language="eng" group-title="Cooking" nexus-score="100",Recipe.TV (720p)
 https://a-cdn.klowdtv.com/live2/recipetv_720p/playlist.m3u8
 #EXTINF:-1 tvg-id="RecordNews.br" tvg-name="Record News" tvg-logo="https://i.imgur.com/HZDRG0K.png" tvg-country="BR" tvg-language="por" group-title="News" nexus-score="100",Record News (1080p)
 http://170.83.49.66:8083/RECORDNEWSHD/index.m3u8
@@ -24501,6 +24503,8 @@ https://stream.kdlc.click/hls/0/stream.m3u8
 http://122.248.43.242:1935/SMTV/_definst_/myStream/playlist.m3u8
 #EXTINF:-1 tvg-id="SNLVault.us" tvg-name="SNL Vault" tvg-logo="https://provider-static.plex.tv/epg/cms/production/712dae9e-9111-4bbc-8ea4-242e891ab5b3/snl-vault-fclogo-72-dpi-1500-x-1000-3-2-channel-logo-dark-plex-1.png" tvg-country="US" tvg-language="eng" group-title="Comedy" nexus-score="100",SNL Vault (1080p)
 https://xumo-xumoent-vc-103-d3uqt.fast.nbcuni.com/live/master.m3u8
+#EXTINF:-1 tvg-id="SNT.py" tvg-name="SNT" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/a/af/SNT_LOGO.jpg" tvg-country="PY" tvg-language="spa" group-title="General" nexus-score="0",SNT
+http://45.184.109.10/live/69393EAE6ADBC65A68F942022362A202/113.m3u8
 #EXTINF:-1 tvg-id="SohamTV.in" tvg-name="Soham TV" tvg-logo="https://jiotvimages.cdn.jio.com/dare_images/images/Soham_TV.png" tvg-country="IN" tvg-language="hin" group-title="Religious" nexus-score="100",Soham TV (720p)
 https://mumt03.tangotv.in/Dsly5z3HSOHAMTV/index.m3u8
 #EXTINF:-1 tvg-id="SolarTelevision.pe" tvg-name="Solar Television" tvg-logo="https://i.imgur.com/ufnWpUf.png" tvg-country="PE" tvg-language="spa" group-title="Undefined" nexus-score="98",Solar Television
@@ -24539,8 +24543,6 @@ https://wurlsonypicturestv.global.transmit.live/hls/68deeb1c0238cda82df543dd/v1/
 http://15.204.246.24:8080/SonyMoviesHD/index.m3u8
 #EXTINF:-1 tvg-id="SonyOneBlacklist.fr" tvg-name="Sony One Blacklist" tvg-logo="https://i.imgur.com/uJC8rXr.png" tvg-country="FR" tvg-language="fra" group-title="Series" nexus-score="100",Sony One Blacklist (1080p)
 https://d1x87j1jmcypab.cloudfront.net/playlist.m3u8
-#EXTINF:-1 tvg-id="SonyYay.in" tvg-name="Sony Yay!" tvg-logo="https://dtil.tmsimg.com/assets/s159100_ld_h15_aa.png?lock=720x540" tvg-country="IN" tvg-language="hin;tam;tel;ben;mar;mal;kan;ori;eng" group-title="Animation" nexus-score="0",Sony Yay! (576p)
-http://103.165.93.31:8095/sonyYay/index.m3u8
 #EXTINF:-1 tvg-id="SophiaTV.de" tvg-name="Sophia TV" tvg-logo="https://i.imgur.com/1hNgHbB.png" tvg-country="DE" tvg-language="deu" group-title="Religious" nexus-score="100",Sophia TV (720p)
 https://bild-und-ton.stream/sophiatv-en/smil:sophia-tv-en.smil/playlist.m3u8
 #EXTINF:-1 tvg-id="SophiaTVEspanol.de" tvg-name="Sophia TV Espanol" tvg-logo="https://i.imgur.com/T2JPCq2.png" tvg-country="DE" tvg-language="spa" group-title="Undefined" nexus-score="100",Sophia TV Espanol (720p)
@@ -24749,8 +24751,6 @@ https://live.obslivestream.com/supercanal/index.m3u8
 http://109.94.1.3:8080/132/index.m3u8
 #EXTINF:-1 tvg-id="Superhitz.in" tvg-name="Superhitz" tvg-logo="https://i.imgur.com/aRNBvTU.png" tvg-country="IN" tvg-language="hin" group-title="Undefined" nexus-score="69",Superhitz (576p)
 http://103.151.60.162:2122/play/a02f/index.m3u8?hls
-#EXTINF:-1 tvg-id="SuperHungama.in" tvg-name="Super Hungama" tvg-logo="https://plain-apac-prod-public.komododecks.com/202609/07/lNjbGo0Rcgz3vhfoyTN7/image.png" tvg-country="IN" tvg-language="hin;eng;tel;tam" group-title="Animation" nexus-score="0",Super Hungama (576p)
-http://103.185.24.134:3001/SUPER-HUNGAMA/index.m3u8
 #EXTINF:-1 tvg-id="SuperJTVTeramo.it" tvg-name="Super J TV Teramo" tvg-logo="https://i.imgur.com/H3uItqg.png" tvg-country="IT" tvg-language="ita" group-title="Undefined" nexus-score="0",Super J TV Teramo (720p)
 https://54627d4fc5996.streamlock.net/SuperJtv/SuperJtv/playlist.m3u8
 #EXTINF:-1 tvg-id="SuperTV2.hu" tvg-name="Super TV2" tvg-logo="https://i.imgur.com/JCu1u2v.png" tvg-country="HU" tvg-language="hun" group-title="Undefined" nexus-score="100",Super TV2
@@ -25335,8 +25335,6 @@ https://5fe2654d6127d.streamlock.net/trc/videotrc/playlist.m3u8
 https://liveingesta118.cdnmedia.tv/trecetvlive/smil:rtmp01.smil/playlist.m3u8
 #EXTINF:-1 tvg-id="Trece.es" tvg-name="Trece" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Trece.svg/960px-Trece.svg.png" tvg-country="ES" tvg-language="spa" group-title="Religious" nexus-score="100",Trece (1080p)
 https://play.cdn.enetres.net/091DB7AFBD77442B9BA2F141DCC182F5021/live.smil/playlist.m3u8
-#EXTINF:-1 tvg-id="Trece.py" tvg-name="Trece" tvg-logo="https://media.trece.com.py/sites/2/2025/09/logotrece_2025.webp" tvg-country="PY" tvg-language="spa" group-title="General" nexus-score="100",Trece
-http://45.170.130.224:8000/play/a050/index.m3u8?hls
 #EXTINF:-1 tvg-id="TribecaChannel.us" tvg-name="Tribeca Channel" tvg-logo="https://i.imgur.com/JCpFAll.png" tvg-country="US" tvg-language="eng" group-title="Undefined" nexus-score="100",Tribeca Channel (1080p)
 https://amg02507-giantpictures-tribeca-xumo-ey2b7.amagi.tv/playlist.m3u8
 #EXTINF:-1 tvg-id="Trigger.za" tvg-name="Trigger" tvg-logo="https://i.imgur.com/TrlrcWf.png" tvg-country="ZA" tvg-language="eng" group-title="Undefined" nexus-score="0",Trigger
@@ -25999,8 +25997,6 @@ https://59d39900ebfb8.streamlock.net/untv-720/untv-720/playlist.m3u8
 https://live-utv.unah.edu.hn/web/salida.m3u8
 #EXTINF:-1 tvg-id="UneVinalopo.es" tvg-name="Une Vinalopo" tvg-logo="https://i.imgur.com/WpGR7RQ.png" tvg-country="ES" tvg-language="spa" group-title="Undefined" nexus-score="100",Une Vinalopo (576p)
 https://streamingtvi.gestec-video.com/hls/unesd.m3u8
-#EXTINF:-1 tvg-id="Unicanal.py" tvg-name="Unicanal" tvg-logo="https://nyc3.digitaloceanspaces.com/media-unicanal/2025/06/Unicanal-logo.webp" tvg-country="PY" tvg-language="spa" group-title="News" nexus-score="100",Unicanal
-http://45.170.130.224:8000/play/a04y/index.m3u8?hls
 #EXTINF:-1 tvg-id="UnicaTV.gt" tvg-name="Unica TV" tvg-logo="https://i.imgur.com/VE5OrU7.png" tvg-country="GT" tvg-language="spa" group-title="Undefined" nexus-score="0",Unica TV (720p)
 https://cdn.streamhispanatv.net:3642/live/unicatvlive.m3u8
 #EXTINF:-1 tvg-id="Unidaddeinvestigacion.us" tvg-name="Unidad de investigacion" tvg-logo="https://i.imgur.com/tc3zenG.png" tvg-country="US" tvg-language="spa" group-title="Undefined" nexus-score="100",Unidad de investigacion
