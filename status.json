@@ -1,5 +1,5 @@
 {
-  "updated_at_utc": "2026-11-02T06:01:11+00:00",
+  "updated_at_utc": "2026-11-02T15:51:52+00:00",
   "unique_channels": 15042,
   "official_channels": 24,
   "public_sources": 86,
@@ -357,8 +357,8 @@
     {
       "country": "HQ",
       "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8",
-      "parsed": 2043,
-      "new": 1723
+      "parsed": 2055,
+      "new": 1734
     },
     {
       "country": "HQ",
@@ -388,18 +388,18 @@
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/entertainment.m3u",
       "parsed": 906,
-      "new": 822
+      "new": 821
     },
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/best.m3u",
-      "parsed": 10321,
-      "new": 3747
+      "parsed": 10327,
+      "new": 3737
     },
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/online.m3u",
-      "parsed": 8490,
+      "parsed": 8485,
       "new": 0
     },
     {
