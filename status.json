@@ -1,6 +1,6 @@
 {
-  "updated_at_utc": "2026-11-04T06:21:40+00:00",
-  "unique_channels": 15066,
+  "updated_at_utc": "2026-11-04T19:44:53+00:00",
+  "unique_channels": 15058,
   "official_channels": 24,
   "public_sources": 86,
   "successful_sources": 85,
@@ -393,13 +393,13 @@
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/best.m3u",
-      "parsed": 10322,
-      "new": 3771
+      "parsed": 10317,
+      "new": 3763
     },
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/online.m3u",
-      "parsed": 8479,
+      "parsed": 8473,
       "new": 0
     },
     {

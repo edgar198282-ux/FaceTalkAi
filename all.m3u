@@ -19483,8 +19483,6 @@ https://5c3fb01839654.streamlock.net:1963/iptvantares/liveantarestv/playlist.m3u
 https://live-evg8.tv360.bitel.com.pe/bitel/aunoSRT/playlist.m3u8
 #EXTINF:-1 tvg-id="AntenaMonden.ro" tvg-name="Antena Monden" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/0/01/Antena_Monden_2022.png/revision/latest/scale-to-width-down/300" tvg-country="RO" tvg-language="ron" group-title="Lifestyle" nexus-score="100",Antena Monden (480p)
 https://stream1.antenaplay.ro/live/AntenaMonden/playlist.m3u8
-#EXTINF:-1 tvg-id="AntenaPlayEvents.ro" tvg-name="AntenaPlay Events" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/8/87/Antena_Play_symbol_white_2022.svg/revision/latest/scale-to-width-down/1000?cb=20251128201145" tvg-country="RO" tvg-language="ron;eng" group-title="Sports" nexus-score="100",AntenaPlay Events (576p)
-https://live4dai.antenaplay.ro/live2_sdi09/live2_sdi09_600k.m3u8
 #EXTINF:-1 tvg-id="AntenaUnoRadiovideo.ec" tvg-name="Antena Uno Radiovideo" tvg-logo="https://i.imgur.com/PCN6iZJ.png" tvg-country="EC" tvg-language="spa" group-title="Undefined" nexus-score="100",Antena Uno Radiovideo (360p)
 https://tvdatta.com:3578/live/antenaunolive.m3u8
 #EXTINF:-1 tvg-id="AntiquesRoadshowUK.us" tvg-name="Antiques Roadshow UK" tvg-logo="https://i.imgur.com/rKWLv48.png" tvg-country="US" tvg-language="eng" group-title="Series" nexus-score="100",Antiques Roadshow UK (1080p)
@@ -19551,8 +19549,6 @@ https://alpha.tv.online.tm/legacyhls/ch006.m3u8
 https://svs.itworkscdn.net/bloomberarlive/bloomberg.smil/manifest.mpd
 #EXTINF:-1 tvg-id="AshiilTV.id" tvg-name="Ashiil TV" tvg-logo="https://i.imgur.com/bTktkcr.png" tvg-country="ID" tvg-language="ind" group-title="Religious" nexus-score="100",Ashiil TV (480p)
 https://wahyu1ptv.pages.dev/AshiilTV-HD.m3u8
-#EXTINF:-1 tvg-id="AsiaExpressNonStop.ro" tvg-name="Asia Express NonStop" tvg-logo="https://assets.antenaplay.ro/2026/08/25/00keSCoSw0EaWnICcuYB.png" tvg-country="RO" tvg-language="ron" group-title="Entertainment" nexus-score="100",Asia Express NonStop (576i)
-https://live4dai.antenaplay.ro/live2_sport05/live2_sport05_600k.m3u8
 #EXTINF:-1 tvg-id="AsianetMiddleEast.in" tvg-name="Asianet Middle East" tvg-logo="https://i.imgur.com/du9iZ0s.png" tvg-country="IN" tvg-language="mal" group-title="Entertainment" nexus-score="99",Asianet Middle East (576p)
 https://fta.ektv.in/live/697/master.m3u8
 #EXTINF:-1 tvg-id="AsianetNews.in" tvg-name="Asianet News" tvg-logo="https://dtil.tmsimg.com/assets/s142679_ld_h15_aa.png?lock=720x540" tvg-country="IN" tvg-language="mal" group-title="News" nexus-score="100",Asianet News (1080p)
@@ -21331,8 +21327,6 @@ https://247preview.foxbusiness.com/hls/live/2020026/fbnv3preview/primary.m3u8
 http://138.121.15.230:9002/FOX-NEWS/index.m3u8
 #EXTINF:-1 tvg-id="FoxSoul.us" tvg-name="Fox Soul" tvg-logo="https://i.imgur.com/YIamDGn.png" tvg-country="US" tvg-language="eng" group-title="Culture" nexus-score="100",Fox Soul (1080p)
 https://foxsoul-vizio.amagi.tv/playlist.m3u8
-#EXTINF:-1 tvg-id="FoxSports2.ar" tvg-name="Fox Sports 2" tvg-logo="https://i.imgur.com/oG7HzEf.png" tvg-country="AR" tvg-language="spa" group-title="Sports" nexus-score="0",Fox Sports 2 (720p)
-https://zapster.trapemn.tv:1936/CD-LATAM/FoxSports2/playlist.m3u8
 #EXTINF:-1 tvg-id="FoxWeather.us" tvg-name="Fox Weather" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Fox_Weather_logo.svg/960px-Fox_Weather_logo.svg.png" tvg-country="US" tvg-language="eng" group-title="Weather" nexus-score="100",Fox Weather (1080p)
 https://pb-hum8cczphcrpf.akamaized.net/FOX_Weather.m3u8
 #EXTINF:-1 tvg-id="FranchsTV.gt" tvg-name="Franchs TV" tvg-logo="https://i.imgur.com/Rr9pKQh.png" tvg-country="GT" tvg-language="spa" group-title="Religious" nexus-score="0",Franchs TV (720p)
@@ -21559,8 +21553,6 @@ https://h5cul1yar48um3t.wcetv.com/hls/hakkatv.m3u8
 https://mn-nl.mncdn.com/halabtoday/livestream/index.m3u8
 #EXTINF:-1 tvg-id="HallmarkMoviesMore.us" tvg-name="Hallmark Movies & More" tvg-logo="https://provider-static.plex.tv/epg/cms/production/29af70d1-d3ba-4a16-bc4d-bd99e7e7def4/hallmark-movies-and-more_color.png" tvg-country="US" tvg-language="eng" group-title="Movies" nexus-score="100",Hallmark Movies & More (1080p)
 https://pb-clwlfvkqpn19r.akamaized.net/Hallmark_Movies_&_More.m3u8
-#EXTINF:-1 tvg-id="HalloweenNonStop.ro" tvg-name="Halloween Non Stop" tvg-logo="https://assets.antenaplay.ro/2026/10/18/ODGTMKI8mciV9cmCOxgn.png" tvg-country="RO" tvg-language="ron" group-title="Movies" nexus-score="100",Halloween Non Stop (720p)
-https://live4dai.antenaplay.ro/live2_srt/live2_srt.m3u8
 #EXTINF:-1 tvg-id="HamaikaTelebista.es" tvg-name="Hamaika Telebista" tvg-logo="https://i.imgur.com/HR3G3Ie.png" tvg-country="ES" tvg-language="spa" group-title="Culture" nexus-score="100",Hamaika Telebista (1080p)
 https://cdn3.wowza.com/1/RERMR282dnU5eE5Z/OHY0dVFs/hls/live/playlist.m3u8
 #EXTINF:-1 tvg-id="Hamburg1.de" tvg-name="Hamburg 1" tvg-logo="https://i.imgur.com/df3yY8W.png" tvg-country="DE" tvg-language="deu" group-title="Undefined" nexus-score="0",Hamburg 1 (1080p)
@@ -21877,8 +21869,6 @@ https://live77cdn2.antenaplay.ro/live2_fast/ch7/stream.m3u8
 http://stream.mcquack.net/361/index.m3u8
 #EXTINF:-1 tvg-id="InsideCrime.us" tvg-name="Inside Crime" tvg-logo="https://i.imgur.com/wvQYWsj.png" tvg-country="US" tvg-language="eng" group-title="Series" nexus-score="100",Inside Crime (1080p)
 https://amg00841-aenetworksukane-insidecrime-samsunguk-o968i.amagi.tv/playlist/amg00841-aenetworksukane-insidecrime-samsunguk/playlist.m3u8
-#EXTINF:-1 tvg-id="Insulanonstop.ro" tvg-name="Insula non stop" tvg-logo="https://assets.antenaplay.ro/2026/08/20/DlZIyQ0kSAH3YYj30Ovi.png" tvg-country="RO" tvg-language="ron" group-title="Entertainment" nexus-score="100",Insula non stop (576i)
-https://live4dai.antenaplay.ro/live2_sdi05/live2_sdi05_600k.m3u8
 #EXTINF:-1 tvg-id="InteractivoTelevision.bo" tvg-name="Interactivo Television" tvg-logo="https://i.imgur.com/sGOSDo2.jpeg" tvg-country="BO" tvg-language="spa" group-title="General" nexus-score="0",Interactivo Television (1080p)
 https://mist01.homestream.fun/hls/interactivotv/index.m3u8
 #EXTINF:-1 tvg-id="IntheKitchen.us" tvg-name="In the Kitchen" tvg-logo="https://i.imgur.com/HrRUd6r.png" tvg-country="US" tvg-language="eng" group-title="Shop" nexus-score="100",In the Kitchen (720p)
@@ -22085,6 +22075,8 @@ https://fta.ektv.in/live/669/master.m3u8
 http://cdn-kanal10.crossnet.net:1935/kanal10/kanal10asia/playlist.m3u8
 #EXTINF:-1 tvg-id="Kanal7.tr" tvg-name="Kanal 7" tvg-logo="https://i.imgur.com/0gq9xOm.png" tvg-country="TR" tvg-language="tur" group-title="Entertainment" nexus-score="100",Kanal 7 (1080p)
 https://kanal7-live.daioncdn.net/kanal7/kanal7.m3u8
+#EXTINF:-1 tvg-id="Kanal8.mk" tvg-name="Kanal 8" tvg-logo="https://i.imgur.com/jHbTDhH.png" tvg-country="MK" tvg-language="mkd" group-title="General" nexus-score="0",Kanal 8 (1080p)
+https://tv.kanal8.mk/live/kanal8.m3u8
 #EXTINF:-1 tvg-id="KanalD2.ro" tvg-name="Kanal D2" tvg-logo="https://i.imgur.com/0SMSIm9.png" tvg-country="RO" tvg-language="rom" group-title="Undefined" nexus-score="100",Kanal D2 (360p)
 https://stream2.kanald.ro/iphone/knd2-live.m3u8
 #EXTINF:-1 tvg-id="KanalDDrama.tr" tvg-name="Kanal D Drama" tvg-logo="https://i.imgur.com/WIeZMKT.png" tvg-country="TR" tvg-language="sqi;tur;spa" group-title="Entertainment" nexus-score="100",Kanal D Drama (1080p)
@@ -22897,10 +22889,6 @@ https://617c5175c970b.streamlock.net:4444/tvlink/live/playlist.m3u8
 https://live.mediatech.vn/live/2859591eef2e92249b682db021f4247c364/chunklist.m3u8
 #EXTINF:-1 tvg-id="NGRadioTV.pr" tvg-name="NG Radio TV" tvg-logo="https://i.imgur.com/KsNI3vQ.jpg" tvg-country="PR" tvg-language="spa" group-title="Religious" nexus-score="0",NG Radio TV (720p)
 https://67acccf130420.streamlock.net/ngradiotv/ngradiotv/playlist.m3u8
-#EXTINF:-1 tvg-id="NHBollyGold.in" tvg-name="NH BollyGold" tvg-logo="https://i.ibb.co/x9PsrMy/NH-BOLLYGOLD.png" tvg-country="IN" tvg-language="hin" group-title="Movies" nexus-score="0",NH BollyGold (1080p)
-https://0dc330e6408b4c3b9ac31fd37b121368.mediatailor.ap-south-1.amazonaws.com/v1/master/d367f9b863a7a04827f71ecab4cbeeb11f78a827/nh-bollygold-airtel/playlist.m3u8
-#EXTINF:-1 tvg-id="NHLAntenaPlay.ro" tvg-name="NHL AntenaPlay" tvg-logo="https://assets.antenaplay.ro/2024/10/25/SN0nevshXwKDcZ2Tw1jm.png" tvg-country="RO" tvg-language="eng" group-title="Sports" nexus-score="100",NHL AntenaPlay
-https://live4dai.antenaplay.ro/live2_sdi03/live2_sdi03_600k.m3u8
 #EXTINF:-1 tvg-id="NHRATV.us" tvg-name="NHRA TV" tvg-logo="https://i.imgur.com/jZgcm4k.png" tvg-country="US" tvg-language="eng" group-title="Sports" nexus-score="100",NHRA TV (1080p)
 https://aegis-cloudfront-1.tubi.video/b8c5eb48-349b-454f-9625-63911ee923f5/playlist.m3u8
 #EXTINF:-1 tvg-id="Nickelodeon.cz" tvg-name="Nickelodeon" tvg-logo="https://i.imgur.com/E84jnP8.png" tvg-country="CZ" tvg-language="ces" group-title="Kids" nexus-score="100",Nickelodeon
@@ -24699,8 +24687,6 @@ http://znty.dyndns.org:5010/hls/foxcrime.m3u8
 http://103.151.60.162:2122/play/a01n/index.m3u8?hls
 #EXTINF:-1 tvg-id="StarLife.pt" tvg-name="Star Life" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Star_Life_2021.svg/960px-Star_Life_2021.svg.png" tvg-country="PT" tvg-language="por" group-title="Lifestyle" nexus-score="0",Star Life
 http://znty.dyndns.org:5010/hls/foxlife.m3u8
-#EXTINF:-1 tvg-id="StarMovies.in" tvg-name="Star Movies" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/STAR_Movies_logo.svg/960px-STAR_Movies_logo.svg.png" tvg-country="IN" tvg-language="eng;hin;tam" group-title="Movies" nexus-score="60",Star Movies (1080p)
-http://103.151.60.162:2122/play/a02k/index.m3u8?hls
 #EXTINF:-1 tvg-id="StarPlus.in" tvg-name="StarPlus" tvg-logo="https://img10.hotstar.com/image/upload/f_auto/sources/r1/cms/prod/2384/1782291852384-h.jpg" tvg-country="IN" tvg-language="hin" group-title="Entertainment" nexus-score="0",StarPlus (1080p)
 http://41.205.93.154/STAR-PLUS/index.m3u8
 #EXTINF:-1 tvg-id="StarSportsSelect2.in" tvg-name="Star Sports Select 2" tvg-logo="https://img10.hotstar.com/image/upload/f_auto/sources/r1/cms/prod/7266/1783001217266-h.jpg" tvg-country="IN" tvg-language="eng" group-title="Sports" nexus-score="94",Star Sports Select 2 (720p)
@@ -25197,8 +25183,6 @@ https://amg17292-amg17292c1-distrotv-us-4170.playouts.now.amagi.tv/playlist/amg1
 https://amg00441-amg00441c1-rakuten-us-6050.playouts.now.amagi.tv/playlist.m3u8
 #EXTINF:-1 tvg-id="theDoveTV.us" tvg-name="theDove TV" tvg-logo="https://i.imgur.com/ULtuRsj.png" tvg-country="US" tvg-language="eng" group-title="Religious" nexus-score="100",theDove TV (720p)
 https://thedovetv.bozztv.com/thedovetv/thedovetv/index.m3u8
-#EXTINF:-1 tvg-id="TheFilmDetective.us" tvg-name="The Film Detective" tvg-logo="https://i.imgur.com/yfOwmsP.png" tvg-country="US" tvg-language="eng" group-title="Movies" nexus-score="0",The Film Detective (1080p)
-https://cinedigm-entertainment-corp-thefilmdetective-1-us.ono.wurl.tv/playlist.m3u8
 #EXTINF:-1 tvg-id="TheFirstTV.us" tvg-name="The First TV" tvg-logo="https://i.imgur.com/rOSlp93.png" tvg-country="US" tvg-language="eng" group-title="News" nexus-score="100",The First TV (1080p)
 https://pb-7dne0wn288z2f.akamaized.net/The_First.m3u8
 #EXTINF:-1 tvg-id="TheFishingHuntingChannel.hu" tvg-name="The Fishing & Hunting Channel" tvg-logo="https://i.imgur.com/KcTTnUA.png" tvg-country="HU" tvg-language="ces;ron;hun;bul" group-title="Outdoor" nexus-score="100",The Fishing & Hunting Channel
@@ -25785,8 +25769,8 @@ https://5ff3d9babae13.streamlock.net/8014/8014/playlist.m3u8
 http://tvoetv.space:8080/tvoetv_humor/index.m3u8
 #EXTINF:-1 tvg-id="TVP1.pl" tvg-name="TVP1" tvg-logo="https://i.imgur.com/ewpSjBs.png" tvg-country="PL" tvg-language="pol" group-title="Undefined" nexus-score="100",TVP1
 http://92.114.85.87:8009/play/a009/index.m3u8
-#EXTINF:-1 tvg-id="TVP2.pl" tvg-name="TVP2" tvg-logo="https://i.imgur.com/XxCc32B.png" tvg-country="PL" tvg-language="pol" group-title="Undefined" nexus-score="0",TVP2 (1080p)
-http://57.128.210.196:8080/143/index.m3u8
+#EXTINF:-1 tvg-id="TVP2.pl" tvg-name="TVP2" tvg-logo="https://i.imgur.com/XxCc32B.png" tvg-country="PL" tvg-language="pol" group-title="Undefined" nexus-score="0",TVP2
+https://srv7.flussonic111.com/PL_TVP2_HD/tracks-v1a1/mono.m3u8
 #EXTINF:-1 tvg-id="TVP3Warszawa.pl" tvg-name="TVP 3 Warszawa" tvg-logo="https://i.imgur.com/AfZOO8U.jpg" tvg-country="PL" tvg-language="pol" group-title="Undefined" nexus-score="100",TVP 3 Warszawa
 http://92.114.85.87:8010/play/a006/index.m3u8
 #EXTINF:-1 tvg-id="TVPadreCicero.br" tvg-name="TV Padre Cicero" tvg-logo="https://i.imgur.com/Y7b29VG.png" tvg-country="BR" tvg-language="por" group-title="Religious" nexus-score="100",TV Padre Cicero (720p)
