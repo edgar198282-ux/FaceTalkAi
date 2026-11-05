@@ -1,6 +1,6 @@
 {
-  "updated_at_utc": "2026-11-04T19:44:53+00:00",
-  "unique_channels": 15058,
+  "updated_at_utc": "2026-11-05T06:46:07+00:00",
+  "unique_channels": 15059,
   "official_channels": 24,
   "public_sources": 86,
   "successful_sources": 85,
@@ -321,8 +321,8 @@
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/general.m3u",
-      "parsed": 2746,
-      "new": 2693
+      "parsed": 2749,
+      "new": 2696
     },
     {
       "country": "HQ",
@@ -358,7 +358,7 @@
       "country": "HQ",
       "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8",
       "parsed": 2055,
-      "new": 1734
+      "new": 1732
     },
     {
       "country": "HQ",
@@ -369,8 +369,8 @@
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/sports.m3u",
-      "parsed": 476,
-      "new": 450
+      "parsed": 477,
+      "new": 451
     },
     {
       "country": "HQ",
@@ -394,19 +394,19 @@
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/best.m3u",
       "parsed": 10317,
-      "new": 3763
+      "new": 3759
     },
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/online.m3u",
-      "parsed": 8473,
+      "parsed": 8483,
       "new": 0
     },
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv-top.m3u",
       "parsed": 391,
-      "new": 364
+      "new": 365
     },
     {
       "country": "RU",
@@ -424,7 +424,7 @@
       "country": "RU",
       "url": "https://iptv-org.github.io/iptv/languages/rus.m3u",
       "parsed": 648,
-      "new": 34
+      "new": 31
     },
     {
       "country": "AM",
@@ -466,13 +466,13 @@
       "country": "RU",
       "url": "https://raw.githubusercontent.com/substanc1/iptv-russia/main/streams/ru.m3u",
       "parsed": 680,
-      "new": 214
+      "new": 220
     },
     {
       "country": "RU",
       "url": "https://ngrch.github.io/iptv/ru.m3u",
       "parsed": 978,
-      "new": 725
+      "new": 724
     },
     {
       "country": "RU",
