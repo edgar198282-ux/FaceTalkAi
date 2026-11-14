@@ -55,33 +55,31 @@ body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible){
  box-shadow:0 0 0 2px #19dcff,0 0 0 4px #a954ff,0 0 10px #03d5ff99!important;
 }
 body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible)::selection{background:transparent}
-/* Moving neon cursor: the bright segment travels around the whole rounded tile. */
-#abajLauncher .abajFocusOrbit{position:absolute;inset:0;width:100%;height:100%;z-index:8;pointer-events:none;overflow:visible;opacity:0}
-#abajLauncher .abajFocusOrbit rect{fill:none;stroke:#25eaff;stroke-width:1.2;vector-effect:non-scaling-stroke}
-#abajLauncher .abajFocusOrbit .abajOrbitRunner{stroke:#f0a4ff;stroke-width:3.5;stroke-linecap:round;stroke-dasharray:18 82;stroke-dashoffset:0;animation:abajOrbitTravel 2.4s linear infinite}
-#abajLauncher .abajLaunchTile:is(:focus,:focus-visible) .abajFocusOrbit{opacity:1}
-@keyframes abajOrbitTravel{to{stroke-dashoffset:-100}}
-body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible){outline:none!important;border-color:#1de7ff!important;box-shadow:0 0 0 1px #15cfff,0 0 9px #00bfff77!important}
-/* Match the moving multicolor outline used by cinema posters. */
-#abajLauncher .abajFocusOrbit .abajOrbitRunner{stroke:url(#abajLaunchRainbow);stroke-width:2.6;stroke-dasharray:72 28;animation:abajOrbitTravel 3.2s linear infinite}
-#abajLauncher .abajLaunchTile:is(:focus,:focus-visible),#abajLauncher .abajLaunchTile.abajSelectedTile{
- outline:none!important;border-color:#2ceaff!important;box-shadow:0 0 0 1px #2ceaff,0 0 8px #00cfff88!important
-}
-#abajLauncher .abajLaunchTile.abajSelectedTile .abajFocusOrbit{opacity:1}
-/* Continuous rainbow focus: no dashed breaks, slightly thicker stroke. */
-#abajLauncher .abajFocusOrbit{inset:0;width:100%;height:100%;overflow:hidden;border-radius:inherit}
-#abajLauncher .abajFocusOrbit rect{stroke-width:1.6}
-#abajLauncher .abajFocusOrbit .abajOrbitRunner{stroke:url(#abajLaunchRainbow);stroke-width:4.5;stroke-dasharray:none;stroke-dashoffset:0;animation:none;stroke-linecap:round}
-body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible){border-color:#23dfff!important;box-shadow:0 0 0 1px #18d9ff,0 0 12px #06ceff88!important}
-/* One single rainbow border, flush with the tile edge: no secondary cyan outline. */
-#abajLauncher .abajLaunchTile:is(:focus,:focus-visible),#abajLauncher .abajLaunchTile.abajSelectedTile,
-body.nativeTv #abajLauncher .abajLaunchTile:is(:focus,:focus-visible){
- outline:none!important;border-color:transparent!important;
+/* Inset gradient border follows the card's own border radius on every TV size. */
+#abajLauncher .abajLaunchTile:is(:focus,:focus-visible),
+#abajLauncher .abajLaunchTile.abajSelectedTile{
+ outline:none!important;
+ border-color:transparent!important;
  box-shadow:none!important;
 }
-#abajLauncher .abajFocusOrbit{inset:0!important;width:100%!important;height:100%!important;overflow:hidden!important;border-radius:inherit;z-index:8}
-#abajLauncher .abajFocusOrbit rect:not(.abajOrbitRunner){display:none}
-#abajLauncher .abajFocusOrbit .abajOrbitRunner{stroke-width:4!important;stroke-dasharray:none!important}
+#abajLauncher .abajFocusBorder{
+ position:absolute;
+ inset:0;
+ box-sizing:border-box;
+ border:3px solid transparent;
+ border-radius:inherit;
+ background:linear-gradient(110deg,#22dfff,#67f6a4,#ffe46d,#ff77c7,#25dfff) border-box;
+ -webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);
+ -webkit-mask-composite:xor;
+ mask-composite:exclude;
+ pointer-events:none;
+ opacity:0;
+ z-index:8;
+}
+#abajLauncher .abajLaunchTile:is(:focus,:focus-visible)>.abajFocusBorder,
+#abajLauncher .abajLaunchTile.abajSelectedTile>.abajFocusBorder{opacity:1}
+body:has(#tvSettingsModal.open) #abajLauncher .abajFocusBorder{opacity:0!important}
+body:has(#tvSettingsModal.open) #abajLauncher .abajLaunchTile{outline:none!important;box-shadow:none!important}
 /* Keep the launcher visible behind its own settings panel. */
 body.nativeTv #tvSettingsModal.open{z-index:9100!important}
 body:not(.nativeTv) #tvSettingsModal.open{z-index:9100!important}
@@ -731,35 +729,13 @@ function start(){
 if(document.getElementById('abajLauncher'))return;
 const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
 const root=document.createElement('section');root.id='abajLauncher';root.setAttribute('aria-label','ABAJ TV — главная');root.innerHTML=`<div class="abajLaunchTop"><div class="abajLaunchBrand">ABAJ<b>TV</b></div></div><div class="abajLaunchTitle">ВАШ МИР КИНО И ТЕЛЕВИДЕНИЯ</div><div class="abajLaunchTiles"><button class="abajLaunchTile" data-target="cinema" style="--tile-bg:url('static/launcher-cinema-20261014.webp')"><span class="abajLaunchIcon">🎞</span><span class="abajLaunchText"><span class="abajLaunchName">Кинотеатр</span><span class="abajLaunchDesc">Фильмы, сериалы, мультфильмы</span></span></button><button class="abajLaunchTile" data-target="iptv" style="--tile-bg:url('static/launcher-iptv-20261014.webp')"><span class="abajLaunchIcon">▣</span><span class="abajLaunchText"><span class="abajLaunchName">IPTV</span><span class="abajLaunchDesc">Каналы и прямые эфиры</span></span></button><button class="abajLaunchTile" data-target="media" style="--tile-bg:url('static/launcher-media.svg')"><span class="abajLaunchText"><span class="abajLaunchName">Медиа</span><span class="abajLaunchDesc">Ваши фото, видео и облака</span></span></button><button class="abajLaunchTile" data-target="settings" style="--tile-bg:url('static/launcher-settings-20261014.webp')"><span class="abajLaunchIcon">⚙</span><span class="abajLaunchText"><span class="abajLaunchName">Настройки</span><span class="abajLaunchDesc">Параметры и управление</span></span></button></div><div class="abajLaunchFoot"></div>`;
-root.querySelectorAll('.abajLaunchTile').forEach(tile=>{const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('class','abajFocusOrbit');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');const defs=document.createElementNS(ns,'defs'),gradient=document.createElementNS(ns,'linearGradient');gradient.setAttribute('id','abajLaunchRainbow');gradient.setAttribute('x1','0%');gradient.setAttribute('y1','0%');gradient.setAttribute('x2','100%');gradient.setAttribute('y2','100%');const spin=document.createElementNS(ns,'animateTransform');spin.setAttribute('attributeName','gradientTransform');spin.setAttribute('type','rotate');spin.setAttribute('from','0 0.5 0.5');spin.setAttribute('to','360 0.5 0.5');spin.setAttribute('dur','3s');spin.setAttribute('repeatCount','indefinite');gradient.setAttribute('gradientUnits','objectBoundingBox');gradient.appendChild(spin);for(const [offset,color] of [['0%','#22dfff'],['30%','#67f6a4'],['55%','#ffe46d'],['78%','#ff77c7'],['100%','#25dfff']]){const stop=document.createElementNS(ns,'stop');stop.setAttribute('offset',offset);stop.setAttribute('stop-color',color);gradient.appendChild(stop)}defs.appendChild(gradient);svg.appendChild(defs);for(const runner of [false,true]){const rect=document.createElementNS(ns,'rect');rect.setAttribute('x','0.35');rect.setAttribute('y','0.35');rect.setAttribute('width','99.3');rect.setAttribute('height','99.3');rect.setAttribute('rx','5');rect.setAttribute('ry','5');rect.setAttribute('pathLength','100');if(runner)rect.setAttribute('class','abajOrbitRunner');svg.appendChild(rect)}tile.appendChild(svg)});
-
+root.querySelectorAll('.abajLaunchTile').forEach(tile=>{
+ const border=document.createElement('span');
+ border.className='abajFocusBorder';
+ border.setAttribute('aria-hidden','true');
+ tile.appendChild(border);
+});
 document.body.appendChild(root);
-const alignLaunchFocusBorder=tile=>{
- const svg=tile.querySelector('.abajFocusOrbit');
- if(!svg)return;
- const width=tile.clientWidth,height=tile.clientHeight;
- if(width<8||height<8)return;
- const inset=2;
- const radius=Math.max(inset,parseFloat(getComputedStyle(tile).borderTopLeftRadius)||0);
- svg.setAttribute('viewBox','0 0 '+width+' '+height);
- svg.setAttribute('preserveAspectRatio','none');
- svg.querySelectorAll('rect').forEach(rect=>{
-  rect.setAttribute('x',String(inset));
-  rect.setAttribute('y',String(inset));
-  rect.setAttribute('width',String(width-inset*2));
-  rect.setAttribute('height',String(height-inset*2));
-  rect.setAttribute('rx',String(Math.max(0,radius-inset)));
-  rect.setAttribute('ry',String(Math.max(0,radius-inset)));
- });
-};
-const launchFocusTiles=[...root.querySelectorAll('.abajLaunchTile')];
-launchFocusTiles.forEach(alignLaunchFocusBorder);
-if(typeof ResizeObserver==='function'){
- const launchFocusObserver=new ResizeObserver(entries=>{
-  entries.forEach(entry=>alignLaunchFocusBorder(entry.target));
- });
- launchFocusTiles.forEach(tile=>launchFocusObserver.observe(tile));
-}else window.addEventListener('resize',()=>launchFocusTiles.forEach(alignLaunchFocusBorder),{passive:true});
 for(const tile of root.querySelectorAll('.abajLaunchTile:not([data-target="media"])')){
 const motion=document.createElement('span');motion.className='abajSceneMotion';motion.setAttribute('aria-hidden','true');
 const accent=document.createElement('i');accent.className=tile.dataset.target==='cinema'?'abajSceneSun':tile.dataset.target==='iptv'?'abajSceneWater':'abajSceneGear';
