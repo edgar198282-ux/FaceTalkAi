@@ -91,6 +91,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          IMMUTABLE_TAG="abajtv-standalone-$GITHUB_SHA"
+          if ! gh release view "$IMMUTABLE_TAG" >/dev/null 2>&1; then
+            gh release create "$IMMUTABLE_TAG" \
+              dist/AbajTV-Standalone.apk \
+              dist/SHA256SUMS.txt \
+              --prerelease \
+              --target "$GITHUB_SHA" \
+              --title "ABAJ TV Standalone $GITHUB_SHA" \
+              --notes "Immutable signed APK for verified automatic updates."
+          fi
           TAG="abajtv-standalone-latest"
           gh release delete "$TAG" --cleanup-tag --yes || true
           gh release create "$TAG" \
