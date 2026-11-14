@@ -8007,7 +8007,7 @@ function openPlayer(id){
     const switchId=String(ch.id||'');
     setTimeout(()=>{
       if(current&&String(current.id||'')===switchId)startStream(ch);
-    },180);
+    },80);
   }else{
     startStream(ch);
   }
@@ -9488,7 +9488,7 @@ function tvTogglePlayerUi(){
 }
 function queueTvChannelStep(delta){
   const now=Date.now();
-  if(now<tvChannelSwitchBusyUntil)return;
+  if(now<tvChannelSwitchBusyUntil&&tvZapStepOffset===0)return;
   const rows=filteredNow.length?filteredNow:channels;
   if(!rows.length)return;
   let base=current?rows.findIndex(x=>x.id===current.id):currentIndex;
@@ -9502,12 +9502,10 @@ function queueTvChannelStep(delta){
     tvZapStepTimer=null;
     tvZapStepOffset=0;
     if(ch){
-      // TeamTV uses a ~500 ms channel-switch delay. Keep a small guard so
-      // repeated remote presses stay responsive without starting parallel players.
-      tvChannelSwitchBusyUntil=Date.now()+600;
+      tvChannelSwitchBusyUntil=Date.now()+200;
       openPlayer(ch.id);
     }
-  },220);
+  },100);
 }
 function updatePlayerPlaybackUi(nativePlaying=null){
   const v=document.getElementById('video');
