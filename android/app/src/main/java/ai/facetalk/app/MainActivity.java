@@ -3558,33 +3558,7 @@ public class MainActivity extends Activity {
                     ((code!=KeyEvent.KEYCODE_DPAD_CENTER&&code!=KeyEvent.KEYCODE_ENTER)&&
                      event.getEventTime()-lastTvDpadDispatchAt>=65L))){
                     lastTvDpadDispatchAt=event.getEventTime();
-                    webView.evaluateJavascript(
-                        "(function(){var key='"+launcherKey+"';"+
-                        "if(typeof window.abajStandaloneRemoteKey==='function'&&window.abajStandaloneRemoteKey(key))return;"+
-                        "var modal=document.getElementById('tvSettingsModal');"+
-                        "if(modal&&modal.classList.contains('open')){"+
-                        "var card=modal.querySelector('.settingsCard')||modal;"+
-                        "var items=Array.from(card.querySelectorAll('button,select,input,[tabindex], [role=button]')).filter(function(el){var r=el.getBoundingClientRect();return !el.disabled&&r.width>2&&r.height>2&&getComputedStyle(el).visibility!=='hidden';});"+
-                        "var i=items.indexOf(document.activeElement);"+
-                        "if(key==='Enter'){var active=items[i<0?0:i];if(active){active.focus();active.click();}return;}"+
-                        "if(key==='ArrowDown'||key==='ArrowUp'){var n=i+(key==='ArrowDown'?1:-1);if(i<0)n=0;if(n>=0&&n<items.length){items[n].focus();items[n].scrollIntoView({block:'nearest'});}return;}"+
-                        "return;}"+
-                        "var root=document.getElementById('abajLauncher');"+
-                        "if(!root||root.hidden){"+
-                        "if(key==='Enter'){if(typeof tvNativeOkDown==='function')tvNativeOkDown();else if(typeof tvNativeRemote==='function')tvNativeRemote('ok');}"+
-                        "else if(typeof tvNativeRemote==='function')tvNativeRemote(key.slice(5).toLowerCase());return;}"+
-                        "var bs=Array.from(root.querySelectorAll('.abajLaunchTile:not([hidden])'));"+
-                        "if(!bs.length)return;"+
-                        "var current=bs.indexOf(document.activeElement);"+
-                        "if(current<0){bs[0].focus();return;}"+
-                        "var key='"+launcherKey+"';"+
-                        "if(key==='Enter'){bs[current].click();return;}"+
-                        "var columns=2;"+
-                        "var step=key==='ArrowRight'?1:key==='ArrowLeft'?-1:key==='ArrowDown'?columns:-columns;"+
-                        "var next=current+step;"+
-                        "if(next>=0&&next<bs.length&&(Math.abs(step)!==1||Math.floor(next/columns)===Math.floor(current/columns)))bs[next].focus();"+
-                        "})()",null
-                    );
+                    webView.evaluateJavascript("window.abajTvDispatchKey&&window.abajTvDispatchKey('"+launcherKey+"')",null);
                 }
                 if(event.getAction()==KeyEvent.ACTION_UP&&(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER)){
                     webView.evaluateJavascript("if(typeof tvNativeOkUp==='function')tvNativeOkUp()",null);
