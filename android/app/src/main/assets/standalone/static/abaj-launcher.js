@@ -828,6 +828,7 @@ async function revealLaunchDestination(){
 }
 async function playMediaLensTransition(tile){
  mediaTransitionBusy=true;
+ if(document.body.classList.contains('nativeTv'))return Promise.resolve();
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
  const rect=tile.getBoundingClientRect(),origin={x:rect.left+rect.width*.68,y:rect.top+rect.height*.4};
  const initial=Math.max(28,Math.min(rect.width*.18,rect.height*.32));
@@ -861,6 +862,7 @@ async function playMediaLensTransition(tile){
 
 async function playSettingsGearTransition(tile){
  settingsTransitionBusy=true;
+ if(document.body.classList.contains('nativeTv'))return;
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
  const rect=tile.getBoundingClientRect(),origin=settingsGear?.takeOff()||{x:rect.left+rect.width*.75,y:rect.top+rect.height*.4,radius:rect.height*.3,angle:0};
  await runLaunchTransition(1200,(ctx,w,h,p)=>{
@@ -874,12 +876,14 @@ async function playSettingsGearTransition(tile){
 }
 async function playCinemaGlassesTransition(tile){
  cinemaTransitionBusy=true;
+ if(document.body.classList.contains('nativeTv'))return;
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
  const rect=tile.getBoundingClientRect(),origin={x:rect.left+rect.width*.5,y:rect.top+rect.height*.43};
  await runLaunchTransition(1500,(ctx,w,h,p)=>drawCinemaGlasses(ctx,w,h,origin,p));
 }
 async function playIptvBallTransition(tile){
  iptvTransitionBusy=true;
+ if(document.body.classList.contains('nativeTv'))return;
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
  const rect=tile.getBoundingClientRect(),origin=footballScreen?.takeOff()||{x:rect.left+rect.width*.665,y:rect.top+rect.height*.285,radius:rect.width*.024,angle:0};
  let painter=null;
@@ -892,7 +896,8 @@ async function playIptvBallTransition(tile){
  });
 }
 let lastLaunchTarget='cinema';
-function selectLaunchTile(tile){if(!tile)return;root.querySelectorAll('.abajLaunchTile').forEach(b=>b.classList.toggle('abajSelectedTile',b===tile));lastLaunchTarget=tile.dataset.target||lastLaunchTarget;tile.focus({preventScroll:true})}
+let selectedLaunchTile=null;
+function selectLaunchTile(tile){if(!tile)return;if(selectedLaunchTile!==tile){if(selectedLaunchTile)selectedLaunchTile.classList.remove('abajSelectedTile');tile.classList.add('abajSelectedTile');selectedLaunchTile=tile;}lastLaunchTarget=tile.dataset.target||lastLaunchTarget;if(document.activeElement!==tile)tile.focus({preventScroll:true})}
 function show(){settingsGear?.reset();applyLauncherLanguage();try{if(typeof closeTvSettings==='function')closeTvSettings();if(typeof closeAdmin==='function')closeAdmin()}catch(e){}root.hidden=false;document.body.classList.add('abajHomeVisible');window.abajApplyHomeSections?.();footballScreen?.reset();home.hidden=true;const visible=[...root.querySelectorAll('.abajLaunchTile:not([hidden])')];const target=lastLaunchTarget;const previous=visible.find(b=>b.dataset.target===target)||visible[0];selectLaunchTile(previous);requestAnimationFrame(()=>{if(!root.hidden&&previous?.isConnected)selectLaunchTile(previous)})}
 function hide(){root.hidden=true;document.body.classList.remove('abajHomeVisible');home.hidden=true}
 window.abajLauncherHome=show;
