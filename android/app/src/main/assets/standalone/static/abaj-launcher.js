@@ -734,6 +734,32 @@ const root=document.createElement('section');root.id='abajLauncher';root.setAttr
 root.querySelectorAll('.abajLaunchTile').forEach(tile=>{const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('class','abajFocusOrbit');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');const defs=document.createElementNS(ns,'defs'),gradient=document.createElementNS(ns,'linearGradient');gradient.setAttribute('id','abajLaunchRainbow');gradient.setAttribute('x1','0%');gradient.setAttribute('y1','0%');gradient.setAttribute('x2','100%');gradient.setAttribute('y2','100%');const spin=document.createElementNS(ns,'animateTransform');spin.setAttribute('attributeName','gradientTransform');spin.setAttribute('type','rotate');spin.setAttribute('from','0 0.5 0.5');spin.setAttribute('to','360 0.5 0.5');spin.setAttribute('dur','3s');spin.setAttribute('repeatCount','indefinite');gradient.setAttribute('gradientUnits','objectBoundingBox');gradient.appendChild(spin);for(const [offset,color] of [['0%','#22dfff'],['30%','#67f6a4'],['55%','#ffe46d'],['78%','#ff77c7'],['100%','#25dfff']]){const stop=document.createElementNS(ns,'stop');stop.setAttribute('offset',offset);stop.setAttribute('stop-color',color);gradient.appendChild(stop)}defs.appendChild(gradient);svg.appendChild(defs);for(const runner of [false,true]){const rect=document.createElementNS(ns,'rect');rect.setAttribute('x','0.35');rect.setAttribute('y','0.35');rect.setAttribute('width','99.3');rect.setAttribute('height','99.3');rect.setAttribute('rx','5');rect.setAttribute('ry','5');rect.setAttribute('pathLength','100');if(runner)rect.setAttribute('class','abajOrbitRunner');svg.appendChild(rect)}tile.appendChild(svg)});
 
 document.body.appendChild(root);
+const alignLaunchFocusBorder=tile=>{
+ const svg=tile.querySelector('.abajFocusOrbit');
+ if(!svg)return;
+ const width=tile.clientWidth,height=tile.clientHeight;
+ if(width<8||height<8)return;
+ const inset=2;
+ const radius=Math.max(inset,parseFloat(getComputedStyle(tile).borderTopLeftRadius)||0);
+ svg.setAttribute('viewBox','0 0 '+width+' '+height);
+ svg.setAttribute('preserveAspectRatio','none');
+ svg.querySelectorAll('rect').forEach(rect=>{
+  rect.setAttribute('x',String(inset));
+  rect.setAttribute('y',String(inset));
+  rect.setAttribute('width',String(width-inset*2));
+  rect.setAttribute('height',String(height-inset*2));
+  rect.setAttribute('rx',String(Math.max(0,radius-inset)));
+  rect.setAttribute('ry',String(Math.max(0,radius-inset)));
+ });
+};
+const launchFocusTiles=[...root.querySelectorAll('.abajLaunchTile')];
+launchFocusTiles.forEach(alignLaunchFocusBorder);
+if(typeof ResizeObserver==='function'){
+ const launchFocusObserver=new ResizeObserver(entries=>{
+  entries.forEach(entry=>alignLaunchFocusBorder(entry.target));
+ });
+ launchFocusTiles.forEach(tile=>launchFocusObserver.observe(tile));
+}else window.addEventListener('resize',()=>launchFocusTiles.forEach(alignLaunchFocusBorder),{passive:true});
 for(const tile of root.querySelectorAll('.abajLaunchTile:not([data-target="media"])')){
 const motion=document.createElement('span');motion.className='abajSceneMotion';motion.setAttribute('aria-hidden','true');
 const accent=document.createElement('i');accent.className=tile.dataset.target==='cinema'?'abajSceneSun':tile.dataset.target==='iptv'?'abajSceneWater':'abajSceneGear';
