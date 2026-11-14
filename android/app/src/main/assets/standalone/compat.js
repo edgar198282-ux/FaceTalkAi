@@ -1520,3 +1520,46 @@ function settings(){
 }
 document.addEventListener('DOMContentLoaded',settings);
 })();
+
+window.abajTvDispatchKey=function(key){
+  if(typeof window.abajStandaloneRemoteKey==='function'&&window.abajStandaloneRemoteKey(key))return;
+  const modal=document.getElementById('tvSettingsModal');
+  if(modal&&modal.classList.contains('open')){
+    const card=modal.querySelector('.settingsCard')||modal;
+    const items=Array.from(card.querySelectorAll('button,select,input,[tabindex],[role=button]')).filter(el=>{
+      const r=el.getBoundingClientRect();
+      return !el.disabled&&r.width>2&&r.height>2&&getComputedStyle(el).visibility!=='hidden';
+    });
+    let i=items.indexOf(document.activeElement);
+    if(key==='Enter'){
+      const active=items[i<0?0:i];
+      if(active){active.focus();active.click()}
+    }else if(key==='ArrowDown'||key==='ArrowUp'){
+      const n=i<0?0:i+(key==='ArrowDown'?1:-1);
+      if(n>=0&&n<items.length){
+        items[n].focus({preventScroll:true});
+        items[n].scrollIntoView({block:'nearest',behavior:'instant'});
+      }
+    }
+    return;
+  }
+  const root=document.getElementById('abajLauncher');
+  if(!root||root.hidden){
+    if(key==='Enter'){
+      if(typeof tvNativeOkDown==='function')tvNativeOkDown();
+      else if(typeof tvNativeRemote==='function')tvNativeRemote('ok');
+    }else if(typeof tvNativeRemote==='function')tvNativeRemote(key.slice(5).toLowerCase());
+    return;
+  }
+  const buttons=Array.from(root.querySelectorAll('.abajLaunchTile:not([hidden])'));
+  if(!buttons.length)return;
+  const current=buttons.indexOf(document.activeElement);
+  if(current<0){buttons[0].focus({preventScroll:true});return}
+  if(key==='Enter'){buttons[current].click();return}
+  const columns=2;
+  const step=key==='ArrowRight'?1:key==='ArrowLeft'?-1:key==='ArrowDown'?columns:-columns;
+  const next=current+step;
+  if(next>=0&&next<buttons.length&&(Math.abs(step)!==1||Math.floor(next/columns)===Math.floor(current/columns))){
+    buttons[next].focus({preventScroll:true});
+  }
+};
