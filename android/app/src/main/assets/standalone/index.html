@@ -10132,17 +10132,31 @@ function moveTvSettingsFocusSpatial(direction){
 
   // Keep the admin and updater actions in the D-pad path above language selection.
   const adminBtn=document.getElementById('settingsAdminBtn');
-  const updateBtn=document.getElementById('appUpdateBtn');
+  const updateBtn=document.getElementById('standaloneUpdateBtn')||document.getElementById('appUpdateBtn');
+  const homeBtn=document.getElementById('settingsCloseBtn');
   const canFocus=el=>!!el&&items.includes(el);
+  if(homeBtn&&canFocus(homeBtn)){
+    if(id==='settingsCloseBtn'){
+      if(direction==='down')focusTvSettingsElement(canFocus(updateBtn)?updateBtn:items[0]);
+      return;
+    }
+    const firstVisible=canFocus(updateBtn)?updateBtn:(canFocus(adminBtn)?adminBtn:items[0]);
+    if(direction==='up'&&(current===firstVisible||id==='settingsAdminBtn'&&!canFocus(updateBtn))){
+      focusTvSettingsElement(homeBtn);
+      return;
+    }
+  }
   if(langIndex>=0&&direction==='up'){
     focusTvSettingsElement(canFocus(updateBtn)?updateBtn:(canFocus(adminBtn)?adminBtn:document.getElementById('tvSettingsCloseBtn')));
     return;
   }
-  if(id==='appUpdateBtn'){
+  if(id==='standaloneUpdateBtn'||id==='appUpdateBtn'){
+    if(direction==='up'&&canFocus(homeBtn)){focusTvSettingsElement(homeBtn);return}
     if(direction==='up'&&canFocus(adminBtn)){focusTvSettingsElement(adminBtn);return}
     if(direction==='down'){focusTvSettingsElement(document.getElementById('langRuBtn'));return}
   }
   if(id==='settingsAdminBtn'){
+    if(direction==='up'&&canFocus(homeBtn)){focusTvSettingsElement(homeBtn);return}
     if(direction==='down'){focusTvSettingsElement(canFocus(updateBtn)?updateBtn:document.getElementById('langRuBtn'));return}
   }
   if(langIndex>=0){
