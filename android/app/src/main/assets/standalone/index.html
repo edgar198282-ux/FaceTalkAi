@@ -4958,18 +4958,8 @@ function fixTvSettingsSectionFocus(modal){
     modal.dataset.tvSectionFocusBound='1';
     modal.addEventListener('keydown',e=>{
       if(!modal.classList.contains('open')||!['ArrowDown','ArrowUp'].includes(e.key))return;
-      const current=document.activeElement;
-      const all=[...card.querySelectorAll('button,select,[role="button"],[role="combobox"],[tabindex]')].filter(el=>{
-        if(el.disabled||el.closest('[hidden]'))return false;
-        const box=el.getBoundingClientRect();return box.width>4&&box.height>4;
-      });
-      const idx=all.indexOf(current);
-      if(idx<0)return;
-      const next=all[idx+(e.key==='ArrowDown'?1:-1)];
-      if(!next)return;
       e.preventDefault();e.stopImmediatePropagation();
-      next.focus({preventScroll:true});
-      next.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
+      moveTvSettingsFocusSpatial(e.key==='ArrowDown'?'down':'up');
     },true);
   }
 }
@@ -10141,106 +10131,88 @@ function tvNativeOkUp(){
   endTvChannelOk();
 }
 function tvSettingsFocusables(){
-  const modal=document.getElementById('tvSettingsModal');
-  if(!modal)return [];
-  return [...modal.querySelectorAll('button,select,input[type="range"]')].filter(el=>{
-    if(el.disabled||el.offsetParent===null)return false;
+  const card=document.querySelector('#tvSettingsModal .settingsCard');
+  if(!card)return [];
+  return [...card.querySelectorAll('button,select,input[type="range"],[role="button"],[role="combobox"],[tabindex]')].filter(el=>{
+    if(el.disabled||el.closest('[hidden]'))return false;
+    const style=getComputedStyle(el);
+    if(style.display==='none'||style.visibility==='hidden')return false;
     const r=el.getBoundingClientRect();
-    return r.width>0&&r.height>0&&getComputedStyle(el).visibility!=='hidden';
+    return r.width>2&&r.height>2;
   });
 }
 function focusTvSettingsElement(el){
   if(!el)return;
   try{el.focus({preventScroll:true})}catch(_){try{el.focus()}catch(__){}}
-  try{el.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
+  const card=document.querySelector('#tvSettingsModal .settingsCard');
+  if(card){
+    const r=el.getBoundingClientRect(),cr=card.getBoundingClientRect();
+    if(r.top<cr.top||r.bottom>cr.bottom)
+      try{el.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'})}catch(_){}
+  }
 }
 function moveTvSettingsFocusSpatial(direction){
   const items=tvSettingsFocusables();
   if(!items.length)return;
-  let current=document.activeElement;
+  const home=document.getElementById('settingsCloseBtn');
+  const visible=items.filter(el=>el!==home);
+  const current=document.activeElement;
   if(!items.includes(current)){
-    focusTvSettingsElement(items[0]);
+    focusTvSettingsElement(visible[0]||home);
     return;
   }
-
-  const id=current.id||'';
+  if(current===home){
+    if(direction==='down')focusTvSettingsElement(visible[0]);
+    return;
+  }
   const langIds=['langHyBtn','langRuBtn','langEnBtn'];
-  const langIndex=langIds.indexOf(id);
-  const light=document.getElementById('appearanceLightBtn');
-  const dark=document.getElementById('appearanceDarkBtn');
-  const auto=document.getElementById('tvAutoStartBtn');
-
-  // Keep the admin and updater actions in the D-pad path above language selection.
-  const adminBtn=document.getElementById('settingsAdminBtn');
-  const updateBtn=document.getElementById('standaloneUpdateBtn')||document.getElementById('appUpdateBtn');
-  const homeBtn=document.getElementById('settingsCloseBtn');
-  const canFocus=el=>!!el&&items.includes(el);
-  if(homeBtn&&canFocus(homeBtn)){
-    if(id==='settingsCloseBtn'){
-      if(direction==='down')focusTvSettingsElement(canFocus(updateBtn)?updateBtn:items[0]);
-      return;
-    }
-    const firstVisible=canFocus(updateBtn)?updateBtn:(canFocus(adminBtn)?adminBtn:items[0]);
-    if(direction==='up'&&(current===firstVisible||id==='settingsAdminBtn'&&!canFocus(updateBtn))){
-      focusTvSettingsElement(homeBtn);
-      return;
-    }
-  }
-  if(langIndex>=0&&direction==='up'){
-    focusTvSettingsElement(canFocus(updateBtn)?updateBtn:(canFocus(adminBtn)?adminBtn:document.getElementById('tvSettingsCloseBtn')));
+  const langIndex=langIds.indexOf(current.id);
+  if(langIndex>=0&&(direction==='left'||direction==='right')){
+    const next=langIds[Math.max(0,Math.min(2,langIndex+(direction==='right'?1:-1)))];
+    const el=document.getElementById(next);
+    if(el&&items.includes(el))focusTvSettingsElement(el);
     return;
   }
-  if(id==='standaloneUpdateBtn'||id==='appUpdateBtn'){
-    if(direction==='up'&&canFocus(homeBtn)){focusTvSettingsElement(homeBtn);return}
-    if(direction==='up'&&canFocus(adminBtn)){focusTvSettingsElement(adminBtn);return}
-    if(direction==='down'){focusTvSettingsElement(document.getElementById('langRuBtn'));return}
-  }
-  if(id==='settingsAdminBtn'){
-    if(direction==='up'&&canFocus(homeBtn)){focusTvSettingsElement(homeBtn);return}
-    if(direction==='down'){focusTvSettingsElement(canFocus(updateBtn)?updateBtn:document.getElementById('langRuBtn'));return}
-  }
-  if(langIndex>=0){
-    if(direction==='left'){focusTvSettingsElement(document.getElementById(langIds[Math.max(0,langIndex-1)]));return}
-    if(direction==='right'){focusTvSettingsElement(document.getElementById(langIds[Math.min(langIds.length-1,langIndex+1)]));return}
-    if(direction==='down'){
-      focusTvSettingsElement(langIndex>=2?dark:light);
-      return;
+  if(direction==='left'||direction==='right'){
+    const a=current.getBoundingClientRect(),ax=a.left+a.width/2,ay=a.top+a.height/2;
+    let best=null,dist=Infinity;
+    for(const el of visible){
+      if(el===current)continue;
+      const r=el.getBoundingClientRect();
+      const dx=r.left+r.width/2-ax,dy=Math.abs(r.top+r.height/2-ay);
+      if((direction==='right'?dx>8:dx< -8)&&dy<Math.max(22,a.height*.8)){
+        const score=Math.abs(dx)+dy*2;
+        if(score<dist){dist=score;best=el}
+      }
     }
+    if(best)focusTvSettingsElement(best);
+    return;
   }
-
-  if(id==='appearanceLightBtn'||id==='appearanceDarkBtn'){
-    if(direction==='left'||direction==='right'){
-      focusTvSettingsElement(id==='appearanceLightBtn'?dark:light);
-      return;
-    }
-    if(direction==='up'){
-      focusTvSettingsElement(document.getElementById(id==='appearanceDarkBtn'?'langEnBtn':'langRuBtn')||document.getElementById('langHyBtn'));
-      return;
-    }
-    if(direction==='down'){
-      focusTvSettingsElement(auto);
-      return;
-    }
+  if(direction!=='up'&&direction!=='down')return;
+  const rows=[];
+  const positions=visible.map(el=>({el,r:el.getBoundingClientRect()}))
+    .sort((a,b)=>a.r.top-b.r.top||a.r.left-b.r.left);
+  for(const entry of positions){
+    const row=rows[rows.length-1];
+    if(row&&Math.abs(entry.r.top-row[0].r.top)<14)row.push(entry);
+    else rows.push([entry]);
   }
-
-  const a=current.getBoundingClientRect();
-  const ax=a.left+a.width/2,ay=a.top+a.height/2;
-  let best=null,bestScore=Infinity;
-  for(const el of items){
-    if(el===current)continue;
-    const r=el.getBoundingClientRect();
-    const x=r.left+r.width/2,y=r.top+r.height/2;
-    const dx=x-ax,dy=y-ay;
-    let valid=false,primary=0,secondary=0;
-    if(direction==='up'&&dy<-8){valid=true;primary=-dy;secondary=Math.abs(dx)}
-    else if(direction==='down'&&dy>8){valid=true;primary=dy;secondary=Math.abs(dx)}
-    else if(direction==='left'&&dx<-8){valid=true;primary=-dx;secondary=Math.abs(dy)}
-    else if(direction==='right'&&dx>8){valid=true;primary=dx;secondary=Math.abs(dy)}
-    if(!valid)continue;
-    const score=primary+secondary*1.9;
-    if(score<bestScore){bestScore=score;best=el}
+  const index=rows.findIndex(row=>row.some(x=>x.el===current));
+  if(index<0){focusTvSettingsElement(visible[0]);return}
+  const nextIndex=index+(direction==='down'?1:-1);
+  if(nextIndex<0){
+    if(home&&items.includes(home))focusTvSettingsElement(home);
+    return;
   }
-  if(best)focusTvSettingsElement(best);
+  if(nextIndex>=rows.length)return;
+  const cr=current.getBoundingClientRect(),cx=cr.left+cr.width/2;
+  let target=rows[nextIndex][0],best=Infinity;
+  for(const entry of rows[nextIndex]){
+    const x=entry.r.left+entry.r.width/2;
+    const distance=Math.abs(x-cx);
+    if(distance<best){best=distance;target=entry}
+  }
+  focusTvSettingsElement(target.el);
 }
 
 function tvNativeRemote(action){
