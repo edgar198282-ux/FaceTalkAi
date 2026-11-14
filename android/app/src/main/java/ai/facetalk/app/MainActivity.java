@@ -13,6 +13,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
+import android.content.ClipData;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -223,6 +224,7 @@ public class MainActivity extends Activity {
     private volatile boolean updateCheckRunning=false, updateDownloadRunning=false; private long lastUpdateCheckAt=0L;
     private long lastTvDpadDispatchAt=0L;
     private volatile String expectedStandaloneApkSha256="";
+    private volatile long expectedStandaloneApkSize=0L;
     private final Handler updateHandler=new Handler(Looper.getMainLooper());
     private final ScheduledExecutorService tvWatchdogExecutor=Executors.newSingleThreadScheduledExecutor();
     private volatile long lastWebHeartbeatAt=System.currentTimeMillis();
@@ -3285,8 +3287,12 @@ public class MainActivity extends Activity {
                 if(apkAsset==null)throw new IOException("APK отсутствует в релизе");
                 String digest=apkAsset.optString("digest","").toLowerCase(java.util.Locale.US);
                 if(!digest.matches("sha256:[0-9a-f]{64}"))throw new IOException("GitHub не предоставил SHA256");
-                final String target="https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-standalone-latest/AbajTV-Standalone.apk";
-                if(!target.equals(apkAsset.optString("browser_download_url","")))throw new IOException("Неверная ссылка релиза");
+                final String latestUrl="https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-standalone-latest/AbajTV-Standalone.apk";
+                if(!latestUrl.equals(apkAsset.optString("browser_download_url","")))throw new IOException("Неверная ссылка релиза");
+                final String releaseSha=release.optString("target_commitish","");
+                final String target=releaseSha.matches("[a-fA-F0-9]{40}")
+                    ?"https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-standalone-"+releaseSha+"/AbajTV-Standalone.apk"
+                    :latestUrl;
                 String currentSha=prefs.getString("standalone_local_apk_sha_"+BuildConfig.VERSION_CODE,"");
                 if(!currentSha.matches("[0-9a-f]{64}")){
                     currentSha=sha256File(new File(getApplicationInfo().sourceDir));
@@ -3303,6 +3309,7 @@ public class MainActivity extends Activity {
                 String lastDigest=prefs.getString("standalone_update_attempt_digest","");
                 if(!showResult&&digest.equals(lastDigest)&&now-lastPrompt<24L*60L*60L*1000L)return;
                 expectedStandaloneApkSha256=digest.substring(7);
+                expectedStandaloneApkSize=apkAsset.optLong("size",0L);
                 prefs.edit().putLong("standalone_update_attempt_at",now).putString("standalone_update_attempt_digest",digest).apply();
                 if(showResult)announceStandaloneUpdateStatus("downloading","Найдена новая версия · загрузка APK…");
                 runOnUiThread(()->{
@@ -3362,6 +3369,12 @@ public class MainActivity extends Activity {
                 }
                 if(total<300000L)throw new IllegalStateException("APK too small: "+total);
                 if(BuildConfig.STANDALONE_BUILD){
+                    if(expectedStandaloneApkSize>0&&total!=expectedStandaloneApkSize)
+                        throw new IllegalStateException("Размер APK не совпадает с GitHub");
+                    try(java.util.zip.ZipFile zip=new java.util.zip.ZipFile(apk)){
+                        if(zip.getEntry("AndroidManifest.xml")==null||zip.getEntry("classes.dex")==null)
+                            throw new IllegalStateException("APK неполный или повреждён");
+                    }
                     final String expected=expectedStandaloneApkSha256;
                     if(!expected.matches("[0-9a-f]{64}")||!expected.equalsIgnoreCase(sha256File(apk)))
                         throw new IllegalStateException("SHA256 обновления не совпадает с GitHub");
@@ -3397,9 +3410,13 @@ public class MainActivity extends Activity {
     }
     private void openPackageInstaller(Uri apkUri){if(apkUri==null)return;try{
         Toast.makeText(this,"Обновление скачано. Подтвердите установку новой версии Abaj TV.",Toast.LENGTH_LONG).show();
-        Intent install=new Intent(Intent.ACTION_VIEW);
+        Intent install=new Intent(Intent.ACTION_INSTALL_PACKAGE);
         install.setDataAndType(apkUri,"application/vnd.android.package-archive");
+        install.setClipData(ClipData.newRawUri("ABAJ TV update",apkUri));
         install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_ACTIVITY_NEW_TASK);
+        if(install.resolveActivity(getPackageManager())==null){
+            install.setAction(Intent.ACTION_VIEW);
+        }
         startActivity(install);
     }catch(Exception e){
         Toast.makeText(this,"APK скачан, но установщик не открылся",Toast.LENGTH_LONG).show();
