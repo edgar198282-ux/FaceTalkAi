@@ -3183,6 +3183,44 @@ let tvRenderLimit=nativeTv?120:Number.POSITIVE_INFINITY;
 const TV_RENDER_BATCH=120;
 let standaloneRenderLimit=240;
 let tvLogoObserver=null;
+const tvLogoNodeCache=new Map();
+const TV_LOGO_CACHE_LIMIT=600;
+function preserveTvChannelLogos(){
+  if(!nativeTv)return;
+  const list=document.getElementById('list');
+  if(!list)return;
+  list.querySelectorAll('.channel[data-id] img.logo').forEach(img=>{
+    if(!img.complete||img.naturalWidth<1)return;
+    const card=img.closest('.channel[data-id]');
+    const id=card&&card.dataset.id;
+    const src=img.getAttribute('src');
+    if(!id||!src)return;
+    tvLogoNodeCache.delete(id);
+    tvLogoNodeCache.set(id,{src,img});
+  });
+  while(tvLogoNodeCache.size>TV_LOGO_CACHE_LIMIT){
+    tvLogoNodeCache.delete(tvLogoNodeCache.keys().next().value);
+  }
+}
+function restoreTvChannelLogos(){
+  if(!nativeTv||!tvLogoNodeCache.size)return;
+  const list=document.getElementById('list');
+  if(!list)return;
+  list.querySelectorAll('.channel[data-id] img.logo[data-src]').forEach(img=>{
+    const id=img.closest('.channel[data-id]')?.dataset.id;
+    if(!id)return;
+    const cached=tvLogoNodeCache.get(id);
+    if(!cached||!cached.img.complete||cached.img.naturalWidth<1)return;
+    if(cached.src!==img.dataset.src&&cached.src!==img.dataset.fallbackSrc)return;
+    cached.img.classList.add('logoReady');
+    cached.img.style.display='';
+    cached.img.removeAttribute('data-src');
+    img.replaceWith(cached.img);
+    const fallback=cached.img.nextElementSibling;
+    if(fallback&&fallback.classList.contains('logoFallback'))fallback.style.display='none';
+    tvLogoNodeCache.delete(id);
+  });
+}
 function bindVisibleChannelLogos(){
   if(!nativeTv)return;
   if(tvLogoObserver){try{tvLogoObserver.disconnect()}catch(_){} tvLogoObserver=null}
@@ -6831,7 +6869,9 @@ function render(){
     const remain=filteredNow.length-standaloneRenderLimit;
     out+='<button type="button" id="standaloneMoreChannels" style="display:block;width:95%;margin:15px auto;padding:15px;border:2px solid #4cb2ea;border-radius:14px;background:#e5f4ff;color:#124e73;font-weight:800">Показать ещё 240 · осталось '+remain+'</button>';
   }
+  preserveTvChannelLogos();
   document.getElementById('list').innerHTML=out||'<div class="empty">'+esc(t.noChannels)+'</div>';
+  restoreTvChannelLogos();
   const more=document.getElementById('standaloneMoreChannels');
   if(more)more.onclick=()=>{standaloneRenderLimit+=240;render()};
   bindVisibleChannelLogos();
