@@ -6670,13 +6670,14 @@ function setTvFocus(index,scroll=true){
   const el=cards[focusIndex];
   try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(_){}}
   if(scroll){
-    try{el.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
     const content=document.getElementById('content');
     if(nativeTv&&content){
       const r=el.getBoundingClientRect(),cr=content.getBoundingClientRect();
       const topPad=72,bottomPad=96;
       if(r.bottom>cr.bottom-bottomPad)content.scrollTop+=Math.ceil((r.bottom-cr.bottom)+bottomPad);
       else if(r.top<cr.top+topPad)content.scrollTop-=Math.ceil((cr.top-r.top)+topPad);
+    }else{
+      try{el.scrollIntoView({block:'center',inline:'nearest',behavior:'auto'})}catch(_){}
     }
   }
 }
@@ -10027,6 +10028,8 @@ function tvNativeRemote(action){
   else if(action==='ok')handleTvChannelOk();
 }
 
+let tvFocusWarmTimer=null;
+let tvLastFocusedCard=null;
 document.addEventListener('focusin',e=>{
   if(!nativeTv||!tvMode)return;
   const playerCtrl=e.target&&e.target.closest?e.target.closest('#playerView .playerBottom .ctrl'):null;
@@ -10037,11 +10040,15 @@ document.addEventListener('focusin',e=>{
   const idx=cards.indexOf(card);
   if(idx>=0){
     focusIndex=idx;
-    localStorage.setItem('abaj_tv_focus_index',String(idx));
-    if(card.dataset.id)localStorage.setItem('abaj_tv_focus_channel',String(card.dataset.id));
-    const focusedChannel=channels.find(x=>String(x.id)===String(card.dataset.id));
-    if(focusedChannel)warmTvDirectConnection(focusedChannel);
-    cards.forEach((x,i)=>x.classList.toggle('focused',i===idx));
+    persistTvFocus(idx,card.dataset.id);
+    if(tvFocusWarmTimer)clearTimeout(tvFocusWarmTimer);
+    tvFocusWarmTimer=setTimeout(()=>{
+      const focusedChannel=channels.find(x=>String(x.id)===String(card.dataset.id));
+      if(focusedChannel)warmTvDirectConnection(focusedChannel);
+    },180);
+    if(tvLastFocusedCard&&tvLastFocusedCard!==card)tvLastFocusedCard.classList.remove('focused');
+    card.classList.add('focused');
+    tvLastFocusedCard=card;
     if(!tvHeaderCollapsed&&!tvHeaderOpeningTop)setTvHeaderCollapsed(true,false);
     const content=document.getElementById('content');
     if(content&&content.scrollTop<2)content.scrollTop=0;
