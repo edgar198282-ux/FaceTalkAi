@@ -3556,7 +3556,7 @@ public class MainActivity extends Activity {
                 if(event.getAction()==KeyEvent.ACTION_DOWN&&
                    (event.getRepeatCount()==0||
                     ((code!=KeyEvent.KEYCODE_DPAD_CENTER&&code!=KeyEvent.KEYCODE_ENTER)&&
-                     event.getEventTime()-lastTvDpadDispatchAt>=85L))){
+                     event.getEventTime()-lastTvDpadDispatchAt>=65L))){
                     lastTvDpadDispatchAt=event.getEventTime();
                     webView.evaluateJavascript(
                         "(function(){var key='"+launcherKey+"';"+
