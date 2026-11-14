@@ -6908,28 +6908,38 @@ function tvTopFocusables(){
     return r.width>0&&r.height>0;
   });
 }
+let tvTopRowsCache=null;
+let tvTopRowsCacheAt=0;
 function tvTopRows(){
+  const now=performance.now();
+  if(tvTopRowsCache&&now-tvTopRowsCacheAt<120&&tvTopRowsCache.every(row=>row.every(el=>el.isConnected)))return tvTopRowsCache;
   const visible=sel=>[...document.querySelectorAll(sel)].filter(el=>{
     const r=el.getBoundingClientRect();
     return r.width>0&&r.height>0;
-  }).sort((a,b)=>a.getBoundingClientRect().left-b.getBoundingClientRect().left);
-  // TV D-pad vertical order must match the rows visible on screen.
-  return [
+  }).sort((a,b)=>a.offsetLeft-b.offsetLeft);
+  tvTopRowsCache=[
     visible('.titleRow .icons .iconBtn'),
     visible('.toolbar > input, .toolbar > select'),
     visible('#countryChips .chip'),
     visible('#modeChips .chip'),
     visible('#quickCats .cat')
   ].filter(row=>row.length);
+  tvTopRowsCacheAt=now;
+  return tvTopRowsCache;
 }
 function clearTvChannelFocusVisual(){
   document.querySelectorAll('.channel.focused').forEach(x=>x.classList.remove('focused'));
 }
 function focusTvTopElement(el){
   if(!el)return;
+  if(document.activeElement===el)return;
   clearTvChannelFocusVisual();
   try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(_){}}
-  try{el.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'})}catch(_){}
+  const viewport=document.getElementById('content');
+  if(viewport){
+    const r=el.getBoundingClientRect(),v=viewport.getBoundingClientRect();
+    if(r.top<v.top||r.bottom>v.bottom)try{el.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'})}catch(_){}
+  }
 }
 function nearestTopByX(row,x){
   if(!row||!row.length)return null;
