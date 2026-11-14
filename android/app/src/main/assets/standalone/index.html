@@ -10211,21 +10211,47 @@ function tvNativeRemote(action){
       else if(action==='ok'){const el=document.activeElement;if(el&&typeof el.click==='function')el.click()}
       return;
     }
-    if(!isCinemaPlaybackOpen()&&(action==='up'||action==='down')&&!tvRailOpen()){
-      toggleTvRail(true);
-      return;
-    }
-    if(/^digit[0-9]$/.test(String(action||''))){
-      tvTuneDigit(String(action).slice(-1));
-      return;
-    }
-    if(tvRailOpen()){
+    if(!isCinemaPlaybackOpen()&&tvRailOpen()){
       if(action==='up'){moveTvRail(-1);return}
       if(action==='down'){moveTvRail(1);return}
       if(action==='left'){toggleTvRail(false);focusPlayerControl();return}
       if(action==='ok'){openTvRailFocused();return}
       return;
     }
+    if(!isCinemaPlaybackOpen()){
+      const active=document.activeElement;
+      const focusedControl=!!(active&&active.closest&&active.closest('#playerView .playerPrimaryControls .ctrl'));
+      if(action==='down'){
+        showTvPlayerUi(true);
+        if(focusedControl)focusPlayerControlSpatial('right');
+        else focusPlayerControl();
+        return;
+      }
+      if(action==='up'){
+        if(focusedControl){
+          try{active.blur()}catch(e){}
+          showTvPlayerUi(true);
+        }else showTvPlayerUi(true);
+        return;
+      }
+      if(action==='left'||action==='right'){
+        if(focusedControl){
+          showTvPlayerUi(true);
+          focusPlayerControlSpatial(action);
+        }else queueTvChannelStep(action==='left'?-1:1);
+        return;
+      }
+      if(action==='ok'){
+        showTvPlayerUi(true);
+        if(!focusedControl||!activatePlayerControl())focusPlayerControl();
+        return;
+      }
+    }
+    if(/^digit[0-9]$/.test(String(action||''))){
+      tvTuneDigit(String(action).slice(-1));
+      return;
+    }
+
     const controlsHidden=document.body.classList.contains('playerClean');
     if(controlsHidden){
       if(action==='left'){
