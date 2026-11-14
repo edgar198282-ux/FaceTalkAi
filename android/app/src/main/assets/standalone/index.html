@@ -5258,7 +5258,8 @@ function showTvPlayerUi(autoHide=true){
   if(autoHide){
     tvPlayerUiTimer=setTimeout(()=>{
       const player=document.getElementById('playerView');
-      if(player&&player.classList.contains('open')&&(!nativeTv||!tvRailOpen())){
+      if(player&&player.classList.contains('open')&&(!nativeTv||!tvRailOpen())&&
+         !(nativeTv&&document.activeElement?.closest?.('#playerView .playerBottom .ctrl'))){
         document.body.classList.add('playerClean');
       }
     },6000);
@@ -10220,7 +10221,7 @@ function tvNativeRemote(action){
     }
     if(!isCinemaPlaybackOpen()){
       const active=document.activeElement;
-      const focusedControl=!!(active&&active.closest&&active.closest('#playerView .playerPrimaryControls .ctrl'));
+      const focusedControl=!!(active&&active.closest&&active.closest('#playerView .playerBottom .ctrl'));
       if(action==='down'){
         showTvPlayerUi(true);
         if(!focusedControl)focusPlayerControl();
