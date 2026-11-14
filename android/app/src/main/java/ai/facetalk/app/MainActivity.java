@@ -221,6 +221,7 @@ public class MainActivity extends Activity {
     private SharedPreferences prefs; private boolean telegramLaunchAttempted=false; private boolean isTv=false; private long lastTvBackAt=0L;
     private long pendingApkDownloadId=-1L; private Uri pendingApkUri; private BroadcastReceiver downloadReceiver;
     private volatile boolean updateCheckRunning=false, updateDownloadRunning=false; private long lastUpdateCheckAt=0L;
+    private long lastTvDpadDispatchAt=0L;
     private volatile String expectedStandaloneApkSha256="";
     private final Handler updateHandler=new Handler(Looper.getMainLooper());
     private final ScheduledExecutorService tvWatchdogExecutor=Executors.newSingleThreadScheduledExecutor();
@@ -3552,7 +3553,11 @@ public class MainActivity extends Activity {
                     code==KeyEvent.KEYCODE_DPAD_DOWN?"ArrowDown":
                     code==KeyEvent.KEYCODE_DPAD_LEFT?"ArrowLeft":
                     code==KeyEvent.KEYCODE_DPAD_RIGHT?"ArrowRight":"Enter";
-                if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){
+                if(event.getAction()==KeyEvent.ACTION_DOWN&&
+                   (event.getRepeatCount()==0||
+                    ((code!=KeyEvent.KEYCODE_DPAD_CENTER&&code!=KeyEvent.KEYCODE_ENTER)&&
+                     event.getEventTime()-lastTvDpadDispatchAt>=85L))){
+                    lastTvDpadDispatchAt=event.getEventTime();
                     webView.evaluateJavascript(
                         "(function(){var key='"+launcherKey+"';"+
                         "if(typeof window.abajStandaloneRemoteKey==='function'&&window.abajStandaloneRemoteKey(key))return;"+
