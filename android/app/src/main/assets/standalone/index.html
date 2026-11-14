@@ -10223,8 +10223,7 @@ function tvNativeRemote(action){
       const focusedControl=!!(active&&active.closest&&active.closest('#playerView .playerPrimaryControls .ctrl'));
       if(action==='down'){
         showTvPlayerUi(true);
-        if(focusedControl)focusPlayerControlSpatial('right');
-        else focusPlayerControl();
+        if(!focusedControl)focusPlayerControl();
         return;
       }
       if(action==='up'){
