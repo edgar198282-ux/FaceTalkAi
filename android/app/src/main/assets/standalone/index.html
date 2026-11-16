@@ -6468,6 +6468,7 @@ async function load(){
       }
     }
   }catch(e){
+    window.__abajStandaloneLoading=false;
     console.error('ABAJ IPTV load',e);
     if(window.ABAJ_STANDALONE&&channels.length){
       window.__abajStandaloneLoading=false;
