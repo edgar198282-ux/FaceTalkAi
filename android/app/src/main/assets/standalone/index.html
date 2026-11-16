@@ -902,6 +902,10 @@ body:not(.nativeTv) .playerView.cinemaPlayback .playerCinemaTime{display:none!im
   }
 }
 
+/* Compact theme switch in the top header */
+.appearanceToggleBtn{width:32px;height:32px;min-width:32px;min-height:32px;font-size:18px;line-height:1;border-radius:50%;flex:0 0 32px}
+.nativeTv .appearanceToggleBtn{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;font-size:21px!important}
+@media(max-width:700px){body:not(.nativeTv) .appearanceToggleBtn{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;font-size:19px!important}}
 /* Light / dark appearance */
 body.darkMode{background:#07111b!important;color:#eaf5ff}
 body.darkMode .app{background:#08131e!important;border-color:#17293a!important}
@@ -2725,7 +2729,7 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
         </div>
       </div>
       <div class="icons">
-        
+        <button id="appearanceToggleBtn" class="iconBtn appearanceToggleBtn" type="button" onclick="toggleAppearanceMode()" title="Тёмная тема" aria-label="Включить тёмную тему">🌙</button>
         <button id="tvTopSearchBtn" class="iconBtn tvTopAction" onclick="openTvSearch()" title="Поиск" aria-label="Поиск">🔍</button>
         <button id="refreshBtn" class="iconBtn" onclick="openTvSearch()" title="Поиск каналов" aria-label="Поиск каналов">🔍</button>
         <button id="tvSettingsBtn" class="iconBtn tvTopAction" onclick="window.abajLauncherHome?.()" title="Главная ABAJ TV" aria-label="Главная ABAJ TV"><svg class="abajHomeSvg" viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.2 12 3l9 7.2V21h-6.5v-7h-5v7H3z"/></svg></button>
@@ -4798,8 +4802,18 @@ function paintTvSettings(){
   applyAppLanguage();
 }
 function applyAppearanceMode(){
-  document.body.classList.toggle('darkMode',appAppearanceMode==='dark');
-  document.documentElement.style.colorScheme=appAppearanceMode==='dark'?'dark':'light';
+  const isDark=appAppearanceMode==='dark';
+  document.body.classList.toggle('darkMode',isDark);
+  document.documentElement.style.colorScheme=isDark?'dark':'light';
+  const toggle=document.getElementById('appearanceToggleBtn');
+  if(toggle){
+    toggle.textContent=isDark?'☀️':'🌙';
+    toggle.title=isDark?'Светлая тема':'Тёмная тема';
+    toggle.setAttribute('aria-label',isDark?'Включить светлую тему':'Включить тёмную тему');
+  }
+}
+function toggleAppearanceMode(){
+  setAppearanceMode(appAppearanceMode==='dark'?'light':'dark');
 }
 function setAppearanceMode(value){
   appAppearanceMode=String(value)==='dark'?'dark':'light';
