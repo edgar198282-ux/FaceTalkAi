@@ -1,6 +1,7 @@
 (function(){
 'use strict';
 window.ABAJ_STANDALONE=true;
+window.__abajStandaloneLoading=true;
 const STORAGE='abaj_standalone_playlists';
 const key=(k)=>'abaj-standalone-'+k;
 const read=(k,def)=>{try{const v=JSON.parse(localStorage.getItem(key(k)));return v??def}catch(e){return def}};
