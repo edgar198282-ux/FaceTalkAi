@@ -3573,7 +3573,7 @@ public class MainActivity extends Activity {
                 if(event.getAction()==KeyEvent.ACTION_DOWN&&
                    (event.getRepeatCount()==0||
                     ((code!=KeyEvent.KEYCODE_DPAD_CENTER&&code!=KeyEvent.KEYCODE_ENTER)&&
-                     event.getEventTime()-lastTvDpadDispatchAt>=65L))){
+                     event.getEventTime()-lastTvDpadDispatchAt>=25L))){
                     lastTvDpadDispatchAt=event.getEventTime();
                     webView.evaluateJavascript("window.abajTvDispatchKey&&window.abajTvDispatchKey('"+launcherKey+"')",null);
                 }
