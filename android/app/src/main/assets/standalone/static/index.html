@@ -2725,7 +2725,7 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
       <button id="adultChip" class="chip adultChip" data-filter="adult" onclick="setModeFilter(this,'adult')">18+</button>
     </div>
     <div class="quickCats" id="quickCats"></div>
-    <div class="status" id="status">Загрузка каналов…</div>
+    <div class="status" id="status"></div>
   </header>
 
   <section class="cinemaScreen" id="cinemaScreen">
@@ -5901,7 +5901,7 @@ function restoreCachedChannels(){
     sel.innerHTML='<option value="">'+esc(t.all)+'</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
     buildQuickCats(groups);
     applyTvBrowseUi();
-    document.getElementById('status').textContent=t.loading;
+    document.getElementById('status').textContent='';
     render();
     return true;
   }catch(e){return false}
@@ -6090,7 +6090,7 @@ async function load(){
       }
     }
   }catch(e){
-    if(!channels.length)document.getElementById('status').textContent=(UI_TEXT[appLang]||UI_TEXT.ru).loadError;
+    if(!channels.length)document.getElementById('status').textContent='';
   }
 }
 function toggleCountryFilters(){
