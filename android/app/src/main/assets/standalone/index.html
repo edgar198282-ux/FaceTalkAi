@@ -2769,7 +2769,7 @@ body:not(.nativeTv) #playerView.open:not(.cinemaPlayback).pureFullscreen.showPur
     </div>
     <div class="quickCats" id="quickCats"></div>
     <div id="standaloneCatalogMeta" class="standaloneCatalogMeta" role="status" aria-live="polite" style="display:none"></div>
-    <div class="status" id="status">Загрузка каналов…</div>
+    <div class="status" id="status"></div>
   </header>
 
   <section class="cinemaScreen" id="cinemaScreen">
@@ -6016,7 +6016,7 @@ function restoreCachedChannels(){
     sel.innerHTML='<option value="">'+esc(t.all)+'</option>'+groups.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join('');
     buildQuickCats(groups);
     applyTvBrowseUi();
-    document.getElementById('status').textContent=t.loading;
+    document.getElementById('status').textContent='';
     render();
     return true;
   }catch(e){return false}
@@ -6888,7 +6888,7 @@ function render(){
     out+='<button type="button" id="standaloneMoreChannels" style="display:block;width:95%;margin:15px auto;padding:15px;border:2px solid #4cb2ea;border-radius:14px;background:#e5f4ff;color:#124e73;font-weight:800">Показать ещё 240 · осталось '+remain+'</button>';
   }
   preserveTvChannelLogos();
-  document.getElementById('list').innerHTML=out||'<div class="empty">'+esc(window.ABAJ_STANDALONE&&window.__abajStandaloneLoading?t.loading:t.noChannels)+'</div>';
+  document.getElementById('list').innerHTML=out||(window.ABAJ_STANDALONE&&window.__abajStandaloneLoading?'':'<div class="empty">'+esc(t.noChannels)+'</div>');
   restoreTvChannelLogos();
   const more=document.getElementById('standaloneMoreChannels');
   if(more)more.onclick=()=>{standaloneRenderLimit+=240;render()};
