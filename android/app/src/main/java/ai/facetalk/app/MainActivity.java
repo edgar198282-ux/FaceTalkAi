@@ -3249,6 +3249,34 @@ public class MainActivity extends Activity {
             try{if(webView!=null)webView.evaluateJavascript(code,null);}catch(Exception ignored){}
         });
     }
+    private String fetchStandaloneReleaseChecksum(String checksumUrl) throws Exception {
+        HttpURLConnection connection=null;
+        try{
+            connection=(HttpURLConnection)new URL(checksumUrl).openConnection();
+            connection.setConnectTimeout(12000);
+            connection.setReadTimeout(15000);
+            connection.setInstanceFollowRedirects(true);
+            connection.setRequestProperty("User-Agent","ABAJ-TV-Standalone/"+BuildConfig.VERSION_NAME);
+            connection.setRequestProperty("Cache-Control","no-cache");
+            int status=connection.getResponseCode();
+            if(status!=200)throw new IOException("GitHub checksum HTTP "+status);
+            StringBuilder body=new StringBuilder();
+            try(BufferedReader reader=new BufferedReader(new InputStreamReader(connection.getInputStream(),"UTF-8"))){
+                String line;
+                while((line=reader.readLine())!=null&&body.length()<10000){
+                    String trimmed=line.trim();
+                    if(trimmed.matches("(?i)[0-9a-f]{64}\\s+\\*?AbajTV-Standalone\\.apk")){
+                        return trimmed.split("\\s+")[0].toLowerCase(java.util.Locale.US);
+                    }
+                    body.append(line).append('\\n');
+                }
+            }
+            throw new IOException("SHA256SUMS.txt не содержит контрольную сумму APK");
+        }finally{
+            if(connection!=null)connection.disconnect();
+        }
+    }
+
     private void checkStandaloneUpdate(boolean showResult){
         if(updateCheckRunning||updateDownloadRunning){
             if(showResult)announceStandaloneUpdateStatus("busy","Проверка или загрузка уже выполняется");
@@ -3260,45 +3288,62 @@ public class MainActivity extends Activity {
         updateCheckRunning=true;
         if(showResult)announceStandaloneUpdateStatus("checking","Проверяю обновление GitHub…");
         new Thread(()->{
-            HttpURLConnection c=null;
+            final String latestUrl="https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-standalone-latest/AbajTV-Standalone.apk";
+            final String checksumUrl="https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-standalone-latest/SHA256SUMS.txt";
+            String digest="";
+            String target=latestUrl;
+            long assetSize=0L;
             try{
-                URL u=new URL("https://api.github.com/repos/edgar198282-ux/FaceTalkAi/releases/tags/abajtv-standalone-latest");
-                c=(HttpURLConnection)u.openConnection();
-                c.setConnectTimeout(12000);
-                c.setReadTimeout(15000);
-                c.setRequestProperty("Accept","application/vnd.github+json");
-                c.setRequestProperty("User-Agent","ABAJ-TV-Standalone/"+BuildConfig.VERSION_NAME);
-                c.setRequestProperty("Cache-Control","no-cache");
-                if(c.getResponseCode()!=200)throw new IOException("GitHub HTTP "+c.getResponseCode());
-                StringBuilder body=new StringBuilder();
-                try(BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream()))){
-                    String line;
-                    while((line=br.readLine())!=null&&body.length()<100000)body.append(line);
-                }
-                JSONObject release=new JSONObject(body.toString());
-                org.json.JSONArray assets=release.optJSONArray("assets");
-                JSONObject apkAsset=null;
-                if(assets!=null)for(int i=0;i<assets.length();i++){
-                    JSONObject item=assets.optJSONObject(i);
-                    if(item!=null&&"AbajTV-Standalone.apk".equals(item.optString("name",""))){
-                        apkAsset=item;break;
+                HttpURLConnection api=null;
+                try{
+                    URL url=new URL("https://api.github.com/repos/edgar198282-ux/FaceTalkAi/releases/tags/abajtv-standalone-latest");
+                    api=(HttpURLConnection)url.openConnection();
+                    api.setConnectTimeout(10000);
+                    api.setReadTimeout(12000);
+                    api.setRequestProperty("Accept","application/vnd.github+json");
+                    api.setRequestProperty("User-Agent","ABAJ-TV-Standalone/"+BuildConfig.VERSION_NAME);
+                    api.setRequestProperty("Cache-Control","no-cache");
+                    int status=api.getResponseCode();
+                    if(status!=200)throw new IOException("GitHub API HTTP "+status);
+                    StringBuilder body=new StringBuilder();
+                    try(BufferedReader reader=new BufferedReader(new InputStreamReader(api.getInputStream(),"UTF-8"))){
+                        String line;
+                        while((line=reader.readLine())!=null&&body.length()<100000)body.append(line);
                     }
+                    JSONObject release=new JSONObject(body.toString());
+                    org.json.JSONArray assets=release.optJSONArray("assets");
+                    JSONObject apkAsset=null;
+                    if(assets!=null)for(int i=0;i<assets.length();i++){
+                        JSONObject item=assets.optJSONObject(i);
+                        if(item!=null&&"AbajTV-Standalone.apk".equals(item.optString("name",""))){
+                            apkAsset=item;
+                            break;
+                        }
+                    }
+                    if(apkAsset==null)throw new IOException("APK отсутствует в релизе");
+                    String apiDigest=apkAsset.optString("digest","").toLowerCase(java.util.Locale.US);
+                    if(!apiDigest.matches("sha256:[0-9a-f]{64}"))throw new IOException("GitHub API не предоставил SHA256");
+                    if(!latestUrl.equals(apkAsset.optString("browser_download_url","")))throw new IOException("Неверная ссылка APK");
+                    digest=apiDigest.substring(7);
+                    assetSize=apkAsset.optLong("size",0L);
+                    String releaseSha=release.optString("target_commitish","");
+                    if(releaseSha.matches("[a-fA-F0-9]{40}")){
+                        target="https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-standalone-"+releaseSha+"/AbajTV-Standalone.apk";
+                    }
+                }catch(Exception apiError){
+                    Log.w("AbajStandaloneUpdate","GitHub API недоступен, использую SHA256SUMS.txt",apiError);
+                    digest=fetchStandaloneReleaseChecksum(checksumUrl);
+                    assetSize=0L;
+                    target=latestUrl;
+                }finally{
+                    if(api!=null)api.disconnect();
                 }
-                if(apkAsset==null)throw new IOException("APK отсутствует в релизе");
-                String digest=apkAsset.optString("digest","").toLowerCase(java.util.Locale.US);
-                if(!digest.matches("sha256:[0-9a-f]{64}"))throw new IOException("GitHub не предоставил SHA256");
-                final String latestUrl="https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-standalone-latest/AbajTV-Standalone.apk";
-                if(!latestUrl.equals(apkAsset.optString("browser_download_url","")))throw new IOException("Неверная ссылка релиза");
-                final String releaseSha=release.optString("target_commitish","");
-                final String target=releaseSha.matches("[a-fA-F0-9]{40}")
-                    ?"https://github.com/edgar198282-ux/FaceTalkAi/releases/download/abajtv-standalone-"+releaseSha+"/AbajTV-Standalone.apk"
-                    :latestUrl;
                 String currentSha=prefs.getString("standalone_local_apk_sha_"+BuildConfig.VERSION_CODE,"");
                 if(!currentSha.matches("[0-9a-f]{64}")){
                     currentSha=sha256File(new File(getApplicationInfo().sourceDir));
                     prefs.edit().putString("standalone_local_apk_sha_"+BuildConfig.VERSION_CODE,currentSha).apply();
                 }
-                if(digest.substring(7).equalsIgnoreCase(currentSha)){
+                if(digest.equalsIgnoreCase(currentSha)){
                     if(showResult){
                         announceStandaloneUpdateStatus("latest","Установлена последняя версия ABAJ TV");
                         runOnUiThread(()->Toast.makeText(this,"ABAJ TV уже обновлён",Toast.LENGTH_LONG).show());
@@ -3308,28 +3353,29 @@ public class MainActivity extends Activity {
                 long lastPrompt=prefs.getLong("standalone_update_attempt_at",0L);
                 String lastDigest=prefs.getString("standalone_update_attempt_digest","");
                 if(!showResult&&digest.equals(lastDigest)&&now-lastPrompt<24L*60L*60L*1000L)return;
-                expectedStandaloneApkSha256=digest.substring(7);
-                expectedStandaloneApkSize=apkAsset.optLong("size",0L);
+                expectedStandaloneApkSha256=digest;
+                expectedStandaloneApkSize=assetSize;
                 prefs.edit().putLong("standalone_update_attempt_at",now).putString("standalone_update_attempt_digest",digest).apply();
                 if(showResult)announceStandaloneUpdateStatus("downloading","Найдена новая версия · загрузка APK…");
+                final String downloadUrl=target;
                 runOnUiThread(()->{
                     if(!isFinishing()&&!updateDownloadRunning){
                         if(activityResumed)Toast.makeText(this,"Найдена новая ABAJ TV. Загружаю APK…",Toast.LENGTH_LONG).show();
-                        downloadAndInstallApk(target);
+                        downloadAndInstallApk(downloadUrl);
                     }
                 });
             }catch(Exception ex){
                 Log.w("AbajStandaloneUpdate","Update check failed",ex);
                 if(showResult){
-                    announceStandaloneUpdateStatus("error","Ошибка проверки GitHub · повторить");
-                    runOnUiThread(()->Toast.makeText(this,"Не удалось проверить обновления GitHub",Toast.LENGTH_LONG).show());
+                    announceStandaloneUpdateStatus("error","GitHub недоступен · повторить");
+                    runOnUiThread(()->Toast.makeText(this,"Не удалось получить обновление GitHub",Toast.LENGTH_LONG).show());
                 }
             }finally{
                 updateCheckRunning=false;
-                if(c!=null)c.disconnect();
             }
         },"abaj-standalone-update").start();
     }
+
     private void checkForAppUpdate(boolean force,boolean showResult){if(BuildConfig.STANDALONE_BUILD){checkStandaloneUpdate(showResult);return;} String b=baseUrl(); if(b.isEmpty()||updateCheckRunning||updateDownloadRunning)return; long n=System.currentTimeMillis(); if(!force&&n-lastUpdateCheckAt<60000L)return; lastUpdateCheckAt=n;updateCheckRunning=true; new Thread(()->{HttpURLConnection c=null;try{URL u=new URL(b+"/api/app-release?ts="+System.currentTimeMillis());c=(HttpURLConnection)u.openConnection();c.setConnectTimeout(10000);c.setReadTimeout(10000);c.setUseCaches(false);c.setRequestProperty("Cache-Control","no-cache");int http=c.getResponseCode();if(http!=200)throw new IllegalStateException("HTTP "+http);BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream()));StringBuilder sb=new StringBuilder();String line;while((line=br.readLine())!=null)sb.append(line);br.close();JSONObject j=new JSONObject(sb.toString());boolean available=j.optBoolean("available",false);int latest=j.optInt("version_code",0);String download=j.optString("download_url",""); if(!available||latest<=0||download.isEmpty()){if(showResult)runOnUiThread(()->Toast.makeText(this,"Новая APK ещё не опубликована на сервер обновлений",Toast.LENGTH_LONG).show());return;} if(latest<=BuildConfig.VERSION_CODE){if(showResult)runOnUiThread(()->Toast.makeText(this,"Установлена последняя версия",Toast.LENGTH_LONG).show());return;} if(!showResult){
     long lastAt=prefs.getLong("last_auto_update_at",0L);
     long minInterval=isTv?15L*60L*1000L:24L*60L*60L*1000L;
