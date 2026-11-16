@@ -2710,7 +2710,7 @@ public class MainActivity extends Activity {
             true
         );
         nativeProbeView.setPlayer(nativeProbePlayer);
-        nativeProbePlayer.setVolume(nativeAdMuted?0f:1f);
+        nativeProbePlayer.setVolume(0f);
         nativeProbePlayer.addListener(new Player.Listener(){
             @Override public void onRenderedFirstFrame(){
                 nativeCinemaEverReady=true;
@@ -2719,6 +2719,7 @@ public class MainActivity extends Activity {
                 long elapsed=Math.max(0L,System.currentTimeMillis()-started);
                 Log.i("AbajTVNativeProbe","first_frame_ms="+elapsed+" url="+nativeProbeUrl);
                 nativeProbeStartedAt=0L;
+                try{if(nativeProbePlayer!=null)nativeProbePlayer.setVolume(nativeAdMuted?0f:1f);}catch(Exception ignored){}
                 if(webView!=null){
                     final boolean hasAudio=nativeProbeHasUsableAudio();
                     webView.evaluateJavascript(
@@ -3563,44 +3564,28 @@ public class MainActivity extends Activity {
                 }
                 return true;
             }
-            if(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER||
-               code==KeyEvent.KEYCODE_DPAD_UP||code==KeyEvent.KEYCODE_DPAD_DOWN||
-               code==KeyEvent.KEYCODE_DPAD_LEFT||code==KeyEvent.KEYCODE_DPAD_RIGHT){
-                String launcherKey=code==KeyEvent.KEYCODE_DPAD_UP?"ArrowUp":
-                    code==KeyEvent.KEYCODE_DPAD_DOWN?"ArrowDown":
-                    code==KeyEvent.KEYCODE_DPAD_LEFT?"ArrowLeft":
-                    code==KeyEvent.KEYCODE_DPAD_RIGHT?"ArrowRight":"Enter";
-                if(event.getAction()==KeyEvent.ACTION_DOWN&&
-                   (event.getRepeatCount()==0||
-                    ((code!=KeyEvent.KEYCODE_DPAD_CENTER&&code!=KeyEvent.KEYCODE_ENTER)&&
-                     event.getEventTime()-lastTvDpadDispatchAt>=65L))){
-                    lastTvDpadDispatchAt=event.getEventTime();
-                    webView.evaluateJavascript("window.abajTvDispatchKey&&window.abajTvDispatchKey('"+launcherKey+"')",null);
-                }
-                if(event.getAction()==KeyEvent.ACTION_UP&&(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER)){
+            if(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER){
+                if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){
+                    webView.evaluateJavascript(
+                        "if(typeof tvNativeOkDown==='function')tvNativeOkDown();else if(typeof tvNativeRemote==='function')tvNativeRemote('ok')",
+                        null
+                    );
+                }else if(event.getAction()==KeyEvent.ACTION_UP){
                     webView.evaluateJavascript("if(typeof tvNativeOkUp==='function')tvNativeOkUp()",null);
                 }
                 return true;
             }
-            if(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER){
-                if(event.getAction()==KeyEvent.ACTION_DOWN){
-                    if(event.getRepeatCount()==0){
-                        webView.evaluateJavascript(
-                            "(function(){var p=document.getElementById('playerView');"+
-                            "if(p&&p.classList.contains('open')&&typeof tvNativeRemote==='function'){tvNativeRemote('ok');return;}"+
-                            "if(typeof tvNativeOkDown==='function')tvNativeOkDown();else if(typeof tvNativeRemote==='function')tvNativeRemote('ok');})()",
-                            null
-                        );
-                    }
-                    return true;
+            if(code==KeyEvent.KEYCODE_DPAD_UP||code==KeyEvent.KEYCODE_DPAD_DOWN||
+               code==KeyEvent.KEYCODE_DPAD_LEFT||code==KeyEvent.KEYCODE_DPAD_RIGHT){
+                if(event.getAction()==KeyEvent.ACTION_DOWN&&
+                   (event.getRepeatCount()==0||event.getEventTime()-lastTvDpadDispatchAt>=45L)){
+                    lastTvDpadDispatchAt=event.getEventTime();
+                    String action=code==KeyEvent.KEYCODE_DPAD_UP?"up":
+                        code==KeyEvent.KEYCODE_DPAD_DOWN?"down":
+                        code==KeyEvent.KEYCODE_DPAD_LEFT?"left":"right";
+                    webView.evaluateJavascript("if(typeof tvNativeRemote==='function')tvNativeRemote('"+action+"')",null);
                 }
-                if(event.getAction()==KeyEvent.ACTION_UP){
-                    webView.evaluateJavascript(
-                        "if(typeof tvNativeOkUp==='function')tvNativeOkUp()",
-                        null
-                    );
-                    return true;
-                }
+                return true;
             }
             if(event.getAction()==KeyEvent.ACTION_DOWN){
                 if(code==KeyEvent.KEYCODE_BACK){
