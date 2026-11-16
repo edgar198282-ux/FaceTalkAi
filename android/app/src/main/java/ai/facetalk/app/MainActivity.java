@@ -3268,7 +3268,7 @@ public class MainActivity extends Activity {
                     if(trimmed.matches("(?i)[0-9a-f]{64}\\s+\\*?AbajTV-Standalone\\.apk")){
                         return trimmed.split("\\s+")[0].toLowerCase(java.util.Locale.US);
                     }
-                    body.append(line).append('\\n');
+                    body.append(line).append('\n');
                 }
             }
             throw new IOException("SHA256SUMS.txt не содержит контрольную сумму APK");
