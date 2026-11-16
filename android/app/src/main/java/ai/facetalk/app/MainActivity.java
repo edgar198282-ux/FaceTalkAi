@@ -2786,6 +2786,7 @@ public class MainActivity extends Activity {
             nativeAdFrameEpoch++;
             nativeProbeUrl=url;
             nativeProbeStartedAt=System.currentTimeMillis();
+            nativeProbePlayer.setVolume(0f);
             nativeProbePlayer.setMediaItem(MediaItem.fromUri(Uri.parse(url)),true);
             nativeProbePlayer.prepare();
             nativeProbePlayer.play();
@@ -3590,20 +3591,6 @@ public class MainActivity extends Activity {
             if(event.getAction()==KeyEvent.ACTION_DOWN){
                 if(code==KeyEvent.KEYCODE_BACK){
                     onBackPressed();
-                    return true;
-                }
-                if(code==KeyEvent.KEYCODE_DPAD_UP||code==KeyEvent.KEYCODE_DPAD_DOWN||code==KeyEvent.KEYCODE_DPAD_LEFT||code==KeyEvent.KEYCODE_DPAD_RIGHT){
-                    String action="";
-                    if(code==KeyEvent.KEYCODE_DPAD_UP)action="up";
-                    else if(code==KeyEvent.KEYCODE_DPAD_DOWN)action="down";
-                    else if(code==KeyEvent.KEYCODE_DPAD_LEFT)action="left";
-                    else action="right";
-                    if(code==KeyEvent.KEYCODE_DPAD_LEFT||code==KeyEvent.KEYCODE_DPAD_RIGHT){
-                        long now=System.currentTimeMillis();
-                        if(now-lastTvChannelKeyAt<65L)return true;
-                        lastTvChannelKeyAt=now;
-                    }
-                    webView.evaluateJavascript("if(typeof tvNativeRemote==='function')tvNativeRemote('"+action+"')",null);
                     return true;
                 }
             if(code>=KeyEvent.KEYCODE_0&&code<=KeyEvent.KEYCODE_9){
