@@ -3321,8 +3321,12 @@ public class MainActivity extends Activity {
             }catch(Exception ex){
                 Log.w("AbajStandaloneUpdate","Update check failed",ex);
                 if(showResult){
-                    announceStandaloneUpdateStatus("error","Ошибка проверки GitHub · повторить");
-                    runOnUiThread(()->Toast.makeText(this,"Не удалось проверить обновления GitHub",Toast.LENGTH_LONG).show());
+                    String detail=ex.getClass().getSimpleName();
+                    if(ex.getMessage()!=null&&!ex.getMessage().trim().isEmpty())detail+=": "+ex.getMessage().trim();
+                    if(detail.length()>150)detail=detail.substring(0,150);
+                    final String errorMessage="Ошибка GitHub · "+detail;
+                    announceStandaloneUpdateStatus("error",errorMessage);
+                    runOnUiThread(()->Toast.makeText(this,errorMessage,Toast.LENGTH_LONG).show());
                 }
             }finally{
                 updateCheckRunning=false;
