@@ -3265,7 +3265,7 @@ public class MainActivity extends Activity {
                 String line;
                 while((line=reader.readLine())!=null&&body.length()<10000){
                     String trimmed=line.trim();
-                    if(trimmed.matches("(?i)[0-9a-f]{64}\\s+\\*?AbajTV-Standalone\\.apk")){
+                    if(trimmed.matches("(?i)[0-9a-f]{64}\\s+\\*?(?:.*/)?AbajTV-Standalone\\.apk")){
                         return trimmed.split("\\s+")[0].toLowerCase(java.util.Locale.US);
                     }
                     body.append(line).append('\n');
