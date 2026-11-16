@@ -3567,24 +3567,35 @@ public class MainActivity extends Activity {
             }
             if(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER){
                 if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){
+                    webView.requestFocus();
                     webView.evaluateJavascript(
-                        "if(typeof tvNativeOkDown==='function')tvNativeOkDown();else if(typeof tvNativeRemote==='function')tvNativeRemote('ok')",
+                        "(function(){try{window.focus();if(typeof tvNativeOkDown==='function'&&typeof nativeTv!=='undefined'&&nativeTv)tvNativeOkDown();else document.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',keyCode:13,which:13,bubbles:true}))}catch(e){console.error('TV remote OK',e)}})()",
                         null
                     );
                 }else if(event.getAction()==KeyEvent.ACTION_UP){
-                    webView.evaluateJavascript("if(typeof tvNativeOkUp==='function')tvNativeOkUp()",null);
+                    webView.evaluateJavascript(
+                        "(function(){try{if(typeof tvNativeOkUp==='function'&&typeof nativeTv!=='undefined'&&nativeTv)tvNativeOkUp();document.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',keyCode:13,which:13,bubbles:true}))}catch(e){}})()",
+                        null
+                    );
                 }
                 return true;
             }
             if(code==KeyEvent.KEYCODE_DPAD_UP||code==KeyEvent.KEYCODE_DPAD_DOWN||
                code==KeyEvent.KEYCODE_DPAD_LEFT||code==KeyEvent.KEYCODE_DPAD_RIGHT){
                 if(event.getAction()==KeyEvent.ACTION_DOWN&&
-                   (event.getRepeatCount()==0||event.getEventTime()-lastTvDpadDispatchAt>=45L)){
+                   (event.getRepeatCount()==0||event.getEventTime()-lastTvDpadDispatchAt>=65L)){
                     lastTvDpadDispatchAt=event.getEventTime();
                     String action=code==KeyEvent.KEYCODE_DPAD_UP?"up":
                         code==KeyEvent.KEYCODE_DPAD_DOWN?"down":
                         code==KeyEvent.KEYCODE_DPAD_LEFT?"left":"right";
-                    webView.evaluateJavascript("if(typeof tvNativeRemote==='function')tvNativeRemote('"+action+"')",null);
+                    String key=code==KeyEvent.KEYCODE_DPAD_UP?"ArrowUp":
+                        code==KeyEvent.KEYCODE_DPAD_DOWN?"ArrowDown":
+                        code==KeyEvent.KEYCODE_DPAD_LEFT?"ArrowLeft":"ArrowRight";
+                    webView.requestFocus();
+                    webView.evaluateJavascript(
+                        "(function(){try{window.focus();if(typeof tvNativeRemote==='function'&&typeof nativeTv!=='undefined'&&nativeTv)tvNativeRemote('"+action+"');else document.dispatchEvent(new KeyboardEvent('keydown',{key:'"+key+"',keyCode:"+ (code==KeyEvent.KEYCODE_DPAD_UP?"38":code==KeyEvent.KEYCODE_DPAD_DOWN?"40":code==KeyEvent.KEYCODE_DPAD_LEFT?"37":"39") +",which:"+ (code==KeyEvent.KEYCODE_DPAD_UP?"38":code==KeyEvent.KEYCODE_DPAD_DOWN?"40":code==KeyEvent.KEYCODE_DPAD_LEFT?"37":"39") +",bubbles:true}))}catch(e){console.error('TV remote "+action+"',e)}})()",
+                        null
+                    );
                 }
                 return true;
             }
