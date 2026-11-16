@@ -219,11 +219,11 @@ function refreshBuiltinIptv(force=false){
     }catch(e){}
     finally{
      done++;
-     if(ok>0&&(partialAt===0||done-partialAt>=6)){partialAt=done;iptvPublish(data,false,ok)}
+     if(ok>0&&(partialAt===0||done-partialAt>=18)){partialAt=done;iptvPublish(data,false,ok)}
     }
    }
   };
-  await Promise.all(Array.from({length:6},worker));
+  await Promise.all(Array.from({length:3},worker));
   if(ok)iptvPublish(data,true,ok);
   else builtinIptvLastAttempt=Date.now()-14*60*1000;
  };
