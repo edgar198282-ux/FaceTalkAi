@@ -7040,13 +7040,19 @@ function bindTvFocus(){
     try{el.focus({preventScroll:true})}catch(e){try{el.focus()}catch(_){}}
   }
 }
+let tvGridColumnsCacheWidth=-1;
+let tvGridColumnsCacheValue=4;
 function tvGridColumns(){
   const list=document.getElementById('list');
   if(!list)return 4;
+  const width=list.clientWidth;
+  if(width===tvGridColumnsCacheWidth)return tvGridColumnsCacheValue;
+  tvGridColumnsCacheWidth=width;
   try{
     const cols=getComputedStyle(list).gridTemplateColumns.split(' ').filter(Boolean).length;
-    return Math.max(1,cols||4);
-  }catch(e){return 4}
+    tvGridColumnsCacheValue=Math.max(1,cols||4);
+  }catch(e){tvGridColumnsCacheValue=4}
+  return tvGridColumnsCacheValue;
 }
 function setTvFocus(index,scroll=true){
   const cards=[...document.querySelectorAll('.channel')];
@@ -7088,24 +7094,42 @@ function moveFocusDirection(direction){
   if(!currentEl){setTvFocus(0);return}
   if(nativeTv&&tvHeaderCollapsed){
     const cols=tvGridColumns();
-    if(direction==='left'&&focusIndex%cols>0){setTvFocus(focusIndex-1);return}
-    if(direction==='right'&&focusIndex%cols<cols-1&&focusIndex+1<cards.length){setTvFocus(focusIndex+1);return}
-    if(direction==='down'&&focusIndex+cols<cards.length){setTvFocus(focusIndex+cols);return}
-    if(direction==='down'&&cards.length<filteredNow.length){
-      const target=Math.min(filteredNow.length-1,focusIndex+cols);
-      tvRenderLimit=Math.min(filteredNow.length,tvRenderLimit+TV_RENDER_BATCH);
-      render();
-      requestAnimationFrame(()=>setTvFocus(target,true));
+    if(direction==='left'){
+      if(focusIndex%cols>0)setTvFocus(focusIndex-1);
       return;
     }
-    if(direction==='right'&&focusIndex===cards.length-1&&cards.length<filteredNow.length){
-      const target=focusIndex+1;
-      tvRenderLimit=Math.min(filteredNow.length,tvRenderLimit+TV_RENDER_BATCH);
-      render();
-      requestAnimationFrame(()=>setTvFocus(target,true));
+    if(direction==='right'){
+      if(focusIndex%cols<cols-1&&focusIndex+1<cards.length)setTvFocus(focusIndex+1);
       return;
     }
-    if(direction==='up'&&focusIndex>=cols){setTvFocus(focusIndex-cols);return}
+    if(direction==='down'){
+      if(focusIndex+cols<cards.length){setTvFocus(focusIndex+cols);return}
+      if(cards.length<filteredNow.length){
+        const target=Math.min(filteredNow.length-1,focusIndex+cols);
+        tvRenderLimit=Math.min(filteredNow.length,tvRenderLimit+TV_RENDER_BATCH);
+        render();
+        requestAnimationFrame(()=>setTvFocus(target,true));
+      }
+      return;
+    }
+    if(direction==='up'){
+      if(focusIndex>=cols){setTvFocus(focusIndex-cols);return}
+      const r=currentEl.getBoundingClientRect();
+      const x=r.left+r.width/2;
+      tvHeaderOpeningTop=true;
+      try{document.activeElement?.blur()}catch(_){}
+      setTvHeaderCollapsed(false,false);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        const rows=tvTopRows();
+        if(!rows.length){tvHeaderOpeningTop=false;return}
+        const bottomRow=rows[rows.length-1];
+        focusTvTopElement(nearestTopByX(bottomRow,x)||bottomRow[0]);
+        const content=document.getElementById('content');
+        if(content)content.scrollTop=0;
+        setTimeout(()=>{tvHeaderOpeningTop=false},180);
+      }));
+      return;
+    }
   }
   const a=currentEl.getBoundingClientRect();
   const ax=a.left+a.width/2, ay=a.top+a.height/2;
@@ -8401,7 +8425,7 @@ function armFirstFrameTimer(ch,preferBackup,token){
   const teamTvFast=tvIsTeamCloudChannel(ch);
   // Confirmed TeamTV CDN streams start much faster on the same ISP, so fail
   // over sooner there without making the timeout aggressive for public feeds.
-  const waitMs=teamTvFast?(usingHls?5000:4500):(tvForceSystemForChannel(ch)?18000:(usingHls?12000:10000));
+  const waitMs=teamTvFast?(usingHls?4500:4000):(tvForceSystemForChannel(ch)?14000:(usingHls?8500:9000));
   firstFrameTimer=setTimeout(()=>{
     firstFrameTimer=null;
     if(token!==streamAttemptToken||!current||current.id!==ch.id)return;
