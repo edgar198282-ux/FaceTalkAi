@@ -1,10 +1,10 @@
 {
-  "updated_at_utc": "2026-11-19T07:24:13+00:00",
-  "unique_channels": 15287,
+  "updated_at_utc": "2026-11-19T20:36:46+00:00",
+  "unique_channels": 15286,
   "official_channels": 24,
   "public_sources": 86,
-  "successful_sources": 84,
-  "failed_sources": 2,
+  "successful_sources": 85,
+  "failed_sources": 1,
   "sources": [
     {
       "country": "RU",
@@ -173,6 +173,12 @@
       "url": "https://iptv-org.github.io/iptv/subdivisions/ru-sta.m3u",
       "parsed": 2,
       "new": 1
+    },
+    {
+      "country": "RU",
+      "url": "https://iptv-org.github.io/iptv/subdivisions/ru-tom.m3u",
+      "parsed": 1,
+      "new": 0
     },
     {
       "country": "RU",
@@ -388,12 +394,12 @@
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/best.m3u",
       "parsed": 10451,
-      "new": 3759
+      "new": 3760
     },
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/online.m3u",
-      "parsed": 8534,
+      "parsed": 8532,
       "new": 0
     },
     {
@@ -406,7 +412,7 @@
       "country": "RU",
       "url": "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv.m3u",
       "parsed": 842,
-      "new": 414
+      "new": 415
     },
     {
       "country": "RU",
@@ -418,7 +424,7 @@
       "country": "RU",
       "url": "https://iptv-org.github.io/iptv/languages/rus.m3u",
       "parsed": 646,
-      "new": 35
+      "new": 38
     },
     {
       "country": "AM",
@@ -459,14 +465,14 @@
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/substanc1/iptv-russia/main/streams/ru.m3u",
-      "parsed": 686,
-      "new": 206
+      "parsed": 687,
+      "new": 199
     },
     {
       "country": "RU",
       "url": "https://ngrch.github.io/iptv/ru.m3u",
       "parsed": 978,
-      "new": 726
+      "new": 727
     },
     {
       "country": "RU",
@@ -512,11 +518,6 @@
     }
   ],
   "failures": [
-    {
-      "country": "RU",
-      "url": "https://iptv-org.github.io/iptv/subdivisions/ru-tom.m3u",
-      "error": "HTTPError: HTTP Error 503: Service Unavailable"
-    },
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/smolnp/IPTVru/refs/heads/gh-pages/IPTVstable.m3u8",
