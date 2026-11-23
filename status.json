@@ -1,6 +1,6 @@
 {
-  "updated_at_utc": "2026-11-22T19:39:08+00:00",
-  "unique_channels": 15301,
+  "updated_at_utc": "2026-11-23T07:37:23+00:00",
+  "unique_channels": 15312,
   "official_channels": 24,
   "public_sources": 86,
   "successful_sources": 85,
@@ -321,14 +321,14 @@
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/general.m3u",
-      "parsed": 2809,
-      "new": 2757
+      "parsed": 2824,
+      "new": 2772
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/movies.m3u",
-      "parsed": 782,
-      "new": 779
+      "parsed": 771,
+      "new": 768
     },
     {
       "country": "HQ",
@@ -339,20 +339,20 @@
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/kids.m3u",
-      "parsed": 457,
-      "new": 450
+      "parsed": 453,
+      "new": 446
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/education.m3u",
-      "parsed": 209,
-      "new": 197
+      "parsed": 208,
+      "new": 196
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/science.m3u",
-      "parsed": 25,
-      "new": 19
+      "parsed": 24,
+      "new": 18
     },
     {
       "country": "HQ",
@@ -363,56 +363,56 @@
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/news.m3u",
-      "parsed": 1065,
-      "new": 943
+      "parsed": 1067,
+      "new": 949
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/sports.m3u",
-      "parsed": 537,
-      "new": 504
+      "parsed": 526,
+      "new": 493
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/documentary.m3u",
-      "parsed": 251,
-      "new": 227
+      "parsed": 249,
+      "new": 225
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/music.m3u",
       "parsed": 781,
-      "new": 714
+      "new": 715
     },
     {
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/entertainment.m3u",
-      "parsed": 897,
-      "new": 803
+      "parsed": 900,
+      "new": 807
     },
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/best.m3u",
-      "parsed": 10475,
-      "new": 3789
+      "parsed": 10424,
+      "new": 3815
     },
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/online.m3u",
-      "parsed": 8569,
+      "parsed": 8548,
       "new": 0
     },
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv-top.m3u",
       "parsed": 391,
-      "new": 364
+      "new": 360
     },
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv.m3u",
       "parsed": 842,
-      "new": 415
+      "new": 410
     },
     {
       "country": "RU",
@@ -423,8 +423,8 @@
     {
       "country": "RU",
       "url": "https://iptv-org.github.io/iptv/languages/rus.m3u",
-      "parsed": 654,
-      "new": 35
+      "parsed": 656,
+      "new": 38
     },
     {
       "country": "AM",
@@ -459,20 +459,20 @@
     {
       "country": "RU",
       "url": "https://iptv-org.github.io/iptv/countries/ru.m3u",
-      "parsed": 508,
+      "parsed": 509,
       "new": 0
     },
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/substanc1/iptv-russia/main/streams/ru.m3u",
       "parsed": 722,
-      "new": 230
+      "new": 225
     },
     {
       "country": "RU",
       "url": "https://ngrch.github.io/iptv/ru.m3u",
       "parsed": 978,
-      "new": 726
+      "new": 727
     },
     {
       "country": "RU",
@@ -484,12 +484,12 @@
       "country": "GE",
       "url": "https://iptv-org.github.io/iptv/countries/ge.m3u",
       "parsed": 15,
-      "new": 1
+      "new": 0
     },
     {
       "country": "UA",
       "url": "https://iptv-org.github.io/iptv/countries/ua.m3u",
-      "parsed": 198,
+      "parsed": 199,
       "new": 3
     },
     {
