@@ -1,6 +1,6 @@
 {
-  "updated_at_utc": "2026-11-24T09:53:21+00:00",
-  "unique_channels": 15232,
+  "updated_at_utc": "2026-11-24T22:26:05+00:00",
+  "unique_channels": 15221,
   "official_channels": 24,
   "public_sources": 86,
   "successful_sources": 85,
@@ -394,25 +394,25 @@
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/best.m3u",
       "parsed": 10409,
-      "new": 3753
+      "new": 3755
     },
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/online.m3u",
-      "parsed": 8533,
+      "parsed": 8567,
       "new": 0
     },
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv-top.m3u",
       "parsed": 391,
-      "new": 360
+      "new": 359
     },
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv.m3u",
       "parsed": 842,
-      "new": 408
+      "new": 409
     },
     {
       "country": "RU",
@@ -424,7 +424,7 @@
       "country": "RU",
       "url": "https://iptv-org.github.io/iptv/languages/rus.m3u",
       "parsed": 664,
-      "new": 38
+      "new": 36
     },
     {
       "country": "AM",
@@ -465,8 +465,8 @@
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/substanc1/iptv-russia/main/streams/ru.m3u",
-      "parsed": 723,
-      "new": 241
+      "parsed": 721,
+      "new": 230
     },
     {
       "country": "RU",
