@@ -1,10 +1,10 @@
 {
-  "updated_at_utc": "2026-11-26T08:16:31+00:00",
-  "unique_channels": 15256,
+  "updated_at_utc": "2026-11-26T21:31:16+00:00",
+  "unique_channels": 15253,
   "official_channels": 24,
   "public_sources": 86,
-  "successful_sources": 84,
-  "failed_sources": 2,
+  "successful_sources": 85,
+  "failed_sources": 1,
   "sources": [
     {
       "country": "RU",
@@ -29,6 +29,12 @@
       "url": "https://iptv-org.github.io/iptv/subdivisions/ru-kb.m3u",
       "parsed": 1,
       "new": 0
+    },
+    {
+      "country": "RU",
+      "url": "https://iptv-org.github.io/iptv/subdivisions/ru-kgd.m3u",
+      "parsed": 1,
+      "new": 1
     },
     {
       "country": "RU",
@@ -316,7 +322,7 @@
       "country": "HQ",
       "url": "https://iptv-org.github.io/iptv/categories/general.m3u",
       "parsed": 2822,
-      "new": 2771
+      "new": 2770
     },
     {
       "country": "HQ",
@@ -388,12 +394,12 @@
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/best.m3u",
       "parsed": 10431,
-      "new": 3747
+      "new": 3743
     },
     {
       "country": "HQ",
       "url": "https://dearbulut.github.io/iptv/playlists/online.m3u",
-      "parsed": 8647,
+      "parsed": 8638,
       "new": 0
     },
     {
@@ -406,7 +412,7 @@
       "country": "RU",
       "url": "https://raw.githubusercontent.com/denxvofficial/IPTV/main/iptv.m3u",
       "parsed": 842,
-      "new": 411
+      "new": 410
     },
     {
       "country": "RU",
@@ -459,14 +465,14 @@
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/substanc1/iptv-russia/main/streams/ru.m3u",
-      "parsed": 722,
-      "new": 229
+      "parsed": 723,
+      "new": 224
     },
     {
       "country": "RU",
       "url": "https://ngrch.github.io/iptv/ru.m3u",
-      "parsed": 983,
-      "new": 733
+      "parsed": 943,
+      "new": 740
     },
     {
       "country": "RU",
@@ -512,11 +518,6 @@
     }
   ],
   "failures": [
-    {
-      "country": "RU",
-      "url": "https://iptv-org.github.io/iptv/subdivisions/ru-kgd.m3u",
-      "error": "HTTPError: HTTP Error 503: Service Unavailable"
-    },
     {
       "country": "RU",
       "url": "https://raw.githubusercontent.com/smolnp/IPTVru/refs/heads/gh-pages/IPTVstable.m3u8",
